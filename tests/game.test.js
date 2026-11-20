@@ -405,9 +405,9 @@ test('Schwierigkeit: nur Pfeiltürme ohne Aufrüstung verlieren vor Welle 12 (dt
 
 // B-013: In der Spätphase (Welle 14-20) dringen Gegner messbar weit vor, bevor sie sterben.
 // Vor B-013 erreichte der weiteste Gegner dort höchstens 75 % des Wegs, danach in mindestens 3 Wellen über 76 %.
-// Kanonen-Reichweite 2,6 -> 3,4 (auf Wunsch des Menschen): gemessen 53-81 %, daher Schwelle 50 %.
-const LATE_PROGRESS = 0.5;
-test('Spätphase: in mindestens 3 der Wellen 14-20 dringt ein Gegner über 50 % des Wegs vor (beide Strategien, dt 1/30 und 1/60)', () => {
+// Kanonen-Reichweite 2,6 -> 3,4 (auf Wunsch des Menschen): gemessen 53-81 %, Schwelle 55 % (im schwächsten Lauf bestehen 5 von 7 Wellen, die Schwelle trennt also noch).
+const LATE_PROGRESS = 0.55;
+test('Spätphase: in mindestens 3 der Wellen 14-20 dringt ein Gegner über 55 % des Wegs vor (beide Strategien, dt 1/30 und 1/60)', () => {
   for (const mix of [MIX_CANNON, MIX_ARROW]) {
     for (const dt of [1 / 30, 1 / 60]) {
       const { progress } = strategyRun(mix, dt);

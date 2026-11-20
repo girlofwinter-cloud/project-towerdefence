@@ -222,3 +222,13 @@ Neue Einträge werden unten angehängt. Bestehende Einträge werden nie geänder
 - Review: nicht durchgeführt (Wunsch des Menschen)
 - Entscheidungen: Kanonen-Reichweite 2,6 -> 3,4 Kacheln (Pfeilturm 3, Scharfschütze 6). Jede Erhöhung ab 2,8 machte die Wellen 14-20 leichter und brach zwei Balancing-Tests. Auf Rückfrage entschied der Mensch: Test-Schwellen bewusst anpassen. Geändert (Messwerte bei 3,4): `LATE_PROGRESS` 0,76 -> 0,5 (gemessen 53-81 % des Wegs, weiterhin mindestens 3 Wellen) und Mindestvorsprung im Schildträger-Test 0,05 -> 0,02 (`SHIELD_MARGIN`, gemessen min. 0,03 in Welle 9). Alle anderen Assertions unverändert, keine Tests gelöscht.
 - Offen: Das Spiel ist in der Spätphase insgesamt leichter (zusammen mit 10 Leben, PR #15). Wenn es zu leicht wird, Gegner der Wellen 14-20 stärken (B-013 neu justieren).
+
+## 2026-11-20 · Test · Spätphase-Schwelle 50 -> 55 %
+- Rolle(n): orchestrator (direkt); Anlass: Hinweis des Reviewers zu PR #16
+- Branch: agent/spaetphase-schwelle
+- Runden: 1
+- Ergebnis: fertig
+- Tests: 119 bestanden, 0 fehlgeschlagen (Unit)
+- Review: nicht durchgeführt (Ein-Zeilen-Änderung eines Schwellwerts)
+- Entscheidungen: `LATE_PROGRESS` 0,5 -> 0,55. Bei 0,5 lag die Schwelle unter allen 28 Messwerten und der Test prüfte praktisch nichts. Bei 0,55 bestehen im schwächsten Lauf (53-60 %) noch 5 von 7 Wellen, die Bedingung "mindestens 3" trennt wieder. Verschärfung, keine Abschwächung; Spielcode und Balancing unverändert.
+- Offen: Nichts.
