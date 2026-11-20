@@ -43,7 +43,7 @@ Die Pipeline nimmt nur Einträge mit Status `offen`, von oben nach unten.
   - HUD zeigt die aktuelle Geschwindigkeit.
 
 ### B-004: Zielmodus pro Turm
-- Status: vorschlag
+- Status: fertig
 - Aufwand: S
 - Idee: Jeder Turm hat eine Zielregel (Erster, Letzter, Stärkster, Nächster), umschaltbar per Klick oder Taste `T`. So kann der Scharfschütze gezielt Bosse jagen.
 - Akzeptanzkriterien:
@@ -231,4 +231,12 @@ Die Pipeline nimmt nur Einträge mit Status `offen`, von oben nach unten.
 - Akzeptanzkriterien:
   - Kein Test hängt von einer zufällig passenden Schrittfolge ab.
   - `stepGame` terminiert für jedes `dt`.
+  - `npm test` bleibt grün.
+
+### B-023: Zielmodus: Feinschliff
+- Status: vorschlag
+- Aufwand: S
+- Idee: Hinweise aus dem Review von B-004. (1) Startwert in `buildTower` als `TARGET_MODES[0]` statt hart codiertem `'first'`. (2) Test über `update()`, dass ein Turm im laufenden Spiel wirklich nach seinem `targetMode` schießt (heute ist nur `pickTarget` direkt getestet). (3) Zielmodus im Render (kleines Symbol am ausgewählten Turm) erst nach Sichtprüfung im Browser entscheiden.
+- Akzeptanzkriterien:
+  - Integrationstest: zwei Gegner in Reichweite, Modus `strong` trifft den stärkeren zuerst.
   - `npm test` bleibt grün.

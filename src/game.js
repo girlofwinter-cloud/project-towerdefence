@@ -1,6 +1,6 @@
 // Spiel-Logik: kompletter Zustand + update(). Kein DOM, kein Canvas -> in Node testbar.
 import {
-  TILE, COLS, ROWS, START_GOLD, START_LIVES, MAX_WAVES, SELL_RATIO, MAX_LEVEL, MAX_SUBSTEP,
+  TILE, COLS, ROWS, START_GOLD, START_LIVES, MAX_WAVES, SELL_RATIO, MAX_LEVEL, MAX_SUBSTEP, TARGET_MODES,
   WAYPOINTS, TOWER_TYPES, ENEMY_TYPES, waveFor, waveBonus, hpScale,
 } from './config.js';
 import { buildPath, pointAt, pathTiles } from './path.js';
@@ -82,6 +82,7 @@ export function buildTower(state, type, col, row) {
     invested: def.cost,
     cooldown: 0,
     angle: 0,
+    targetMode: 'first',
   };
   state.towers.push(tower);
   return { ok: true, tower };
@@ -97,6 +98,14 @@ export function upgradeTower(state, id) {
   tower.level += 1;
   tower.invested += cost;
   return { ok: true, tower };
+}
+
+export function setTargetMode(state, id, mode) {
+  if (!TARGET_MODES.includes(mode)) return { ok: false, reason: 'Unbekannte Zielregel' };
+  const tower = state.towers.find((t) => t.id === id);
+  if (!tower) return { ok: false, reason: 'Turm nicht gefunden' };
+  tower.targetMode = mode;
+  return { ok: true };
 }
 
 export function sellTower(state, id) {
@@ -228,14 +237,26 @@ function healStep(state) {
   }
 }
 
-function findTarget(state, tower, range) {
+// Reine Zielauswahl: wählt aus den Gegnern in Reichweite nach Zielregel (Gleichstand: erster in Listenreihenfolge)
+export function pickTarget(enemies, tower, range, mode = 'first') {
   let best = null;
-  for (const e of state.enemies) {
+  let bestScore = -Infinity;
+  for (const e of enemies) {
     if (e.hp <= 0) continue;
-    if (Math.hypot(e.x - tower.x, e.y - tower.y) > range) continue;
-    if (!best || e.dist > best.dist) best = e; // "Erster": am weitesten gelaufen
+    const d = Math.hypot(e.x - tower.x, e.y - tower.y);
+    if (d > range) continue;
+    let score;
+    if (mode === 'last') score = -e.dist;
+    else if (mode === 'strong') score = e.hp;
+    else if (mode === 'close') score = -d;
+    else score = e.dist; // "Erster": am weitesten gelaufen
+    if (score > bestScore) { best = e; bestScore = score; }
   }
   return best;
+}
+
+function findTarget(state, tower, range) {
+  return pickTarget(state.enemies, tower, range, tower.targetMode);
 }
 
 function towersStep(state, dt) {

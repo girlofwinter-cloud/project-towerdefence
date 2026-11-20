@@ -1,7 +1,7 @@
 // Verbindet Spiel-Logik, Rendering und Bedienung (DOM, Maus, Tastatur).
-import { TILE, WIDTH, HEIGHT, TOWER_TYPES, ENEMY_TYPES, MAX_WAVES, SPEED_STEPS, waveSummary } from './config.js';
+import { TILE, WIDTH, HEIGHT, TOWER_TYPES, ENEMY_TYPES, MAX_WAVES, SPEED_STEPS, TARGET_MODES, TARGET_MODE_NAMES, waveSummary } from './config.js';
 import {
-  createGame, stepGame, togglePause, buildTower, upgradeTower, sellTower, startWave,
+  createGame, stepGame, togglePause, buildTower, upgradeTower, sellTower, setTargetMode, startWave,
   canBuild, towerAt, towerStats, upgradeCost, sellValue,
 } from './game.js';
 import { render } from './render.js';
@@ -83,6 +83,7 @@ $('start-wave').addEventListener('click', doStartWave);
 $('speed').addEventListener('click', toggleSpeed);
 $('upgrade').addEventListener('click', doUpgrade);
 $('sell').addEventListener('click', doSell);
+$('target-mode').addEventListener('click', doCycleTarget);
 $('restart').addEventListener('click', restart);
 
 function doStartWave() {
@@ -97,6 +98,14 @@ function toggleSpeed() {
 function doUpgrade() {
   if (!ui.selectedTowerId) return;
   const res = upgradeTower(state, ui.selectedTowerId);
+  if (!res.ok) flash(res.reason);
+  refreshUI();
+}
+function doCycleTarget() {
+  const t = state.towers.find((x) => x.id === ui.selectedTowerId);
+  if (!t) return;
+  const next = TARGET_MODES[(TARGET_MODES.indexOf(t.targetMode) + 1) % TARGET_MODES.length];
+  const res = setTargetMode(state, t.id, next);
   if (!res.ok) flash(res.reason);
   refreshUI();
 }
@@ -119,6 +128,7 @@ window.addEventListener('keydown', (ev) => {
   else if (ev.key === 'Escape') { ui.buildType = null; ui.selectedTowerId = null; refreshUI(); }
   else if (ev.key === 'u') doUpgrade();
   else if (ev.key === 's') doSell();
+  else if (ev.key === 't') doCycleTarget();
   else if (ev.key === 'f') toggleSpeed();
   else if (ev.key === 'p') { togglePause(state); refreshUI(); }
 });
@@ -157,6 +167,7 @@ function refreshUI() {
     $('ti-stats').textContent = `Schaden ${Math.round(s.damage)} · Reichweite ${s.range.toFixed(1)} · ${(1 / s.rate).toFixed(1)} Schuss/s`;
     $('upgrade').textContent = up === null ? 'Max. Stufe' : `Verbessern (${up} 💰)`;
     $('upgrade').disabled = up === null || state.gold < up;
+    $('target-mode').textContent = `Ziel: ${TARGET_MODE_NAMES[t.targetMode]} (T)`;
     $('sell').textContent = `Verkaufen (+${sellValue(t)} 💰)`;
   }
 
