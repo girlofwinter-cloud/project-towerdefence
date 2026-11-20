@@ -1,6 +1,6 @@
 // Spiel-Logik: kompletter Zustand + update(). Kein DOM, kein Canvas -> in Node testbar.
 import {
-  TILE, COLS, ROWS, START_GOLD, START_LIVES, MAX_WAVES, SELL_RATIO, MAX_LEVEL,
+  TILE, COLS, ROWS, START_GOLD, START_LIVES, MAX_WAVES, SELL_RATIO, MAX_LEVEL, MAX_SUBSTEP,
   WAYPOINTS, TOWER_TYPES, ENEMY_TYPES, waveFor, waveBonus, hpScale,
 } from './config.js';
 import { buildPath, pointAt, pathTiles } from './path.js';
@@ -146,6 +146,15 @@ export function spawnEnemy(state, type, wave = state.wave) {
 }
 
 // ---------- Update-Schleife ----------
+
+// Simuliert dt*speed Sekunden in gleich großen Teilschritten von höchstens MAX_SUBSTEP.
+export function stepGame(state, dt, speed = 1) {
+  const total = dt * speed;
+  if (!(total > 0)) return;
+  const steps = Math.max(1, Math.ceil(total / MAX_SUBSTEP - 1e-9));
+  const sub = total / steps;
+  for (let i = 0; i < steps; i++) update(state, sub);
+}
 
 export function update(state, dt) {
   if (state.status !== 'playing') return;

@@ -3,12 +3,12 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   createGame, update, buildTower, upgradeTower, sellTower, startWave, spawnEnemy,
-  canBuild, towerStats, upgradeCost,
+  canBuild, towerStats, upgradeCost, stepGame,
 } from '../src/game.js';
 import { tileHash, decorFor, isBorderTile, LARGE_DECOR_KINDS, LARGE_DECOR_RADIUS, BORDER_DECOR_CHANCE, INNER_DECOR_CHANCE } from '../src/decor.js';
 import { recoilOffset } from '../src/tower-fx.js';
 import { buildPath, pointAt, pathTiles } from '../src/path.js';
-import { TOWER_TYPES, MAX_WAVES, START_GOLD, START_LIVES, WAYPOINTS, TILE, COLS, ROWS, waveFor, waveBonus, waveSummary, hpScale, ENEMY_TYPES } from '../src/config.js';
+import { TOWER_TYPES, MAX_WAVES, START_GOLD, START_LIVES, WAYPOINTS, TILE, COLS, ROWS, waveFor, waveBonus, waveSummary, hpScale, ENEMY_TYPES, SPEED_STEPS, MAX_SUBSTEP } from '../src/config.js';
 
 // Hilfsfunktion: Spiel n Sekunden in kleinen Schritten laufen lassen
 function run(state, seconds, dt = 1 / 60) {
@@ -2009,4 +2009,51 @@ test('waveFor: Wellen 1-20 sind geordnet und endlich, Heiler ab 7, Schildträger
     assert.ok(list.length > prev, `Welle ${w}: Gegnermenge ${list.length} <= ${prev}`);
     prev = list.length;
   }
+});
+
+// ---------- B-003: Spielgeschwindigkeit ----------
+function speedScenario() {
+  const s = createGame();
+  buildTower(s, 'arrow', ...freeTileNearPath(s));
+  s.gold = 1000;
+  startWave(s);
+  return s;
+}
+
+test('SPEED_STEPS enthält x1, x2, x3', () => {
+  assert.deepEqual(SPEED_STEPS, [1, 2, 3]);
+});
+
+test('stepGame: x2 über 5 s entspricht x1 über 10 s (dt=0.05)', () => {
+  const a = speedScenario(), b = speedScenario();
+  for (let i = 0; i < 200; i++) stepGame(a, 0.05, 1);
+  for (let i = 0; i < 100; i++) stepGame(b, 0.05, 2);
+  assert.ok(Math.abs(a.time - 10) < 1e-6 && Math.abs(b.time - 10) < 1e-6);
+  assert.ok(a.kills > 0, 'Szenario muss Kills enthalten');
+  assert.equal(b.gold, a.gold);
+  assert.equal(b.kills, a.kills);
+  assert.equal(b.lives, a.lives);
+});
+
+test('stepGame: x3 und große dt werden in Teilschritte von höchstens MAX_SUBSTEP zerlegt', () => {
+  const s = createGame();
+  startWave(s);
+  let prev = s.time;
+  stepGame(s, 0.05, 3);
+  assert.ok(Math.abs(s.time - prev - 0.15) < 1e-9);
+  prev = s.time;
+  stepGame(s, 1, 1);
+  assert.ok(Math.abs(s.time - prev - 1) < 1e-9);
+  assert.ok(MAX_SUBSTEP <= 0.05);
+});
+
+test('stepGame: dt=1/60 ergibt bei x1 (10 s) und x2 (5 s) gleiche Zeit und Ergebnis', () => {
+  const a = speedScenario(), b = speedScenario();
+  const frames = 600;
+  for (let i = 0; i < frames; i++) stepGame(a, 1 / 60, 1);
+  for (let i = 0; i < frames / 2; i++) stepGame(b, 1 / 60, 2);
+  assert.ok(Math.abs(a.time - b.time) < 1e-6);
+  assert.equal(b.kills, a.kills);
+  assert.equal(b.lives, a.lives);
+  assert.equal(b.gold, a.gold);
 });
