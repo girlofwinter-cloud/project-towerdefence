@@ -232,3 +232,21 @@ Neue Einträge werden unten angehängt. Bestehende Einträge werden nie geänder
 - Review: nicht durchgeführt (Ein-Zeilen-Änderung eines Schwellwerts)
 - Entscheidungen: `LATE_PROGRESS` 0,5 -> 0,55. Bei 0,5 lag die Schwelle unter allen 28 Messwerten und der Test prüfte praktisch nichts. Bei 0,55 bestehen im schwächsten Lauf (53-60 %) noch 5 von 7 Wellen, die Bedingung "mindestens 3" trennt wieder. Verschärfung, keine Abschwächung; Spielcode und Balancing unverändert.
 - Offen: Nichts.
+
+## 2026-11-21 · Mobil · Bauen per Touch in zwei Schritten (UX-Vorschlag 4)
+- Rolle(n): orchestrator (direkt); Anlass: UI/UX-Check, Vorschlag 4
+- Branch: agent/mobil-bauen-zoom (zusammen mit dem Zoom, auf Wunsch des Menschen ein Durchlauf für zwei Vorschläge)
+- Runden: 1
+- Ergebnis: fertig
+- Tests: 122 bestanden (Unit, +3), E2E 4 bestanden (+1 Touch-Test)
+- Entscheidungen: Auf Touch hing die Bauvorschau am Maus-Hover und fehlte; bei 19 px großen Kacheln wurde oft blind auf die falsche gebaut. Neu: `pointermove`/`pointerleave` statt `mousemove`/`mouseleave` (bei Touch bleibt die Vorschau nach dem Loslassen). Erster Tipp zeigt Kachel, Reichweite und den Hinweis "Nochmal tippen zum Bauen", zweiter Tipp auf dieselbe Kachel baut. Die Entscheidung steht als reine Funktion `buildTapStep` in `src/input.js` (ohne DOM, getestet). Maus baut weiter sofort. Neue Meldungsart `info` (grün) neben der roten Fehlermeldung. Spiel-Logik und Balancing unverändert.
+- Offen: Echtes Gerät testen. Doppeltipp-Zoom und Scroll-Konflikte (UX-Vorschlag 3) sind noch nicht umgesetzt.
+
+## 2026-11-21 · Mobil · Zoom für das Spielfeld (UX-Vorschlag 9)
+- Rolle(n): orchestrator (direkt); Anlass: UI/UX-Check, Vorschlag 9
+- Branch: agent/mobil-bauen-zoom
+- Runden: 1
+- Ergebnis: fertig
+- Tests: siehe voriger Eintrag (gemeinsamer Durchlauf); der E2E-Test prüft, dass der Zoom das Feld mindestens 1,8-fach so breit macht
+- Entscheidungen: Im Hochformat begrenzt die Bildschirmbreite die Kachelgröße (19 px bei 390 px). Neu: Button "Zoom" (nur mobil, <= 700 px). Er setzt die Klasse `zoomed` am Spielfeld: Canvas 200 % breit in einem scrollbaren Rahmen (`.scroller`, max. 60 vh hoch), Kacheln ca. 38 px. Overlay, Meldung und Pause-Banner liegen außerhalb des Rahmens und scrollen nicht mit. Klick-Umrechnung über `getBoundingClientRect` funktioniert unverändert. Standard bleibt der ungezoomte Ansichtsmodus.
+- Offen: Im Zoom muss man das Feld verschieben, um Gegner am anderen Ende zu sehen; kein automatisches Mitscrollen.

@@ -107,6 +107,13 @@ canvas#game {
   pointer-events: none;
 }
 #message:empty { display: none; }
+#message.info { background: rgba(40, 90, 30, 0.9); border-color: #123208; }
+
+/* Zoom (nur mobil per Button): Spielfeld doppelt so breit, im Rahmen verschiebbar */
+#zoom { display: none; }
+.zoomed .scroller { overflow: auto; max-height: 60vh; overscroll-behavior: contain; border-radius: 12px; }
+.zoomed canvas#game { width: 200%; max-width: none; }
+#zoom[aria-pressed="true"] { outline: 3px solid var(--gold); background: linear-gradient(#8f6339, #6b4529); color: var(--text); }
 #overlay {
   position: absolute;
   inset: 0;
@@ -202,6 +209,7 @@ footer { text-align: center; color: var(--muted); font-size: 0.8rem; padding: 16
   aside h3 { display: none; }
   .controls { order: 1; gap: 6px; }
   .controls button { padding: 7px 6px; font-size: .9rem; }
+  #zoom { display: block; }
   #wave-preview { order: 2; margin-top: 6px; }
   #tower-info { order: 3; margin-top: 8px; }
   #shop { order: 4; display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 8px; }

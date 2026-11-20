@@ -258,3 +258,11 @@ Die Pipeline nimmt nur Einträge mit Status `offen`, von oben nach unten.
 - Akzeptanzkriterien:
   - Alle Punkte erst nach Sichtprüfung im Browser bewerten.
   - `npm test` bleibt grün.
+
+### B-026: Mobil-Feinschliff (Rest aus UI/UX-Check, Review und Test von agent/mobil-bauen-zoom)
+- Status: vorschlag
+- Aufwand: M (in Teilen S)
+- Idee: (1) Querformat-Layout (`@media (max-height: 500px) and (orientation: landscape)`: Feld und Leiste nebeneinander, Canvas höchstens Viewport-Höhe). (2) Tastenkürzel ("(Leertaste)", "(P)", "(F)", "(T)") und "P drücken" im Pause-Banner auf Touch-Geräten ausblenden (`@media (hover: none)` oder `matchMedia`). (3) `canvas#game, button { touch-action: manipulation; }` und `body { overscroll-behavior-y: contain; }` gegen Doppeltipp-Zoom und Pull-to-Refresh. (4) Tippziele mobil mindestens 44 px (`min-height`). (5) Turm-Info mobil kompakter (Verbessern/Verkaufen nebeneinander, Verkaufen rötlich). (6) Zu teure Türme abblenden (`.tower-btn.poor { opacity: .7 }`). (7) Wellenvorschau mobil 15 px. (8) Safe-Area (`viewport-fit=cover`, nur zusammen mit 1). Aus Review/Test: (9) Stift (`pen`) wie Maus behandeln (`touch = lastPointerType === 'touch'`, `pointerleave` nur bei Touch ignorieren). (10) Beim Bauen die grüne Meldung "Nochmal tippen zum Bauen" sofort löschen (bleibt bis zu 2 s stehen). (11) E2E-Touch-Test: Rastergröße aus `config.js` statt fest 800/40. (12) Zoom: Game-Over-Overlay im gezoomten Zustand prüfen.
+- Akzeptanzkriterien:
+  - Je Punkt einzeln bewertbar, nur CSS/UI, keine Spiel-Logik.
+  - `npm test` und `npm run test:e2e` bleiben grün.

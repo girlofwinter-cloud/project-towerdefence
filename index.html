@@ -20,7 +20,9 @@
         <span id="pause-hint" hidden>⏸</span>
       </div>
       <div class="stage">
-        <canvas id="game" aria-label="Spielfeld"></canvas>
+        <div class="scroller">
+          <canvas id="game" aria-label="Spielfeld"></canvas>
+        </div>
         <div id="overlay" hidden>
           <h2 id="overlay-title"></h2>
           <p id="overlay-stats"></p>
@@ -36,6 +38,7 @@
         <button id="start-wave" class="primary">Welle 1 starten</button>
         <button id="pause">⏸ Pause (P)</button>
         <button id="speed">Tempo ×1 (F)</button>
+        <button id="zoom" aria-pressed="false">🔍 Zoom</button>
       </div>
       <p id="wave-preview"></p>
       <h3>Türme</h3>

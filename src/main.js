@@ -6,6 +6,7 @@ import {
 } from './game.js';
 import { render, drawTower } from './render.js';
 import { livesText } from './hud.js';
+import { buildTapStep } from './input.js';
 
 const canvas = document.getElementById('game');
 canvas.width = WIDTH;
@@ -13,7 +14,7 @@ canvas.height = HEIGHT;
 const ctx = canvas.getContext('2d');
 
 const $ = (id) => document.getElementById(id);
-const ui = { buildType: null, selectedTowerId: null, hover: null, speed: SPEED_STEPS[0], message: '', messageTtl: 0 };
+const ui = { buildType: null, selectedTowerId: null, hover: null, pending: null, speed: SPEED_STEPS[0], message: '', messageKind: 'error', messageTtl: 0 };
 let state = createGame();
 
 // Für Tests und Neugierige: im Browser-Konsole `__game` eintippen.
@@ -48,11 +49,13 @@ for (const [type, def] of Object.entries(TOWER_TYPES)) {
 function selectBuild(type) {
   ui.buildType = ui.buildType === type ? null : type;
   ui.selectedTowerId = null;
+  ui.pending = null;
   refreshUI();
 }
 
-function flash(msg) {
+function flash(msg, kind = 'error') {
   ui.message = msg;
+  ui.messageKind = kind;
   ui.messageTtl = 2;
 }
 
@@ -64,20 +67,36 @@ function tileFromEvent(ev) {
   return { col: Math.floor(x / TILE), row: Math.floor(y / TILE) };
 }
 
-canvas.addEventListener('mousemove', (ev) => {
+// Pointer-Events statt nur Maus: so gibt es auch auf Touch eine Vorschau der Kachel.
+let lastPointerType = 'mouse';
+canvas.addEventListener('pointerdown', (ev) => { lastPointerType = ev.pointerType; });
+canvas.addEventListener('pointermove', (ev) => {
   const { col, row } = tileFromEvent(ev);
   ui.hover = { col, row, ok: canBuild(state, col, row).ok };
 });
-canvas.addEventListener('mouseleave', () => (ui.hover = null));
+// Bei Touch feuert pointerleave direkt nach dem Loslassen: dort die Vorschau behalten.
+canvas.addEventListener('pointerleave', (ev) => { if (ev.pointerType === 'mouse') ui.hover = null; });
 canvas.addEventListener('click', (ev) => {
   const { col, row } = tileFromEvent(ev);
   const existing = towerAt(state, col, row);
   if (existing) {
     ui.selectedTowerId = existing.id;
     ui.buildType = null;
+    ui.pending = null;
   } else if (ui.buildType) {
-    const res = buildTower(state, ui.buildType, col, row);
-    if (!res.ok) flash(res.reason);
+    const touch = lastPointerType !== 'mouse';
+    const step = buildTapStep(ui.pending, col, row, touch);
+    ui.pending = step.pending;
+    if (step.action === 'preview') {
+      const check = canBuild(state, col, row);
+      ui.hover = { col, row, ok: check.ok };
+      if (check.ok) flash('Nochmal tippen zum Bauen', 'info');
+      else { flash(check.reason); ui.pending = null; }
+    } else {
+      const res = buildTower(state, ui.buildType, col, row);
+      if (!res.ok) flash(res.reason);
+      if (touch) ui.hover = null;
+    }
   } else {
     ui.selectedTowerId = null;
   }
@@ -87,6 +106,7 @@ canvas.addEventListener('contextmenu', (ev) => {
   ev.preventDefault();
   ui.buildType = null;
   ui.selectedTowerId = null;
+  ui.pending = null;
   refreshUI();
 });
 
@@ -98,6 +118,14 @@ $('upgrade').addEventListener('click', doUpgrade);
 $('sell').addEventListener('click', doSell);
 $('target-mode').addEventListener('click', doCycleTarget);
 $('restart').addEventListener('click', restart);
+$('zoom').addEventListener('click', toggleZoom);
+
+// Zoom (mobil): Spielfeld auf doppelte Breite, im Rahmen verschiebbar. Größere Kacheln = treffsicheres Tippen.
+function toggleZoom() {
+  const on = document.querySelector('.board').classList.toggle('zoomed');
+  $('zoom').setAttribute('aria-pressed', String(on));
+  $('zoom').textContent = on ? '🔍 Normal' : '🔍 Zoom';
+}
 
 function doStartWave() {
   const res = startWave(state);
@@ -134,7 +162,7 @@ function doSell() {
 }
 function restart() {
   state = createGame();
-  Object.assign(ui, { buildType: null, selectedTowerId: null, speed: SPEED_STEPS[0] });
+  Object.assign(ui, { buildType: null, selectedTowerId: null, pending: null, speed: SPEED_STEPS[0] });
   refreshUI();
 }
 
@@ -143,7 +171,7 @@ window.addEventListener('keydown', (ev) => {
   const type = Object.keys(TOWER_TYPES).find((t) => TOWER_TYPES[t].key === key);
   if (type) selectBuild(type);
   else if (key === ' ') { ev.preventDefault(); doStartWave(); }
-  else if (key === 'escape') { ui.buildType = null; ui.selectedTowerId = null; refreshUI(); }
+  else if (key === 'escape') { ui.buildType = null; ui.selectedTowerId = null; ui.pending = null; refreshUI(); }
   else if (key === 'u') doUpgrade();
   else if (key === 's') doSell();
   else if (key === 't') doCycleTarget();
@@ -195,6 +223,7 @@ function refreshUI() {
   }
 
   $('message').textContent = ui.messageTtl > 0 ? ui.message : '';
+  $('message').classList.toggle('info', ui.messageKind === 'info');
 
   const over = $('overlay');
   over.hidden = state.status === 'playing';

@@ -51,3 +51,31 @@ test('Welle starten bringt Gegner aufs Feld', async () => {
   assert.equal(await page.evaluate(() => window.__game().wave), 1);
   assert.deepEqual(errors, []);
 });
+
+test('Handy: Bauen per Touch in zwei Schritten, Zoom vergrößert das Spielfeld', async () => {
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, deviceScaleFactor: 2 });
+  const m = await ctx.newPage();
+  const mErrors = [];
+  m.on('pageerror', (e) => mErrors.push(e.message));
+  await m.goto(url);
+  try {
+    await m.locator('.tower-btn[data-type="arrow"]').tap();
+    const box = await m.locator('#game').boundingBox();
+    const scale = box.width / 800;
+    const at = (col, row) => [box.x + (col + 0.5) * 40 * scale, box.y + (row + 0.5) * 40 * scale];
+    // Feld (0,0) ist frei. Erster Tipp: nur Vorschau, es wird nichts gebaut.
+    await m.touchscreen.tap(...at(0, 0));
+    assert.equal(await m.evaluate(() => window.__game().towers.length), 0);
+    assert.deepEqual(await m.evaluate(() => ({ c: window.__ui.hover.col, r: window.__ui.hover.row })), { c: 0, r: 0 });
+    // Zweiter Tipp auf dieselbe Kachel baut.
+    await m.touchscreen.tap(...at(0, 0));
+    assert.equal(await m.evaluate(() => window.__game().towers.length), 1);
+    // Zoom: Spielfeld wird deutlich breiter als der Bildschirm und liegt in einem scrollbaren Rahmen.
+    await m.locator('#zoom').tap();
+    const zoomed = await m.locator('#game').boundingBox();
+    assert.ok(zoomed.width > box.width * 1.8, `Zoom: ${zoomed.width} statt ${box.width}`);
+    assert.deepEqual(mErrors, []);
+  } finally {
+    await ctx.close();
+  }
+});
