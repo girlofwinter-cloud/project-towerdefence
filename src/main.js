@@ -1,5 +1,5 @@
 // Verbindet Spiel-Logik, Rendering und Bedienung (DOM, Maus, Tastatur).
-import { TILE, WIDTH, HEIGHT, TOWER_TYPES, MAX_WAVES } from './config.js';
+import { TILE, WIDTH, HEIGHT, TOWER_TYPES, ENEMY_TYPES, MAX_WAVES, waveSummary } from './config.js';
 import {
   createGame, update, buildTower, upgradeTower, sellTower, startWave,
   canBuild, towerAt, towerStats, upgradeCost, sellValue,
@@ -130,6 +130,15 @@ function refreshUI() {
   $('speed').textContent = `Tempo ×${ui.speed}`;
   $('start-wave').disabled = state.waveActive || state.status !== 'playing';
   $('start-wave').textContent = state.waveActive ? 'Welle läuft…' : `Welle ${state.wave + 1} starten`;
+
+  // Vorschau der nächsten Welle (nur solange keine Welle läuft)
+  const showPreview = !state.waveActive && state.status === 'playing' && state.wave < MAX_WAVES;
+  $('wave-preview').hidden = !showPreview;
+  if (showPreview) {
+    const parts = Object.entries(waveSummary(state.wave + 1))
+      .map(([type, n]) => `${n}× ${ENEMY_TYPES[type].name}`);
+    $('wave-preview').textContent = `Kommt: ${parts.join(', ')}`;
+  }
 
   for (const btn of shop.children) {
     const def = TOWER_TYPES[btn.dataset.type];
