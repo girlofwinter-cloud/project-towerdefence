@@ -7,9 +7,9 @@ export const WIDTH = COLS * TILE;
 export const HEIGHT = ROWS * TILE;
 
 export const START_GOLD = 140;
-export const START_LIVES = 3;
+export const START_LIVES = 10;
 // Ab dieser Lebensanzahl (oder weniger) warnt das HUD in Rot.
-export const LOW_LIVES = 1;
+export const LOW_LIVES = 3;
 export const MAX_WAVES = 20;
 export const SELL_RATIO = 0.7;
 export const MAX_LEVEL = 3;

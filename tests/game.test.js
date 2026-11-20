@@ -1789,16 +1789,21 @@ test('B-012 Tester R2: Sperrzeit - neuer Weg leert Sperre; kleine Explosion setz
   assert.ok(Number.isFinite(fx3.shakeLock) || fx3.shakeLock === -Infinity);
 });
 
-// --- B-019: nur noch 3 Leben ---
+// --- B-019 / 10 Leben: Start-Leben und Verlust bei 0 Leben ---
 
-test('B-019: START_LIVES ist 3, ein durchgelassener Boss beendet das Spiel mit Leben 0 (nicht negativ)', () => {
-  assert.equal(START_LIVES, 3);
+test('B-019: START_LIVES ist 10, ein durchgelassener Boss kostet 6 Leben, bei 0 ist das Spiel verloren (nicht negativ)', () => {
+  assert.equal(START_LIVES, 10);
   const s = createGame();
-  assert.equal(s.lives, 3);
-  spawnEnemy(s, 'boss', 1); // Boss kostet 6 Leben, mehr als vorhanden
+  assert.equal(s.lives, 10);
+  spawnEnemy(s, 'boss', 1);
   run(s, 600);
-  assert.equal(s.status, 'lost');
-  assert.equal(s.lives, 0);
+  assert.equal(s.lives, 4);
+  assert.equal(s.status, 'playing');
+  const t = createGame({ lives: 2 });
+  spawnEnemy(t, 'boss', 1); // Boss kostet 6 Leben, mehr als vorhanden
+  run(t, 600);
+  assert.equal(t.status, 'lost');
+  assert.equal(t.lives, 0);
 });
 
 // ---------- B-006: Heiler und Schildträger ----------

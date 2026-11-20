@@ -192,3 +192,13 @@ Neue Einträge werden unten angehängt. Bestehende Einträge werden nie geänder
 - Review: nicht durchgeführt (Wunsch: schneller Prototyp)
 - Entscheidungen: Auf Wunsch des Menschen, Referenz: klassische Cartoon-Tower-Defence-Spiele. Nur Darstellung: (1) HUD (Gold, Welle, Leben) als Holzleiste oben im Spielfeld statt im Header, (2) Holz-Seitenleiste mit goldenen Akzenten, grüner Start-Button, (3) Turm-Karten mit Mini-Turm (nutzt `drawTower` aus `render.js`, keine neuen Grafiken), (4) wärmere Gelände-Farben (sandiger Weg, sattes Gras), (5) Banner/Overlay/Meldung im selben Stil. Element-IDs unverändert, keine Logik, kein Balancing, keine Tests geändert.
 - Offen: Gegner und Projektile sind noch im alten Stil; Ideen für später: Wellenfortschrittsleiste, Münz-/Herz-Icons als Zeichnung statt Emoji, Bauplätze statt freiem Raster.
+
+## 2026-11-20 · Leben · 10 statt 3 Leben
+- Rolle(n): orchestrator (direkt, ohne Sub-Agenten)
+- Branch: agent/zehn-leben
+- Runden: 1
+- Ergebnis: fertig
+- Tests: 119 bestanden, 0 fehlgeschlagen (Unit); E2E nicht lauffähig. HUD per Headless-Screenshot geprüft.
+- Review: nicht durchgeführt
+- Entscheidungen: Auf Wunsch des Menschen (Balancing-Änderung): `START_LIVES` 3 -> 10, `LOW_LIVES` 1 -> 3 (rote Warnung bei 3 von 10). Der Test aus B-019 fixierte bewusst 3 Leben; er wurde an die neue Vorgabe angepasst, nicht abgeschwächt: Er prüft jetzt START_LIVES = 10, dass ein Boss 6 Leben kostet (Rest 4, Spiel läuft), und weiterhin, dass bei 0 Leben das Spiel verloren ist und die Zahl nicht negativ wird (mit `lives: 2`). Mobil kleinere Herzen im HUD.
+- Offen: Balancing neu beurteilen: 10 Leben machen das Spiel deutlich leichter; die Strategie-Tests (`lives >= 2`) sind damit weniger streng.
