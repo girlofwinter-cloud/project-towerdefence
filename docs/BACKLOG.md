@@ -43,7 +43,7 @@ Die Pipeline nimmt nur Einträge mit Status `offen`, von oben nach unten.
   - HUD zeigt die aktuelle Geschwindigkeit.
 
 ### B-004: Zielmodus pro Turm
-- Status: vorschlag
+- Status: fertig
 - Aufwand: S
 - Idee: Jeder Turm hat eine Zielregel (Erster, Letzter, Stärkster, Nächster), umschaltbar per Klick oder Taste `T`. So kann der Scharfschütze gezielt Bosse jagen.
 - Akzeptanzkriterien:
@@ -214,3 +214,11 @@ Die Pipeline nimmt nur Einträge mit Status `offen`, von oben nach unten.
   - Erst nach einer Sichtprüfung im Browser entscheiden, ob die Punkte stören.
   - Nur Zahlen in `src/config.js`; beide robusten Strategien gewinnen Welle 20 weiter mit mindestens 2 Leben bei dt 1/30 und 1/60.
   - Test-Aufräumen nebenbei: `playTracked` und `playDt` zusammenführen (`playDt = (mix, dt) => playTracked(mix, dt).state`), den Kommentar "höchstens 75 %" korrigieren (richtig: vorher höchstens 1 Welle über 76 %), den Healer-Assert in Welle 13 auf `healer.at > letzter tank.at` umstellen.
+
+### B-023: Zielmodus: Feinschliff
+- Status: vorschlag
+- Aufwand: S
+- Idee: Hinweise aus dem Review von B-004. (1) Startwert in `buildTower` als `TARGET_MODES[0]` statt hart codiertem `'first'`. (2) Test über `update()`, dass ein Turm im laufenden Spiel wirklich nach seinem `targetMode` schießt (heute ist nur `pickTarget` direkt getestet). (3) Zielmodus im Render (kleines Symbol am ausgewählten Turm) erst nach Sichtprüfung im Browser entscheiden.
+- Akzeptanzkriterien:
+  - Integrationstest: zwei Gegner in Reichweite, Modus `strong` trifft den stärkeren zuerst.
+  - `npm test` bleibt grün.

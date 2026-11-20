@@ -3,12 +3,12 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   createGame, update, buildTower, upgradeTower, sellTower, startWave, spawnEnemy,
-  canBuild, towerStats, upgradeCost,
+  canBuild, towerStats, upgradeCost, setTargetMode, pickTarget,
 } from '../src/game.js';
 import { tileHash, decorFor, isBorderTile, LARGE_DECOR_KINDS, LARGE_DECOR_RADIUS, BORDER_DECOR_CHANCE, INNER_DECOR_CHANCE } from '../src/decor.js';
 import { recoilOffset } from '../src/tower-fx.js';
 import { buildPath, pointAt, pathTiles } from '../src/path.js';
-import { TOWER_TYPES, MAX_WAVES, START_GOLD, START_LIVES, WAYPOINTS, TILE, COLS, ROWS, waveFor, waveBonus, waveSummary, hpScale, ENEMY_TYPES } from '../src/config.js';
+import { TOWER_TYPES, MAX_WAVES, START_GOLD, START_LIVES, WAYPOINTS, TILE, COLS, ROWS, TARGET_MODES, waveFor, waveBonus, waveSummary, hpScale, ENEMY_TYPES } from '../src/config.js';
 
 // Hilfsfunktion: Spiel n Sekunden in kleinen Schritten laufen lassen
 function run(state, seconds, dt = 1 / 60) {
@@ -2009,4 +2009,72 @@ test('waveFor: Wellen 1-20 sind geordnet und endlich, Heiler ab 7, Schildträger
     assert.ok(list.length > prev, `Welle ${w}: Gegnermenge ${list.length} <= ${prev}`);
     prev = list.length;
   }
+});
+
+// B-004: Zielmodus pro Turm
+test('Zielmodus: neue Türme starten mit first, setTargetMode lehnt unbekannte Modi ab', () => {
+  const s = createGame();
+  const { tower } = buildTower(s, 'arrow', 0, 0);
+  assert.equal(tower.targetMode, 'first');
+  assert.deepEqual(TARGET_MODES, ['first', 'last', 'strong', 'close']);
+  assert.equal(setTargetMode(s, tower.id, 'strong').ok, true);
+  assert.equal(tower.targetMode, 'strong');
+  const bad = setTargetMode(s, tower.id, 'foo');
+  assert.equal(bad.ok, false);
+  assert.ok(bad.reason.length > 0);
+  assert.equal(tower.targetMode, 'strong');
+});
+
+test('Zielmodus: pickTarget wählt je Modus den erwarteten Gegner', () => {
+  const tower = { x: 0, y: 0 };
+  const a = { x: 10, y: 0, dist: 100, hp: 20 };
+  const b = { x: 50, y: 0, dist: 300, hp: 10 };
+  const c = { x: 30, y: 0, dist: 200, hp: 90 };
+  const out = { x: 500, y: 0, dist: 999, hp: 999 };
+  const list = [a, b, c, out];
+  assert.equal(pickTarget(list, tower, 100, 'first'), b);
+  assert.equal(pickTarget(list, tower, 100, 'last'), a);
+  assert.equal(pickTarget(list, tower, 100, 'strong'), c);
+  assert.equal(pickTarget(list, tower, 100, 'close'), a);
+  assert.equal(pickTarget([out], tower, 100, 'first'), null);
+});
+
+test('Zielmodus Edge: hp<=0, Gleichstand, Reichweitenrand, fehlender Modus, Moduswechsel, Kanone/Frost', () => {
+  const tower = { x: 0, y: 0 };
+  const dead = { x: 1, y: 0, dist: 999, hp: 0 };
+  const a = { x: 10, y: 0, dist: 100, hp: 50 };
+  const b = { x: 10, y: 0, dist: 100, hp: 50 };
+  for (const m of TARGET_MODES) {
+    assert.equal(pickTarget([dead, a, b], tower, 100, m), a, `Gleichstand ${m}`);
+    assert.equal(pickTarget([dead], tower, 100, m), null);
+  }
+  const edge = { x: 100, y: 0, dist: 5, hp: 5 };
+  assert.equal(pickTarget([edge], tower, 100, 'first'), edge);
+  assert.equal(pickTarget([edge], tower, 99.9, 'first'), null);
+  assert.equal(pickTarget([a, edge], tower), a); // Standard first
+  assert.equal(pickTarget([a, edge], tower, 100, undefined), a);
+
+  // Turm ohne targetMode-Feld verhält sich wie first; Moduswechsel wirkt sofort; alle Turmtypen
+  for (const type of Object.keys(TOWER_TYPES)) {
+    const s = createGame();
+    s.gold = 9999; const r = buildTower(s, type, 0, 0); assert.ok(r.ok, r.reason); const t = r.tower;
+    delete t.targetMode;
+    const near = spawnEnemy(s, 'grunt'); const far = spawnEnemy(s, 'grunt');
+    const pp = pointAt(s.path, 300); t.x = pp.x; t.y = pp.y;
+    near.dist = 302; far.dist = 340;
+    t.cooldown = 0; update(s, 0.001);
+    assert.equal(s.projectiles.at(-1)?.targetId, far.id, `${type} ohne Feld = first`);
+    setTargetMode(s, t.id, 'close');
+    t.cooldown = 0; update(s, 0.001);
+    assert.equal(s.projectiles.at(-1).targetId, near.id, `${type} close`);
+  }
+});
+
+test('Zielmodus Edge: strong ignoriert Rüstung, setTargetMode mit unbekannter id', () => {
+  const tower = { x: 0, y: 0 };
+  const armored = { x: 5, y: 0, dist: 1, hp: 30, armor: 0.9 };
+  const plain = { x: 5, y: 0, dist: 2, hp: 20, armor: 0 };
+  assert.equal(pickTarget([plain, armored], tower, 50, 'strong'), armored);
+  const s = createGame();
+  assert.equal(setTargetMode(s, 9999, 'first').ok, false);
 });
