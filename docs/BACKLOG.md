@@ -132,7 +132,7 @@ Die Pipeline nimmt nur Einträge mit Status `offen`, von oben nach unten.
   - `npm test` bleibt grün.
 
 ### B-012: Grafik: Projektile und Effekte
-- Status: offen
+- Status: fertig
 - Aufwand: S
 - Idee: Pfeile mit Schweif, Kanonenkugeln mit Rauch, Frost-Partikel, Explosionen mit Funken und kurzem Screen-Shake, Treffer-Blitz auf Gegnern, Gold-Münzen beim Kill.
 - Akzeptanzkriterien:
@@ -175,3 +175,20 @@ Die Pipeline nimmt nur Einträge mit Status `offen`, von oben nach unten.
   - Neigung ist über jede Wegecke stetig (Differenz bei dist ± 0,5 px kleiner als ein kleines Epsilon), per Test belegt.
   - Nach Zusammenlegen der Helfer bleiben alle Render-Tests grün.
   - Erst nach einer Sichtprüfung im Browser angehen, ob (1) und (5) überhaupt stören.
+
+### B-017: Render-Tests reihenfolgeunabhängig machen
+- Status: vorschlag
+- Aufwand: S
+- Idee: Der Test `Render: Tuerme aller Typen zeichnen, Cache ungestoert, Alpha und save/restore unveraendert` (aus B-010) schlägt isoliert und bei umgekehrter Reihenfolge fehl, weil er vom Modulzustand `bgCanvas` in `src/render.js` abhängt, den frühere Tests füllen. Den Test auf ein frisches Modul umstellen (`import('../src/render.js?<eigener-name>')`) und mit Grundlinie statt absoluten Zahlen zählen, wie in B-012 beim Shake-Test.
+- Akzeptanzkriterien:
+  - Jeder Render-Test ist einzeln (`node --test --test-name-pattern="^<Name>$"`) und bei umgekehrter Reihenfolge grün.
+  - Keine Prüfung wird abgeschwächt.
+
+### B-018: Feinschliff Effekte (nach Sichtprüfung im Browser)
+- Status: vorschlag
+- Aufwand: S
+- Idee: Hinweise aus dem Review von B-012. Der Shake friert ein, wenn die Spielzeit steht (Spielende innerhalb von 0,3 s nach einer Explosion lässt das Bild bis 3 px verschoben). Während des Shakes wird der Hintergrund zweimal gezeichnet; die Randstreifen zu füllen reicht. `SHAKE_COOLDOWN` (1,2 s) nach Sichtprüfung mit mehreren Kanonen ggf. anheben. Treffer-Funken an der endgültigen Zielposition statt der aus dem Vorframe. Bei niedriger Bildrate und Tempo ×3 altern Partikel durch `MAX_STEP` langsamer als das Spiel.
+- Akzeptanzkriterien:
+  - Nur `src/fx-system.js`, `src/render-fx.js`, `src/render.js`.
+  - Bei Spielende ist der Shake-Versatz 0, per Test belegt.
+  - `npm test` bleibt grün.
