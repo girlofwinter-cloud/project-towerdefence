@@ -2,7 +2,7 @@
 // Figuren werden in Einheiten von e.radius gezeichnet (Blick nach +x, Boden bei y ~ +0.9),
 // damit sie ungefaehr in den Kreis des Gegners passen (Krone/Waffe bis ca. 1,3x).
 // Keine Allokationen pro Frame: Konstanten und Tabellen liegen auf Modulebene.
-import { ENEMY_TYPES } from './config.js';
+import { ENEMY_TYPES, TILE } from './config.js';
 import { walkPhase, animSpeedFactor, facingFor, facingFlip, facingTilt } from './enemy-fx.js';
 
 const TWO_PI = Math.PI * 2;
@@ -35,6 +35,14 @@ const GOBLIN = { skin: '#6fbf4a', dark: '#4a8a33', feet: '#2f5a22', ear: '#8ad45
 const RUNNER = { skin: '#f2c14e', dark: '#c8962a', feet: '#8a6418', streak: 'rgba(242,193,78,0.5)' };
 const TANK = { skin: '#b5523b', dark: '#7d3626', plate: '#9aa3a8', plateDark: '#6d767b', rivet: '#d8dcde', feet: '#4a2418' };
 const OGRE = { skin: '#7a2e8e', light: '#9a4cb0', dark: '#55206a', gold: '#f2c94c', goldDark: '#b8912a', aura: 'rgba(180,90,220,0.2)', club: '#6b4a2b', tusk: '#f0e6d2', eye: '#ff4a4a' };
+const SHAMAN = { robe: '#2f8f6a', dark: '#1f6148', skin: '#8fd4a8', staff: '#6b4a2b', glow: '#b8ffd8', hood: '#3fbf8f' };
+const SHIELDED = { skin: '#7d8fae', dark: '#4f607c', helm: '#9aa7ba', shield: '#8a6a3a', shieldDark: '#5b4425', rim: '#c9ccd2', boss: '#e8d27a', feet: '#2c3646' };
+// Heil-Aura (deutlich dezenter als der Frost-Ring)
+const HEAL_AURA_FILL = 'rgba(90,230,150,0.07)';
+const HEAL_AURA_RING = 'rgba(120,240,170,0.28)';
+const HEAL_AURA_WIDTH = 1.5;
+const HEAL_AURA_PULSE = 0.04; // relative Radius-Schwankung
+const HEAL_AURA_SPEED = 2; // Bogenmass pro Sekunde
 
 function rect(ctx, color, x, y, w, h) {
   ctx.fillStyle = color;
@@ -156,6 +164,42 @@ function drawBoss(ctx, phase, time) {
   disc(ctx, 0.21, -0.8, 0.05, OGRE.eye);
 }
 
+// Schamane: gruene Robe mit Kapuze, Stab mit leuchtender Kugel
+function drawHealer(ctx, phase, time) {
+  leg(ctx, SHAMAN.dark, 0.26, -0.2, 0.5, 0.38, phase, 0.16, 0.1);
+  leg(ctx, SHAMAN.dark, 0.26, 0.2, 0.5, 0.38, phase + Math.PI, 0.16, 0.1);
+  ctx.translate(0, -Math.abs(Math.sin(phase)) * BOB);
+  // Stab hinter der Robe, vorn mit pulsierendem Leuchten
+  rect(ctx, SHAMAN.staff, 0.55, -0.75, 0.1, 1.45);
+  disc(ctx, 0.6, -0.85, 0.2 + Math.sin(time * 4) * 0.03, SHAMAN.glow);
+  disc(ctx, 0.6, -0.85, 0.11, SHAMAN.hood);
+  // Robe (unten breiter)
+  tri(ctx, SHAMAN.dark, -0.65, 0.6, 0.1, -0.5, 0.65, 0.6);
+  tri(ctx, SHAMAN.robe, -0.55, 0.55, 0.05, -0.45, 0.55, 0.55);
+  // Kopf mit Kapuze
+  disc(ctx, 0.08, -0.5, 0.4, SHAMAN.hood);
+  disc(ctx, 0.2, -0.45, 0.26, SHAMAN.skin);
+  disc(ctx, 0.3, -0.48, 0.08, WHITE);
+  disc(ctx, 0.33, -0.48, 0.04, EYE_DARK);
+}
+
+// Schildtraeger: kleine Gestalt hinter einem grossen Schild, der die Vorderseite abdeckt
+function drawShielded(ctx, phase) {
+  leg(ctx, SHIELDED.feet, 0.3, -0.25, 0.5, 0.38, phase, 0.14, 0.08);
+  leg(ctx, SHIELDED.feet, 0.3, 0.25, 0.5, 0.38, phase + Math.PI, 0.14, 0.08);
+  ctx.translate(0, -Math.abs(Math.sin(phase)) * BOB * 0.6);
+  oval(ctx, SHIELDED.dark, -0.2, 0.05, 0.6, 0.55, 0);
+  disc(ctx, -0.05, -0.55, 0.36, SHIELDED.skin);
+  rect(ctx, SHIELDED.helm, -0.4, -0.9, 0.7, 0.2);
+  disc(ctx, 0.12, -0.55, 0.08, WHITE);
+  disc(ctx, 0.15, -0.55, 0.04, EYE_DARK);
+  // Grosser Schild vorn (Rand, Holz, Buckel)
+  oval(ctx, SHIELDED.rim, 0.5, 0.05, 0.5, 0.88, 0);
+  oval(ctx, SHIELDED.shield, 0.5, 0.05, 0.41, 0.77, 0);
+  oval(ctx, SHIELDED.shieldDark, 0.5, 0.05, 0.14, 0.55, 0);
+  disc(ctx, 0.5, 0.05, 0.14, SHIELDED.boss);
+}
+
 // Unbekannter Typ: generische Figur (Kreis in def.color, falls vorhanden) mit Augen
 function drawGeneric(ctx, phase, time, color) {
   ctx.translate(0, -Math.abs(Math.sin(phase)) * BOB);
@@ -170,6 +214,8 @@ const FIGURES = new Map([
   ['runner', drawRunner],
   ['tank', drawTank],
   ['boss', drawBoss],
+  ['healer', drawHealer],
+  ['shielded', drawShielded],
 ]);
 const FALLBACK_COLOR = '#999';
 
@@ -179,6 +225,21 @@ function drawFrostOverlay(ctx) {
   tri(ctx, FROST_CRYSTAL, -0.55, -0.7, -0.4, -0.95, -0.25, -0.7);
   tri(ctx, FROST_CRYSTAL, 0.55, 0.1, 0.7, -0.15, 0.85, 0.1);
   tri(ctx, FROST_CRYSTAL, -0.2, 0.55, -0.05, 0.3, 0.1, 0.55);
+}
+
+// Heil-Aura: pulsierender, halbtransparenter Kreis mit Radius healRadius * TILE um einen Healer.
+// Wird von render.js VOR den Gegnern gezeichnet (liegt unter den Figuren). Andere Typen: nichts.
+export function drawHealAura(ctx, e, time) {
+  const def = ENEMY_TYPES[e.type];
+  if (!def || !def.healRadius) return;
+  const r = def.healRadius * TILE * (1 + Math.sin(time * HEAL_AURA_SPEED) * HEAL_AURA_PULSE);
+  ctx.fillStyle = HEAL_AURA_FILL;
+  ctx.beginPath();
+  ctx.arc(e.x, e.y, r, 0, TWO_PI);
+  ctx.fill();
+  ctx.strokeStyle = HEAL_AURA_RING;
+  ctx.lineWidth = HEAL_AURA_WIDTH;
+  ctx.stroke();
 }
 
 function drawHpBar(ctx, e, lift) {

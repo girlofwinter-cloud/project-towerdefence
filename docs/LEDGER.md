@@ -99,3 +99,36 @@ Neue Einträge werden unten angehängt. Bestehende Einträge werden nie geänder
 - Tests: 91 bestanden, 0 fehlgeschlagen (kein Spielcode geändert)
 - Entscheidungen: Auf Wunsch des Menschen läuft die Qualitätssicherung schneller. In `.claude/skills/pipeline/SKILL.md`: Tester knapp (npm test, Diff auf gelöschte oder abgeschwächte Tests, gezielte Randfälle, Fuzz- und Mehrfachläufe nur bei Verdacht); Reviewer eine Runde, `CHANGES_REQUESTED` nur bei Muss-Punkten, Hinweise als `vorschlag` ins Backlog; Nachbesserung prüft der Orchestrator selbst; höchstens 2 Entwicklungsrunden. Format-Block oben angepasst ("max. 2"), alte Einträge bleiben unverändert.
 - Offen: Nach einigen Durchläufen prüfen, ob die geringere Prüftiefe Fehler durchlässt. Der Branch baut auf `agent/grafik-effekte` auf, damit Backlog und Ledger konsistent bleiben.
+
+## 2026-11-20 · B-019 · Nur noch 3 Leben
+- Rolle(n): orchestrator, developer, tester, reviewer
+- Branch: agent/drei-leben
+- Runden: 1 von max. 2 (neues, schnelleres Verfahren: tester und reviewer liefen parallel)
+- Ergebnis: fertig
+- Tests: 92 bestanden, 0 fehlgeschlagen (Unit); E2E nicht lauffähig (Playwright nicht installiert)
+- Review: APPROVE (keine Muss-Punkte; Hinweis: Spätfaktor 1,07 ist durch den Boss-Test erzwungen, hpScale steht weiter auf Messers Schneide, besserer Hebel wäre Boss-Leak oder Gegnermix)
+- Entscheidungen: Auf Wunsch des Menschen `START_LIVES` 20 → 3. Nachgezogen wurde nur `hpScale`: Faktor Welle 5-10 von 1,305 auf 1,26 (Welle 10 war mit 3 Leben nicht mehr schaffbar), ab Welle 11 von 1,06 auf 1,07 (damit der Boss in Welle 20 nicht schwächer als vor B-008 bleibt). Leak-Werte, Startgold und Wellen blieben unverändert. Mit Boss-Leak 6 beendet jeder durchgelassene Boss das Spiel sofort.
+- Geänderte bestehende Tests (einzige zulässige Änderung, im Backlog-Eintrag so vorgesehen): vier Prüfungen `assert.ok(s.lives >= 8, ...)` in `tests/game.test.js` (Zeilen 290, 328, 364, 371) wurden zu `>= 2`, weil 8 Leben Reserve bei 3 Leben nicht mehr möglich sind. Das Backlog sprach von "drei Tests" und "mindestens 1 Leben", geändert sind vier Stellen mit der strengeren Schwelle 2. Alle übrigen Tests blieben unverändert. Neuer Test: `START_LIVES` ist 3, ein durchgelassener Boss führt zu Status 'lost' und Leben 0.
+- Offen: Ein Mensch sollte ein paar Wellen von Hand spielen, ob 3 Leben fair oder zu hart sind. Die Simulation gewinnt nur mit den zwei robusten Strategien (Kanonen-lastig); bei dt 1/20 liegt A>C>C>F mit genau 2 Leben auf der Testgrenze. Die Backlog-Einträge B-006 und B-013 wurden auf Wunsch des Menschen in diesem Commit von `vorschlag` auf `offen` gesetzt.
+
+## 2026-11-20 · B-006 · Heiler und Schildträger
+- Rolle(n): orchestrator, developer, tester, reviewer
+- Branch: agent/heiler-schild
+- Runden: 1 von max. 2 (tester und reviewer liefen parallel)
+- Ergebnis: fertig
+- Tests: 103 bestanden, 0 fehlgeschlagen (Unit); E2E nicht lauffähig (Playwright nicht installiert), Optik nicht im Browser geprüft
+- Review: APPROVE (keine Muss-Punkte; Hinweis: Schildträger ist mit 60 Basis-HP und 1 Exemplar pro Welle bis Welle 11 fast wirkungslos, Healer mit 2 % maxHp pro Sekunde schwach, siehe B-013)
+- Entscheidungen: `healer` (Schamane, Radius 1,5 Kacheln, 2 % maxHp pro Sekunde, Impuls alle 1 s Spielzeit, heilt sich nicht selbst, mehrere Healer stapeln nicht) ab Welle 7, `shielded` (Schildträger, `armor` 0,5) ab Welle 9. Heilung ist relativ zur maxHp, weil die Gegner-HP mit der Welle wachsen. Rüstung gilt für Direkttreffer von Türmen ohne Splash (Pfeil, Frost, Scharfschütze), Kanonen-Splash trifft voll, Frost-Slow bleibt unberührt. Die Werte wurden bewusst schwach gewählt, weil stärkere Varianten (3 bis 8 % Heilung, mehr HP) mit nur 3 Leben die zwei robusten Strategien in Welle 8 bis 10 zum Verlieren brachten. Heil-Aura liegt in einer eigenen Funktion `drawHealAura`, damit die bestehenden Radius-Prüfungen der Render-Tests unverändert bleiben.
+- Geänderter bestehender Test (einzige zulässige Änderung): `waveSummary(10)` erwartete `{ grunt: 36, runner: 23, tank: 6, boss: 2 }`, jetzt zusätzlich `shielded: 1, healer: 1`, weil Welle 10 die neuen Typen enthält. Welle 1 und 5 unverändert. Zwei Tester-Tests wurden aus einer Zusatzdatei in `tests/game.test.js` verschoben (CLAUDE.md, Regel 2).
+- Offen: Ein Mensch sollte Welle 7 bis 12 spielen: Fallen Schamane und Schildträger auf, und ist die Heil-Aura dezent genug neben dem Frost-Ring? Der Schildträger erzwingt noch keine gemischten Setups; das soll B-013 nachziehen. Der Branch baut auf `agent/drei-leben` (B-019) auf.
+
+## 2026-11-20 · B-013 · Spätphase fordernder machen
+- Rolle(n): orchestrator, developer, tester, reviewer
+- Branch: agent/spaetphase
+- Runden: 1 von max. 2 (tester und reviewer liefen parallel)
+- Ergebnis: fertig
+- Tests: 104 bestanden, 0 fehlgeschlagen (Unit); E2E nicht lauffähig (Playwright nicht installiert)
+- Review: APPROVE (keine Muss-Punkte; Hinweise: Gold-Überschuss in der Spätphase, Mittelphase durch stärkeren Schildträger unbeabsichtigt härter, 76-%-Schwelle empfindlich, kleine Test-Aufräumarbeiten, siehe B-020)
+- Entscheidungen: Nur Zahlen in `src/config.js`. Schildträger `hp` 60 → 90 und `1 + floor((w-9)/3)` → `1 + floor((w-9)/2)` pro Welle, damit er Kanonen nötig macht. Neue Konstante `LATE_WAVE = 14`: ab Welle 15 pro Welle ein Troll und zwei Flitzer mehr; Healer ab Welle 14 `2 + floor((w-14)/3)` Stück, die mitten in der Troll-Gruppe spawnen statt hinterherzulaufen. Healer-Werte blieben unverändert (stärkere Werte ließen Welle 9 bis 10 kippen). Troll-Belohnung bleibt 14 (18 simuliert: Spätphase wird leichter). Das Backlog-Kriterium "mehr als 60 % Wegfortschritt" war im alten Stand schon erfüllt; die Test-Schwelle wurde deshalb auf 76 % in mindestens 3 der Wellen 14 bis 20 angehoben (alt: höchstens 1 Welle, neu: 4 bis 6 Wellen). `waveSummary(10)` blieb unverändert.
+- Test-Umbau (auf ausdrücklichen Auftrag zulässig): Sieben Strategie-Tests wurden zu zwei gebündelten zusammengelegt, die Simulationen laufen über einen Cache nur einmal. Zuordnung alt → neu: "nur Pfeiltürme verlieren vor Welle 12" (dt 1/30), "… auch bei dt 1/60" und "Runde 3: … dt 1/20 und 1/120" → "nur Pfeiltürme ohne Aufrüstung verlieren vor Welle 12 (dt 1/20, 1/30, 1/60, 1/120)"; "mehrere gemischte Strategien … Welle 20", "robust: Kanonen-lastige Strategie", "Runde 3: Pfeil>Kanone>Kanone>Frost bei dt 1/20 und 1/120" und "Runde 3: Kanone>Pfeil>Pfeil>Frost bei dt 1/120" → "robuste Strategien gewinnen Welle 20 mit mindestens 2 Leben (dt 1/20, 1/30, 1/60, 1/120)". Tester und Reviewer haben bestätigt, dass jede Kombination (Strategie × dt × `won`/`lives >= 2`/`lost`/`wave < 12`) gleich streng erhalten blieb; die Zahl der `assert`-Zeilen stieg sogar. Neu: Fortschrittsmessung, Druck-Test, Schildträger ohne/mit Kanonen, Healer in der Troll-Gruppe, `waveFor` über Welle 1 bis 20.
+- Offen: Der Druck ist moderat (+5 bis +12 Prozentpunkte Wegfortschritt), gute Strategien verlieren in der Spätphase weiter keine Leben, es bleiben etwa 1300 Gold übrig. Mit 3 Leben ist das Gewinnfenster zu eng für mehr Spawn-Dichte (B-020). Ein Mensch sollte Welle 9 bis 20 spielen: Wirkt die Spätphase bedrohlich, ist Welle 9 bis 13 jetzt zu hart, sind die Healer-Auren in der Troll-Gruppe lesbar? Der Branch baut auf `agent/heiler-schild` (B-006, B-019) auf.

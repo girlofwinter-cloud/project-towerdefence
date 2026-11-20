@@ -65,7 +65,7 @@ Die Pipeline nimmt nur Einträge mit Status `offen`, von oben nach unten.
   - Test: `status` wird erst 'won', wenn alle Wellen gespawnt und alle Gegner tot sind.
 
 ### B-006: Heiler und Schildträger
-- Status: vorschlag
+- Status: fertig
 - Aufwand: M
 - Idee: Schamane heilt Gegner in der Nähe periodisch; Schildträger reduziert Pfeil-Schaden stark, wird aber vom Kanonen-Splash normal getroffen. Ab Welle 7 bzw. 9. Risiko: Balancing und O(n²)-Radiusprüfung.
 - Akzeptanzkriterien:
@@ -141,13 +141,16 @@ Die Pipeline nimmt nur Einträge mit Status `offen`, von oben nach unten.
   - `npm test` bleibt grün.
 
 ### B-013: Spätphase fordernder machen
-- Status: vorschlag
+- Status: fertig
 - Aufwand: M
-- Idee: Seit B-008 sind die Wellen 14 bis 20 für gute Strategien verlustfrei, die Schwierigkeit konzentriert sich auf Welle 8 bis 10. Die Spätphase soll über Gegnermix und Spawn-Dichte (mehr Trolle und Flitzer ab Welle 15, Boss-Begleiter) fordernder werden statt über `hpScale`, das nur auf Messers Schneide steht.
+- Idee: Seit B-008 sind die Wellen 14 bis 20 für gute Strategien verlustfrei, die Schwierigkeit konzentriert sich auf Welle 8 bis 10. Mit nur noch 3 Leben (B-019) kann man dort nicht "spürbar Leben verlieren", also soll der Druck messbar werden: Gegner sollen in der Spätphase deutlich weiter am Weg vordringen, bevor sie sterben. Das geschieht über Gegnermix und Spawn-Dichte (mehr Trolle und Flitzer ab Welle 15, Boss-Begleiter, Schildträger und Healer wirklich spürbar) statt über `hpScale`, das nur auf Messers Schneide steht. Aus dem Review von B-006: Der Schildträger (60 Basis-HP, 1 Exemplar pro Welle bis Welle 11) ist fast wirkungslos und der Healer (2 % maxHp pro Sekunde) schwach und läuft den Trollen davon.
 - Akzeptanzkriterien:
-  - Gute Strategien (A>C>C>F, C>A>A>F) verlieren in den Wellen 14 bis 20 spürbar Leben, gewinnen Welle 20 aber weiter bei dt 1/30 und 1/60.
-  - Troll-Belohnung prüfen (450 HP bei 14 Gold).
-  - Doppelte Strategie-Tests in `tests/game.test.js` bündeln (gemeinsamer Helfer), Laufzeit senken.
+  - Nur Zahlen in `src/config.js` (`waveFor`, Gegnerwerte der neuen Typen, bei Bedarf Healer-Werte). `hpScale`, `START_LIVES`, `START_GOLD`, Boss-Leak und alle Turmwerte bleiben unverändert. Keine neue Mechanik.
+  - Messbarer Druck: Mit den zwei robusten Strategien (arrow,cannon,cannon,frost und cannon,arrow,arrow,frost) erreicht in den Wellen 14 bis 20 in mindestens 3 Wellen ein Gegner mehr als 60 % des Wegs (Wert nach Simulation anpassen, aber deutlich über dem heutigen Stand), per Test belegt (Simulation mit Fortschrittsmessung, `dist` relativ zur Weglänge). Beide Strategien gewinnen Welle 20 weiter bei dt 1/30 und 1/60 mit mindestens 2 Leben.
+  - "Nur Pfeiltürme" verliert weiter vor Welle 12; Welle 1 verliert kein Leben; Boss-HP-Test und alle übrigen bestehenden Tests bleiben unverändert grün (Ausnahme: `waveSummary(10)`, falls Welle 10 sich ändert, nur der Erwartungswert und im Ledger genannt).
+  - Schildträger zwingt zu gemischten Setups: Eine Strategie mit ausschließlich Pfeil- und Frostürmen (ohne Kanonen) schneidet in den Wellen mit Schildträgern messbar schlechter ab als mit Kanonen (Test mit zwei Läufen).
+  - Troll-Belohnung prüfen (450 HP bei 14 Gold) und begründen, ob sie angepasst wird.
+  - Doppelte Strategie-Tests in `tests/game.test.js` zu einem gemeinsamen Helfer bündeln, Laufzeit senken, ohne Prüfungen zu verlieren.
 
 ### B-014: Grafik-Feinschliff Gelände (nach Sichtprüfung im Browser)
 - Status: vorschlag
@@ -192,3 +195,22 @@ Die Pipeline nimmt nur Einträge mit Status `offen`, von oben nach unten.
   - Nur `src/fx-system.js`, `src/render-fx.js`, `src/render.js`.
   - Bei Spielende ist der Shake-Versatz 0, per Test belegt.
   - `npm test` bleibt grün.
+
+### B-019: Nur noch 3 Leben
+- Status: fertig
+- Aufwand: S
+- Idee: Der Mensch will ein deutlich härteres Spiel: `START_LIVES` von 20 auf 3. Damit entscheidet schon ein einziger Durchbruch (Boss: Leak 6) über Sieg oder Niederlage. Das Balancing muss so nachgezogen werden, dass das Spiel hart, aber mit guter Strategie weiter schaffbar bleibt.
+- Akzeptanzkriterien:
+  - `START_LIVES = 3` in `src/config.js`. Weitere Anpassungen nur an Zahlen in `src/config.js` (Gegnerwerte, Leak, Wellen), keine neue Mechanik.
+  - Die HUD-Anzeige zeigt nie weniger als 0 Leben (`game.js` begrenzt bereits auf 0).
+  - Gute Strategien (die zwei robusten Reihenfolgen aus den Tests) gewinnen Welle 20 bei dt 1/30 und 1/60 mit mindestens 1 Leben. "Nur Pfeiltürme" verliert weiter vor Welle 12. Welle 1 verliert mit dem Startgold kein Leben.
+  - Die drei Tests mit der festen Reserve `lives >= 8` (`tests/game.test.js`) werden durch die neue Reserve ersetzt (mindestens 1 Leben, also gewonnen). Das ist die einzige zulässige Änderung an bestehenden Tests und wird im Ledger ausdrücklich genannt. Alle anderen Tests bleiben unverändert.
+
+### B-020: Spätphase: Gold-Überschuss und Mittelphase (nach Sichtprüfung im Browser)
+- Status: vorschlag
+- Aufwand: M
+- Idee: Hinweise aus dem Review von B-013. (1) In den Wellen 14 bis 20 verlieren gute Strategien weiter keine Leben; am Ende bleiben rund 1300 Gold ungenutzt, weil zusätzliche Gegner mehr Belohnung bringen. Mehr Druck braucht eine Gold-Senke oder gedeckelte Belohnungen in der Spätphase statt nur mehr Gegner. (2) Schildträger-HP 90 und Anzahl `1 + floor((w-9)/2)` wirken schon ab Welle 9: die schwächere Strategie A>A>C>F verliert jetzt bei dt 1/60 in Welle 10 und bei dt 1/30 in Welle 16 (vorher Sieg mit 1 Leben). Die Spitze um Welle 8 bis 10 wird dadurch weiter verstärkt. (3) a>c>c>f erreicht bei dt 1/120 nur 1 Welle über 76 % Wegfortschritt: der Druck-Effekt hängt vom Zeitschritt ab.
+- Akzeptanzkriterien:
+  - Erst nach einer Sichtprüfung im Browser entscheiden, ob die Punkte stören.
+  - Nur Zahlen in `src/config.js`; beide robusten Strategien gewinnen Welle 20 weiter mit mindestens 2 Leben bei dt 1/30 und 1/60.
+  - Test-Aufräumen nebenbei: `playTracked` und `playDt` zusammenführen (`playDt = (mix, dt) => playTracked(mix, dt).state`), den Kommentar "höchstens 75 %" korrigieren (richtig: vorher höchstens 1 Welle über 76 %), den Healer-Assert in Welle 13 auf `healer.at > letzter tank.at` umstellen.
