@@ -86,7 +86,7 @@ export const ENEMY_TYPES = {
   tank: { name: 'Panzer-Troll', hp: 450, speed: 0.8, reward: 14, leak: 2, radius: 14, color: '#b5523b' },
   boss: { name: 'Oger-König', hp: 850, speed: 0.6, reward: 80, leak: 6, radius: 18, color: '#7a2e8e' },
   healer: { name: 'Schamane', hp: 40, speed: 1.1, reward: 9, leak: 1, radius: 11, color: '#3fbf8f', healRadius: 1.5, healPerSec: 0.02, healInterval: 1 },
-  shielded: { name: 'Schildträger', hp: 60, speed: 1.0, reward: 12, leak: 2, radius: 13, color: '#6f86a8', armor: 0.5 },
+  shielded: { name: 'Schildträger', hp: 90, speed: 1.0, reward: 12, leak: 2, radius: 13, color: '#6f86a8', armor: 0.5 },
 };
 
 export function waveBonus(wave) {
@@ -102,6 +102,10 @@ export function hpScale(wave) {
   return Math.pow(1.15, early) * Math.pow(1.26, mid) * Math.pow(1.07, late);
 }
 
+// Spätphase (B-013): ab dieser Welle laufen Heiler in der Troll-Gruppe mit, ab der Welle danach kommen
+// pro Welle ein Troll und zwei Flitzer mehr dazu. Die Wellen 1-13 bleiben davon unberührt.
+const LATE_WAVE = 14;
+
 // Erzeugt die Spawn-Liste einer Welle: [{ type, at }] (at = Sekunden nach Wellenstart)
 export function waveFor(wave) {
   const list = [];
@@ -114,11 +118,20 @@ export function waveFor(wave) {
     t += 1;
   };
 
+  const lateTanks = Math.max(wave - LATE_WAVE, 0);
+  const lateRunners = 2 * lateTanks;
   add('grunt', 6 + wave * 3, Math.max(0.3, 0.9 - wave * 0.04));
-  if (wave >= 3) add('runner', 3 + wave * 2, 0.35);
-  if (wave >= 5) add('tank', Math.floor(wave / 2) + 1, 1.0);
-  if (wave >= 9) add('shielded', 1 + Math.floor((wave - 9) / 3), 1.0);
-  if (wave >= 7) add('healer', 1 + Math.floor((wave - 7) / 4), 1.2);
+  if (wave >= 3) add('runner', 3 + wave * 2 + lateRunners, 0.35);
+  const tankStart = t;
+  if (wave >= 5) add('tank', Math.floor(wave / 2) + 1 + lateTanks, 1.0);
+  if (wave >= 9) add('shielded', 1 + Math.floor((wave - 9) / 2), 1.0);
+  if (wave >= 7 && wave < LATE_WAVE) add('healer', 1 + Math.floor((wave - 7) / 4), 1.2);
+  // Spätphase: Heiler laufen mitten in der Troll-Gruppe mit, statt ihr als letzte Gruppe hinterherzulaufen
+  if (wave >= LATE_WAVE) {
+    const healers = 2 + Math.floor((wave - LATE_WAVE) / 3);
+    for (let i = 0; i < healers; i++) list.push({ type: 'healer', at: tankStart + 2 + i * 2 });
+    list.sort((a, b) => a.at - b.at);
+  }
   if (wave % 5 === 0) add('boss', Math.floor(wave / 10) + 1, 3);
   return list;
 }
