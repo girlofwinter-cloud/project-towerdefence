@@ -122,7 +122,7 @@ Die Pipeline nimmt nur Einträge mit Status `offen`, von oben nach unten.
   - `npm test` bleibt grün.
 
 ### B-011: Grafik: Gegner und Animation
-- Status: offen
+- Status: fertig
 - Aufwand: M
 - Idee: Gegner sind gezeichnete Figuren statt Kreise (Goblin, Flitzer, Panzer-Troll, Oger-König), mit Schatten, Lauf-Animation und Blickrichtung entlang des Wegs. Bosse sind deutlich größer und auffälliger. HP-Balken bleibt.
 - Akzeptanzkriterien:
@@ -166,3 +166,12 @@ Die Pipeline nimmt nur Einträge mit Status `offen`, von oben nach unten.
   - Nur `src/render.js`, `src/tower-fx.js` und ggf. neue Render-Dateien; der Helfer `levelRate` bekommt einen Test.
   - Nach einer Sichtprüfung im Browser entscheiden, ob Stufen, Rückstoß und Auswahlrahmen so lesbar sind.
   - `npm test` bleibt grün.
+
+### B-016: Grafik-Feinschliff Gegner (nach Sichtprüfung im Browser)
+- Status: vorschlag
+- Aufwand: S
+- Idee: Hinweise aus dem Review von B-011. (1) Neigung an den Wegecken glätten: neue reine Funktion `tiltAt(path, dist)` in `src/enemy-fx.js`, die innerhalb von etwa 8 px vor der Ecke per Smoothstep auf die Neigung des nächsten Segments überblendet (heute springt sie um 0,3 rad). (2) Gemeinsame Zeichen-Helfer `rect`/`tri`/`disc` aus `render.js`, `render-enemies.js` (und den Turm-Helfern) in `src/draw-utils.js` zusammenlegen, Argumentreihenfolge vereinheitlichen. (3) Kommentar zur Keule des Oger-Königs korrigieren oder die Keule über die Lauf-Phase schwingen lassen. (4) HP-Anteil mit `Math.min(1, ...)` begrenzen. (5) Phasensprung der Lauf-Animation beim Wechsel in oder aus Slow: bräuchte pro Gegner einen aufsummierten Phasenwert in `game.js`, eigener Eintrag, nur falls es im Browser stört.
+- Akzeptanzkriterien:
+  - Neigung ist über jede Wegecke stetig (Differenz bei dist ± 0,5 px kleiner als ein kleines Epsilon), per Test belegt.
+  - Nach Zusammenlegen der Helfer bleiben alle Render-Tests grün.
+  - Erst nach einer Sichtprüfung im Browser angehen, ob (1) und (5) überhaupt stören.

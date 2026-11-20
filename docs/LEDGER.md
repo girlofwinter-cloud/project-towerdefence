@@ -71,3 +71,13 @@ Neue Einträge werden unten angehängt. Bestehende Einträge werden nie geänder
 - Review: APPROVE (keine Muss-Punkte; Hinweise: Rückstoß aus `def.rate` statt Level-Rate, Fallback für unbekannte Turmtypen, größere Stufen-Punkte, Auslagerung der Turm-Zeichnung, siehe B-015)
 - Entscheidungen: Vier Turmtypen aus einfachen geometrischen Formen, Level an Sockelbreite, Fahnenmast mit rotem bzw. goldenem Wimpel, Zinnen und Punkten erkennbar. Der Rückstoß wird in `render.js` aus dem vorhandenen `tower.cooldown` abgeleitet, `game.js` blieb unberührt. Die Kurve steckt als reine Funktion `recoilOffset` in `src/tower-fx.js` (Regel 2: Test). `drawTower` wird exportiert, damit die Kachelgrenzen pro Typ, Stufe und Winkel isoliert getestet werden können. Der Tester hat die echte Ausdehnung in Weltkoordinaten nachgemessen: nur Pfeilturm (+1 px) und Scharfschütze (+3 px) ragen beim Zielen nach oben über die Kachel.
 - Offen: Optik im Browser ansehen (Unterscheidbarkeit der Typen und Stufen, Rückstoß, Schatten, Auswahlrahmen bei übereinander stehenden Türmen). Der Branch baut auf `agent/grafik-gelaende` auf (B-008, B-009); B-015 ist in diesem Commit.
+
+## 2026-11-20 · B-011 · Grafik: Gegner und Animation
+- Rolle(n): orchestrator, developer, tester, reviewer
+- Branch: agent/grafik-gegner
+- Runden: 1 von max. 3
+- Ergebnis: fertig
+- Tests: 70 bestanden, 0 fehlgeschlagen (Unit); E2E nicht lauffähig (Playwright nicht installiert), Optik nicht im Browser geprüft
+- Review: APPROVE (keine Muss-Punkte; Hinweise: Neigungsruck von 0,3 rad an den Wegecken, doppelte Helfer rect/tri/disc, Phasensprung beim Slow-Wechsel, siehe B-016)
+- Entscheidungen: Gegner-Zeichencode in eigener Datei `src/render-enemies.js`, damit `render.js` nicht weiter wächst. Reine Logik in `src/enemy-fx.js` (Lauf-Phase, Blickrichtung aus dem Weg), ohne `game.js` zu ändern. Animation läuft nur über `state.time`, nie über echte Zeit. Figuren sind in Einheiten von `e.radius` gezeichnet und bleiben unter 1,4 Radien, sodass das Hitbox-Gefühl stimmt. Slow-Gegner: blauer Tint, Eiskristalle und Ring. Unbekannte Gegnertypen (z. B. ein künftiger Heiler aus B-006) fallen auf eine generische Figur zurück. Der Tester hat die echte Ausdehnung in Weltkoordinaten nachgemessen: Boss bis 1,34 r (6 px über dem Radius).
+- Offen: Optik im Browser ansehen (Unterscheidbarkeit der vier Gegner, Lauf-Tempo, Neigungsruck an den Ecken, Frost-Darstellung, Boss-Krone und HP-Balken, Bildrate bei vielen Gegnern). Der Branch baut auf `agent/grafik-tuerme` auf (B-008, B-009, B-010); B-016 ist in diesem Commit.

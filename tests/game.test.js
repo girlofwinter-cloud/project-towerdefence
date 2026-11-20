@@ -868,3 +868,320 @@ test('Render: Tuerme aller Typen zeichnen, Cache ungestoert, Alpha und save/rest
   assert.equal(m.counts.drawImage - base, 1, 'Hintergrund pro Frame genau einmal');
   assert.equal(m.depth, 0);
 });
+
+// ---------- Gegner: Zeichnung und Animation (B-011) ----------
+import { walkPhase, animSpeedFactor, facingFor, facingFlip, facingTilt, WALK_RATE, TILT_MAX } from '../src/enemy-fx.js';
+
+test('walkPhase: Wertebereich, Periodizitaet, Monotonie im Zyklus, Versatz durch id, Tempo ~ speedFactor', () => {
+  for (let t = -3; t < 40; t += 0.37) {
+    for (const id of [0, 1, 7, 123]) {
+      const p = walkPhase(t, id, 1.3);
+      assert.ok(p >= 0 && p < Math.PI * 2, `p=${p}`);
+    }
+  }
+  const period = (Math.PI * 2) / (WALK_RATE * 1.7);
+  assert.ok(Math.abs(walkPhase(2.5 + period, 4, 1.7) - walkPhase(2.5, 4, 1.7)) < 1e-9
+    || Math.abs(Math.abs(walkPhase(2.5 + period, 4, 1.7) - walkPhase(2.5, 4, 1.7)) - Math.PI * 2) < 1e-9);
+  // innerhalb eines Zyklus steigend (kleine Schritte ohne Ueberlauf)
+  let prev = walkPhase(0, 0, 1);
+  let wraps = 0;
+  for (let t = 0.01; t < 1; t += 0.01) {
+    const p = walkPhase(t, 0, 1);
+    if (p < prev) wraps++; else assert.ok(p > prev);
+    prev = p;
+  }
+  assert.ok(wraps <= 2);
+  assert.notEqual(walkPhase(1, 1, 1), walkPhase(1, 2, 1), 'id verschiebt die Phase');
+  // doppeltes Tempo -> doppelte Phasenaenderung (kleines dt)
+  const d1 = walkPhase(0.05, 0, 1) - walkPhase(0, 0, 1);
+  const d2 = walkPhase(0.05, 0, 2) - walkPhase(0, 0, 2);
+  assert.ok(Math.abs(d2 - 2 * d1) < 1e-9);
+});
+
+test('animSpeedFactor: schnelle Gegner schneller, verlangsamte langsamer, fehlende Felder sicher', () => {
+  const T = ENEMY_TYPES;
+  const f = (type, slow) => animSpeedFactor({ speed: T[type].speed, slowUntil: slow ? 10 : 0, slowFactor: 0.5 }, 1);
+  assert.ok(f('runner') > f('grunt') && f('grunt') > f('tank') && f('tank') > f('boss'));
+  assert.ok(f('grunt', true) < f('grunt'));
+  assert.ok(Math.abs(f('grunt', true) - f('grunt') * 0.5) < 1e-12);
+  const bare = animSpeedFactor({}, 1);
+  assert.ok(bare > 0 && Number.isFinite(bare));
+});
+
+test('facingFor/facingFlip/facingTilt: Richtung des Wegsegments, Spiegelung, Neigung', () => {
+  const right = buildPath([[0, 0], [5, 0], [5, 4], [1, 4]], TILE);
+  assert.equal(facingFor(right, 0), 0);
+  assert.equal(facingFor(right, -5), 0, 'vor dem Start: erstes Segment');
+  assert.equal(facingFor(right, 2 * TILE), 0);
+  assert.ok(Math.abs(facingFor(right, 5 * TILE + 10) - Math.PI / 2) < 1e-12, 'abwaerts');
+  assert.ok(Math.abs(Math.abs(facingFor(right, 9 * TILE + 10)) - Math.PI) < 1e-12, 'nach links');
+  assert.ok(Math.abs(Math.abs(facingFor(right, 1e9)) - Math.PI) < 1e-12, 'hinter dem Ende: letztes Segment');
+  const up = buildPath([[0, 4], [0, 0]], TILE);
+  assert.ok(Math.abs(facingFor(up, 10) + Math.PI / 2) < 1e-12, 'aufwaerts');
+  assert.equal(facingFor(null, 5), 0);
+  assert.equal(facingFor({ segments: [] }, 5), 0);
+  assert.equal(facingFlip(0), 1);
+  assert.equal(facingFlip(Math.PI), -1);
+  assert.equal(facingFlip(-Math.PI), -1);
+  assert.equal(facingFlip(Math.PI / 2), 1);
+  assert.equal(facingFlip(-Math.PI / 2), 1);
+  assert.equal(facingTilt(0), 0);
+  assert.ok(Math.abs(facingTilt(Math.PI / 2) - TILT_MAX) < 1e-12);
+  assert.ok(Math.abs(facingTilt(-Math.PI / 2) + TILT_MAX) < 1e-12);
+  // jedes Segment des echten Wegs liefert endliche Werte im Bereich
+  const real = buildPath(WAYPOINTS, TILE);
+  for (let d = 0; d < real.length; d += 7) {
+    const a = facingFor(real, d);
+    assert.ok(Number.isFinite(a) && Math.abs(facingTilt(a)) <= TILT_MAX + 1e-12);
+  }
+});
+
+// Zeichnet einen Gegner auf einen Mock mit Matrix-Tracking; liefert Aufrufe, Weltpunkte und Grenzen.
+async function recordEnemy(over, time = 1, path = buildPath(WAYPOINTS, TILE)) {
+  const { drawEnemy } = await import('../src/render-enemies.js');
+  const def = ENEMY_TYPES[over.type];
+  const e = { id: 3, x: 200, y: 150, dist: 20, hp: 10, maxHp: 10, slowUntil: 0, slowFactor: 0.5, speed: def ? def.speed : 1, radius: def ? def.radius : 10, ...over };
+  const props = {};
+  const calls = [];
+  const stack = [];
+  const world = []; // { x, y, ext, hp }
+  let m = [1, 0, 0, 1, 0, 0];
+  let depth = 0;
+  const HP = new Set(['#300', '#4cd964', '#ffcc00', '#ff3b30']);
+  const tp = (x, y) => [m[0] * x + m[2] * y + m[4], m[1] * x + m[3] * y + m[5]];
+  const scaleOf = () => Math.max(Math.hypot(m[0], m[1]), Math.hypot(m[2], m[3]));
+  const add = (x, y, ext, box) => { const [wx, wy] = tp(x, y); world.push({ x: wx, y: wy, ext, box, hp: HP.has(props.fillStyle), depth }); };
+  const ctx = new Proxy({}, {
+    get(_, k) {
+      if (k in props) return props[k];
+      return (...a) => {
+        calls.push(k + ':' + a.map((v) => (typeof v === 'number' ? v.toFixed(2) : v)).join(',') + '|' + props.fillStyle + '|' + props.strokeStyle);
+        if (k === 'save') { depth++; stack.push(m.slice()); }
+        else if (k === 'restore') { depth--; assert.ok(depth >= 0); m = stack.pop(); }
+        else if (k === 'translate') { m = [m[0], m[1], m[2], m[3], m[0] * a[0] + m[2] * a[1] + m[4], m[1] * a[0] + m[3] * a[1] + m[5]]; }
+        else if (k === 'scale') { m = [m[0] * a[0], m[1] * a[0], m[2] * a[1], m[3] * a[1], m[4], m[5]]; }
+        else if (k === 'rotate') {
+          const c = Math.cos(a[0]), s = Math.sin(a[0]);
+          m = [m[0] * c + m[2] * s, m[1] * c + m[3] * s, m[2] * c - m[0] * s, m[3] * c - m[1] * s, m[4], m[5]];
+        }
+        else if (k === 'fillRect' || k === 'strokeRect') { add(a[0], a[1], 0); add(a[0] + a[2], a[1] + a[3], 0); }
+        else if (k === 'arc') add(a[0], a[1], a[2] * scaleOf());
+        else if (k === 'ellipse') add(a[0], a[1], Math.max(a[2], a[3]) * scaleOf(), m[1] === 0 && m[2] === 0 && a[4] === 0 ? [a[2] * m[0], a[3] * m[3]] : undefined); // Box nur bei achsparalleler Ellipse
+        else if (k === 'moveTo' || k === 'lineTo') add(a[0], a[1], 0);
+      };
+    },
+    set(_, k, v) { props[k] = v; return true; },
+  });
+  drawEnemy(ctx, e, time, path);
+  return { e, calls, depth, props, world, print: calls.join('\n'), figure: world.filter((p) => !p.hp) };
+}
+
+test('Gegner-Zeichnung: alle Typen und ein unbekannter ohne Fehler, ausgewogen, globalAlpha unveraendert', async () => {
+  for (const type of ['grunt', 'runner', 'tank', 'boss', 'healer']) {
+    for (const [slow, hp] of [[false, 10], [true, 10], [false, 3], [true, 0], [false, 10]]) {
+      const r = await recordEnemy({ type, slowUntil: slow ? 99 : 0, hp });
+      assert.equal(r.depth, 0, `${type}: save/restore`);
+      assert.equal(r.props.globalAlpha, undefined, `${type}: globalAlpha`);
+    }
+  }
+  // Gegner ohne dist/speed/slowFactor (wie im alten Render-Test) und ohne Weg
+  const r = await recordEnemy({ type: 'grunt', dist: undefined, speed: undefined, slowFactor: undefined, slowUntil: 99 }, 1, null);
+  assert.equal(r.depth, 0);
+});
+
+test('Gegner-Zeichnung: Figur bleibt im Radius, Schatten und Frost-Ring im groben Rahmen', async () => {
+  for (const type of ['grunt', 'runner', 'tank', 'boss', 'healer']) {
+    for (const slow of [false, true]) {
+      for (const time of [0, 0.3, 1.7]) {
+        for (const path of [buildPath([[0, 0], [5, 0]], TILE), buildPath([[5, 0], [0, 0]], TILE), buildPath([[0, 0], [0, 5]], TILE), buildPath([[0, 5], [0, 0]], TILE)]) {
+          const r = await recordEnemy({ type, slowUntil: slow ? 99 : 0 }, time, path);
+          const rad = r.e.radius;
+          for (const p of r.world) {
+            if (p.hp) continue;
+            const d = p.box ? Math.hypot(Math.abs(p.x - r.e.x) + p.box[0], Math.abs(p.y - r.e.y) + p.box[1]) : Math.hypot(p.x - r.e.x, p.y - r.e.y) + p.ext;
+            assert.ok(d <= 1.6 * rad, `${type} slow=${slow}: ${d.toFixed(1)} > ${(1.6 * rad).toFixed(1)}`);
+          }
+          // Figur selbst (in der transformierten Ebene) hoechstens ca. 1,4x
+          for (const p of r.figure) {
+            if (p.depth === 0) continue;
+            assert.ok(Math.hypot(p.x - r.e.x, p.y - r.e.y) + p.ext <= 1.4 * rad, `${type}: Figur zu gross`);
+          }
+        }
+      }
+    }
+  }
+});
+
+test('Gegner-Zeichnung: Typen unterscheiden sich, Boss ist am groessten', async () => {
+  const prints = {};
+  const extent = {};
+  for (const type of ['grunt', 'runner', 'tank', 'boss', 'healer']) {
+    const r = await recordEnemy({ type });
+    prints[type] = r.print;
+    extent[type] = Math.max(...r.figure.filter((p) => p.depth > 0).map((p) => Math.hypot(p.x - r.e.x, p.y - r.e.y) + p.ext)) / r.e.radius;
+  }
+  const keys = Object.keys(prints);
+  for (let i = 0; i < keys.length; i++) for (let j = i + 1; j < keys.length; j++) assert.notEqual(prints[keys[i]], prints[keys[j]], `${keys[i]} == ${keys[j]}`);
+  assert.ok(prints.boss.length > prints.grunt.length, 'Boss ist aufwendiger');
+  assert.ok(extent.boss > extent.grunt && extent.boss > 1.15, `Boss-Ausdehnung ${extent.boss}`);
+  // Unbekannter Typ nutzt den Rueckfall (weiter zeichnen, nicht crashen)
+  assert.ok(prints.healer.length > 0);
+});
+
+test('Gegner-Zeichnung: Animation ueber time, deterministisch, Tempo und id wirken', async () => {
+  for (const type of ['grunt', 'runner', 'tank', 'boss']) {
+    const a = await recordEnemy({ type }, 1.0);
+    const a2 = await recordEnemy({ type }, 1.0);
+    const b = await recordEnemy({ type }, 1.13);
+    assert.equal(a.print, a2.print, `${type}: deterministisch`);
+    assert.notEqual(a.print, b.print, `${type}: Animation aendert die Zeichnung`);
+  }
+  const id1 = await recordEnemy({ type: 'grunt', id: 1 }, 1.0);
+  const id2 = await recordEnemy({ type: 'grunt', id: 2 }, 1.0);
+  assert.notEqual(id1.print, id2.print, 'id verschiebt die Phase');
+  // time wird nicht durch Echtzeit ersetzt
+  const realNow = Date.now;
+  Date.now = () => { throw new Error('Date.now im Zeichnen'); };
+  try { await recordEnemy({ type: 'tank' }, 2); } finally { Date.now = realNow; }
+});
+
+test('Gegner-Zeichnung: Blick nach links spiegelt die Figur, senkrecht neigt sie', async () => {
+  for (const type of ['grunt', 'runner', 'tank', 'boss']) {
+    const r = await recordEnemy({ type, x: 200, y: 150 }, 0.8, buildPath([[0, 0], [5, 0]], TILE));
+    const l = await recordEnemy({ type, x: 200, y: 150 }, 0.8, buildPath([[5, 0], [0, 0]], TILE));
+    assert.ok(l.print.includes('scale:-1.00,1.00') && !r.print.includes('scale:-1.00,1.00'), `${type}: nur links gespiegelt`);
+    const rf = r.figure.filter((p) => p.depth > 0);
+    const lf = l.figure.filter((p) => p.depth > 0);
+    assert.equal(rf.length, lf.length);
+    let asym = 0;
+    for (let i = 0; i < rf.length; i++) {
+      assert.ok(Math.abs((rf[i].x - 200) + (lf[i].x - 200)) < 1e-6, `${type}: x nicht gespiegelt`);
+      assert.ok(Math.abs(rf[i].y - lf[i].y) < 1e-6, `${type}: y muss gleich bleiben`);
+      asym += Math.abs(rf[i].x - 200);
+    }
+    assert.ok(asym > 0);
+    const down = await recordEnemy({ type }, 0.8, buildPath([[0, 0], [0, 5]], TILE));
+    const up = await recordEnemy({ type }, 0.8, buildPath([[0, 5], [0, 0]], TILE));
+    assert.notEqual(down.print, up.print, `${type}: auf/ab unterscheidbar`);
+    assert.notEqual(down.print, r.print);
+  }
+});
+
+test('Gegner-Zeichnung: Frost bleibt sichtbar (Ring plus Tint), HP-Balken vorhanden', async () => {
+  for (const type of ['grunt', 'runner', 'tank', 'boss', 'healer']) {
+    const n = await recordEnemy({ type });
+    const f = await recordEnemy({ type, slowUntil: 99 });
+    assert.ok(f.calls.length > n.calls.length, `${type}: Frost fuegt Zeichenaufrufe hinzu`);
+    assert.ok(f.print.includes('#bdf0ff'), `${type}: Frost-Ring`);
+    assert.ok(f.print.includes('rgba(150,220,255,0.4)'), `${type}: Frost-Tint`);
+    assert.ok(!n.print.includes('#bdf0ff'));
+    assert.ok(f.world.some((p) => p.hp), `${type}: HP-Balken`);
+    const full = f.world.filter((p) => p.hp).map((p) => p.y);
+    assert.ok(Math.max(...full) < f.e.y - f.e.radius, `${type}: HP-Balken ueber der Figur`);
+  }
+});
+
+// ---- Tester-Ergaenzungen B-011 (unabhaengig geprueft) ----
+function plainCtx() {
+  const props = {};
+  const st = { depth: 0, minDepth: 0, fills: [], draws: 0 };
+  const ctx = new Proxy({}, {
+    get(_, k) {
+      if (k in props) return props[k];
+      return (...a) => {
+        if (k === 'save') st.depth++;
+        if (k === 'restore') { st.depth--; st.minDepth = Math.min(st.minDepth, st.depth); }
+        if (k === 'fillRect') st.fills.push(a);
+        if (k === 'drawImage') st.draws++;
+      };
+    },
+    set(_, k, v) { props[k] = v; return true; },
+  });
+  return { ctx, st, props };
+}
+const testEnemy = (over) => ({ id: 1, x: 100, y: 100, dist: 50, hp: 5, maxHp: 10, slowUntil: 0, slowFactor: 0.5, speed: 1.4, radius: 11, type: 'grunt', ...over });
+
+test('Gegner-Zeichnung: Prototype-Namen als Typ crashen nicht und bleiben ausgewogen', async () => {
+  const { drawEnemy } = await import('../src/render-enemies.js');
+  const path = buildPath(WAYPOINTS, TILE);
+  for (const type of ['constructor', '__proto__', 'toString', 'hasOwnProperty', '', undefined, null]) {
+    const { ctx, st } = plainCtx();
+    drawEnemy(ctx, testEnemy({ type }), 1, path);
+    assert.equal(st.depth, 0, `Typ ${String(type)}`);
+    assert.equal(st.minDepth, 0);
+  }
+});
+
+test('Gegner-Zeichnung: kaputter Weg und exotische dist-Werte crashen nicht', async () => {
+  const { drawEnemy } = await import('../src/render-enemies.js');
+  for (const path of [null, undefined, {}, { segments: [] }, { segments: null }]) {
+    const { ctx, st } = plainCtx();
+    drawEnemy(ctx, testEnemy({}), 1, path);
+    assert.equal(st.depth, 0);
+  }
+  const real = buildPath(WAYPOINTS, TILE);
+  for (const dist of [-5, 1e9, NaN, Infinity, -Infinity, undefined]) {
+    const { ctx, st } = plainCtx();
+    drawEnemy(ctx, testEnemy({ dist }), 1, real);
+    assert.equal(st.depth, 0, `dist ${dist}`);
+  }
+});
+
+test('walkPhase: bei grossem und negativem time im Bereich und stetig', async () => {
+  const { walkPhase, WALK_RATE } = await import('../src/enemy-fx.js');
+  for (const time of [0, 1, 1e3, 1e6, -1e3, -1e6]) {
+    for (const id of [0, 1, 7, 1e6, -4, 2.5]) {
+      const p = walkPhase(time, id, 1);
+      assert.ok(p >= 0 && p < Math.PI * 2, `time ${time} id ${id}: ${p}`);
+    }
+  }
+  // Bei time = 1e6 (ca. 11 Tage Spielzeit) ist ein 16-ms-Schritt noch genau (< 1e-6 Abweichung)
+  const d = walkPhase(1e6 + 0.016, 0, 1) - walkPhase(1e6, 0, 1);
+  assert.ok(Math.abs(d - 0.016 * WALK_RATE) < 1e-6);
+  // speedFactor 0: Phase steht still (nur id-Versatz), kein NaN
+  assert.equal(walkPhase(5, 1, 0), walkPhase(50, 1, 0));
+});
+
+test('Gegner-Zeichnung: HP-Balken-Randfaelle (voll, leer, ueber max, negativ) ohne Absturz', async () => {
+  const { drawEnemy } = await import('../src/render-enemies.js');
+  const path = buildPath(WAYPOINTS, TILE);
+  const widthOf = (hp, maxHp) => {
+    const { ctx, st } = plainCtx();
+    drawEnemy(ctx, testEnemy({ hp, maxHp }), 1, path);
+    return st.fills[st.fills.length - 1][2];
+  };
+  assert.equal(widthOf(10, 10), 22);
+  assert.equal(widthOf(0, 10), 0);
+  assert.equal(widthOf(-5, 10), 0);
+  assert.equal(widthOf(5, 10), 11);
+  // maxHp = 0 oder NaN: Breite ist nicht endlich -> Canvas zeichnet nichts, aber es wirft nicht
+  for (const [hp, maxHp] of [[5, 0], [0, 0], [NaN, 10], [5, NaN]]) widthOf(hp, maxHp);
+});
+
+test('Gegner-Zeichnung: Boss-HP-Balken liegt ueber der Krone (Abstand zur Figur > 0)', async () => {
+  const { drawEnemy } = await import('../src/render-enemies.js');
+  for (const type of ['grunt', 'runner', 'tank', 'boss']) {
+    const { ctx, st } = plainCtx();
+    const e = testEnemy({ type, radius: ENEMY_TYPES[type].radius, speed: ENEMY_TYPES[type].speed });
+    drawEnemy(ctx, e, 1, buildPath(WAYPOINTS, TILE));
+    const y = st.fills[st.fills.length - 1][1];
+    // Balken-Unterkante muss mindestens 1,35 r (Krone) + Luft ueber der Mitte liegen
+    assert.ok(e.y - (y + 4) >= e.radius * 1.2, `${type}: Balken-Unterkante ${e.y - (y + 4)}`);
+  }
+});
+
+test('Gegner-Zeichnung: Hintergrund-Cache bleibt bei Gegnern aller Typen ungestoert, globalAlpha unveraendert', async () => {
+  const hadOff = 'OffscreenCanvas' in globalThis;
+  const { render } = await import('../src/render.js');
+  const state = createGame();
+  for (const type of ['grunt', 'runner', 'tank', 'boss', 'unbekannt']) {
+    state.enemies.push(testEnemy({ type, id: state.enemies.length + 1, slowUntil: type === 'tank' ? 99 : 0 }));
+  }
+  const { ctx, st, props } = plainCtx();
+  render(ctx, state, { hover: null, selectedTowerId: null });
+  render(ctx, state, { hover: null, selectedTowerId: null });
+  assert.equal(st.depth, 0);
+  assert.equal(st.minDepth, 0);
+  assert.equal(props.globalAlpha, undefined);
+  assert.equal(hadOff, 'OffscreenCanvas' in globalThis);
+});

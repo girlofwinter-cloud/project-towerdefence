@@ -1,14 +1,15 @@
 // Zeichnet den Spielzustand auf ein Canvas. Keine Spiel-Logik hier!
-import { TILE, COLS, ROWS, WIDTH, HEIGHT, TOWER_TYPES, ENEMY_TYPES } from './config.js';
+import { TILE, COLS, ROWS, WIDTH, HEIGHT, TOWER_TYPES } from './config.js';
 import { towerStats } from './game.js';
 import { recoilOffset } from './tower-fx.js';
+import { drawEnemy } from './render-enemies.js';
 import { tileHash, tileRand, decorFor, LARGE_DECOR_RADIUS } from './decor.js';
 
 export function render(ctx, state, ui) {
   drawGround(ctx, state);
   drawHover(ctx, state, ui);
   for (const t of state.towers) drawTower(ctx, t, ui.selectedTowerId === t.id);
-  for (const e of state.enemies) drawEnemy(ctx, e, state.time);
+  for (const e of state.enemies) drawEnemy(ctx, e, state.time, state.path);
   for (const p of state.projectiles) drawProjectile(ctx, p);
   for (const fx of state.effects) drawEffect(ctx, fx);
 }
@@ -449,31 +450,6 @@ export function drawTower(ctx, t, selected) {
     ctx.lineWidth = 2;
     ctx.strokeRect(x - 18, y - 18, 36, 36);
   }
-}
-
-function drawEnemy(ctx, e, time) {
-  const def = ENEMY_TYPES[e.type];
-  const wobble = Math.sin(time * 10 + e.id) * 1.5;
-  ctx.fillStyle = def.color;
-  ctx.beginPath();
-  ctx.arc(e.x, e.y + wobble, e.radius, 0, Math.PI * 2);
-  ctx.fill();
-  if (time < e.slowUntil) {
-    ctx.strokeStyle = '#bdf0ff';
-    ctx.lineWidth = 3;
-    ctx.stroke();
-  }
-  // Augen
-  ctx.fillStyle = '#fff';
-  ctx.fillRect(e.x - 5, e.y + wobble - 4, 3, 3);
-  ctx.fillRect(e.x + 2, e.y + wobble - 4, 3, 3);
-  // HP-Balken
-  const w = e.radius * 2;
-  const frac = Math.max(0, e.hp / e.maxHp);
-  ctx.fillStyle = '#300';
-  ctx.fillRect(e.x - w / 2, e.y - e.radius - 8, w, 4);
-  ctx.fillStyle = frac > 0.5 ? '#4cd964' : frac > 0.25 ? '#ffcc00' : '#ff3b30';
-  ctx.fillRect(e.x - w / 2, e.y - e.radius - 8, w * frac, 4);
 }
 
 function drawProjectile(ctx, p) {
