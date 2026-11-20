@@ -6,7 +6,7 @@ import {
   canBuild, towerStats, upgradeCost,
 } from '../src/game.js';
 import { buildPath, pointAt, pathTiles } from '../src/path.js';
-import { TOWER_TYPES, MAX_WAVES, START_GOLD, START_LIVES, WAYPOINTS, TILE, waveFor, waveBonus } from '../src/config.js';
+import { TOWER_TYPES, MAX_WAVES, START_GOLD, START_LIVES, WAYPOINTS, TILE, waveFor, waveBonus, waveSummary } from '../src/config.js';
 
 // Hilfsfunktion: Spiel n Sekunden in kleinen Schritten laufen lassen
 function run(state, seconds, dt = 1 / 60) {
@@ -168,6 +168,16 @@ test('Wellen: jede 5. Welle hat einen Boss, Wellen werden größer', () => {
   assert.ok(waveFor(10).length > waveFor(1).length);
 });
 
+test('waveSummary: Anzahl pro Gegnertyp für Welle 1, 5 und 10', () => {
+  assert.deepEqual(waveSummary(1), { grunt: 8 });
+  assert.deepEqual(waveSummary(5), { grunt: 16, runner: 8, tank: 2, boss: 1 });
+  assert.deepEqual(waveSummary(10), { grunt: 26, runner: 13, tank: 5, boss: 2 });
+  for (const w of [1, 5, 10]) {
+    const total = Object.values(waveSummary(w)).reduce((a, b) => a + b, 0);
+    assert.equal(total, waveFor(w).length, `Welle ${w}`);
+  }
+});
+
 test('Spawn-Zeiten sind aufsteigend sortiert', () => {
   for (let w = 1; w <= MAX_WAVES; w++) {
     const list = waveFor(w);
@@ -185,4 +195,18 @@ test('Balancing-Smoke: Welle 1 ist mit Startgold schaffbar', () => {
   assert.equal(s.waveActive, false);
   assert.equal(s.lives, START_LIVES);
   assert.ok(TILE > 0);
+});
+
+test('waveSummary: Summe entspricht waveFor für alle Wellen, Boss nur jede 5. Welle', () => {
+  for (let w = 1; w <= MAX_WAVES; w++) {
+    const s = waveSummary(w);
+    assert.equal(Object.values(s).reduce((a, b) => a + b, 0), waveFor(w).length, `Welle ${w}`);
+    assert.equal('boss' in s, w % 5 === 0, `Boss in Welle ${w}`);
+  }
+});
+
+test('waveSummary: liefert jedes Mal ein neues Objekt (keine geteilte Mutation)', () => {
+  const a = waveSummary(3);
+  a.grunt = 999;
+  assert.notEqual(waveSummary(3).grunt, 999);
 });

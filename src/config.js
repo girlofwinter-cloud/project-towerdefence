@@ -111,3 +111,10 @@ export function waveFor(wave) {
   if (wave % 5 === 0) add('boss', Math.floor(wave / 10) + 1, 3);
   return list;
 }
+
+// Zusammenfassung einer Welle: Anzahl pro Gegnertyp, z. B. { grunt: 8, runner: 3 }
+export function waveSummary(wave) {
+  const summary = {};
+  for (const { type } of waveFor(wave)) summary[type] = (summary[type] || 0) + 1;
+  return summary;
+}
