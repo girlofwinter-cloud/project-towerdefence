@@ -1,7 +1,7 @@
 // Verbindet Spiel-Logik, Rendering und Bedienung (DOM, Maus, Tastatur).
 import { TILE, WIDTH, HEIGHT, TOWER_TYPES, ENEMY_TYPES, MAX_WAVES, waveSummary } from './config.js';
 import {
-  createGame, update, buildTower, upgradeTower, sellTower, startWave,
+  createGame, update, togglePause, buildTower, upgradeTower, sellTower, startWave,
   canBuild, towerAt, towerStats, upgradeCost, sellValue,
 } from './game.js';
 import { render } from './render.js';
@@ -120,6 +120,7 @@ window.addEventListener('keydown', (ev) => {
   else if (ev.key === 'u') doUpgrade();
   else if (ev.key === 's') doSell();
   else if (ev.key === 'f') toggleSpeed();
+  else if (ev.key === 'p') { togglePause(state); refreshUI(); }
 });
 
 // ---------- HUD ----------
@@ -128,6 +129,7 @@ function refreshUI() {
   $('lives').textContent = state.lives;
   $('wave').textContent = `${state.wave} / ${MAX_WAVES}`;
   $('speed').textContent = `Tempo ×${ui.speed}`;
+  $('pause-hint').hidden = !state.paused;
   $('start-wave').disabled = state.waveActive || state.status !== 'playing';
   $('start-wave').textContent = state.waveActive ? 'Welle läuft…' : `Welle ${state.wave + 1} starten`;
 

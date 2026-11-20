@@ -25,7 +25,7 @@ Die Pipeline nimmt nur Einträge mit Status `offen`, von oben nach unten.
   - HUD zeigt die Vorschau neben dem Start-Button.
 
 ### B-002: Pausefunktion
-- Status: vorschlag
+- Status: fertig
 - Aufwand: S
 - Idee: Taste `P` pausiert das Spiel, Bauen bleibt erlaubt.
 - Akzeptanzkriterien:
@@ -214,3 +214,12 @@ Die Pipeline nimmt nur Einträge mit Status `offen`, von oben nach unten.
   - Erst nach einer Sichtprüfung im Browser entscheiden, ob die Punkte stören.
   - Nur Zahlen in `src/config.js`; beide robusten Strategien gewinnen Welle 20 weiter mit mindestens 2 Leben bei dt 1/30 und 1/60.
   - Test-Aufräumen nebenbei: `playTracked` und `playDt` zusammenführen (`playDt = (mix, dt) => playTracked(mix, dt).state`), den Kommentar "höchstens 75 %" korrigieren (richtig: vorher höchstens 1 Welle über 76 %), den Healer-Assert in Welle 13 auf `healer.at > letzter tank.at` umstellen.
+
+### B-021: Tastatur: Groß-/Kleinschreibung und Wellenstart in der Pause
+- Status: vorschlag
+- Aufwand: S
+- Idee: Hinweise aus dem Review von B-002. (1) Tasten `p`, `u`, `s`, `f` reagieren nicht bei Caps Lock oder Shift; in `src/main.js` einheitlich `ev.key.toLowerCase()` verwenden. (2) `doStartWave` funktioniert in der Pause, die Welle beginnt erst nach dem Fortsetzen; Starten in der Pause sperren oder die Pause dabei aufheben.
+- Akzeptanzkriterien:
+  - Alle Tastenkürzel funktionieren unabhängig von Groß-/Kleinschreibung.
+  - Verhalten des Wellenstarts in der Pause ist festgelegt und dokumentiert.
+  - `npm test` bleibt grün.
