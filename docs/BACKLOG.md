@@ -33,7 +33,7 @@ Die Pipeline nimmt nur Einträge mit Status `offen`, von oben nach unten.
   - Test: Pause, 10 Sekunden simulieren, Zustand unverändert.
 
 ### B-003: Spielgeschwindigkeit x1/x2/x3
-- Status: vorschlag
+- Status: fertig
 - Aufwand: S
 - Idee: Taste `F` oder ein Button schaltet die Simulationsgeschwindigkeit zwischen x1, x2 und x3 um. Spart Wartezeit bei leichten Wellen.
 - Akzeptanzkriterien:
@@ -43,7 +43,7 @@ Die Pipeline nimmt nur Einträge mit Status `offen`, von oben nach unten.
   - HUD zeigt die aktuelle Geschwindigkeit.
 
 ### B-004: Zielmodus pro Turm
-- Status: vorschlag
+- Status: fertig
 - Aufwand: S
 - Idee: Jeder Turm hat eine Zielregel (Erster, Letzter, Stärkster, Nächster), umschaltbar per Klick oder Taste `T`. So kann der Scharfschütze gezielt Bosse jagen.
 - Akzeptanzkriterien:
@@ -222,4 +222,21 @@ Die Pipeline nimmt nur Einträge mit Status `offen`, von oben nach unten.
 - Akzeptanzkriterien:
   - Alle Tastenkürzel funktionieren unabhängig von Groß-/Kleinschreibung.
   - Verhalten des Wellenstarts in der Pause ist festgelegt und dokumentiert.
+  - `npm test` bleibt grün.
+
+### B-022: stepGame härten und Tests präzisieren
+- Status: vorschlag
+- Aufwand: S
+- Idee: Hinweise aus Review und Test von B-003. (1) Der Test "dt=1/60 ergibt bei x1 und x2 gleiche Zeit und Ergebnis" vergleicht 1/60- mit 1/30-Schritten und ist nur beim Pfeilturm zufällig grün (bei Pfeil/Kanone mit je 3 Türmen weichen Kills und Gold ab); auf dt=0,05 umstellen oder nur die Zeit exakt und Kills/Gold mit Toleranz prüfen. (2) Teilschrittlänge direkt prüfen (Anzahl `update`-Aufrufe zählen). (3) `stepGame(state, Infinity, 1)` hängt; Obergrenze für die Schrittzahl. (4) `Math.min(0.05, …)` in `src/main.js` `frame()` durch `MAX_SUBSTEP` ersetzen.
+- Akzeptanzkriterien:
+  - Kein Test hängt von einer zufällig passenden Schrittfolge ab.
+  - `stepGame` terminiert für jedes `dt`.
+  - `npm test` bleibt grün.
+
+### B-023: Zielmodus: Feinschliff
+- Status: vorschlag
+- Aufwand: S
+- Idee: Hinweise aus dem Review von B-004. (1) Startwert in `buildTower` als `TARGET_MODES[0]` statt hart codiertem `'first'`. (2) Test über `update()`, dass ein Turm im laufenden Spiel wirklich nach seinem `targetMode` schießt (heute ist nur `pickTarget` direkt getestet). (3) Zielmodus im Render (kleines Symbol am ausgewählten Turm) erst nach Sichtprüfung im Browser entscheiden.
+- Akzeptanzkriterien:
+  - Integrationstest: zwei Gegner in Reichweite, Modus `strong` trifft den stärkeren zuerst.
   - `npm test` bleibt grün.

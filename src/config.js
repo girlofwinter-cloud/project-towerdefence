@@ -11,6 +11,13 @@ export const START_LIVES = 3;
 export const MAX_WAVES = 20;
 export const SELL_RATIO = 0.7;
 export const MAX_LEVEL = 3;
+// Zielregeln der Türme (Reihenfolge = Umschalt-Reihenfolge) mit deutschen Anzeigenamen
+export const TARGET_MODES = ['first', 'last', 'strong', 'close'];
+export const TARGET_MODE_NAMES = { first: 'Erster', last: 'Letzter', strong: 'Stärkster', close: 'Nächster' };
+
+// Spielgeschwindigkeiten (Taste F / Button) und maximale Teilschrittlänge der Simulation in Sekunden.
+export const SPEED_STEPS = [1, 2, 3];
+export const MAX_SUBSTEP = 0.05;
 
 // Wegpunkte in Kachel-Koordinaten [spalte, zeile].
 // Erster und letzter Punkt liegen außerhalb des Spielfelds (Ein-/Ausgang).

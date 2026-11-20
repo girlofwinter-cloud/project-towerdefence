@@ -142,3 +142,23 @@ Neue Einträge werden unten angehängt. Bestehende Einträge werden nie geänder
 - Review: APPROVE (keine Muss-Punkte; Hinweise: Tasten reagieren nicht bei Caps Lock, Wellenstart in der Pause möglich, siehe B-021)
 - Entscheidungen: Pausenzustand `state.paused` in der reinen Logik, `togglePause(state)` wirkt nur bei Status `playing`, `update` kehrt bei Pause sofort zurück (auch `state.time` steht, damit Render und Effekte einfrieren). Bauen, Verkaufen und Aufrüsten bleiben erlaubt. HUD-Hinweis `#pause-hint`. Keine bestehenden Tests verändert, 4 neue Tests. Der Backlog-Eintrag stand auf `vorschlag` und wurde auf ausdrücklichen Wunsch des Menschen (B-002, B-003, B-004 umsetzen) bearbeitet.
 - Offen: Pause von Hand im Browser prüfen. B-021 ist in diesem Commit. Die Branches für B-003 und B-004 gehen jeweils von `main` aus und ändern ebenfalls `src/main.js`, Tests, Backlog und Ledger; beim Zusammenführen sind Konflikte zu erwarten.
+
+## 2026-11-20 · B-003 · Spielgeschwindigkeit x1/x2/x3
+- Rolle(n): orchestrator, developer, tester, reviewer
+- Branch: agent/spielgeschwindigkeit
+- Runden: 1 von max. 2 (tester und reviewer liefen parallel)
+- Ergebnis: fertig
+- Tests: 108 bestanden, 0 fehlgeschlagen (Unit); E2E nicht ausgeführt, HUD nicht im Browser geprüft
+- Review: APPROVE (keine Muss-Punkte; Hinweise: dt=1/60-Test hängt vom Szenario ab, Teilschrittlänge nur indirekt geprüft, `stepGame` mit unendlichem dt hängt, Magic Number 0.05 in `main.js`, siehe B-022)
+- Entscheidungen: Taste F, Button und Anzeige "Tempo ×N" gab es schon; neu sind `SPEED_STEPS` und `MAX_SUBSTEP` in `config.js` und die reine Funktion `stepGame`, die `dt*speed` in gleich große Teilschritte von höchstens 0,05 s zerlegt. `main.js` nutzt beides statt der Schleife mit mehrfachem `update`. Keine bestehenden Tests verändert, 4 neue. Der Backlog-Eintrag stand auf `vorschlag` und wurde auf ausdrücklichen Wunsch des Menschen bearbeitet. Der Tester hat gezeigt, dass der Test mit dt=1/60 bei anderen Turmmischungen abweicht (Pfeil 6 gegen 5 Kills); er ist deterministisch grün, aber fragil, daher B-022 statt Änderung in dieser Runde.
+- Offen: Tempo-Umschaltung von Hand im Browser prüfen. Branch geht von `main` aus (nicht von `agent/pause`); `src/main.js`, Tests, Backlog und Ledger werden auch dort geändert, beim Zusammenführen sind Konflikte zu erwarten. B-022 ist in diesem Commit.
+
+## 2026-11-20 · B-004 · Zielmodus pro Turm
+- Rolle(n): orchestrator, developer, tester, reviewer
+- Branch: agent/zielmodus
+- Runden: 1 von max. 2 (tester und reviewer liefen parallel)
+- Ergebnis: fertig
+- Tests: 108 bestanden, 0 fehlgeschlagen (Unit); E2E nicht ausgeführt, Bedienung nicht im Browser geprüft
+- Review: APPROVE (keine Muss-Punkte; Hinweise: Startwert aus `TARGET_MODES[0]`, kein Integrationstest über `update()`, siehe B-023)
+- Entscheidungen: `TARGET_MODES` und deutsche Anzeigenamen `TARGET_MODE_NAMES` in `config.js`. Die Zielauswahl liegt als reine Funktion `pickTarget(enemies, tower, range, mode)` in `game.js`; `findTarget` ruft sie mit `tower.targetMode` auf. `first` = größtes `dist` (wie vorher, auch bei Gleichstand), `last` = kleinstes `dist`, `strong` = höchste aktuelle HP, `close` = geringster Abstand zum Turm; Gleichstand: erster in der Liste. `setTargetMode` lehnt unbekannte Modi und unbekannte Türme mit deutscher Begründung ab. Bedienung per Taste T und Button im Turm-Panel. Der Tester hat 2 Randfall-Tests ergänzt (hp<=0, Gleichstand, Reichweitenrand, Turm ohne Feld, Moduswechsel, Rüstung). Keine bestehenden Tests verändert. Ein Stop-Hook meldete mitten im Lauf einen roten Test, das war der noch unfertige Tester-Test; am Ende grün. Der Backlog-Eintrag stand auf `vorschlag` und wurde auf ausdrücklichen Wunsch des Menschen bearbeitet.
+- Offen: Bedienung von Hand im Browser prüfen (T, Button, Wechsel zwischen Türmen). Branch geht von `main` aus; `src/main.js`, `src/game.js`, Tests, Backlog und Ledger werden auch in den Branches zu B-002 und B-003 geändert, beim Zusammenführen sind Konflikte zu erwarten. B-023 ist in diesem Commit.
