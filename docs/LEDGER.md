@@ -182,3 +182,13 @@ Neue Einträge werden unten angehängt. Bestehende Einträge werden nie geänder
 - Review: APPROVE (keine Muss-Punkte; Hinweise: leere Herzen schlecht sichtbar, reduzierte Bewegung, Banner bei schmaler Breite, Screenreader, siehe B-025)
 - Entscheidungen: Auf Wunsch des Menschen (kein Backlog-Eintrag): Der Spieler wusste nicht, dass `P` pausiert, und die Leben standen nur als kleine Zahl im Header. Neu: Pause-Button (wechselt zwischen "Pause (P)" und "Weiter (P)"), Banner "PAUSE" über dem Spielfeld (Klicks gehen durch, Bauen bleibt möglich), Tastenhinweise in den Buttons (F, P, Leertaste), Steuerungshilfe standardmäßig offen und vollständig, Herzreihe für die Leben (`livesText` in `src/hud.js`, ohne DOM, getestet) mit Zahl daneben und roter, pulsierender Warnung bei `LOW_LIVES` (neue Konstante in `config.js`, Wert 1). Keine Spiel-Logik und kein Balancing geändert, keine bestehenden Tests verändert, ein neuer Test.
 - Offen: Optik im Browser ansehen (Herzen, Banner, Lesbarkeit der Hilfe, Layout bei schmaler Breite). B-025 ist in diesem Commit.
+
+## 2026-11-20 · UI-Optik · Cartoon-Holz-Look (Prototyp)
+- Rolle(n): orchestrator (direkt, ohne Sub-Agenten)
+- Branch: agent/ui-optik
+- Runden: 1
+- Ergebnis: fertig (Prototyp)
+- Tests: 119 bestanden, 0 fehlgeschlagen (Unit); E2E nicht lauffähig (Playwright nicht installiert). Optik per Headless-Chrome-Screenshot geprüft.
+- Review: nicht durchgeführt (Wunsch: schneller Prototyp)
+- Entscheidungen: Auf Wunsch des Menschen, Referenz: klassische Cartoon-Tower-Defence-Spiele. Nur Darstellung: (1) HUD (Gold, Welle, Leben) als Holzleiste oben im Spielfeld statt im Header, (2) Holz-Seitenleiste mit goldenen Akzenten, grüner Start-Button, (3) Turm-Karten mit Mini-Turm (nutzt `drawTower` aus `render.js`, keine neuen Grafiken), (4) wärmere Gelände-Farben (sandiger Weg, sattes Gras), (5) Banner/Overlay/Meldung im selben Stil. Element-IDs unverändert, keine Logik, kein Balancing, keine Tests geändert.
+- Offen: Gegner und Projektile sind noch im alten Stil; Ideen für später: Wellenfortschrittsleiste, Münz-/Herz-Icons als Zeichnung statt Emoji, Bauplätze statt freiem Raster.

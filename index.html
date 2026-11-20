@@ -9,17 +9,17 @@
 <body>
   <header>
     <h1>🏰 Project TowerDefence</h1>
-    <div class="hud">
-      <span title="Gold">💰 <b id="gold">0</b></span>
-      <span id="lives-box" title="Leben"><span id="hearts"></span> <b id="lives">0</b></span>
-      <span title="Welle">🌊 <b id="wave">0</b></span>
-      <span id="pause-hint" hidden>⏸ Pausiert (P)</span>
-    </div>
   </header>
 
   <main>
     <div class="board">
       <canvas id="game" aria-label="Spielfeld"></canvas>
+      <div class="hud" id="hud-bar">
+        <span class="hud-item" title="Gold"><i class="coin"></i><b id="gold">0</b></span>
+        <span class="hud-item" title="Welle"><i class="icon">⚔️</i><b id="wave">0</b></span>
+        <span class="hud-item" id="lives-box" title="Leben"><span id="hearts"></span><b id="lives">0</b></span>
+        <span id="pause-hint" hidden>⏸</span>
+      </div>
       <div id="overlay" hidden>
         <h2 id="overlay-title"></h2>
         <p id="overlay-stats"></p>

@@ -4,7 +4,7 @@ import {
   createGame, stepGame, togglePause, buildTower, upgradeTower, sellTower, setTargetMode, startWave,
   canBuild, towerAt, towerStats, upgradeCost, sellValue,
 } from './game.js';
-import { render } from './render.js';
+import { render, drawTower } from './render.js';
 import { livesText } from './hud.js';
 
 const canvas = document.getElementById('game');
@@ -21,15 +21,26 @@ window.__game = () => state;
 window.__ui = ui;
 
 // ---------- Turm-Leiste ----------
+// Mini-Turm als Kartenbild: nutzt dieselbe Zeichenfunktion wie das Spielfeld (kein extra Grafik-Aufwand).
+const ICON_SIZE = 48;
+const ICON_SCALE = 1.25;
+function drawTowerIcon(cv, type) {
+  const c = cv.getContext('2d');
+  c.translate(ICON_SIZE / 2, ICON_SIZE / 2 + 2);
+  c.scale(ICON_SCALE, ICON_SCALE);
+  c.translate(-TILE / 2, -TILE / 2);
+  drawTower(c, { type, x: TILE / 2, y: TILE / 2, level: 1, cooldown: 0, angle: -Math.PI / 4 }, false);
+}
 const shop = $('shop');
 for (const [type, def] of Object.entries(TOWER_TYPES)) {
   const btn = document.createElement('button');
   btn.className = 'tower-btn';
   btn.dataset.type = type;
-  btn.innerHTML = `<span class="swatch" style="background:${def.color}"></span>
+  btn.innerHTML = `<canvas class="t-icon" width="${ICON_SIZE}" height="${ICON_SIZE}"></canvas>
     <span class="t-name">${def.name} <kbd>${def.key}</kbd></span>
     <span class="t-cost">${def.cost} 💰</span>
     <span class="t-desc">${def.description}</span>`;
+  drawTowerIcon(btn.querySelector('.t-icon'), type);
   btn.addEventListener('click', () => selectBuild(type));
   shop.appendChild(btn);
 }
