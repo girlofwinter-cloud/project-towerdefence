@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Project TowerDefence</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header>
+    <h1>🏰 Project TowerDefence</h1>
+    <div class="hud">
+      <span title="Gold">💰 <b id="gold">0</b></span>
+      <span title="Leben">❤️ <b id="lives">0</b></span>
+      <span title="Welle">🌊 <b id="wave">0</b></span>
+    </div>
+  </header>
+
+  <main>
+    <div class="board">
+      <canvas id="game" aria-label="Spielfeld"></canvas>
+      <div id="overlay" hidden>
+        <h2 id="overlay-title"></h2>
+        <p id="overlay-stats"></p>
+        <button id="restart">Neues Spiel</button>
+      </div>
+      <p id="message" role="status"></p>
+    </div>
+
+    <aside>
+      <div class="controls">
+        <button id="start-wave" class="primary">Welle 1 starten</button>
+        <button id="speed">Tempo ×1</button>
+      </div>
+      <h3>Türme</h3>
+      <div id="shop"></div>
+      <div id="tower-info" hidden>
+        <h3 id="ti-name"></h3>
+        <p id="ti-stats"></p>
+        <button id="upgrade"></button>
+        <button id="sell"></button>
+      </div>
+      <details class="help">
+        <summary>Steuerung</summary>
+        <ul>
+          <li><kbd>1</kbd>–<kbd>4</kbd> Turm wählen, dann aufs Feld klicken</li>
+          <li>Turm anklicken: verbessern (<kbd>U</kbd>) / verkaufen (<kbd>S</kbd>)</li>
+          <li><kbd>Leertaste</kbd> nächste Welle, <kbd>F</kbd> Tempo</li>
+          <li><kbd>Esc</kbd> / Rechtsklick: abbrechen</li>
+        </ul>
+      </details>
+    </aside>
+  </main>
+
+  <footer>Entwickelt mit einer Claude-Code-Agenten-Pipeline 🤖</footer>
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>

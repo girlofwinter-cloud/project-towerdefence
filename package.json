@@ -1,0 +1,17 @@
+{
+  "name": "project-towerdefence",
+  "version": "0.1.0",
+  "description": "Browser Tower-Defense-Spiel, entwickelt mit einer Claude-Code-Agenten-Pipeline",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "start": "node scripts/serve.mjs",
+    "test": "node --test tests/*.test.js",
+    "test:e2e": "node --test tests/e2e/*.test.mjs",
+    "test:all": "npm test && npm run test:e2e"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "license": "MIT"
+}
