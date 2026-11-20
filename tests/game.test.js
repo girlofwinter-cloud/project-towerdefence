@@ -7,6 +7,7 @@ import {
 } from '../src/game.js';
 import { tileHash, decorFor, isBorderTile, LARGE_DECOR_KINDS, LARGE_DECOR_RADIUS, BORDER_DECOR_CHANCE, INNER_DECOR_CHANCE } from '../src/decor.js';
 import { livesText } from '../src/hud.js';
+import { buildTapStep } from '../src/input.js';
 import { recoilOffset } from '../src/tower-fx.js';
 import { buildPath, pointAt, pathTiles } from '../src/path.js';
 import { TOWER_TYPES, MAX_WAVES, START_GOLD, START_LIVES, LOW_LIVES, WAYPOINTS, TILE, COLS, ROWS, TARGET_MODES, waveFor, waveBonus, waveSummary, hpScale, ENEMY_TYPES, SPEED_STEPS, MAX_SUBSTEP } from '../src/config.js';
@@ -2204,4 +2205,24 @@ test('livesText: gefüllte und leere Herzen, nie negativ, gekappt', () => {
   assert.equal(livesText(5, 3), '❤️❤️❤️');
   assert.equal(livesText(START_LIVES), '❤️'.repeat(START_LIVES));
   assert.ok(LOW_LIVES >= 1 && LOW_LIVES < START_LIVES);
+});
+
+// ---------- Bauen per Touch in zwei Schritten (buildTapStep) ----------
+
+test('buildTapStep: Maus baut sofort und merkt sich keine Kachel', () => {
+  assert.deepEqual(buildTapStep(null, 3, 4, false), { action: 'build', pending: null });
+  assert.deepEqual(buildTapStep({ col: 1, row: 1 }, 3, 4, false), { action: 'build', pending: null });
+});
+
+test('buildTapStep: Touch zeigt erst die Vorschau, der zweite Tipp auf dieselbe Kachel baut', () => {
+  const first = buildTapStep(null, 3, 4, true);
+  assert.deepEqual(first, { action: 'preview', pending: { col: 3, row: 4 } });
+  assert.deepEqual(buildTapStep(first.pending, 3, 4, true), { action: 'build', pending: null });
+});
+
+test('buildTapStep: Touch auf eine andere Kachel verschiebt nur die Vorschau (baut nicht)', () => {
+  const second = buildTapStep({ col: 3, row: 4 }, 5, 4, true);
+  assert.deepEqual(second, { action: 'preview', pending: { col: 5, row: 4 } });
+  // Spalte gleich, Zeile anders zählt ebenfalls als andere Kachel
+  assert.equal(buildTapStep({ col: 3, row: 4 }, 3, 5, true).action, 'preview');
 });
