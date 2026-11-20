@@ -61,3 +61,13 @@ Neue Einträge werden unten angehängt. Bestehende Einträge werden nie geänder
 - Review: APPROVE (Runde 1 CHANGES_REQUESTED: große Dekoration ragte in 24 von 46 Fällen in Nachbarkacheln. Behoben durch Radius pro Art und begrenzten Versatz, Randdichte 0,7 → 0,3, Schachbrett als Grundton, paintBackground in save/restore.)
 - Entscheidungen: Neue reine Logik in `src/decor.js` (Kachel-Hash, Platzierungsregel), damit sie ohne Canvas testbar ist (Regel 2). Große Dekoration nur am Feldrand, innen nur kleine flache Dekoration, nie auf dem Weg. Hintergrund wird einmal auf ein Offscreen-Canvas gezeichnet, Cache-Schlüssel ist `state.path.points`. Alles aus einfachen geometrischen Formen, keine Bilddateien und keine Vorlagen aus anderen Spielen. Der Tester hat per Proxy-Mock 335 gezeichnete Formen geprüft: keine verlässt ihre Kachel, keine liegt auf dem Weg.
 - Offen: Optik im Browser ansehen (Raster-Lesbarkeit, Tor und Burg, Randdekoration neben bebaubaren Kacheln, Performance). Das Schachbrett geht stellenweise in der Variation unter (siehe B-014). Dieser Branch baut auf `agent/schwierigkeit` (B-008) auf; die Backlog-Einträge B-013 und B-014 sind in diesem Commit.
+
+## 2026-11-20 · B-010 · Grafik: Türme
+- Rolle(n): orchestrator, developer, tester, reviewer
+- Branch: agent/grafik-tuerme
+- Runden: 1 von max. 3
+- Ergebnis: fertig
+- Tests: 55 bestanden, 0 fehlgeschlagen (Unit); E2E nicht lauffähig (Playwright nicht installiert), Optik nicht im Browser geprüft
+- Review: APPROVE (keine Muss-Punkte; Hinweise: Rückstoß aus `def.rate` statt Level-Rate, Fallback für unbekannte Turmtypen, größere Stufen-Punkte, Auslagerung der Turm-Zeichnung, siehe B-015)
+- Entscheidungen: Vier Turmtypen aus einfachen geometrischen Formen, Level an Sockelbreite, Fahnenmast mit rotem bzw. goldenem Wimpel, Zinnen und Punkten erkennbar. Der Rückstoß wird in `render.js` aus dem vorhandenen `tower.cooldown` abgeleitet, `game.js` blieb unberührt. Die Kurve steckt als reine Funktion `recoilOffset` in `src/tower-fx.js` (Regel 2: Test). `drawTower` wird exportiert, damit die Kachelgrenzen pro Typ, Stufe und Winkel isoliert getestet werden können. Der Tester hat die echte Ausdehnung in Weltkoordinaten nachgemessen: nur Pfeilturm (+1 px) und Scharfschütze (+3 px) ragen beim Zielen nach oben über die Kachel.
+- Offen: Optik im Browser ansehen (Unterscheidbarkeit der Typen und Stufen, Rückstoß, Schatten, Auswahlrahmen bei übereinander stehenden Türmen). Der Branch baut auf `agent/grafik-gelaende` auf (B-008, B-009); B-015 ist in diesem Commit.

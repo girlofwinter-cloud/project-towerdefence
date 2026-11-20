@@ -1,6 +1,7 @@
 // Zeichnet den Spielzustand auf ein Canvas. Keine Spiel-Logik hier!
 import { TILE, COLS, ROWS, WIDTH, HEIGHT, TOWER_TYPES, ENEMY_TYPES } from './config.js';
 import { towerStats } from './game.js';
+import { recoilOffset } from './tower-fx.js';
 import { tileHash, tileRand, decorFor, LARGE_DECOR_RADIUS } from './decor.js';
 
 export function render(ctx, state, ui) {
@@ -267,32 +268,182 @@ function rangeCircle(ctx, x, y, r, fill) {
   ctx.stroke();
 }
 
-function drawTower(ctx, t, selected) {
-  const def = TOWER_TYPES[t.type];
-  const { x, y } = t;
-  // Sockel
-  ctx.fillStyle = '#2b2b2b';
-  ctx.fillRect(x - 16, y - 16, 32, 32);
-  ctx.fillStyle = def.color;
+// ---------- Türme ----------
+// Rein visuelle Konstanten (Farben, Maße in Pixeln). Alles bleibt in der Kachel (TILE 40),
+// nur bewegliche Teile ragen beim Zielen höchstens ca. 4 px über den oberen Kachelrand.
+const TOWER_SHADOW = 'rgba(0,0,0,0.28)';
+const STONE = '#8d8f96';
+const STONE_LIGHT = '#a9abb2';
+const STONE_DARK = '#5d5f68';
+const WOOD = '#8a5a2b';
+const WOOD_DARK = '#5e3b1c';
+const METAL = '#3d4048';
+const GOLD = '#ffd54a';
+const GOLD_DARK = '#c9a227';
+const BANNER_RED = '#c0392b';
+const ICE_LIGHT = '#e3f6fc';
+const ICE_DARK = '#4a8fb0';
+const FROST_GLOW = 'rgba(110,198,232,0.35)';
+const BASE_HALF = 13; // halbe Sockelbreite auf Stufe 1
+const BASE_GROW = 1.5; // Sockel wird pro Stufe breiter
+const BASE_TOP = 6; // Oberkante des Sockels relativ zur Turmmitte
+const BASE_HEIGHT = 9;
+const RECOIL_PX = { arrow: 3, cannon: 4, frost: 3, sniper: 3 }; // maximaler Rückstoß in Pixeln
+const BOW_Y = 7.13; // Bogenenden (Radius 8, Öffnungswinkel 1.1 rad)
+const BOW_X = 0.63;
+
+function rect(ctx, color, x, y, w, h) {
+  ctx.fillStyle = color;
+  ctx.fillRect(x, y, w, h);
+}
+
+function tri(ctx, color, x1, y1, x2, y2, x3, y3) {
+  ctx.fillStyle = color;
   ctx.beginPath();
-  ctx.arc(x, y, 13, 0, Math.PI * 2);
+  ctx.moveTo(x1, y1);
+  ctx.lineTo(x2, y2);
+  ctx.lineTo(x3, y3);
+  ctx.closePath();
   ctx.fill();
-  // Rohr
-  ctx.save();
-  ctx.translate(x, y);
-  ctx.rotate(t.angle);
-  ctx.fillStyle = '#1d1d1d';
-  const len = t.type === 'sniper' ? 20 : 15;
-  const w = t.type === 'cannon' ? 8 : 4;
-  ctx.fillRect(0, -w / 2, len, w);
-  ctx.restore();
-  // Stufen-Punkte
-  for (let i = 0; i < t.level; i++) {
-    ctx.fillStyle = '#ffd54a';
+}
+
+// Steinsockel mit Fugen; wächst mit der Stufe
+function drawTowerBase(ctx, x, y, bw) {
+  const top = y + BASE_TOP;
+  rect(ctx, STONE, x - bw, top, bw * 2, BASE_HEIGHT);
+  rect(ctx, STONE_LIGHT, x - bw, top, bw * 2, 2);
+  ctx.strokeStyle = STONE_DARK;
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(x - bw, top + 4.5);
+  ctx.lineTo(x + bw, top + 4.5);
+  ctx.moveTo(x - bw * 0.5, top + 2);
+  ctx.lineTo(x - bw * 0.5, top + 4.5);
+  ctx.moveTo(x + bw * 0.5, top + 2);
+  ctx.lineTo(x + bw * 0.5, top + 4.5);
+  ctx.moveTo(x, top + 4.5);
+  ctx.lineTo(x, top + BASE_HEIGHT);
+  ctx.stroke();
+}
+
+// Feste Körper je Typ (drehen sich nicht)
+function drawTowerBody(ctx, type, x, y, accent) {
+  if (type === 'arrow') {
+    // Holzpfosten mit Plattform und Geländer
+    rect(ctx, WOOD_DARK, x - 8, y - 6, 3, 12);
+    rect(ctx, WOOD_DARK, x + 5, y - 6, 3, 12);
+    rect(ctx, WOOD, x - 8, y - 1, 16, 2);
+    rect(ctx, WOOD, x - 11, y - 8, 22, 3);
+    rect(ctx, WOOD_DARK, x - 11, y - 11, 2, 3);
+    rect(ctx, WOOD_DARK, x + 9, y - 11, 2, 3);
+  } else if (type === 'cannon') {
+    // Steinbunker
+    rect(ctx, STONE_DARK, x - 11, y - 7, 22, 13);
+    rect(ctx, STONE, x - 11, y - 7, 22, 3);
+    rect(ctx, METAL, x - 8, y + 1, 3, 4);
+    rect(ctx, METAL, x + 5, y + 1, 3, 4);
+  } else if (type === 'frost') {
+    // Säule mit Kragen und Eiszapfen
+    rect(ctx, ICE_DARK, x - 4, y - 3, 8, 10);
+    rect(ctx, STONE_LIGHT, x - 6, y + 3, 12, 3);
+    tri(ctx, ICE_LIGHT, x - 9, y + 6, x - 5, y + 6, x - 7, y + 1);
+    tri(ctx, ICE_LIGHT, x + 5, y + 6, x + 9, y + 6, x + 7, y + 1);
+  } else {
+    // schlanker, hoher Turm mit Plattform
+    rect(ctx, WOOD_DARK, x - 5, y - 7, 10, 13);
+    rect(ctx, accent, x - 5, y - 2, 10, 2);
+    rect(ctx, METAL, x - 1, y - 5, 2, 3);
+    rect(ctx, STONE_LIGHT, x - 7, y - 10, 14, 3);
+  }
+}
+
+// Stufen-Merkmale: Stufe 2 Banner, Stufe 3 goldene Zinnen/Wimpel; dazu Stufen-Punkte
+function drawTowerLevel(ctx, x, y, bw, level) {
+  const top = y + BASE_TOP;
+  if (level >= 2) {
+    const px = x - bw + 2;
+    rect(ctx, WOOD_DARK, px - 0.75, y - 13, 1.5, 19);
+    tri(ctx, level >= 3 ? GOLD : BANNER_RED, px + 0.75, y - 13, px + 0.75, y - 6, px + 8, y - 9.5);
+  }
+  if (level >= 3) {
+    rect(ctx, GOLD_DARK, x - bw, top, bw * 2, 1.5);
+    rect(ctx, GOLD, x - bw, top - 3, 3, 3);
+    rect(ctx, GOLD, x + bw - 3, top - 3, 3, 3);
+  }
+  ctx.fillStyle = GOLD;
+  for (let i = 0; i < level; i++) {
     ctx.beginPath();
-    ctx.arc(x - 8 + i * 8, y + 13, 2.5, 0, Math.PI * 2);
+    ctx.arc(x - 6 + i * 6, top + 6.5, 1.8, 0, Math.PI * 2);
     ctx.fill();
   }
+}
+
+// Beweglicher Teil (dreht sich zum Ziel, rec = Rückstoß in Pixeln nach hinten)
+function drawTowerHead(ctx, type, x, y, angle, rec, accent) {
+  ctx.save();
+  if (type === 'arrow') ctx.translate(x, y - 9);
+  else if (type === 'cannon') ctx.translate(x, y - 3);
+  else if (type === 'frost') ctx.translate(x, y - 9);
+  else ctx.translate(x, y - 8);
+  ctx.rotate(angle);
+  ctx.translate(-rec, 0);
+  if (type === 'arrow') {
+    // Bogen mit Sehne und aufgelegtem Pfeil
+    ctx.strokeStyle = accent;
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.arc(-3, 0, 8, -1.1, 1.1);
+    ctx.stroke();
+    ctx.strokeStyle = '#f0e6d2';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(BOW_X, -BOW_Y);
+    ctx.lineTo(BOW_X, BOW_Y);
+    ctx.stroke();
+    rect(ctx, WOOD_DARK, -3, -0.75, 11, 1.5);
+    tri(ctx, METAL, 8, -2.5, 12, 0, 8, 2.5);
+  } else if (type === 'cannon') {
+    rect(ctx, METAL, 0, -4, 15, 8);
+    rect(ctx, STONE_DARK, 12, -5, 4, 10);
+    disc(ctx, 0, 0, 5, accent);
+  } else if (type === 'frost') {
+    disc(ctx, 0, 0, 6, FROST_GLOW);
+    ctx.fillStyle = accent;
+    ctx.beginPath();
+    ctx.moveTo(-4, 0);
+    ctx.lineTo(0, -5);
+    ctx.lineTo(9, 0);
+    ctx.lineTo(0, 5);
+    ctx.closePath();
+    ctx.fill();
+    tri(ctx, ICE_LIGHT, 0, -5, 9, 0, 2, 0);
+  } else {
+    rect(ctx, WOOD, -5, -2, 5, 4);
+    rect(ctx, METAL, 0, -1.5, 15, 3);
+    rect(ctx, STONE_DARK, 3, -4.5, 7, 2.5);
+    disc(ctx, 10, -3.2, 1.2, accent);
+  }
+  ctx.restore();
+}
+
+// Exportiert, damit Tests einen einzelnen Turm gegen einen Mock-Kontext zeichnen koennen.
+export function drawTower(ctx, t, selected) {
+  const def = TOWER_TYPES[t.type];
+  const { x, y } = t;
+  const bw = BASE_HALF + (t.level - 1) * BASE_GROW;
+  // Rückstoß aus der Abklingzeit (game.js setzt cooldown beim Schuss auf das Intervall)
+  const rec = recoilOffset(t.cooldown / def.rate) * RECOIL_PX[t.type];
+  ctx.save();
+  // Schatten
+  ctx.fillStyle = TOWER_SHADOW;
+  ctx.beginPath();
+  ctx.ellipse(x, y + 14, bw + 1, 5, 0, 0, Math.PI * 2);
+  ctx.fill();
+  drawTowerBase(ctx, x, y, bw);
+  drawTowerBody(ctx, t.type, x, y, def.color);
+  drawTowerLevel(ctx, x, y, bw, t.level);
+  drawTowerHead(ctx, t.type, x, y, t.angle, rec, def.color);
+  ctx.restore();
   if (selected) {
     ctx.strokeStyle = '#fff';
     ctx.lineWidth = 2;

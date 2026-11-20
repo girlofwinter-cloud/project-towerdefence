@@ -112,7 +112,7 @@ Die Pipeline nimmt nur Einträge mit Status `offen`, von oben nach unten.
   - `npm test` bleibt grün.
 
 ### B-010: Grafik: Türme
-- Status: offen
+- Status: fertig
 - Aufwand: M
 - Idee: Jeder Turmtyp bekommt eine eigene gezeichnete Silhouette: Pfeilturm aus Holz mit Bogen, Kanone mit Rohr auf Steinsockel, Frostturm mit Kristall, Scharfschütze als hoher Turm. Das Level ist an Aussehen oder Banner erkennbar, es gibt Schuss-Rückstoß und Schatten.
 - Akzeptanzkriterien:
@@ -156,4 +156,13 @@ Die Pipeline nimmt nur Einträge mit Status `offen`, von oben nach unten.
 - Akzeptanzkriterien:
   - Nur Zahlen und Zeichnung in `src/render.js` und `src/decor.js`.
   - Raster bleibt für alle Nachbarpaare erkennbar (Helligkeit kehrt sich nie um), per Test belegt.
+  - `npm test` bleibt grün.
+
+### B-015: Grafik-Feinschliff Türme (nach Sichtprüfung im Browser)
+- Status: vorschlag
+- Aufwand: S
+- Idee: Kleinigkeiten aus dem Review von B-010. Rückstoß-Anteil aus der Level-Rate statt `def.rate` ableiten (kleiner reiner Helfer `levelRate(type, level)` in `game.js`, damit pro Frame kein Objekt entsteht), Fallback für unbekannte Turmtypen (`RECOIL_PX[t.type] ?? 3`, kein stilles Fallen in den Scharfschützen-Zweig), Drehpunkt-Tabelle `HEAD_PIVOT_Y` statt if/else-Kette, größere Stufen-Punkte (Radius 1,8 ist klein), Turm-Zeichnung in eine eigene Datei auslagern (`src/render-towers.js`), falls `render.js` weiter wächst.
+- Akzeptanzkriterien:
+  - Nur `src/render.js`, `src/tower-fx.js` und ggf. neue Render-Dateien; der Helfer `levelRate` bekommt einen Test.
+  - Nach einer Sichtprüfung im Browser entscheiden, ob Stufen, Rückstoß und Auswahlrahmen so lesbar sind.
   - `npm test` bleibt grün.

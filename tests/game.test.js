@@ -6,6 +6,7 @@ import {
   canBuild, towerStats, upgradeCost,
 } from '../src/game.js';
 import { tileHash, decorFor, isBorderTile, LARGE_DECOR_KINDS, LARGE_DECOR_RADIUS, BORDER_DECOR_CHANCE, INNER_DECOR_CHANCE } from '../src/decor.js';
+import { recoilOffset } from '../src/tower-fx.js';
 import { buildPath, pointAt, pathTiles } from '../src/path.js';
 import { TOWER_TYPES, MAX_WAVES, START_GOLD, START_LIVES, WAYPOINTS, TILE, COLS, ROWS, waveFor, waveBonus, waveSummary, hpScale, ENEMY_TYPES } from '../src/config.js';
 
@@ -649,4 +650,221 @@ test('Render: gezeichnete Dekoration verlaesst ihre Kachel nicht und ragt nie au
     assert.ok(checked > 100);
     for (const k of ['tree', 'bush', 'rock', 'flower', 'tuft', 'pebble']) assert.ok(kinds[k] > 0, `Art ${k} nie gezeichnet`);
   } finally { delete globalThis.document; }
+});
+
+// ---------- Tuerme: Zeichnung (B-010) ----------
+test('recoilOffset: 0 ohne Schuss, Maximum direkt nach dem Schuss, monoton abklingend, nie negativ', () => {
+  assert.equal(recoilOffset(0), 0);
+  assert.equal(recoilOffset(-0.5), 0);
+  assert.equal(recoilOffset(NaN), 0);
+  assert.equal(recoilOffset(1), 1);
+  assert.equal(recoilOffset(5), 1, 'ueber 1 wird begrenzt');
+  let prev = Infinity;
+  for (let f = 1; f >= -0.2; f -= 0.05) {
+    const r = recoilOffset(f);
+    assert.ok(r >= 0 && r <= 1);
+    assert.ok(r <= prev + 1e-12, 'monoton fallend');
+    prev = r;
+  }
+});
+
+// Zeichnet einen Turm auf einen aufzeichnenden Mock-Kontext und liefert Fingerabdruck und Grenzen.
+async function recordTower(type, level, cooldown = 0, angle = 0, selected = false) {
+  const { drawTower } = await import('../src/render.js');
+  const s = createGame();
+  s.gold = 10000;
+  const r = buildTower(s, type, 8, 5);
+  assert.ok(r.ok);
+  const t = r.tower;
+  t.level = level;
+  t.cooldown = cooldown;
+  t.angle = angle;
+  const props = {};
+  const calls = [];
+  let depth = 0;
+  const stack = [];
+  let ox = 0, oy = 0, rotated = false, slack = 0;
+  const bounds = { minX: Infinity, maxX: -Infinity, minY: Infinity, maxY: -Infinity };
+  const pt = (x, y, rad = 0, radY = rad) => {
+    if (rotated) {
+      // beweglicher Teil: Radius um den Drehpunkt (Drehwinkel egal)
+      const d = Math.hypot(x, y) + rad + slack;
+      bounds.minX = Math.min(bounds.minX, ox - d); bounds.maxX = Math.max(bounds.maxX, ox + d);
+      bounds.minY = Math.min(bounds.minY, oy - d); bounds.maxY = Math.max(bounds.maxY, oy + d);
+    } else {
+      bounds.minX = Math.min(bounds.minX, ox + x - rad); bounds.maxX = Math.max(bounds.maxX, ox + x + rad);
+      bounds.minY = Math.min(bounds.minY, oy + y - radY); bounds.maxY = Math.max(bounds.maxY, oy + y + radY);
+    }
+  };
+  const ctx = new Proxy({}, {
+    get(_, k) {
+      if (k in props) return props[k];
+      return (...a) => {
+        calls.push(k + ':' + a.map((v) => (typeof v === 'number' ? v.toFixed(2) : v)).join(',') + '|' + props.fillStyle + '|' + props.strokeStyle);
+        if (k === 'save') { depth++; stack.push([ox, oy, rotated, slack]); }
+        else if (k === 'restore') { depth--; assert.ok(depth >= 0); [ox, oy, rotated, slack] = stack.pop(); }
+        else if (k === 'translate') { if (rotated) { /* Rueckstoss zieht nur zurueck: Reichweite nach vorn wird kleiner */ } else { ox += a[0]; oy += a[1]; } }
+        else if (k === 'rotate') rotated = true;
+        else if (k === 'fillRect' || k === 'strokeRect') { pt(a[0], a[1]); pt(a[0] + a[2], a[1] + a[3]); }
+        else if (k === 'arc') pt(a[0], a[1], a[2]);
+        else if (k === 'ellipse') pt(a[0], a[1], a[2], a[3]);
+        else if (k === 'moveTo' || k === 'lineTo') pt(a[0], a[1]);
+      };
+    },
+    set(_, k, v) { props[k] = v; return true; },
+  });
+  drawTower(ctx, t, selected);
+  return { t, calls, depth, props, bounds, print: calls.join('\n') };
+}
+
+test('Turm-Zeichnung: alle Typen/Stufen ohne Fehler, ausgewogen, innerhalb der Kachel', async () => {
+  const TOL_UP = 4; // bewegliche Teile duerfen beim Zielen max. 4 px ueber den oberen Kachelrand ragen
+  for (const type of Object.keys(TOWER_TYPES)) {
+    for (let level = 1; level <= 3; level++) {
+      for (const cooldown of [0, 0.5, TOWER_TYPES[type].rate]) {
+        const rec = await recordTower(type, level, cooldown, 0.7);
+        assert.equal(rec.depth, 0, `${type} L${level}: save/restore ausgewogen`);
+        assert.equal(rec.props.globalAlpha, undefined);
+        const x0 = rec.t.col * TILE, y0 = rec.t.row * TILE;
+        const b = rec.bounds;
+        assert.ok(b.minX >= x0 && b.maxX <= x0 + TILE, `${type} L${level}: x ${b.minX}..${b.maxX}`);
+        assert.ok(b.minY >= y0 - TOL_UP && b.maxY <= y0 + TILE, `${type} L${level}: y ${b.minY}..${b.maxY}`);
+      }
+    }
+  }
+});
+
+test('Turm-Zeichnung: Typen und Stufen unterscheiden sich, Auswahlrahmen bleibt', async () => {
+  const seen = new Map();
+  for (const type of Object.keys(TOWER_TYPES)) {
+    for (let level = 1; level <= 3; level++) {
+      const { print } = await recordTower(type, level);
+      assert.ok(!seen.has(print), `${type} L${level} gleicht ${seen.get(print)}`);
+      seen.set(print, `${type} L${level}`);
+    }
+  }
+  assert.equal(seen.size, 12);
+  const plain = await recordTower('arrow', 1, 0, 0, false);
+  const sel = await recordTower('arrow', 1, 0, 0, true);
+  assert.ok(!plain.calls.some((c) => c.startsWith('strokeRect')));
+  assert.ok(sel.calls.some((c) => c.startsWith('strokeRect:' + (sel.t.x - 18).toFixed(2))));
+});
+
+test('Turm-Zeichnung: Rueckstoss zieht den beweglichen Teil direkt nach dem Schuss zurueck', async () => {
+  for (const type of Object.keys(TOWER_TYPES)) {
+    const rate = TOWER_TYPES[type].rate;
+    const ready = await recordTower(type, 1, 0).then((r) => r.print);
+    const shot = await recordTower(type, 1, rate).then((r) => r.print);
+    const later = await recordTower(type, 1, rate * 0.3).then((r) => r.print);
+    assert.notEqual(ready, shot, `${type}: Rueckstoss sichtbar`);
+    assert.notEqual(shot, later, `${type}: klingt ab`);
+    assert.equal(await recordTower(type, 1, -0.2).then((r) => r.print), ready, `${type}: negativer Cooldown = bereit`);
+  }
+});
+
+// ---------- Tuerme: unabhaengige Pruefung (Tester, B-010) ----------
+test('recoilOffset: Randfaelle (Infinity, -0, undefined, null, winzige Werte)', () => {
+  assert.equal(recoilOffset(Infinity), 1);
+  assert.equal(recoilOffset(-Infinity), 0);
+  assert.ok(Object.is(recoilOffset(-0), 0), 'kein -0');
+  assert.equal(recoilOffset(undefined), 0);
+  assert.equal(recoilOffset(null), 0);
+  assert.equal(recoilOffset(0.5), 0.25);
+  assert.ok(recoilOffset(1e-9) >= 0 && recoilOffset(1e-9) < 1e-6);
+});
+
+test('Turm: cooldown/def.rate ist auf allen Stufen <= 1 (Rueckstoss nie ueber Maximum)', () => {
+  for (const type of Object.keys(TOWER_TYPES)) {
+    for (let level = 1; level <= 3; level++) {
+      const stats = towerStats({ type, level });
+      assert.ok(stats.rate / TOWER_TYPES[type].rate <= 1 + 1e-12, `${type} L${level}`);
+    }
+  }
+});
+
+// Zeichnet drawTower mit echter Transformationsmatrix (translate/rotate/save/restore) und
+// liefert die Weltkoordinaten-Ausdehnung aller Primitive.
+async function worldExtent(type, level, cooldown, angle) {
+  const { drawTower } = await import('../src/render.js');
+  const s = createGame();
+  s.gold = 1e5;
+  const t = buildTower(s, type, 8, 5).tower;
+  t.level = level; t.cooldown = cooldown; t.angle = angle;
+  let M = [1, 0, 0, 1, 0, 0];
+  const stack = [];
+  const B = { minX: Infinity, maxX: -Infinity, minY: Infinity, maxY: -Infinity };
+  const mul = (m, n) => [m[0] * n[0] + m[2] * n[1], m[1] * n[0] + m[3] * n[1], m[0] * n[2] + m[2] * n[3], m[1] * n[2] + m[3] * n[3], m[0] * n[4] + m[2] * n[5] + m[4], m[1] * n[4] + m[3] * n[5] + m[5]];
+  const P = (x, y) => {
+    const X = M[0] * x + M[2] * y + M[4], Y = M[1] * x + M[3] * y + M[5];
+    B.minX = Math.min(B.minX, X); B.maxX = Math.max(B.maxX, X);
+    B.minY = Math.min(B.minY, Y); B.maxY = Math.max(B.maxY, Y);
+  };
+  const props = {};
+  const ctx = new Proxy({}, {
+    get(_, k) {
+      if (k in props) return props[k];
+      return (...a) => {
+        if (k === 'save') stack.push(M);
+        else if (k === 'restore') M = stack.pop();
+        else if (k === 'translate') M = mul(M, [1, 0, 0, 1, a[0], a[1]]);
+        else if (k === 'rotate') { const c = Math.cos(a[0]), sn = Math.sin(a[0]); M = mul(M, [c, sn, -sn, c, 0, 0]); }
+        else if (k === 'fillRect' || k === 'strokeRect') { P(a[0], a[1]); P(a[0] + a[2], a[1]); P(a[0], a[1] + a[3]); P(a[0] + a[2], a[1] + a[3]); }
+        else if (k === 'arc') { const full = Math.abs(a[4] - a[3]) >= 2 * Math.PI - 1e-9; for (let i = 0; i <= 64; i++) { const q = a[3] + (a[4] - a[3]) * i / 64; P(a[0] + a[2] * Math.cos(q), a[1] + a[2] * Math.sin(q)); } void full; }
+        else if (k === 'ellipse') { for (let i = 0; i < 64; i++) { const q = i / 64 * 2 * Math.PI; P(a[0] + a[2] * Math.cos(q), a[1] + a[3] * Math.sin(q)); } }
+        else if (k === 'moveTo' || k === 'lineTo') P(a[0], a[1]);
+        else if (k === 'quadraticCurveTo') { P(a[0], a[1]); P(a[2], a[3]); }
+      };
+    },
+    set(_, k, v) { props[k] = v; return true; },
+  });
+  drawTower(ctx, t, false);
+  assert.equal(stack.length, 0, 'save/restore ausgewogen');
+  return { B, x0: t.col * TILE, y0: t.row * TILE };
+}
+
+test('Turm: echte Weltkoordinaten bleiben links/rechts/unten in der Kachel, oben max. 3,5 px Ueberstand (nur Pfeil/Scharfschuetze)', async () => {
+  const angles = [0, Math.PI / 4, Math.PI / 2, Math.PI, -Math.PI / 2, 3 * Math.PI / 2, 5.5];
+  for (const type of Object.keys(TOWER_TYPES)) {
+    const maxTop = type === 'sniper' ? 3.5 : type === 'arrow' ? 1.5 : 0;
+    for (let level = 1; level <= 3; level++) {
+      for (const angle of angles) {
+        for (const frac of [0, 0.5, 1]) {
+          const { B, x0, y0 } = await worldExtent(type, level, frac * TOWER_TYPES[type].rate, angle);
+          const tag = `${type} L${level} a=${angle.toFixed(2)} f=${frac}`;
+          assert.ok(B.minX >= x0 - 1e-6 && B.maxX <= x0 + TILE + 1e-6, `${tag}: x ${B.minX - x0}..${B.maxX - x0}`);
+          assert.ok(B.maxY <= y0 + TILE + 1e-6, `${tag}: unten ${B.maxY - y0}`);
+          assert.ok(B.minY >= y0 - maxTop - 1e-6, `${tag}: oben ${B.minY - y0}`);
+        }
+      }
+    }
+  }
+});
+
+test('Turm: ungueltiger cooldown/angle/Stufe crasht nicht und bleibt in den Grenzen', async () => {
+  for (const type of Object.keys(TOWER_TYPES)) {
+    for (const cd of [undefined, NaN, -5, 1e9, Infinity, null]) {
+      const { B, x0 } = await worldExtent(type, 2, cd, 0.3);
+      assert.ok(Number.isFinite(B.minX) && B.minX >= x0 && B.maxX <= x0 + TILE, `${type} cd=${cd}`);
+    }
+  }
+  await worldExtent('cannon', 1, 0, NaN);
+});
+
+test('Render: Tuerme aller Typen zeichnen, Cache ungestoert, Alpha und save/restore unveraendert', async () => {
+  const { render } = await import('../src/render.js');
+  const s = createGame();
+  s.gold = 1e5;
+  const types = Object.keys(TOWER_TYPES);
+  let placed = 0;
+  for (let c = 0; c < COLS && placed < types.length; c++) for (let rw = 0; rw < ROWS && placed < types.length; rw += 3) {
+    const r = buildTower(s, types[placed], c, rw);
+    if (r.ok) { r.tower.level = 1 + (placed % 3); r.tower.cooldown = 0.2; placed++; }
+  }
+  assert.equal(s.towers.length, types.length);
+  const m = mockCtx();
+  render(m.ctx, s, {});
+  const base = m.counts.drawImage;
+  render(m.ctx, s, { selectedTowerId: s.towers[0].id });
+  assert.equal(m.counts.drawImage - base, 1, 'Hintergrund pro Frame genau einmal');
+  assert.equal(m.depth, 0);
 });
