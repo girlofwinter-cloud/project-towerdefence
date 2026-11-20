@@ -34,12 +34,12 @@ export function render(ctx, state, ui) {
 
 // ---------- Hintergrund (Gelaende, Weg, Dekoration) ----------
 // Rein visuelle Konstanten (Balancing-Zahlen stehen in config.js).
-const GRASS_COLORS = ['#3f7d3a', '#468843']; // Schachbrett-Grundton
+const GRASS_COLORS = ['#4d9c41', '#51a145']; // Schachbrett-Grundton
 const GRASS_SHIFT = 0.07; // max. Helligkeitsversatz pro Kachel (Deckkraft)
-const GRASS_BLADE = '#2f6a2e';
-const PATH_EDGE = '#5a4228';
-const PATH_MAIN = '#a5845a';
-const PATH_PEBBLES = ['#8a6b43', '#b99a6f', '#76593a'];
+const GRASS_BLADE = '#37802f';
+const PATH_EDGE = '#8f7140';
+const PATH_MAIN = '#dcc189';
+const PATH_PEBBLES = ['#bfa06a', '#ead4a0', '#a98a58'];
 const PATH_EDGE_WIDTH = 5; // Randbreite in Pixeln
 const GATE_WOOD = '#5b3a1e';
 const GATE_WOOD_LIGHT = '#7a5230';
