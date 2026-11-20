@@ -82,7 +82,7 @@ export function buildTower(state, type, col, row) {
     invested: def.cost,
     cooldown: 0,
     angle: 0,
-    targetMode: 'first',
+    targetMode: TARGET_MODES[0],
   };
   state.towers.push(tower);
   return { ok: true, tower };
@@ -166,7 +166,7 @@ export function togglePause(state) {
 // Simuliert dt*speed Sekunden in gleich großen Teilschritten von höchstens MAX_SUBSTEP.
 export function stepGame(state, dt, speed = 1) {
   const total = dt * speed;
-  if (!(total > 0)) return;
+  if (!Number.isFinite(total) || !(total > 0)) return;
   const steps = Math.max(1, Math.ceil(total / MAX_SUBSTEP - 1e-9));
   const sub = total / steps;
   for (let i = 0; i < steps; i++) update(state, sub);

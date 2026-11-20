@@ -1,6 +1,7 @@
 // Zeichnet den Spielzustand auf ein Canvas. Keine Spiel-Logik hier!
 import { TILE, COLS, ROWS, WIDTH, HEIGHT, TOWER_TYPES } from './config.js';
 import { towerStats } from './game.js';
+import { rect, tri, disc } from './draw-utils.js';
 import { recoilOffset } from './tower-fx.js';
 import { drawEnemy, drawHealAura } from './render-enemies.js';
 import { updateFx, shakeX, shakeY, drawProjectileFx, drawParticles } from './render-fx.js';
@@ -150,26 +151,19 @@ function drawDecor(ctx, state) {
   }
 }
 
-function disc(ctx, x, y, r, color) {
-  ctx.fillStyle = color;
-  ctx.beginPath();
-  ctx.arc(x, y, r, 0, Math.PI * 2);
-  ctx.fill();
-}
-
 function drawTree(ctx, x, y, v) {
   const size = LARGE_DECOR_RADIUS.tree - 3 - (2 - v); // 6..8, plus Schatten (+1,+2) <= Radius
-  disc(ctx, x + 1, y + 2, size, 'rgba(0,0,0,0.2)'); // Schatten
-  disc(ctx, x, y, size, '#245a2a');
-  disc(ctx, x - 2, y - 2, size * 0.7, '#2f7a36');
-  disc(ctx, x - 4, y - 4, size * 0.3, '#4a9c4e');
+  disc(ctx, 'rgba(0,0,0,0.2)', x + 1, y + 2, size); // Schatten
+  disc(ctx, '#245a2a', x, y, size);
+  disc(ctx, '#2f7a36', x - 2, y - 2, size * 0.7);
+  disc(ctx, '#4a9c4e', x - 4, y - 4, size * 0.3);
 }
 
 function drawBush(ctx, x, y, v) {
   // Breite 4+6 = 10 (= Radius), Oberkante 3+6+1 = 10
-  disc(ctx, x - 4, y + 1, 6, '#2c6e33');
-  disc(ctx, x + 4, y + 1, 6, '#2c6e33');
-  disc(ctx, x, y - 3, 6 + v * 0.5, '#38853e');
+  disc(ctx, '#2c6e33', x - 4, y + 1, 6);
+  disc(ctx, '#2c6e33', x + 4, y + 1, 6);
+  disc(ctx, '#38853e', x, y - 3, 6 + v * 0.5);
 }
 
 function drawRock(ctx, x, y, v) {
@@ -187,9 +181,9 @@ function drawFlower(ctx, x, y, v) {
   const petals = ['#f4f1e6', '#f2c14e', '#e88aa8'][v];
   for (let i = 0; i < 4; i++) {
     const a = (i * Math.PI) / 2;
-    disc(ctx, x + Math.cos(a) * 2.5, y + Math.sin(a) * 2.5, 1.8, petals);
+    disc(ctx, petals, x + Math.cos(a) * 2.5, y + Math.sin(a) * 2.5, 1.8);
   }
-  disc(ctx, x, y, 1.5, '#d98a1f');
+  disc(ctx, '#d98a1f', x, y, 1.5);
 }
 
 function drawTuft(ctx, x, y) {
@@ -310,21 +304,6 @@ const RECOIL_PX = { arrow: 3, cannon: 4, frost: 3, sniper: 3 }; // maximaler Rü
 const BOW_Y = 7.13; // Bogenenden (Radius 8, Öffnungswinkel 1.1 rad)
 const BOW_X = 0.63;
 
-function rect(ctx, color, x, y, w, h) {
-  ctx.fillStyle = color;
-  ctx.fillRect(x, y, w, h);
-}
-
-function tri(ctx, color, x1, y1, x2, y2, x3, y3) {
-  ctx.fillStyle = color;
-  ctx.beginPath();
-  ctx.moveTo(x1, y1);
-  ctx.lineTo(x2, y2);
-  ctx.lineTo(x3, y3);
-  ctx.closePath();
-  ctx.fill();
-}
-
 // Steinsockel mit Fugen; wächst mit der Stufe
 function drawTowerBase(ctx, x, y, bw) {
   const top = y + BASE_TOP;
@@ -423,9 +402,9 @@ function drawTowerHead(ctx, type, x, y, angle, rec, accent) {
   } else if (type === 'cannon') {
     rect(ctx, METAL, 0, -4, 15, 8);
     rect(ctx, STONE_DARK, 12, -5, 4, 10);
-    disc(ctx, 0, 0, 5, accent);
+    disc(ctx, accent, 0, 0, 5);
   } else if (type === 'frost') {
-    disc(ctx, 0, 0, 6, FROST_GLOW);
+    disc(ctx, FROST_GLOW, 0, 0, 6);
     ctx.fillStyle = accent;
     ctx.beginPath();
     ctx.moveTo(-4, 0);
@@ -439,7 +418,7 @@ function drawTowerHead(ctx, type, x, y, angle, rec, accent) {
     rect(ctx, WOOD, -5, -2, 5, 4);
     rect(ctx, METAL, 0, -1.5, 15, 3);
     rect(ctx, STONE_DARK, 3, -4.5, 7, 2.5);
-    disc(ctx, 10, -3.2, 1.2, accent);
+    disc(ctx, accent, 10, -3.2, 1.2);
   }
   ctx.restore();
 }

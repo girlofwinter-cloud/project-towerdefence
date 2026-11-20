@@ -2095,6 +2095,30 @@ test('stepGame: dt=1/60 ergibt bei x1 (10 s) und x2 (5 s) gleiche Zeit und Ergeb
   assert.equal(b.gold, a.gold);
 });
 
+// x1 mit dt=1/30 (Gesamt 1/30 s -> 1 Teilschritt) und x2 mit dt=1/60 (Gesamt 1/30 s -> 1 Teilschritt):
+// beide rechnen mit identischen Teilschritten von 1/30 s, also muss das Ergebnis exakt gleich sein.
+test('stepGame: x1 mit dt=1/30 und x2 mit dt=1/60 ergeben bei gleicher Teilschrittfolge gleiche Zeit und Ergebnis', () => {
+  const a = speedScenario(), b = speedScenario();
+  const frames = 300;
+  for (let i = 0; i < frames; i++) stepGame(a, 1 / 30, 1);
+  for (let i = 0; i < frames; i++) stepGame(b, 1 / 60, 2);
+  assert.ok(Math.abs(a.time - b.time) < 1e-6);
+  assert.ok(a.time > 9.9);
+  assert.equal(b.kills, a.kills);
+  assert.equal(b.lives, a.lives);
+  assert.equal(b.gold, a.gold);
+});
+
+test('stepGame: nicht endliches dt*speed (Infinity, NaN) ändert nichts und hängt nicht', () => {
+  const s = speedScenario();
+  const before = { time: s.time, kills: s.kills, lives: s.lives, gold: s.gold };
+  stepGame(s, Infinity, 1);
+  stepGame(s, 1 / 60, Infinity);
+  stepGame(s, NaN, 1);
+  stepGame(s, 1 / 60, NaN);
+  assert.deepEqual({ time: s.time, kills: s.kills, lives: s.lives, gold: s.gold }, before);
+});
+
 // B-004: Zielmodus pro Turm
 test('Zielmodus: neue Türme starten mit first, setTargetMode lehnt unbekannte Modi ab', () => {
   const s = createGame();

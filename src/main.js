@@ -1,5 +1,5 @@
 // Verbindet Spiel-Logik, Rendering und Bedienung (DOM, Maus, Tastatur).
-import { TILE, WIDTH, HEIGHT, TOWER_TYPES, ENEMY_TYPES, MAX_WAVES, SPEED_STEPS, TARGET_MODES, TARGET_MODE_NAMES, waveSummary } from './config.js';
+import { TILE, WIDTH, HEIGHT, TOWER_TYPES, ENEMY_TYPES, MAX_WAVES, SPEED_STEPS, TARGET_MODES, TARGET_MODE_NAMES, MAX_SUBSTEP, waveSummary } from './config.js';
 import {
   createGame, stepGame, togglePause, buildTower, upgradeTower, sellTower, setTargetMode, startWave,
   canBuild, towerAt, towerStats, upgradeCost, sellValue,
@@ -122,15 +122,16 @@ function restart() {
 }
 
 window.addEventListener('keydown', (ev) => {
-  const type = Object.keys(TOWER_TYPES).find((t) => TOWER_TYPES[t].key === ev.key);
+  const key = ev.key.toLowerCase();
+  const type = Object.keys(TOWER_TYPES).find((t) => TOWER_TYPES[t].key === key);
   if (type) selectBuild(type);
-  else if (ev.key === ' ') { ev.preventDefault(); doStartWave(); }
-  else if (ev.key === 'Escape') { ui.buildType = null; ui.selectedTowerId = null; refreshUI(); }
-  else if (ev.key === 'u') doUpgrade();
-  else if (ev.key === 's') doSell();
-  else if (ev.key === 't') doCycleTarget();
-  else if (ev.key === 'f') toggleSpeed();
-  else if (ev.key === 'p') { togglePause(state); refreshUI(); }
+  else if (key === ' ') { ev.preventDefault(); doStartWave(); }
+  else if (key === 'escape') { ui.buildType = null; ui.selectedTowerId = null; refreshUI(); }
+  else if (key === 'u') doUpgrade();
+  else if (key === 's') doSell();
+  else if (key === 't') doCycleTarget();
+  else if (key === 'f') toggleSpeed();
+  else if (key === 'p') { togglePause(state); refreshUI(); }
 });
 
 // ---------- HUD ----------
@@ -184,7 +185,7 @@ function refreshUI() {
 let last = performance.now();
 let hudTimer = 0;
 function frame(now) {
-  const dt = Math.min(0.05, (now - last) / 1000);
+  const dt = Math.min(MAX_SUBSTEP, (now - last) / 1000);
   last = now;
   // Bei hoher Geschwindigkeit in kleinen Teilschritten simulieren.
   stepGame(state, dt, ui.speed);
