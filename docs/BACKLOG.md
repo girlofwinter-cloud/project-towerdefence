@@ -101,7 +101,7 @@ Die Pipeline nimmt nur Einträge mit Status `offen`, von oben nach unten.
   - Im Ledger die alten und neuen Kernwerte nennen.
 
 ### B-009: Grafik: Gelände und Weg
-- Status: offen
+- Status: fertig
 - Aufwand: M
 - Idee: Das Spielfeld sieht im Stil klassischer Tower-Defense-Spiele aus: Gras mit Variation, ein gepflasterter oder erdiger Weg mit Rand, Dekoration (Bäume, Büsche, Steine) auf nicht bebaubaren Kacheln, sichtbarer Ein- und Ausgang. Alles wird per Canvas-Code selbst gezeichnet, ohne Bilddateien und ohne Vorlagen aus anderen Spielen.
 - Akzeptanzkriterien:
@@ -148,3 +148,12 @@ Die Pipeline nimmt nur Einträge mit Status `offen`, von oben nach unten.
   - Gute Strategien (A>C>C>F, C>A>A>F) verlieren in den Wellen 14 bis 20 spürbar Leben, gewinnen Welle 20 aber weiter bei dt 1/30 und 1/60.
   - Troll-Belohnung prüfen (450 HP bei 14 Gold).
   - Doppelte Strategie-Tests in `tests/game.test.js` bündeln (gemeinsamer Helfer), Laufzeit senken.
+
+### B-014: Grafik-Feinschliff Gelände (nach Sichtprüfung im Browser)
+- Status: vorschlag
+- Aufwand: S
+- Idee: Nach B-009 sollte ein Mensch das Spielfeld im Browser ansehen. Bekannte Kandidaten: Das Schachbrett-Raster geht stellenweise in der Gras-Variation unter (`GRASS_SHIFT` in `src/render.js` von 0,07 auf etwa 0,025 senken oder die Grundtöne weiter spreizen), Tor- und Burg-Pfosten ragen ca. 6 px quer in Nachbarkacheln (Pfosten kürzen oder Nachbarkacheln von Dekoration freihalten), Cache-Schlüssel `path.points` müsste auch `state.blocked` berücksichtigen, falls dort später Türme landen.
+- Akzeptanzkriterien:
+  - Nur Zahlen und Zeichnung in `src/render.js` und `src/decor.js`.
+  - Raster bleibt für alle Nachbarpaare erkennbar (Helligkeit kehrt sich nie um), per Test belegt.
+  - `npm test` bleibt grün.
