@@ -3,6 +3,7 @@
 // damit sie ungefaehr in den Kreis des Gegners passen (Krone/Waffe bis ca. 1,3x).
 // Keine Allokationen pro Frame: Konstanten und Tabellen liegen auf Modulebene.
 import { ENEMY_TYPES, TILE } from './config.js';
+import { rect, tri, disc } from './draw-utils.js';
 import { walkPhase, animSpeedFactor, facingFor, facingFlip, facingTilt } from './enemy-fx.js';
 
 const TWO_PI = Math.PI * 2;
@@ -44,28 +45,6 @@ const HEAL_AURA_WIDTH = 1.5;
 const HEAL_AURA_PULSE = 0.04; // relative Radius-Schwankung
 const HEAL_AURA_SPEED = 2; // Bogenmass pro Sekunde
 
-function rect(ctx, color, x, y, w, h) {
-  ctx.fillStyle = color;
-  ctx.fillRect(x, y, w, h);
-}
-
-function tri(ctx, color, x1, y1, x2, y2, x3, y3) {
-  ctx.fillStyle = color;
-  ctx.beginPath();
-  ctx.moveTo(x1, y1);
-  ctx.lineTo(x2, y2);
-  ctx.lineTo(x3, y3);
-  ctx.closePath();
-  ctx.fill();
-}
-
-function disc(ctx, x, y, r, color) {
-  ctx.fillStyle = color;
-  ctx.beginPath();
-  ctx.arc(x, y, r, 0, TWO_PI);
-  ctx.fill();
-}
-
 function oval(ctx, color, x, y, rx, ry, rot) {
   ctx.fillStyle = color;
   ctx.beginPath();
@@ -94,9 +73,9 @@ function drawGrunt(ctx, phase) {
   oval(ctx, GOBLIN.dark, -0.05, 0.12, 0.55, 0.52, 0);
   tri(ctx, GOBLIN.ear, -0.3, -0.5, -0.98, -0.78, -0.3, -0.88);
   tri(ctx, GOBLIN.ear, 0.15, -0.8, 0.55, -1.0, 0.45, -0.55);
-  disc(ctx, 0.12, -0.45, 0.46, GOBLIN.skin);
-  disc(ctx, 0.3, -0.5, 0.15, WHITE);
-  disc(ctx, 0.35, -0.5, 0.075, EYE_DARK);
+  disc(ctx, GOBLIN.skin, 0.12, -0.45, 0.46);
+  disc(ctx, WHITE, 0.3, -0.5, 0.15);
+  disc(ctx, EYE_DARK, 0.35, -0.5, 0.075);
   rect(ctx, GOBLIN.feet, 0.12, -0.22, 0.34, 0.07);
 }
 
@@ -109,10 +88,10 @@ function drawRunner(ctx, phase) {
   rect(ctx, RUNNER.streak, -0.85, 0.05, 0.35, 0.07);
   oval(ctx, RUNNER.dark, 0, 0, 0.7, 0.28, -0.35);
   oval(ctx, RUNNER.skin, 0.05, -0.05, 0.6, 0.24, -0.35);
-  disc(ctx, 0.55, -0.4, 0.3, RUNNER.skin);
+  disc(ctx, RUNNER.skin, 0.55, -0.4, 0.3);
   tri(ctx, RUNNER.dark, 0.35, -0.6, 0.15, -0.9, 0.55, -0.68);
-  disc(ctx, 0.66, -0.43, 0.1, WHITE);
-  disc(ctx, 0.69, -0.43, 0.05, EYE_DARK);
+  disc(ctx, WHITE, 0.66, -0.43, 0.1);
+  disc(ctx, EYE_DARK, 0.69, -0.43, 0.05);
 }
 
 // Panzer-Troll: breite rotbraune Gestalt mit Ruestungsplatten und Schild
@@ -125,43 +104,43 @@ function drawTank(ctx, phase) {
   rect(ctx, TANK.plate, -0.7, -0.4, 0.35, 0.85);
   rect(ctx, TANK.plate, -0.25, -0.4, 0.35, 0.85);
   rect(ctx, TANK.plateDark, -0.7, 0.2, 0.8, 0.12);
-  disc(ctx, -0.52, -0.25, 0.05, TANK.rivet);
-  disc(ctx, -0.07, -0.25, 0.05, TANK.rivet);
+  disc(ctx, TANK.rivet, -0.52, -0.25, 0.05);
+  disc(ctx, TANK.rivet, -0.07, -0.25, 0.05);
   // Kopf mit Helm
-  disc(ctx, 0.45, -0.55, 0.3, TANK.skin);
+  disc(ctx, TANK.skin, 0.45, -0.55, 0.3);
   rect(ctx, TANK.plateDark, 0.15, -0.88, 0.62, 0.22);
-  disc(ctx, 0.55, -0.5, 0.09, WHITE);
-  disc(ctx, 0.58, -0.5, 0.045, EYE_DARK);
+  disc(ctx, WHITE, 0.55, -0.5, 0.09);
+  disc(ctx, EYE_DARK, 0.58, -0.5, 0.045);
   // Schild vorn
   rect(ctx, TANK.plateDark, 0.5, -0.35, 0.42, 0.9);
   rect(ctx, TANK.plate, 0.55, -0.3, 0.32, 0.8);
-  disc(ctx, 0.71, 0.1, 0.1, TANK.rivet);
+  disc(ctx, TANK.rivet, 0.71, 0.1, 0.1);
 }
 
 // Oger-Koenig: grosse violette Gestalt mit Krone, Keule und pulsierender Aura
 function drawBoss(ctx, phase, time) {
-  disc(ctx, 0, 0, 1.0 + Math.sin(time * 3) * 0.08, OGRE.aura);
+  disc(ctx, OGRE.aura, 0, 0, 1.0 + Math.sin(time * 3) * 0.08);
   leg(ctx, OGRE.dark, 0.36, -0.32, 0.55, 0.38, phase, 0.14, 0.08);
   leg(ctx, OGRE.dark, 0.36, 0.32, 0.55, 0.38, phase + Math.PI, 0.14, 0.08);
   ctx.translate(0, -Math.abs(Math.sin(phase)) * BOB * 0.6);
   // Keule hinter dem Koerper (schwingt leicht mit)
   rect(ctx, OGRE.club, 0.62, -0.5, 0.18, 1.0);
-  disc(ctx, 0.71, -0.55, 0.24, OGRE.club);
+  disc(ctx, OGRE.club, 0.71, -0.55, 0.24);
   oval(ctx, OGRE.dark, 0, 0.1, 0.78, 0.7, 0);
   oval(ctx, OGRE.skin, 0, 0.05, 0.72, 0.64, 0);
   oval(ctx, OGRE.light, 0.05, 0.22, 0.42, 0.34, 0);
   // Kopf
-  disc(ctx, 0.2, -0.4, 0.42, OGRE.light);
+  disc(ctx, OGRE.light, 0.2, -0.4, 0.42);
   tri(ctx, OGRE.tusk, 0.35, -0.12, 0.45, 0.1, 0.5, -0.15);
   tri(ctx, OGRE.tusk, 0.1, -0.12, 0.05, 0.1, 0.2, -0.12);
-  disc(ctx, 0.36, -0.46, 0.1, OGRE.eye);
-  disc(ctx, 0.04, -0.46, 0.08, OGRE.eye);
+  disc(ctx, OGRE.eye, 0.36, -0.46, 0.1);
+  disc(ctx, OGRE.eye, 0.04, -0.46, 0.08);
   // Krone
   rect(ctx, OGRE.goldDark, -0.15, -0.88, 0.72, 0.16);
   tri(ctx, OGRE.gold, -0.15, -0.88, -0.1, -1.2, 0.1, -0.88);
   tri(ctx, OGRE.gold, 0.1, -0.88, 0.21, -1.24, 0.32, -0.88);
   tri(ctx, OGRE.gold, 0.32, -0.88, 0.5, -1.2, 0.57, -0.88);
-  disc(ctx, 0.21, -0.8, 0.05, OGRE.eye);
+  disc(ctx, OGRE.eye, 0.21, -0.8, 0.05);
 }
 
 // Schamane: gruene Robe mit Kapuze, Stab mit leuchtender Kugel
@@ -171,16 +150,16 @@ function drawHealer(ctx, phase, time) {
   ctx.translate(0, -Math.abs(Math.sin(phase)) * BOB);
   // Stab hinter der Robe, vorn mit pulsierendem Leuchten
   rect(ctx, SHAMAN.staff, 0.55, -0.75, 0.1, 1.45);
-  disc(ctx, 0.6, -0.85, 0.2 + Math.sin(time * 4) * 0.03, SHAMAN.glow);
-  disc(ctx, 0.6, -0.85, 0.11, SHAMAN.hood);
+  disc(ctx, SHAMAN.glow, 0.6, -0.85, 0.2 + Math.sin(time * 4) * 0.03);
+  disc(ctx, SHAMAN.hood, 0.6, -0.85, 0.11);
   // Robe (unten breiter)
   tri(ctx, SHAMAN.dark, -0.65, 0.6, 0.1, -0.5, 0.65, 0.6);
   tri(ctx, SHAMAN.robe, -0.55, 0.55, 0.05, -0.45, 0.55, 0.55);
   // Kopf mit Kapuze
-  disc(ctx, 0.08, -0.5, 0.4, SHAMAN.hood);
-  disc(ctx, 0.2, -0.45, 0.26, SHAMAN.skin);
-  disc(ctx, 0.3, -0.48, 0.08, WHITE);
-  disc(ctx, 0.33, -0.48, 0.04, EYE_DARK);
+  disc(ctx, SHAMAN.hood, 0.08, -0.5, 0.4);
+  disc(ctx, SHAMAN.skin, 0.2, -0.45, 0.26);
+  disc(ctx, WHITE, 0.3, -0.48, 0.08);
+  disc(ctx, EYE_DARK, 0.33, -0.48, 0.04);
 }
 
 // Schildtraeger: kleine Gestalt hinter einem grossen Schild, der die Vorderseite abdeckt
@@ -189,23 +168,23 @@ function drawShielded(ctx, phase) {
   leg(ctx, SHIELDED.feet, 0.3, 0.25, 0.5, 0.38, phase + Math.PI, 0.14, 0.08);
   ctx.translate(0, -Math.abs(Math.sin(phase)) * BOB * 0.6);
   oval(ctx, SHIELDED.dark, -0.2, 0.05, 0.6, 0.55, 0);
-  disc(ctx, -0.05, -0.55, 0.36, SHIELDED.skin);
+  disc(ctx, SHIELDED.skin, -0.05, -0.55, 0.36);
   rect(ctx, SHIELDED.helm, -0.4, -0.9, 0.7, 0.2);
-  disc(ctx, 0.12, -0.55, 0.08, WHITE);
-  disc(ctx, 0.15, -0.55, 0.04, EYE_DARK);
+  disc(ctx, WHITE, 0.12, -0.55, 0.08);
+  disc(ctx, EYE_DARK, 0.15, -0.55, 0.04);
   // Grosser Schild vorn (Rand, Holz, Buckel)
   oval(ctx, SHIELDED.rim, 0.5, 0.05, 0.5, 0.88, 0);
   oval(ctx, SHIELDED.shield, 0.5, 0.05, 0.41, 0.77, 0);
   oval(ctx, SHIELDED.shieldDark, 0.5, 0.05, 0.14, 0.55, 0);
-  disc(ctx, 0.5, 0.05, 0.14, SHIELDED.boss);
+  disc(ctx, SHIELDED.boss, 0.5, 0.05, 0.14);
 }
 
 // Unbekannter Typ: generische Figur (Kreis in def.color, falls vorhanden) mit Augen
 function drawGeneric(ctx, phase, time, color) {
   ctx.translate(0, -Math.abs(Math.sin(phase)) * BOB);
-  disc(ctx, 0, 0, 1, color);
-  disc(ctx, 0.3, -0.25, 0.2, WHITE);
-  disc(ctx, 0.36, -0.25, 0.1, EYE_DARK);
+  disc(ctx, color, 0, 0, 1);
+  disc(ctx, WHITE, 0.3, -0.25, 0.2);
+  disc(ctx, EYE_DARK, 0.36, -0.25, 0.1);
 }
 
 // Tabelle statt Objekt-Literal-Lookup (kein Prototype-Treffer bei exotischen Typnamen)
@@ -221,7 +200,7 @@ const FALLBACK_COLOR = '#999';
 
 // Frost: bluelicher Glanz ueber der Figur plus kleine Eiskristalle (lokale Einheiten)
 function drawFrostOverlay(ctx) {
-  disc(ctx, 0, 0, 0.95, FROST_TINT);
+  disc(ctx, FROST_TINT, 0, 0, 0.95);
   tri(ctx, FROST_CRYSTAL, -0.55, -0.7, -0.4, -0.95, -0.25, -0.7);
   tri(ctx, FROST_CRYSTAL, 0.55, 0.1, 0.7, -0.15, 0.85, 0.1);
   tri(ctx, FROST_CRYSTAL, -0.2, 0.55, -0.05, 0.3, 0.1, 0.55);

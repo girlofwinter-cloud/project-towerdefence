@@ -217,6 +217,7 @@ Die Pipeline nimmt nur Einträge mit Status `offen`, von oben nach unten.
 
 ### B-021: Tastatur: Groß-/Kleinschreibung und Wellenstart in der Pause
 - Status: vorschlag
+- Teilweise erledigt (agent/aufraeumen): Punkt (1) Tasten mit `toLowerCase()`. Offen: Punkt (2) Wellenstart in der Pause.
 - Aufwand: S
 - Idee: Hinweise aus dem Review von B-002. (1) Tasten `p`, `u`, `s`, `f` reagieren nicht bei Caps Lock oder Shift; in `src/main.js` einheitlich `ev.key.toLowerCase()` verwenden. (2) `doStartWave` funktioniert in der Pause, die Welle beginnt erst nach dem Fortsetzen; Starten in der Pause sperren oder die Pause dabei aufheben.
 - Akzeptanzkriterien:
@@ -226,6 +227,7 @@ Die Pipeline nimmt nur Einträge mit Status `offen`, von oben nach unten.
 
 ### B-022: stepGame härten und Tests präzisieren
 - Status: vorschlag
+- Teilweise erledigt (agent/aufraeumen): Punkte (3) Absicherung gegen nicht endliches `dt`, (4) `MAX_SUBSTEP` in `main.js`, und für (1) ein zusätzlicher Test mit identischen Teilschritten. Offen: der fragile dt=1/60-Test bleibt unverändert bestehen (Regel 2), (2) Teilschrittlänge direkt prüfen.
 - Aufwand: S
 - Idee: Hinweise aus Review und Test von B-003. (1) Der Test "dt=1/60 ergibt bei x1 und x2 gleiche Zeit und Ergebnis" vergleicht 1/60- mit 1/30-Schritten und ist nur beim Pfeilturm zufällig grün (bei Pfeil/Kanone mit je 3 Türmen weichen Kills und Gold ab); auf dt=0,05 umstellen oder nur die Zeit exakt und Kills/Gold mit Toleranz prüfen. (2) Teilschrittlänge direkt prüfen (Anzahl `update`-Aufrufe zählen). (3) `stepGame(state, Infinity, 1)` hängt; Obergrenze für die Schrittzahl. (4) `Math.min(0.05, …)` in `src/main.js` `frame()` durch `MAX_SUBSTEP` ersetzen.
 - Akzeptanzkriterien:
@@ -235,8 +237,16 @@ Die Pipeline nimmt nur Einträge mit Status `offen`, von oben nach unten.
 
 ### B-023: Zielmodus: Feinschliff
 - Status: vorschlag
+- Teilweise erledigt (agent/aufraeumen): Punkt (1) `TARGET_MODES[0]`. Offen: (2) Integrationstest über `update()`, (3) Render-Symbol.
 - Aufwand: S
 - Idee: Hinweise aus dem Review von B-004. (1) Startwert in `buildTower` als `TARGET_MODES[0]` statt hart codiertem `'first'`. (2) Test über `update()`, dass ein Turm im laufenden Spiel wirklich nach seinem `targetMode` schießt (heute ist nur `pickTarget` direkt getestet). (3) Zielmodus im Render (kleines Symbol am ausgewählten Turm) erst nach Sichtprüfung im Browser entscheiden.
 - Akzeptanzkriterien:
   - Integrationstest: zwei Gegner in Reichweite, Modus `strong` trifft den stärkeren zuerst.
   - `npm test` bleibt grün.
+
+### B-024: Eigene Konstante für die maximale Frame-Dauer
+- Status: vorschlag
+- Aufwand: S
+- Idee: Hinweis aus dem Review von agent/aufraeumen. In `src/main.js` `frame()` begrenzt `MAX_SUBSTEP` die Frame-Dauer. Das ist ein anderes Konzept (Teilschritt der Simulation) als die Obergrenze für ein Frame, nur zufällig derselbe Wert. Eigene Konstante `MAX_FRAME_DT = 0.05` in `src/config.js`.
+- Akzeptanzkriterien:
+  - Verhalten unverändert, `npm test` bleibt grün.
