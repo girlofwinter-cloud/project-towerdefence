@@ -1,10 +1,11 @@
 // Verbindet Spiel-Logik, Rendering und Bedienung (DOM, Maus, Tastatur).
-import { TILE, WIDTH, HEIGHT, TOWER_TYPES, ENEMY_TYPES, MAX_WAVES, SPEED_STEPS, TARGET_MODES, TARGET_MODE_NAMES, MAX_SUBSTEP, waveSummary } from './config.js';
+import { TILE, WIDTH, HEIGHT, TOWER_TYPES, ENEMY_TYPES, MAX_WAVES, SPEED_STEPS, TARGET_MODES, TARGET_MODE_NAMES, MAX_SUBSTEP, LOW_LIVES, waveSummary } from './config.js';
 import {
   createGame, stepGame, togglePause, buildTower, upgradeTower, sellTower, setTargetMode, startWave,
   canBuild, towerAt, towerStats, upgradeCost, sellValue,
 } from './game.js';
 import { render } from './render.js';
+import { livesText } from './hud.js';
 
 const canvas = document.getElementById('game');
 canvas.width = WIDTH;
@@ -81,6 +82,7 @@ canvas.addEventListener('contextmenu', (ev) => {
 // ---------- Buttons & Tastatur ----------
 $('start-wave').addEventListener('click', doStartWave);
 $('speed').addEventListener('click', toggleSpeed);
+$('pause').addEventListener('click', doTogglePause);
 $('upgrade').addEventListener('click', doUpgrade);
 $('sell').addEventListener('click', doSell);
 $('target-mode').addEventListener('click', doCycleTarget);
@@ -89,6 +91,10 @@ $('restart').addEventListener('click', restart);
 function doStartWave() {
   const res = startWave(state);
   if (!res.ok) flash(res.reason);
+  refreshUI();
+}
+function doTogglePause() {
+  togglePause(state);
   refreshUI();
 }
 function toggleSpeed() {
@@ -131,18 +137,23 @@ window.addEventListener('keydown', (ev) => {
   else if (key === 's') doSell();
   else if (key === 't') doCycleTarget();
   else if (key === 'f') toggleSpeed();
-  else if (key === 'p') { togglePause(state); refreshUI(); }
+  else if (key === 'p') doTogglePause();
 });
 
 // ---------- HUD ----------
 function refreshUI() {
   $('gold').textContent = state.gold;
   $('lives').textContent = state.lives;
+  $('hearts').textContent = livesText(state.lives);
+  $('lives-box').classList.toggle('low', state.status === 'playing' && state.lives <= LOW_LIVES);
   $('wave').textContent = `${state.wave} / ${MAX_WAVES}`;
-  $('speed').textContent = `Tempo ×${ui.speed}`;
+  $('speed').textContent = `Tempo ×${ui.speed} (F)`;
   $('pause-hint').hidden = !state.paused;
+  // Deutliches Banner über dem Spielfeld (nur Anzeige, Bauen bleibt möglich)
+  $('pause-banner').hidden = !state.paused;
+  $('pause').textContent = state.paused ? '▶ Weiter (P)' : '⏸ Pause (P)';
   $('start-wave').disabled = state.waveActive || state.status !== 'playing';
-  $('start-wave').textContent = state.waveActive ? 'Welle läuft…' : `Welle ${state.wave + 1} starten`;
+  $('start-wave').textContent = state.waveActive ? 'Welle läuft…' : `Welle ${state.wave + 1} starten (Leertaste)`;
 
   // Vorschau der nächsten Welle (nur solange keine Welle läuft)
   const showPreview = !state.waveActive && state.status === 'playing' && state.wave < MAX_WAVES;

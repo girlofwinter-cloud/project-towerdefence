@@ -6,9 +6,10 @@ import {
   canBuild, towerStats, upgradeCost, togglePause, stepGame, setTargetMode, pickTarget,
 } from '../src/game.js';
 import { tileHash, decorFor, isBorderTile, LARGE_DECOR_KINDS, LARGE_DECOR_RADIUS, BORDER_DECOR_CHANCE, INNER_DECOR_CHANCE } from '../src/decor.js';
+import { livesText } from '../src/hud.js';
 import { recoilOffset } from '../src/tower-fx.js';
 import { buildPath, pointAt, pathTiles } from '../src/path.js';
-import { TOWER_TYPES, MAX_WAVES, START_GOLD, START_LIVES, WAYPOINTS, TILE, COLS, ROWS, TARGET_MODES, waveFor, waveBonus, waveSummary, hpScale, ENEMY_TYPES, SPEED_STEPS, MAX_SUBSTEP } from '../src/config.js';
+import { TOWER_TYPES, MAX_WAVES, START_GOLD, START_LIVES, LOW_LIVES, WAYPOINTS, TILE, COLS, ROWS, TARGET_MODES, waveFor, waveBonus, waveSummary, hpScale, ENEMY_TYPES, SPEED_STEPS, MAX_SUBSTEP } from '../src/config.js';
 
 // Hilfsfunktion: Spiel n Sekunden in kleinen Schritten laufen lassen
 function run(state, seconds, dt = 1 / 60) {
@@ -2185,4 +2186,14 @@ test('Zielmodus Edge: strong ignoriert Rüstung, setTargetMode mit unbekannter i
   assert.equal(pickTarget([plain, armored], tower, 50, 'strong'), armored);
   const s = createGame();
   assert.equal(setTargetMode(s, 9999, 'first').ok, false);
+});
+
+test('livesText: gefüllte und leere Herzen, nie negativ, gekappt', () => {
+  assert.equal(livesText(3, 3), '❤️❤️❤️');
+  assert.equal(livesText(1, 3), '❤️🖤🖤');
+  assert.equal(livesText(0, 3), '🖤🖤🖤');
+  assert.equal(livesText(-2, 3), '🖤🖤🖤');
+  assert.equal(livesText(5, 3), '❤️❤️❤️');
+  assert.equal(livesText(START_LIVES), '❤️'.repeat(START_LIVES));
+  assert.ok(LOW_LIVES >= 1 && LOW_LIVES < START_LIVES);
 });
