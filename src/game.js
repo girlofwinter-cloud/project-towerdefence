@@ -18,6 +18,7 @@ export function createGame(overrides = {}) {
     projectiles: [],
     effects: [],
     status: 'playing', // 'playing' | 'won' | 'lost'
+    paused: false, // Pause: update() ändert nichts, Bauen bleibt erlaubt
     kills: 0,
     time: 0,
     nextId: 1,
@@ -147,8 +148,14 @@ export function spawnEnemy(state, type, wave = state.wave) {
 
 // ---------- Update-Schleife ----------
 
+// Pause umschalten (nur während des Spiels sinnvoll).
+export function togglePause(state) {
+  if (state.status === 'playing') state.paused = !state.paused;
+  return state.paused;
+}
+
 export function update(state, dt) {
-  if (state.status !== 'playing') return;
+  if (state.status !== 'playing' || state.paused) return;
   state.time += dt;
 
   spawnStep(state, dt);

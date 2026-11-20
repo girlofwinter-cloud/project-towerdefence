@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   createGame, update, buildTower, upgradeTower, sellTower, startWave, spawnEnemy,
-  canBuild, towerStats, upgradeCost,
+  canBuild, towerStats, upgradeCost, togglePause,
 } from '../src/game.js';
 import { tileHash, decorFor, isBorderTile, LARGE_DECOR_KINDS, LARGE_DECOR_RADIUS, BORDER_DECOR_CHANCE, INNER_DECOR_CHANCE } from '../src/decor.js';
 import { recoilOffset } from '../src/tower-fx.js';
@@ -2009,4 +2009,41 @@ test('waveFor: Wellen 1-20 sind geordnet und endlich, Heiler ab 7, Schildträger
     assert.ok(list.length > prev, `Welle ${w}: Gegnermenge ${list.length} <= ${prev}`);
     prev = list.length;
   }
+});
+
+test('Pause: update ändert den Zustand nicht', () => {
+  const s = createGame();
+  buildTower(s, 'arrow', ...freeTileNearPath(s));
+  startWave(s);
+  run(s, 3);
+  togglePause(s);
+  assert.equal(s.paused, true);
+  const before = JSON.stringify({ ...s, path: null, blocked: null });
+  run(s, 10);
+  assert.equal(JSON.stringify({ ...s, path: null, blocked: null }), before);
+});
+
+test('Pause: erneutes Umschalten setzt das Spiel fort', () => {
+  const s = createGame();
+  startWave(s);
+  togglePause(s);
+  run(s, 1);
+  assert.equal(s.time, 0);
+  togglePause(s);
+  run(s, 1);
+  assert.ok(s.time > 0.9);
+});
+
+test('Pause: Bauen bleibt erlaubt', () => {
+  const s = createGame();
+  togglePause(s);
+  const [col, row] = freeTileNearPath(s);
+  assert.equal(buildTower(s, 'arrow', col, row).ok, true);
+  assert.equal(s.towers.length, 1);
+});
+
+test('Pause: nicht nach Spielende umschaltbar', () => {
+  const s = createGame({ status: 'lost' });
+  togglePause(s);
+  assert.equal(s.paused, false);
 });
