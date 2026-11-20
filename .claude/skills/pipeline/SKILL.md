@@ -13,11 +13,12 @@ Du bist der **Orchestrator**. Du schreibst selbst keinen Spielcode, du koordinie
    Ist das Backlog leer, rufe den Subagent `ideator` auf, trage seine Ideen ein und stoppe, damit ein Mensch priorisieren kann.
 2. **Branch.** `git switch -c agent/<kurzname>` von `main`.
 3. **Entwickeln.** Subagent `developer` mit dem Eintrag samt Akzeptanzkriterien beauftragen.
-4. **Testen.** Subagent `tester` aufrufen. Antwortet er `FAIL`, zurück zu Schritt 3 mit seinem Bericht.
-5. **Reviewen.** Subagent `reviewer` aufrufen. Antwortet er `CHANGES_REQUESTED`, zurück zu Schritt 3 mit seinen Befunden.
-6. **Schleifenbremse.** Maximal **3** Runden Entwickeln, Testen, Reviewen. Danach Status `blockiert` setzen, Ledger-Eintrag schreiben und einen Menschen fragen. Nicht weiter probieren.
-7. **Ledger.** Hänge einen Eintrag an `docs/LEDGER.md` an (Format dort) und setze den Backlog-Status auf `fertig` oder `blockiert`.
-8. **Abschluss.** `npm test` ein letztes Mal selbst ausführen, committen, `git push -u origin agent/<kurzname>`. Pull Request nur auf ausdrücklichen Wunsch.
+4. **Testen.** Subagent `tester` aufrufen, knapp halten: `npm test`, Diff auf gelöschte oder abgeschwächte Tests, gezielte Randfälle des neuen Codes. Keine Fuzz-, Stress- oder Mehrfachläufe ohne konkreten Verdacht. Antwortet er `FAIL`, zurück zu Schritt 3 mit seinem Bericht.
+5. **Reviewen.** Subagent `reviewer` aufrufen, **eine Runde**. `CHANGES_REQUESTED` nur bei Muss-Punkten: Kriterium verletzt, Regel gebrochen, Spielbarkeit oder Testverlässlichkeit klar beeinträchtigt. Alles andere sind Hinweise und kommen als Backlog-Eintrag mit Status `vorschlag`, ohne neue Runde.
+6. **Nachbessern.** Bei Muss-Punkten den `developer` einmal nachbessern lassen. Die Behebung prüft der Orchestrator selbst (`npm test`, `git diff`, gezielter Einzellauf des betroffenen Tests); tester und reviewer laufen dafür nicht erneut.
+7. **Schleifenbremse.** Maximal **2** Entwicklungsrunden. Ist danach noch ein Muss-Punkt offen, Status `blockiert` setzen, Ledger-Eintrag schreiben und einen Menschen fragen. Nicht weiter probieren.
+8. **Ledger.** Hänge einen Eintrag an `docs/LEDGER.md` an (Format dort) und setze den Backlog-Status auf `fertig` oder `blockiert`.
+9. **Abschluss.** `npm test` ein letztes Mal selbst ausführen, committen, `git push -u origin agent/<kurzname>`. Pull Request nur auf ausdrücklichen Wunsch.
 
 ## Regeln
 - Immer nur ein Feature pro Durchlauf.
