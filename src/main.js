@@ -1,7 +1,7 @@
 // Verbindet Spiel-Logik, Rendering und Bedienung (DOM, Maus, Tastatur).
-import { TILE, WIDTH, HEIGHT, TOWER_TYPES, ENEMY_TYPES, MAX_WAVES, waveSummary } from './config.js';
+import { TILE, WIDTH, HEIGHT, TOWER_TYPES, ENEMY_TYPES, MAX_WAVES, SPEED_STEPS, waveSummary } from './config.js';
 import {
-  createGame, update, togglePause, buildTower, upgradeTower, sellTower, startWave,
+  createGame, stepGame, togglePause, buildTower, upgradeTower, sellTower, startWave,
   canBuild, towerAt, towerStats, upgradeCost, sellValue,
 } from './game.js';
 import { render } from './render.js';
@@ -12,7 +12,7 @@ canvas.height = HEIGHT;
 const ctx = canvas.getContext('2d');
 
 const $ = (id) => document.getElementById(id);
-const ui = { buildType: null, selectedTowerId: null, hover: null, speed: 1, message: '', messageTtl: 0 };
+const ui = { buildType: null, selectedTowerId: null, hover: null, speed: SPEED_STEPS[0], message: '', messageTtl: 0 };
 let state = createGame();
 
 // Für Tests und Neugierige: im Browser-Konsole `__game` eintippen.
@@ -91,7 +91,7 @@ function doStartWave() {
   refreshUI();
 }
 function toggleSpeed() {
-  ui.speed = ui.speed === 1 ? 2 : ui.speed === 2 ? 3 : 1;
+  ui.speed = SPEED_STEPS[(SPEED_STEPS.indexOf(ui.speed) + 1) % SPEED_STEPS.length];
   refreshUI();
 }
 function doUpgrade() {
@@ -108,7 +108,7 @@ function doSell() {
 }
 function restart() {
   state = createGame();
-  Object.assign(ui, { buildType: null, selectedTowerId: null, speed: 1 });
+  Object.assign(ui, { buildType: null, selectedTowerId: null, speed: SPEED_STEPS[0] });
   refreshUI();
 }
 
@@ -175,8 +175,8 @@ let hudTimer = 0;
 function frame(now) {
   const dt = Math.min(0.05, (now - last) / 1000);
   last = now;
-  // Bei hoher Geschwindigkeit mehrere kleine Schritte statt einem großen.
-  for (let i = 0; i < ui.speed; i++) update(state, dt);
+  // Bei hoher Geschwindigkeit in kleinen Teilschritten simulieren.
+  stepGame(state, dt, ui.speed);
   ui.messageTtl -= dt;
   render(ctx, state, ui);
   hudTimer -= dt;

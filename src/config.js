@@ -12,6 +12,10 @@ export const MAX_WAVES = 20;
 export const SELL_RATIO = 0.7;
 export const MAX_LEVEL = 3;
 
+// Spielgeschwindigkeiten (Taste F / Button) und maximale Teilschrittlänge der Simulation in Sekunden.
+export const SPEED_STEPS = [1, 2, 3];
+export const MAX_SUBSTEP = 0.05;
+
 // Wegpunkte in Kachel-Koordinaten [spalte, zeile].
 // Erster und letzter Punkt liegen außerhalb des Spielfelds (Ein-/Ausgang).
 export const WAYPOINTS = [
