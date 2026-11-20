@@ -250,3 +250,11 @@ Die Pipeline nimmt nur Einträge mit Status `offen`, von oben nach unten.
 - Idee: Hinweis aus dem Review von agent/aufraeumen. In `src/main.js` `frame()` begrenzt `MAX_SUBSTEP` die Frame-Dauer. Das ist ein anderes Konzept (Teilschritt der Simulation) als die Obergrenze für ein Frame, nur zufällig derselbe Wert. Eigene Konstante `MAX_FRAME_DT = 0.05` in `src/config.js`.
 - Akzeptanzkriterien:
   - Verhalten unverändert, `npm test` bleibt grün.
+
+### B-025: HUD-Feinschliff (nach Sichtprüfung im Browser)
+- Status: vorschlag
+- Aufwand: S
+- Idee: Hinweise aus Review und Test von agent/hud-sichtbar. (1) Leere Herzen 🖤 sind auf dunklem Grund kaum sichtbar; 🤍 oder ein anderes Symbol nehmen. (2) Warn-Pulsieren: `@media (prefers-reduced-motion: reduce)` ohne Animation, Deckkraft nicht unter 0,6. (3) Pause-Banner bei schmalem Spielfeld: `width: max-content; max-width: 90%`. (4) Screenreader: `#hearts` mit `aria-hidden="true"`, Container mit `aria-label`. (5) `livesText` bei nicht endlichem `lives` auf 0 setzen, Tests für NaN und `max = 0`. (6) Pause-Button nach dem Klick den Fokus abgeben, damit die Leertaste nicht doppelt auslöst.
+- Akzeptanzkriterien:
+  - Alle Punkte erst nach Sichtprüfung im Browser bewerten.
+  - `npm test` bleibt grün.

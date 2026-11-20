@@ -11,7 +11,7 @@
     <h1>🏰 Project TowerDefence</h1>
     <div class="hud">
       <span title="Gold">💰 <b id="gold">0</b></span>
-      <span title="Leben">❤️ <b id="lives">0</b></span>
+      <span id="lives-box" title="Leben"><span id="hearts"></span> <b id="lives">0</b></span>
       <span title="Welle">🌊 <b id="wave">0</b></span>
       <span id="pause-hint" hidden>⏸ Pausiert (P)</span>
     </div>
@@ -26,12 +26,14 @@
         <button id="restart">Neues Spiel</button>
       </div>
       <p id="message" role="status"></p>
+      <div id="pause-banner" hidden>⏸ PAUSE – P drücken zum Fortsetzen</div>
     </div>
 
     <aside>
       <div class="controls">
         <button id="start-wave" class="primary">Welle 1 starten</button>
-        <button id="speed">Tempo ×1</button>
+        <button id="pause">⏸ Pause (P)</button>
+        <button id="speed">Tempo ×1 (F)</button>
       </div>
       <p id="wave-preview"></p>
       <h3>Türme</h3>
@@ -43,12 +45,14 @@
         <button id="upgrade"></button>
         <button id="sell"></button>
       </div>
-      <details class="help">
+      <details class="help" open>
         <summary>Steuerung</summary>
         <ul>
           <li><kbd>1</kbd>–<kbd>4</kbd> Turm wählen, dann aufs Feld klicken</li>
-          <li>Turm anklicken: verbessern (<kbd>U</kbd>) / verkaufen (<kbd>S</kbd>) / Zielregel (<kbd>T</kbd>)</li>
-          <li><kbd>Leertaste</kbd> nächste Welle, <kbd>F</kbd> Tempo</li>
+          <li><kbd>Leertaste</kbd> nächste Welle starten</li>
+          <li><kbd>P</kbd> Pause / Weiter</li>
+          <li><kbd>F</kbd> Spieltempo wechseln</li>
+          <li>Turm anklicken: <kbd>U</kbd> verbessern, <kbd>S</kbd> verkaufen, <kbd>T</kbd> Zielregel</li>
           <li><kbd>Esc</kbd> / Rechtsklick: abbrechen</li>
         </ul>
       </details>
