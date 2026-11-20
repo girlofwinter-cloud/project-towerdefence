@@ -77,11 +77,16 @@ export const TOWER_TYPES = {
 };
 
 // speed in Kacheln/Sekunde, reward = Gold pro Kill, leak = verlorene Leben am Ziel
+// Healer: healRadius in Kacheln, healPerSec = Anteil der maxHp des Ziels pro Sekunde,
+//   healInterval = Sekunden (Spielzeit) zwischen zwei Heilimpulsen.
+// Schildträger: armor = Anteil des Schadens, den Treffer ohne Splash blockiert (0,5 = 50 %).
 export const ENEMY_TYPES = {
   grunt: { name: 'Goblin', hp: 40, speed: 1.4, reward: 6, leak: 1, radius: 11, color: '#6fbf4a' },
   runner: { name: 'Flitzer', hp: 25, speed: 2.6, reward: 5, leak: 1, radius: 9, color: '#f2c14e' },
   tank: { name: 'Panzer-Troll', hp: 450, speed: 0.8, reward: 14, leak: 2, radius: 14, color: '#b5523b' },
   boss: { name: 'Oger-König', hp: 850, speed: 0.6, reward: 80, leak: 6, radius: 18, color: '#7a2e8e' },
+  healer: { name: 'Schamane', hp: 40, speed: 1.1, reward: 9, leak: 1, radius: 11, color: '#3fbf8f', healRadius: 1.5, healPerSec: 0.02, healInterval: 1 },
+  shielded: { name: 'Schildträger', hp: 60, speed: 1.0, reward: 12, leak: 2, radius: 13, color: '#6f86a8', armor: 0.5 },
 };
 
 export function waveBonus(wave) {
@@ -112,6 +117,8 @@ export function waveFor(wave) {
   add('grunt', 6 + wave * 3, Math.max(0.3, 0.9 - wave * 0.04));
   if (wave >= 3) add('runner', 3 + wave * 2, 0.35);
   if (wave >= 5) add('tank', Math.floor(wave / 2) + 1, 1.0);
+  if (wave >= 9) add('shielded', 1 + Math.floor((wave - 9) / 3), 1.0);
+  if (wave >= 7) add('healer', 1 + Math.floor((wave - 7) / 4), 1.2);
   if (wave % 5 === 0) add('boss', Math.floor(wave / 10) + 1, 3);
   return list;
 }

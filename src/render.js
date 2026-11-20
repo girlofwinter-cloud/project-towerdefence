@@ -2,7 +2,7 @@
 import { TILE, COLS, ROWS, WIDTH, HEIGHT, TOWER_TYPES } from './config.js';
 import { towerStats } from './game.js';
 import { recoilOffset } from './tower-fx.js';
-import { drawEnemy } from './render-enemies.js';
+import { drawEnemy, drawHealAura } from './render-enemies.js';
 import { updateFx, shakeX, shakeY, drawProjectileFx, drawParticles } from './render-fx.js';
 import { tileHash, tileRand, decorFor, LARGE_DECOR_RADIUS } from './decor.js';
 
@@ -23,6 +23,7 @@ export function render(ctx, state, ui) {
   }
   drawHover(ctx, state, ui);
   for (const t of state.towers) drawTower(ctx, t, ui.selectedTowerId === t.id);
+  for (const e of state.enemies) drawHealAura(ctx, e, state.time);
   for (const e of state.enemies) drawEnemy(ctx, e, state.time, state.path);
   for (const p of state.projectiles) drawProjectile(ctx, p);
   drawParticles(ctx);

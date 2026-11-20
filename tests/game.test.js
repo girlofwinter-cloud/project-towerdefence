@@ -173,7 +173,7 @@ test('Wellen: jede 5. Welle hat einen Boss, Wellen werden größer', () => {
 test('waveSummary: Anzahl pro Gegnertyp für Welle 1, 5 und 10', () => {
   assert.deepEqual(waveSummary(1), { grunt: 9 });
   assert.deepEqual(waveSummary(5), { grunt: 21, runner: 13, tank: 3, boss: 1 });
-  assert.deepEqual(waveSummary(10), { grunt: 36, runner: 23, tank: 6, boss: 2 });
+  assert.deepEqual(waveSummary(10), { grunt: 36, runner: 23, tank: 6, shielded: 1, healer: 1, boss: 2 });
   for (const w of [1, 5, 10]) {
     const total = Object.values(waveSummary(w)).reduce((a, b) => a + b, 0);
     assert.equal(total, waveFor(w).length, `Welle ${w}`);
@@ -1705,4 +1705,199 @@ test('B-019: START_LIVES ist 3, ein durchgelassener Boss beendet das Spiel mit L
   run(s, 600);
   assert.equal(s.status, 'lost');
   assert.equal(s.lives, 0);
+});
+
+// ---------- B-006: Heiler und Schildträger ----------
+
+function mkEnemy(state, type, dist, over = {}) {
+  const e = spawnEnemy(state, type, 1);
+  e.dist = dist; // Position ergibt sich aus dem Weg (erstes Segment: gerade, y = 100)
+  e.speed = 0; // bleibt stehen
+  Object.assign(e, over);
+  const p = pointAt(state.path, dist);
+  e.x = p.x;
+  e.y = p.y;
+  return e;
+}
+const HEAL = ENEMY_TYPES.healer;
+
+test('B-006 Heilung: Healer heilt verletzten Nachbarn im Radius, aber keinen außerhalb', () => {
+  const s = createGame();
+  const h = mkEnemy(s, 'healer', 100);
+  const near = mkEnemy(s, 'tank', 100 + (HEAL.healRadius - 0.5) * TILE);
+  const far = mkEnemy(s, 'tank', 100 + (HEAL.healRadius + 0.5) * TILE);
+  near.hp = far.hp = 100;
+  update(s, HEAL.healInterval + 0.01);
+  assert.ok(near.hp > 100, 'Nachbar geheilt');
+  assert.equal(far.hp, 100, 'außerhalb nicht geheilt');
+  assert.ok(Math.abs(near.hp - (100 + near.maxHp * HEAL.healPerSec * HEAL.healInterval)) < 1e-9);
+  assert.ok(h.hp === h.maxHp);
+});
+
+test('B-006 Heilung: nie über maxHp, Healer heilt sich nicht selbst, nur alle healInterval Sekunden', () => {
+  const s = createGame();
+  const h = mkEnemy(s, 'healer', 100);
+  const g = mkEnemy(s, 'tank', 110);
+  h.hp = 1;
+  g.hp = g.maxHp - 1;
+  update(s, 0.5);
+  assert.equal(g.hp, g.maxHp - 1, 'vor Ablauf des Intervalls keine Heilung');
+  update(s, 0.6);
+  assert.equal(g.hp, g.maxHp, 'gedeckelt auf maxHp');
+  assert.equal(h.hp, 1, 'Healer heilt sich nicht selbst');
+  g.hp = 10;
+  update(s, 0.3);
+  assert.equal(g.hp, 10, 'zwischen zwei Impulsen keine Heilung');
+  update(s, HEAL.healInterval);
+  assert.ok(g.hp > 10);
+});
+
+test('B-006 Heilung: mehrere Healer stapeln nicht, tote Healer heilen nicht', () => {
+  const one = createGame();
+  mkEnemy(one, 'healer', 100);
+  const t1 = mkEnemy(one, 'tank', 110, { hp: 100 });
+  update(one, HEAL.healInterval + 0.01);
+  const many = createGame();
+  mkEnemy(many, 'healer', 100);
+  mkEnemy(many, 'healer', 105);
+  mkEnemy(many, 'healer', 95);
+  const t3 = mkEnemy(many, 'tank', 110, { hp: 100 });
+  update(many, HEAL.healInterval + 0.01);
+  assert.ok(t1.hp > 100);
+  assert.equal(t3.hp, t1.hp, 'drei Healer heilen nicht mehr als einer');
+  const dead = createGame();
+  mkEnemy(dead, 'healer', 100, { hp: 0 });
+  const t = mkEnemy(dead, 'tank', 110, { hp: 100 });
+  update(dead, HEAL.healInterval + 0.01);
+  assert.equal(t.hp, 100, 'toter Healer heilt nicht');
+});
+
+test('B-006 Rüstung: Pfeilturm macht gegen Schildträger weniger Schaden, Kanone (Splash) voll', () => {
+  const dmg = (towerType, enemyType) => {
+    const s = createGame();
+    s.gold = 1000;
+    buildTower(s, towerType, 6, 3);
+    const e = mkEnemy(s, enemyType, 240, { hp: 1000, maxHp: 1000 });
+    e.slowUntil = 0;
+    update(s, 0.001);
+    for (let i = 0; i < 100 && e.hp === 1000; i++) update(s, 0.01);
+    return 1000 - e.hp;
+  };
+  const arrowGrunt = dmg('arrow', 'grunt');
+  const arrowShield = dmg('arrow', 'shielded');
+  assert.ok(arrowGrunt > 0);
+  assert.ok(Math.abs(arrowShield - arrowGrunt * (1 - ENEMY_TYPES.shielded.armor)) < 1e-9, `${arrowShield} vs ${arrowGrunt}`);
+  const cannonGrunt = dmg('cannon', 'grunt');
+  assert.equal(dmg('cannon', 'shielded'), cannonGrunt, 'Splash voll');
+  assert.ok(cannonGrunt > 0);
+});
+
+test('B-006 Rüstung: Frostturm-Slow wirkt auch gegen Schildträger', () => {
+  const s = createGame();
+  buildTower(s, 'frost', 6, 3);
+  const e = mkEnemy(s, 'shielded', 240, { hp: 1000, maxHp: 1000 });
+  for (let i = 0; i < 100 && e.hp === 1000; i++) update(s, 0.01);
+  assert.ok(e.hp < 1000 && e.slowFactor < 1 && s.time < e.slowUntil);
+});
+
+test('B-006 Wellen: Healer ab Welle 7, Schildträger ab Welle 9, Spawn-Zeiten aufsteigend', () => {
+  assert.ok(!('healer' in waveSummary(6)));
+  assert.ok(waveSummary(7).healer >= 1);
+  assert.ok(!('shielded' in waveSummary(8)));
+  assert.ok(waveSummary(9).shielded >= 1);
+  for (let w = 1; w <= 6; w++) assert.ok(!('healer' in waveSummary(w)));
+  for (let w = 1; w <= 8; w++) assert.ok(!('shielded' in waveSummary(w)));
+  for (let w = 7; w <= MAX_WAVES; w++) assert.ok(waveSummary(w).healer >= 1, `Healer Welle ${w}`);
+  for (let w = 1; w <= MAX_WAVES; w++) {
+    const list = waveFor(w);
+    for (let i = 1; i < list.length; i++) assert.ok(list[i].at >= list[i - 1].at, `Welle ${w}`);
+  }
+});
+
+test('B-006 Config: neue Typen haben Heil-/Rüstungswerte, Schildträger-Rüstung zwischen 0 und 1', () => {
+  assert.ok(HEAL.healRadius > 0 && HEAL.healPerSec > 0 && HEAL.healInterval > 0);
+  const a = ENEMY_TYPES.shielded.armor;
+  assert.ok(a > 0 && a < 1);
+  assert.equal(spawnEnemy(createGame(), 'shielded').armor, a);
+  assert.equal(spawnEnemy(createGame(), 'grunt').armor, 0);
+});
+
+test('B-006 Render: Healer/Schildträger zeichnen ausgewogen, innerhalb des Radius, Aura mit richtigem Radius', async () => {
+  const { drawEnemy, drawHealAura } = await import('../src/render-enemies.js?b006');
+  for (const type of ['healer', 'shielded']) {
+    for (const time of [0, 0.7, 2.1]) {
+      const r = await recordEnemy({ type, id: 5 }, time);
+      assert.equal(r.depth, 0, `${type}: save/restore`);
+      assert.equal(r.props.globalAlpha, undefined);
+      for (const p of r.figure) {
+        if (p.depth === 0) continue;
+        assert.ok(Math.hypot(p.x - r.e.x, p.y - r.e.y) + p.ext <= 1.4 * r.e.radius, `${type}: Figur zu gross`);
+      }
+    }
+  }
+  const radiiOf = (type, time) => {
+    const arcs = [];
+    let alphaDepth = 0;
+    const props = {};
+    const ctx = new Proxy({}, {
+      get(_, k) {
+        if (k in props) return props[k];
+        return (...a) => {
+          if (k === 'arc') arcs.push(a[2]);
+          if (k === 'save') alphaDepth++;
+          if (k === 'restore') alphaDepth--;
+        };
+      },
+      set(_, k, v) { props[k] = v; return true; },
+    });
+    drawHealAura(ctx, { type, x: 50, y: 50 }, time);
+    assert.equal(alphaDepth, 0);
+    assert.equal(props.globalAlpha, undefined);
+    return arcs;
+  };
+  const arcs = radiiOf('healer', 1);
+  assert.equal(arcs.length, 1);
+  assert.ok(Math.abs(arcs[0] - HEAL.healRadius * TILE) <= HEAL.healRadius * TILE * 0.1, `Aura-Radius ${arcs[0]}`);
+  assert.notEqual(radiiOf('healer', 0.3)[0], radiiOf('healer', 1.1)[0], 'pulsiert über time');
+  assert.equal(radiiOf('grunt', 1).length, 0, 'nur Healer haben eine Aura');
+  assert.equal(radiiOf('shielded', 1).length, 0);
+  assert.equal(typeof drawEnemy, 'function');
+});
+
+test('B-006 Render: render() zeichnet Healer samt Aura, ausgewogen, Alpha unverändert', async () => {
+  const { render } = await import('../src/render.js?b006');
+  const s = createGame();
+  s.enemies.push({ id: 1, type: 'healer', x: 100, y: 100, radius: 11, hp: 5, maxHp: 10, slowUntil: 0, slowFactor: 1, dist: 10, speed: 1 });
+  s.enemies.push({ id: 2, type: 'shielded', x: 140, y: 100, radius: 13, hp: 5, maxHp: 10, slowUntil: 99, slowFactor: 0.5, dist: 20, speed: 1 });
+  const m = mockCtx();
+  render(m.ctx, s, {});
+  assert.equal(m.depth, 0);
+  assert.equal(m.props.globalAlpha, undefined);
+});
+
+// --- B-006 Randfälle (vom Tester, hierher verschoben) ---
+
+test('B-006 Edge: createGame mit overrides behält healAt/healTick, Spawn ohne armor hat armor 0', () => {
+  const s = createGame({ lives: 2, gold: 7 });
+  assert.equal(s.lives, 2);
+  assert.equal(s.gold, 7);
+  assert.equal(s.healTick, 0);
+  assert.ok(s.healAt > 0);
+  assert.equal(spawnEnemy(s, 'grunt').armor, 0);
+  assert.equal(spawnEnemy(s, 'shielded').armor, 0.5);
+});
+
+test('B-006 Edge: dt 0 heilt nicht, grosser Zeitsprung heilt nur einmal (kein Aufholen)', () => {
+  const s = createGame();
+  const h = spawnEnemy(s, 'healer');
+  const g = spawnEnemy(s, 'grunt');
+  g.x = h.x; g.y = h.y; g.hp = 10;
+  update(s, 0);
+  assert.equal(g.hp, 10);
+  s.time = 50; // Zeitsprung
+  update(s, 1 / 60);
+  const after = g.hp;
+  assert.ok(after > 10 && after <= 10 + g.maxHp * 0.02 + 1e-9);
+  update(s, 1 / 60);
+  assert.equal(g.hp, after);
 });

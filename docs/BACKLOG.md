@@ -65,7 +65,7 @@ Die Pipeline nimmt nur Einträge mit Status `offen`, von oben nach unten.
   - Test: `status` wird erst 'won', wenn alle Wellen gespawnt und alle Gegner tot sind.
 
 ### B-006: Heiler und Schildträger
-- Status: offen
+- Status: fertig
 - Aufwand: M
 - Idee: Schamane heilt Gegner in der Nähe periodisch; Schildträger reduziert Pfeil-Schaden stark, wird aber vom Kanonen-Splash normal getroffen. Ab Welle 7 bzw. 9. Risiko: Balancing und O(n²)-Radiusprüfung.
 - Akzeptanzkriterien:

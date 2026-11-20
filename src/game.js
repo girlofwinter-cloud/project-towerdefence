@@ -21,6 +21,8 @@ export function createGame(overrides = {}) {
     kills: 0,
     time: 0,
     nextId: 1,
+    healAt: ENEMY_TYPES.healer.healInterval, // Zeitpunkt (state.time) des nächsten Heilimpulses
+    healTick: 0, // Zähler der Heilimpulse (verhindert doppelte Heilung pro Impuls)
     path: buildPath(WAYPOINTS, TILE),
     blocked: pathTiles(WAYPOINTS),
     ...overrides,
@@ -136,6 +138,8 @@ export function spawnEnemy(state, type, wave = state.wave) {
     y: pos.y,
     slowUntil: 0,
     slowFactor: 1,
+    armor: def.armor || 0,
+    healTick: 0,
   };
   state.enemies.push(enemy);
   return enemy;
@@ -150,6 +154,7 @@ export function update(state, dt) {
   spawnStep(state, dt);
   moveEnemies(state, dt);
   if (state.status !== 'playing') return;
+  healStep(state);
   towersStep(state, dt);
   projectilesStep(state, dt);
   effectsStep(state, dt);
@@ -179,6 +184,31 @@ function moveEnemies(state, dt) {
   if (state.lives <= 0) {
     state.lives = 0;
     state.status = 'lost';
+  }
+}
+
+// Heilimpuls: Nur alle healInterval Sekunden (state.time), nicht jedes Frame.
+// Jeder lebende Healer heilt alle verletzten Gegner im Umkreis healRadius (Kacheln),
+// aber nie sich selbst und nie über maxHp. Pro Impuls und Ziel gibt es höchstens EINE
+// Heilung (healTick-Marke), auch wenn mehrere Healer in Reichweite sind: Heiler stapeln nicht.
+// Die Radiusprüfung ist O(n²) pro Impuls, läuft aber ohne Allokationen.
+function healStep(state) {
+  if (state.time < state.healAt) return;
+  const interval = ENEMY_TYPES.healer.healInterval;
+  state.healAt += interval;
+  if (state.healAt <= state.time) state.healAt = state.time + interval; // nach großem dt nicht aufholen
+  const tick = ++state.healTick;
+  const list = state.enemies;
+  for (const h of list) {
+    const def = ENEMY_TYPES[h.type];
+    if (!def || !def.healRadius || h.hp <= 0) continue;
+    const reach = def.healRadius * TILE;
+    for (const e of list) {
+      if (e === h || e.hp <= 0 || e.hp >= e.maxHp || e.healTick === tick) continue;
+      if (Math.hypot(e.x - h.x, e.y - h.y) > reach) continue;
+      e.hp = Math.min(e.maxHp, e.hp + e.maxHp * def.healPerSec * def.healInterval);
+      e.healTick = tick;
+    }
   }
 }
 
@@ -252,12 +282,15 @@ function hit(state, p, target) {
     }
     state.effects.push({ kind: 'explosion', x: p.tx, y: p.ty, r: p.splash, ttl: 0.3, max: 0.3 });
   } else if (target) {
-    damage(state, target, p);
+    damage(state, target, p, true);
   }
 }
 
-function damage(state, enemy, p) {
-  enemy.hp -= p.damage;
+// Rüstung (Schildträger): gilt nur für Direkttreffer (direct = true), also Pfeil, Frost
+// und Scharfschütze. Kanonen-Splash trifft immer mit vollem Schaden. Der Frost-Slow
+// wirkt unabhängig von der Rüstung unverändert.
+function damage(state, enemy, p, direct = false) {
+  enemy.hp -= direct ? p.damage * (1 - (enemy.armor || 0)) : p.damage;
   if (p.slow) {
     enemy.slowFactor = 1 - p.slow;
     enemy.slowUntil = state.time + p.slowDuration;
