@@ -51,7 +51,7 @@ export const TOWER_TYPES = {
     name: 'Kanone',
     key: '2',
     cost: 90,
-    range: 2.6,
+    range: 3.4,
     damage: 30,
     rate: 1.4,
     projectileSpeed: 7,

@@ -211,3 +211,14 @@ Neue Einträge werden unten angehängt. Bestehende Einträge werden nie geänder
 - Review: nicht durchgeführt (Prototyp)
 - Entscheidungen: Auf Wunsch des Menschen. (1) Die HUD-Leiste lag über dem Canvas und verdeckte Bauplätze; sie steht jetzt über dem Spielfeld (`.stage` umschließt Canvas, Overlay, Meldung, Pause-Banner). (2) Mobil (<= 700 px): Header, Footer und Tastenhilfe ausgeblendet, kleinere Ränder, Turmauswahl als 2x2-Raster ohne Beschreibung, Turm-Info vor der Turmauswahl. Herzen im HUD mobil kleiner (Platz für 10 Leben aus PR #15). Keine Logik, keine Tests, keine IDs geändert.
 - Offen: Echtes Gerät testen (Touch, Querformat). Auf kleinen Geräten steht noch "(Leertaste)" im Start-Button.
+
+
+## 2026-11-20 · Balancing · Kanone mit mehr Reichweite
+- Rolle(n): orchestrator (direkt, ohne Sub-Agenten; Tester und Reviewer auf Wunsch des Menschen übersprungen)
+- Branch: agent/kanone-reichweite
+- Runden: 1
+- Ergebnis: fertig
+- Tests: 119 bestanden, 0 fehlgeschlagen (Unit); E2E nicht lauffähig
+- Review: nicht durchgeführt (Wunsch des Menschen)
+- Entscheidungen: Kanonen-Reichweite 2,6 -> 3,4 Kacheln (Pfeilturm 3, Scharfschütze 6). Jede Erhöhung ab 2,8 machte die Wellen 14-20 leichter und brach zwei Balancing-Tests. Auf Rückfrage entschied der Mensch: Test-Schwellen bewusst anpassen. Geändert (Messwerte bei 3,4): `LATE_PROGRESS` 0,76 -> 0,5 (gemessen 53-81 % des Wegs, weiterhin mindestens 3 Wellen) und Mindestvorsprung im Schildträger-Test 0,05 -> 0,02 (`SHIELD_MARGIN`, gemessen min. 0,03 in Welle 9). Alle anderen Assertions unverändert, keine Tests gelöscht.
+- Offen: Das Spiel ist in der Spätphase insgesamt leichter (zusammen mit 10 Leben, PR #15). Wenn es zu leicht wird, Gegner der Wellen 14-20 stärken (B-013 neu justieren).
