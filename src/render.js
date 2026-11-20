@@ -3,15 +3,31 @@ import { TILE, COLS, ROWS, WIDTH, HEIGHT, TOWER_TYPES } from './config.js';
 import { towerStats } from './game.js';
 import { recoilOffset } from './tower-fx.js';
 import { drawEnemy } from './render-enemies.js';
+import { updateFx, shakeX, shakeY, drawProjectileFx, drawParticles } from './render-fx.js';
 import { tileHash, tileRand, decorFor, LARGE_DECOR_RADIUS } from './decor.js';
 
 export function render(ctx, state, ui) {
-  drawGround(ctx, state);
+  // Partikel aus dem Zustand ableiten (nur lesen), danach Shake-Versatz bestimmen.
+  updateFx(state);
+  const sx = shakeX();
+  const sy = shakeY();
+  const shaking = sx !== 0 || sy !== 0;
+  drawGround(ctx, state); // unverschoben, damit am Rand nichts durchscheint
+  if (shaking) {
+    ctx.save();
+    // Screen-Shake: verschiebt nur die Zeichnung der Welt (Hover-Rahmen und Reichweite werden
+    // mitverschoben, bleiben relativ zu den Tuermen also korrekt). Mausziel/Eingabe in main.js
+    // rechnet mit Canvas-Koordinaten und ist davon unabhaengig.
+    ctx.translate(sx, sy);
+    drawGround(ctx, state);
+  }
   drawHover(ctx, state, ui);
   for (const t of state.towers) drawTower(ctx, t, ui.selectedTowerId === t.id);
   for (const e of state.enemies) drawEnemy(ctx, e, state.time, state.path);
   for (const p of state.projectiles) drawProjectile(ctx, p);
+  drawParticles(ctx);
   for (const fx of state.effects) drawEffect(ctx, fx);
+  if (shaking) ctx.restore();
 }
 
 // ---------- Hintergrund (Gelaende, Weg, Dekoration) ----------
@@ -452,12 +468,14 @@ export function drawTower(ctx, t, selected) {
   }
 }
 
+const PROJECTILE_COLORS = { arrow: '#f5e6c8', cannon: '#222', frost: '#bdf0ff', sniper: '#e6d1ff' };
+
 function drawProjectile(ctx, p) {
-  const colors = { arrow: '#f5e6c8', cannon: '#222', frost: '#bdf0ff', sniper: '#e6d1ff' };
-  ctx.fillStyle = colors[p.towerType] || '#fff';
+  ctx.fillStyle = (Object.hasOwn(PROJECTILE_COLORS, p.towerType) && PROJECTILE_COLORS[p.towerType]) || '#fff';
   ctx.beginPath();
   ctx.arc(p.x, p.y, p.towerType === 'cannon' ? 5 : 3, 0, Math.PI * 2);
   ctx.fill();
+  drawProjectileFx(ctx, p); // Schweif/Strahl/Leuchten je Typ (unbekannte Typen bleiben ein weisser Kreis)
 }
 
 function drawEffect(ctx, fx) {
