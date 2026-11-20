@@ -13,20 +13,22 @@
 
   <main>
     <div class="board">
-      <canvas id="game" aria-label="Spielfeld"></canvas>
       <div class="hud" id="hud-bar">
         <span class="hud-item" title="Gold"><i class="coin"></i><b id="gold">0</b></span>
         <span class="hud-item" title="Welle"><i class="icon">⚔️</i><b id="wave">0</b></span>
         <span class="hud-item" id="lives-box" title="Leben"><span id="hearts"></span><b id="lives">0</b></span>
         <span id="pause-hint" hidden>⏸</span>
       </div>
-      <div id="overlay" hidden>
-        <h2 id="overlay-title"></h2>
-        <p id="overlay-stats"></p>
-        <button id="restart">Neues Spiel</button>
+      <div class="stage">
+        <canvas id="game" aria-label="Spielfeld"></canvas>
+        <div id="overlay" hidden>
+          <h2 id="overlay-title"></h2>
+          <p id="overlay-stats"></p>
+          <button id="restart">Neues Spiel</button>
+        </div>
+        <p id="message" role="status"></p>
+        <div id="pause-banner" hidden>⏸ PAUSE – P drücken zum Fortsetzen</div>
       </div>
-      <p id="message" role="status"></p>
-      <div id="pause-banner" hidden>⏸ PAUSE – P drücken zum Fortsetzen</div>
     </div>
 
     <aside>

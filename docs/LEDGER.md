@@ -202,3 +202,12 @@ Neue Einträge werden unten angehängt. Bestehende Einträge werden nie geänder
 - Review: nicht durchgeführt
 - Entscheidungen: Auf Wunsch des Menschen (Balancing-Änderung): `START_LIVES` 3 -> 10, `LOW_LIVES` 1 -> 3 (rote Warnung bei 3 von 10). Der Test aus B-019 fixierte bewusst 3 Leben; er wurde an die neue Vorgabe angepasst, nicht abgeschwächt: Er prüft jetzt START_LIVES = 10, dass ein Boss 6 Leben kostet (Rest 4, Spiel läuft), und weiterhin, dass bei 0 Leben das Spiel verloren ist und die Zahl nicht negativ wird (mit `lives: 2`). Die mobile Verkleinerung der Herzen im HUD gehört zu PR #14 (agent/ui-mobil), nicht zu diesem Branch.
 - Offen: Balancing neu beurteilen: 10 Leben machen das Spiel deutlich leichter; die Strategie-Tests (`lives >= 2`) sind damit weniger streng.
+## 2026-11-20 · UI-Optik · HUD aus dem Bild, Mobilansicht
+- Rolle(n): orchestrator (direkt, ohne Sub-Agenten)
+- Branch: agent/ui-mobil
+- Runden: 1
+- Ergebnis: fertig (Prototyp)
+- Tests: 119 bestanden, 0 fehlgeschlagen (Unit); E2E nicht lauffähig. Optik per Headless-Chrome-Screenshot (1300 px und 500 px Breite) geprüft.
+- Review: nicht durchgeführt (Prototyp)
+- Entscheidungen: Auf Wunsch des Menschen. (1) Die HUD-Leiste lag über dem Canvas und verdeckte Bauplätze; sie steht jetzt über dem Spielfeld (`.stage` umschließt Canvas, Overlay, Meldung, Pause-Banner). (2) Mobil (<= 700 px): Header, Footer und Tastenhilfe ausgeblendet, kleinere Ränder, Turmauswahl als 2x2-Raster ohne Beschreibung, Turm-Info vor der Turmauswahl. Herzen im HUD mobil kleiner (Platz für 10 Leben aus PR #15). Keine Logik, keine Tests, keine IDs geändert.
+- Offen: Echtes Gerät testen (Touch, Querformat). Auf kleinen Geräten steht noch "(Leertaste)" im Start-Button.
