@@ -200,5 +200,5 @@ Neue Einträge werden unten angehängt. Bestehende Einträge werden nie geänder
 - Ergebnis: fertig (Prototyp)
 - Tests: 119 bestanden, 0 fehlgeschlagen (Unit); E2E nicht lauffähig. Optik per Headless-Chrome-Screenshot (1300 px und 500 px Breite) geprüft.
 - Review: nicht durchgeführt (Prototyp)
-- Entscheidungen: Auf Wunsch des Menschen. (1) Die HUD-Leiste lag über dem Canvas und verdeckte Bauplätze; sie steht jetzt über dem Spielfeld (`.stage` umschließt Canvas, Overlay, Meldung, Pause-Banner). (2) Mobil (<= 700 px): Header, Footer und Tastenhilfe ausgeblendet, kleinere Ränder, Turmauswahl als 2x2-Raster ohne Beschreibung, Turm-Info vor der Turmauswahl. Keine Logik, keine Tests, keine IDs geändert.
+- Entscheidungen: Auf Wunsch des Menschen. (1) Die HUD-Leiste lag über dem Canvas und verdeckte Bauplätze; sie steht jetzt über dem Spielfeld (`.stage` umschließt Canvas, Overlay, Meldung, Pause-Banner). (2) Mobil (<= 700 px): Header, Footer und Tastenhilfe ausgeblendet, kleinere Ränder, Turmauswahl als 2x2-Raster ohne Beschreibung, Turm-Info vor der Turmauswahl. Herzen im HUD mobil kleiner (Platz für 10 Leben aus PR #15). Keine Logik, keine Tests, keine IDs geändert.
 - Offen: Echtes Gerät testen (Touch, Querformat). Auf kleinen Geräten steht noch "(Leertaste)" im Start-Button.

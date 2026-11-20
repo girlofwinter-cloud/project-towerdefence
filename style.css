@@ -193,7 +193,8 @@ footer { text-align: center; color: var(--muted); font-size: 0.8rem; padding: 16
 @media (max-width: 700px) {
   header, footer, .help { display: none; }
   main { padding: 6px; gap: 8px; }
-  .hud { gap: 14px; padding: 3px 12px 5px; font-size: 1.05rem; margin-bottom: 6px; }
+  .hud { gap: 10px; padding: 3px 10px 5px; font-size: 1rem; margin-bottom: 6px; }
+  #hearts { font-size: .7rem; letter-spacing: 0; } /* Platz für bis zu 10 Herzen */
   canvas#game { border-width: 2px; border-radius: 8px; box-shadow: none; }
   #overlay { border-radius: 8px; }
   #overlay h2 { font-size: 2rem; }
