@@ -88,3 +88,90 @@ Die Pipeline nimmt nur Einträge mit Status `offen`, von oben nach unten.
   - Test: Nachfüllen kostet `refillCost` und scheitert bei zu wenig Gold.
   - Bestehende `canBuild`-Tests laufen unverändert.
   - Boss-Gegner sind gegen Betäubung immun.
+
+### B-008: Schwierigkeit anziehen (Balancing)
+- Status: fertig
+- Aufwand: S
+- Idee: Das Spiel ist zu leicht. Nur Zahlen in `src/config.js` ändern: weniger Startgold, steilere HP-Skalierung, mehr Gegner und härtere Mischung ab der Mitte, Boss-Wellen spürbar gefährlicher. Keine neue Mechanik.
+- Akzeptanzkriterien:
+  - Alle Änderungen nur in `src/config.js` (`START_GOLD`, `START_LIVES`, `hpScale`, `waveFor`, `waveBonus`, Gegnerwerte).
+  - Mit dem Test-Bot bzw. einer Simulation in den Tests: Eine einfache Strategie "nur Pfeiltürme, nie aufrüsten" verliert vor Welle 12.
+  - Test: `hpScale` ist streng steigend, `waveFor(w)` enthält mit wachsendem `w` nie weniger Gegner.
+  - Bestehende Tests werden nicht abgeschwächt. Hängt ein Test an alten Zahlen, im Bericht begründen und mit dem Menschen klären.
+  - Im Ledger die alten und neuen Kernwerte nennen.
+
+### B-009: Grafik: Gelände und Weg
+- Status: fertig
+- Aufwand: M
+- Idee: Das Spielfeld sieht im Stil klassischer Tower-Defense-Spiele aus: Gras mit Variation, ein gepflasterter oder erdiger Weg mit Rand, Dekoration (Bäume, Büsche, Steine) auf nicht bebaubaren Kacheln, sichtbarer Ein- und Ausgang. Alles wird per Canvas-Code selbst gezeichnet, ohne Bilddateien und ohne Vorlagen aus anderen Spielen.
+- Akzeptanzkriterien:
+  - Nur `src/render.js` (und bei Bedarf `style.css`) ändern, keine Spiel-Logik.
+  - Dekoration ist deterministisch (fester Seed oder Kachel-Hash), flackert also nicht und liegt nie auf Weg- oder bebauten Kacheln.
+  - Hintergrund wird einmal auf ein Offscreen-Canvas gezeichnet und pro Frame nur kopiert (Performance).
+  - Keine neuen Abhängigkeiten, keine externen Assets.
+  - `npm test` bleibt grün.
+
+### B-010: Grafik: Türme
+- Status: fertig
+- Aufwand: M
+- Idee: Jeder Turmtyp bekommt eine eigene gezeichnete Silhouette: Pfeilturm aus Holz mit Bogen, Kanone mit Rohr auf Steinsockel, Frostturm mit Kristall, Scharfschütze als hoher Turm. Das Level ist an Aussehen oder Banner erkennbar, es gibt Schuss-Rückstoß und Schatten.
+- Akzeptanzkriterien:
+  - Nur `src/render.js`; Farben und Maße, die Balancing betreffen, bleiben in `config.js`.
+  - Vier erkennbar verschiedene Türme, drei Level-Stufen unterscheidbar.
+  - Turm dreht sich weiter zum Ziel.
+  - `npm test` bleibt grün.
+
+### B-011: Grafik: Gegner und Animation
+- Status: fertig
+- Aufwand: M
+- Idee: Gegner sind gezeichnete Figuren statt Kreise (Goblin, Flitzer, Panzer-Troll, Oger-König), mit Schatten, Lauf-Animation und Blickrichtung entlang des Wegs. Bosse sind deutlich größer und auffälliger. HP-Balken bleibt.
+- Akzeptanzkriterien:
+  - Nur `src/render.js`.
+  - Figuren schauen in Bewegungsrichtung, Animation läuft über `state.time`, nicht über echte Zeit.
+  - Verlangsamte Gegner sind weiter erkennbar (Frost-Effekt).
+  - `npm test` bleibt grün.
+
+### B-012: Grafik: Projektile und Effekte
+- Status: offen
+- Aufwand: S
+- Idee: Pfeile mit Schweif, Kanonenkugeln mit Rauch, Frost-Partikel, Explosionen mit Funken und kurzem Screen-Shake, Treffer-Blitz auf Gegnern, Gold-Münzen beim Kill.
+- Akzeptanzkriterien:
+  - Rein visuelle Effekte in `src/render.js`. Falls Zustand für Partikel nötig ist, lebt er im Render-Modul und nicht in `game.js`.
+  - Keine Auswirkung auf Spiel-Logik und Tests.
+  - `npm test` bleibt grün.
+
+### B-013: Spätphase fordernder machen
+- Status: vorschlag
+- Aufwand: M
+- Idee: Seit B-008 sind die Wellen 14 bis 20 für gute Strategien verlustfrei, die Schwierigkeit konzentriert sich auf Welle 8 bis 10. Die Spätphase soll über Gegnermix und Spawn-Dichte (mehr Trolle und Flitzer ab Welle 15, Boss-Begleiter) fordernder werden statt über `hpScale`, das nur auf Messers Schneide steht.
+- Akzeptanzkriterien:
+  - Gute Strategien (A>C>C>F, C>A>A>F) verlieren in den Wellen 14 bis 20 spürbar Leben, gewinnen Welle 20 aber weiter bei dt 1/30 und 1/60.
+  - Troll-Belohnung prüfen (450 HP bei 14 Gold).
+  - Doppelte Strategie-Tests in `tests/game.test.js` bündeln (gemeinsamer Helfer), Laufzeit senken.
+
+### B-014: Grafik-Feinschliff Gelände (nach Sichtprüfung im Browser)
+- Status: vorschlag
+- Aufwand: S
+- Idee: Nach B-009 sollte ein Mensch das Spielfeld im Browser ansehen. Bekannte Kandidaten: Das Schachbrett-Raster geht stellenweise in der Gras-Variation unter (`GRASS_SHIFT` in `src/render.js` von 0,07 auf etwa 0,025 senken oder die Grundtöne weiter spreizen), Tor- und Burg-Pfosten ragen ca. 6 px quer in Nachbarkacheln (Pfosten kürzen oder Nachbarkacheln von Dekoration freihalten), Cache-Schlüssel `path.points` müsste auch `state.blocked` berücksichtigen, falls dort später Türme landen.
+- Akzeptanzkriterien:
+  - Nur Zahlen und Zeichnung in `src/render.js` und `src/decor.js`.
+  - Raster bleibt für alle Nachbarpaare erkennbar (Helligkeit kehrt sich nie um), per Test belegt.
+  - `npm test` bleibt grün.
+
+### B-015: Grafik-Feinschliff Türme (nach Sichtprüfung im Browser)
+- Status: vorschlag
+- Aufwand: S
+- Idee: Kleinigkeiten aus dem Review von B-010. Rückstoß-Anteil aus der Level-Rate statt `def.rate` ableiten (kleiner reiner Helfer `levelRate(type, level)` in `game.js`, damit pro Frame kein Objekt entsteht), Fallback für unbekannte Turmtypen (`RECOIL_PX[t.type] ?? 3`, kein stilles Fallen in den Scharfschützen-Zweig), Drehpunkt-Tabelle `HEAD_PIVOT_Y` statt if/else-Kette, größere Stufen-Punkte (Radius 1,8 ist klein), Turm-Zeichnung in eine eigene Datei auslagern (`src/render-towers.js`), falls `render.js` weiter wächst.
+- Akzeptanzkriterien:
+  - Nur `src/render.js`, `src/tower-fx.js` und ggf. neue Render-Dateien; der Helfer `levelRate` bekommt einen Test.
+  - Nach einer Sichtprüfung im Browser entscheiden, ob Stufen, Rückstoß und Auswahlrahmen so lesbar sind.
+  - `npm test` bleibt grün.
+
+### B-016: Grafik-Feinschliff Gegner (nach Sichtprüfung im Browser)
+- Status: vorschlag
+- Aufwand: S
+- Idee: Hinweise aus dem Review von B-011. (1) Neigung an den Wegecken glätten: neue reine Funktion `tiltAt(path, dist)` in `src/enemy-fx.js`, die innerhalb von etwa 8 px vor der Ecke per Smoothstep auf die Neigung des nächsten Segments überblendet (heute springt sie um 0,3 rad). (2) Gemeinsame Zeichen-Helfer `rect`/`tri`/`disc` aus `render.js`, `render-enemies.js` (und den Turm-Helfern) in `src/draw-utils.js` zusammenlegen, Argumentreihenfolge vereinheitlichen. (3) Kommentar zur Keule des Oger-Königs korrigieren oder die Keule über die Lauf-Phase schwingen lassen. (4) HP-Anteil mit `Math.min(1, ...)` begrenzen. (5) Phasensprung der Lauf-Animation beim Wechsel in oder aus Slow: bräuchte pro Gegner einen aufsummierten Phasenwert in `game.js`, eigener Eintrag, nur falls es im Browser stört.
+- Akzeptanzkriterien:
+  - Neigung ist über jede Wegecke stetig (Differenz bei dist ± 0,5 px kleiner als ein kleines Epsilon), per Test belegt.
+  - Nach Zusammenlegen der Helfer bleiben alle Render-Tests grün.
+  - Erst nach einer Sichtprüfung im Browser angehen, ob (1) und (5) überhaupt stören.
