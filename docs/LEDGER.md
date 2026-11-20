@@ -192,3 +192,13 @@ Neue Einträge werden unten angehängt. Bestehende Einträge werden nie geänder
 - Review: nicht durchgeführt (Wunsch: schneller Prototyp)
 - Entscheidungen: Auf Wunsch des Menschen, Referenz: klassische Cartoon-Tower-Defence-Spiele. Nur Darstellung: (1) HUD (Gold, Welle, Leben) als Holzleiste oben im Spielfeld statt im Header, (2) Holz-Seitenleiste mit goldenen Akzenten, grüner Start-Button, (3) Turm-Karten mit Mini-Turm (nutzt `drawTower` aus `render.js`, keine neuen Grafiken), (4) wärmere Gelände-Farben (sandiger Weg, sattes Gras), (5) Banner/Overlay/Meldung im selben Stil. Element-IDs unverändert, keine Logik, kein Balancing, keine Tests geändert.
 - Offen: Gegner und Projektile sind noch im alten Stil; Ideen für später: Wellenfortschrittsleiste, Münz-/Herz-Icons als Zeichnung statt Emoji, Bauplätze statt freiem Raster.
+
+## 2026-11-20 · UI-Optik · HUD aus dem Bild, Mobilansicht
+- Rolle(n): orchestrator (direkt, ohne Sub-Agenten)
+- Branch: agent/ui-mobil
+- Runden: 1
+- Ergebnis: fertig (Prototyp)
+- Tests: 119 bestanden, 0 fehlgeschlagen (Unit); E2E nicht lauffähig. Optik per Headless-Chrome-Screenshot (1300 px und 500 px Breite) geprüft.
+- Review: nicht durchgeführt (Prototyp)
+- Entscheidungen: Auf Wunsch des Menschen. (1) Die HUD-Leiste lag über dem Canvas und verdeckte Bauplätze; sie steht jetzt über dem Spielfeld (`.stage` umschließt Canvas, Overlay, Meldung, Pause-Banner). (2) Mobil (<= 700 px): Header, Footer und Tastenhilfe ausgeblendet, kleinere Ränder, Turmauswahl als 2x2-Raster ohne Beschreibung, Turm-Info vor der Turmauswahl. Keine Logik, keine Tests, keine IDs geändert.
+- Offen: Echtes Gerät testen (Touch, Querformat). Auf kleinen Geräten steht noch "(Leertaste)" im Start-Button.
