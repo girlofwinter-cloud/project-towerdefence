@@ -88,3 +88,63 @@ Die Pipeline nimmt nur Einträge mit Status `offen`, von oben nach unten.
   - Test: Nachfüllen kostet `refillCost` und scheitert bei zu wenig Gold.
   - Bestehende `canBuild`-Tests laufen unverändert.
   - Boss-Gegner sind gegen Betäubung immun.
+
+### B-008: Schwierigkeit anziehen (Balancing)
+- Status: fertig
+- Aufwand: S
+- Idee: Das Spiel ist zu leicht. Nur Zahlen in `src/config.js` ändern: weniger Startgold, steilere HP-Skalierung, mehr Gegner und härtere Mischung ab der Mitte, Boss-Wellen spürbar gefährlicher. Keine neue Mechanik.
+- Akzeptanzkriterien:
+  - Alle Änderungen nur in `src/config.js` (`START_GOLD`, `START_LIVES`, `hpScale`, `waveFor`, `waveBonus`, Gegnerwerte).
+  - Mit dem Test-Bot bzw. einer Simulation in den Tests: Eine einfache Strategie "nur Pfeiltürme, nie aufrüsten" verliert vor Welle 12.
+  - Test: `hpScale` ist streng steigend, `waveFor(w)` enthält mit wachsendem `w` nie weniger Gegner.
+  - Bestehende Tests werden nicht abgeschwächt. Hängt ein Test an alten Zahlen, im Bericht begründen und mit dem Menschen klären.
+  - Im Ledger die alten und neuen Kernwerte nennen.
+
+### B-009: Grafik: Gelände und Weg
+- Status: offen
+- Aufwand: M
+- Idee: Das Spielfeld sieht im Stil klassischer Tower-Defense-Spiele aus: Gras mit Variation, ein gepflasterter oder erdiger Weg mit Rand, Dekoration (Bäume, Büsche, Steine) auf nicht bebaubaren Kacheln, sichtbarer Ein- und Ausgang. Alles wird per Canvas-Code selbst gezeichnet, ohne Bilddateien und ohne Vorlagen aus anderen Spielen.
+- Akzeptanzkriterien:
+  - Nur `src/render.js` (und bei Bedarf `style.css`) ändern, keine Spiel-Logik.
+  - Dekoration ist deterministisch (fester Seed oder Kachel-Hash), flackert also nicht und liegt nie auf Weg- oder bebauten Kacheln.
+  - Hintergrund wird einmal auf ein Offscreen-Canvas gezeichnet und pro Frame nur kopiert (Performance).
+  - Keine neuen Abhängigkeiten, keine externen Assets.
+  - `npm test` bleibt grün.
+
+### B-010: Grafik: Türme
+- Status: offen
+- Aufwand: M
+- Idee: Jeder Turmtyp bekommt eine eigene gezeichnete Silhouette: Pfeilturm aus Holz mit Bogen, Kanone mit Rohr auf Steinsockel, Frostturm mit Kristall, Scharfschütze als hoher Turm. Das Level ist an Aussehen oder Banner erkennbar, es gibt Schuss-Rückstoß und Schatten.
+- Akzeptanzkriterien:
+  - Nur `src/render.js`; Farben und Maße, die Balancing betreffen, bleiben in `config.js`.
+  - Vier erkennbar verschiedene Türme, drei Level-Stufen unterscheidbar.
+  - Turm dreht sich weiter zum Ziel.
+  - `npm test` bleibt grün.
+
+### B-011: Grafik: Gegner und Animation
+- Status: offen
+- Aufwand: M
+- Idee: Gegner sind gezeichnete Figuren statt Kreise (Goblin, Flitzer, Panzer-Troll, Oger-König), mit Schatten, Lauf-Animation und Blickrichtung entlang des Wegs. Bosse sind deutlich größer und auffälliger. HP-Balken bleibt.
+- Akzeptanzkriterien:
+  - Nur `src/render.js`.
+  - Figuren schauen in Bewegungsrichtung, Animation läuft über `state.time`, nicht über echte Zeit.
+  - Verlangsamte Gegner sind weiter erkennbar (Frost-Effekt).
+  - `npm test` bleibt grün.
+
+### B-012: Grafik: Projektile und Effekte
+- Status: offen
+- Aufwand: S
+- Idee: Pfeile mit Schweif, Kanonenkugeln mit Rauch, Frost-Partikel, Explosionen mit Funken und kurzem Screen-Shake, Treffer-Blitz auf Gegnern, Gold-Münzen beim Kill.
+- Akzeptanzkriterien:
+  - Rein visuelle Effekte in `src/render.js`. Falls Zustand für Partikel nötig ist, lebt er im Render-Modul und nicht in `game.js`.
+  - Keine Auswirkung auf Spiel-Logik und Tests.
+  - `npm test` bleibt grün.
+
+### B-013: Spätphase fordernder machen
+- Status: vorschlag
+- Aufwand: M
+- Idee: Seit B-008 sind die Wellen 14 bis 20 für gute Strategien verlustfrei, die Schwierigkeit konzentriert sich auf Welle 8 bis 10. Die Spätphase soll über Gegnermix und Spawn-Dichte (mehr Trolle und Flitzer ab Welle 15, Boss-Begleiter) fordernder werden statt über `hpScale`, das nur auf Messers Schneide steht.
+- Akzeptanzkriterien:
+  - Gute Strategien (A>C>C>F, C>A>A>F) verlieren in den Wellen 14 bis 20 spürbar Leben, gewinnen Welle 20 aber weiter bei dt 1/30 und 1/60.
+  - Troll-Belohnung prüfen (450 HP bei 14 Gold).
+  - Doppelte Strategie-Tests in `tests/game.test.js` bündeln (gemeinsamer Helfer), Laufzeit senken.

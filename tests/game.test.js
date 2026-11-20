@@ -6,7 +6,7 @@ import {
   canBuild, towerStats, upgradeCost,
 } from '../src/game.js';
 import { buildPath, pointAt, pathTiles } from '../src/path.js';
-import { TOWER_TYPES, MAX_WAVES, START_GOLD, START_LIVES, WAYPOINTS, TILE, waveFor, waveBonus, waveSummary } from '../src/config.js';
+import { TOWER_TYPES, MAX_WAVES, START_GOLD, START_LIVES, WAYPOINTS, TILE, COLS, ROWS, waveFor, waveBonus, waveSummary, hpScale, ENEMY_TYPES } from '../src/config.js';
 
 // Hilfsfunktion: Spiel n Sekunden in kleinen Schritten laufen lassen
 function run(state, seconds, dt = 1 / 60) {
@@ -169,9 +169,9 @@ test('Wellen: jede 5. Welle hat einen Boss, Wellen werden größer', () => {
 });
 
 test('waveSummary: Anzahl pro Gegnertyp für Welle 1, 5 und 10', () => {
-  assert.deepEqual(waveSummary(1), { grunt: 8 });
-  assert.deepEqual(waveSummary(5), { grunt: 16, runner: 8, tank: 2, boss: 1 });
-  assert.deepEqual(waveSummary(10), { grunt: 26, runner: 13, tank: 5, boss: 2 });
+  assert.deepEqual(waveSummary(1), { grunt: 9 });
+  assert.deepEqual(waveSummary(5), { grunt: 21, runner: 13, tank: 3, boss: 1 });
+  assert.deepEqual(waveSummary(10), { grunt: 36, runner: 23, tank: 6, boss: 2 });
   for (const w of [1, 5, 10]) {
     const total = Object.values(waveSummary(w)).reduce((a, b) => a + b, 0);
     assert.equal(total, waveFor(w).length, `Welle ${w}`);
@@ -209,4 +209,179 @@ test('waveSummary: liefert jedes Mal ein neues Objekt (keine geteilte Mutation)'
   const a = waveSummary(3);
   a.grunt = 999;
   assert.notEqual(waveSummary(3).grunt, 999);
+});
+
+test('Schwierigkeit: hpScale steigt streng, Wellen werden nie kleiner', () => {
+  for (let w = 2; w <= MAX_WAVES; w++) {
+    assert.ok(hpScale(w) > hpScale(w - 1), `hpScale Welle ${w}`);
+    assert.ok(waveFor(w).length >= waveFor(w - 1).length, `Gegneranzahl Welle ${w}`);
+  }
+});
+
+// Freie Felder neben dem Weg, sortiert nach Anzahl Wegpunkte in Reichweite (deterministisch)
+function rankedSpots(state, rangeTiles) {
+  const spots = [];
+  for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
+    if (!canBuild(state, c, r).ok) continue;
+    const x = (c + 0.5) * TILE;
+    const y = (r + 0.5) * TILE;
+    let n = 0;
+    for (let d = 0; d < state.path.length; d += 8) {
+      const p = pointAt(state.path, d);
+      if (Math.hypot(p.x - x, p.y - y) <= rangeTiles * TILE) n++;
+    }
+    if (n) spots.push({ c, r, n });
+  }
+  return spots.sort((a, b) => b.n - a.n || a.r - b.r || a.c - b.c);
+}
+
+test('Schwierigkeit: nur Pfeiltürme ohne Aufrüstung verlieren vor Welle 12', () => {
+  const s = createGame();
+  const spots = rankedSpots(s, TOWER_TYPES.arrow.range);
+  while (s.status === 'playing' && s.wave < MAX_WAVES) {
+    for (const p of spots) {
+      if (s.gold < TOWER_TYPES.arrow.cost) break;
+      buildTower(s, 'arrow', p.c, p.r);
+    }
+    startWave(s);
+    for (let i = 0; i < 30 * 600 && s.waveActive && s.status === 'playing'; i++) update(s, 1 / 30);
+  }
+  assert.equal(s.status, 'lost');
+  assert.ok(s.wave < 12, `verloren in Welle ${s.wave}`);
+});
+
+test('Schwierigkeit: hpScale(1) == 1, Faktor pro Welle wächst bis Welle 10 und flacht danach ab', () => {
+  assert.equal(hpScale(1), 1);
+  const f = (w) => hpScale(w) / hpScale(w - 1);
+  assert.ok(f(5) > 1, 'Welle 5 zäher als 4');
+  assert.ok(f(10) > f(5), 'mittlere Wellen steiler als frühe');
+  assert.ok(f(11) > 1 && f(11) < f(5), 'späte Wellen flacher, aber weiter steigend');
+  for (let w = 1; w <= MAX_WAVES; w++) assert.ok(Number.isFinite(hpScale(w)) && hpScale(w) >= 1);
+});
+
+test('Schwierigkeit: Spawn-Zeiten aufsteigend und endlich, Wellen nicht leer, Boss in Welle 20', () => {
+  for (let w = 1; w <= MAX_WAVES; w++) {
+    const list = waveFor(w);
+    assert.ok(list.length > 0, `Welle ${w} leer`);
+    for (let i = 1; i < list.length; i++) assert.ok(list[i].at >= list[i - 1].at, `Welle ${w} Index ${i}`);
+    assert.ok(list.every((e) => Number.isFinite(e.at) && e.at >= 0));
+  }
+  assert.ok(waveFor(20).some((e) => e.type === 'boss'));
+});
+
+test('Schwierigkeit: Wellenbonus steigt monoton, Startgold reicht für Kanone plus Pfeilturm', () => {
+  for (let w = 2; w <= MAX_WAVES; w++) assert.ok(waveBonus(w) > waveBonus(w - 1), `Wellenbonus Welle ${w}`);
+  assert.ok(START_GOLD >= TOWER_TYPES.cannon.cost + TOWER_TYPES.arrow.cost);
+});
+
+// Mehrere vernünftige Reihenfolgen müssen Welle 20 mit Reserve gewinnen (kein Münzwurf),
+// und zwar robust bei dt 1/30 und 1/60 (echtes Spiel läuft meist mit 1/60). playDt steht weiter unten.
+test('Schwierigkeit: mehrere gemischte Strategien schaffen Welle 20 mit Reserve (dt 1/30 und 1/60)', () => {
+  const orders = [
+    ['arrow', 'cannon', 'cannon', 'frost'],
+    ['cannon', 'arrow', 'arrow', 'frost'],
+  ];
+  for (const mix of orders) {
+    for (const dt of [1 / 30, 1 / 60]) {
+      const s = playDt(mix, dt);
+      assert.equal(s.status, 'won', `${mix.join(',')} dt=${dt}: Status ${s.status} in Welle ${s.wave}`);
+      assert.ok(s.lives >= 8, `${mix.join(',')} dt=${dt}: nur ${s.lives} Leben übrig`);
+    }
+  }
+});
+
+// --- Tester-Ergänzungen (Runde 2): Robustheit gegen den Zeitschritt ---
+
+function playDt(mix, dt) {
+  const s = createGame();
+  const spots = rankedSpots(s, TOWER_TYPES.cannon.range);
+  let i = 0;
+  while (s.status === 'playing' && s.wave < MAX_WAVES) {
+    for (let progress = true; progress;) {
+      progress = false;
+      const type = mix[s.towers.length % mix.length];
+      if (i < spots.length && s.gold >= TOWER_TYPES[type].cost) {
+        buildTower(s, type, spots[i].c, spots[i].r);
+        i++;
+        progress = true;
+      } else {
+        let best = null;
+        for (const t of s.towers) {
+          const c = upgradeCost(t);
+          if (c !== null && (!best || c < best.c)) best = { id: t.id, c };
+        }
+        if (best && s.gold >= best.c) { upgradeTower(s, best.id); progress = true; }
+      }
+    }
+    startWave(s);
+    for (let k = 0; k < Math.round(600 / dt) && s.waveActive && s.status === 'playing'; k++) update(s, dt);
+  }
+  return s;
+}
+
+test('Schwierigkeit (robust): Kanonen-lastige Strategie gewinnt bei dt 1/30 und 1/60 mit Reserve', () => {
+  for (const dt of [1 / 30, 1 / 60]) {
+    const s = playDt(['arrow', 'cannon', 'cannon', 'frost'], dt);
+    assert.equal(s.status, 'won', `dt=${dt}: Status ${s.status} in Welle ${s.wave}`);
+    assert.ok(s.lives >= 8, `dt=${dt}: nur ${s.lives} Leben`);
+  }
+});
+
+test('Schwierigkeit (robust): nur Pfeiltürme verlieren vor Welle 12 auch bei dt 1/60 (echtes Spiel)', () => {
+  for (const dt of [1 / 30, 1 / 60]) {
+    const s = createGame();
+    const spots = rankedSpots(s, TOWER_TYPES.arrow.range);
+    while (s.status === 'playing' && s.wave < MAX_WAVES) {
+      for (const p of spots) {
+        if (s.gold < TOWER_TYPES.arrow.cost) break;
+        buildTower(s, 'arrow', p.c, p.r);
+      }
+      startWave(s);
+      for (let i = 0; i < Math.round(600 / dt) && s.waveActive && s.status === 'playing'; i++) update(s, dt);
+    }
+    assert.equal(s.status, 'lost', `dt=${dt}`);
+    assert.ok(s.wave < 12, `dt=${dt}: verloren erst in Welle ${s.wave}`);
+  }
+});
+
+test('Schwierigkeit: Boss-Wellen sind effektiv nicht schwächer als vor B-008 (HP * hpScale)', () => {
+  const OLD_BOSS_HP = 900;
+  const oldScale = (w) => Math.pow(1.13, w - 1);
+  for (const w of [5, 10, 15, 20]) {
+    const neu = ENEMY_TYPES.boss.hp * hpScale(w);
+    assert.ok(neu >= OLD_BOSS_HP * oldScale(w), `Welle ${w}: Boss effektiv ${Math.round(neu)} HP < alt ${Math.round(OLD_BOSS_HP * oldScale(w))}`);
+  }
+});
+
+// --- Tester-Ergänzungen (Runde 3): feinere und gröbere Zeitschritte ---
+
+test('Schwierigkeit (Runde 3): Pfeil>Kanone>Kanone>Frost gewinnt auch bei dt 1/20 und 1/120 mit Reserve', () => {
+  for (const dt of [1 / 20, 1 / 120]) {
+    const s = playDt(['arrow', 'cannon', 'cannon', 'frost'], dt);
+    assert.equal(s.status, 'won', `dt=${dt}: Status ${s.status} in Welle ${s.wave}`);
+    assert.ok(s.lives >= 8, `dt=${dt}: nur ${s.lives} Leben`);
+  }
+});
+
+test('Schwierigkeit (Runde 3): Kanone>Pfeil>Pfeil>Frost gewinnt bei dt 1/120 mit Reserve', () => {
+  const s = playDt(['cannon', 'arrow', 'arrow', 'frost'], 1 / 120);
+  assert.equal(s.status, 'won', `Status ${s.status} in Welle ${s.wave}`);
+  assert.ok(s.lives >= 8, `nur ${s.lives} Leben`);
+});
+
+test('Schwierigkeit (Runde 3): nur Pfeile verlieren auch bei dt 1/20 und 1/120 vor Welle 12', () => {
+  for (const dt of [1 / 20, 1 / 120]) {
+    const s = createGame();
+    const spots = rankedSpots(s, TOWER_TYPES.arrow.range);
+    while (s.status === 'playing' && s.wave < MAX_WAVES) {
+      for (const p of spots) {
+        if (s.gold < TOWER_TYPES.arrow.cost) break;
+        buildTower(s, 'arrow', p.c, p.r);
+      }
+      startWave(s);
+      for (let i = 0; i < Math.round(600 / dt) && s.waveActive && s.status === 'playing'; i++) update(s, dt);
+    }
+    assert.equal(s.status, 'lost', `dt=${dt}`);
+    assert.ok(s.wave < 12, `dt=${dt}: verloren erst in Welle ${s.wave}`);
+  }
 });

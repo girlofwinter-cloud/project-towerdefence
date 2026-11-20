@@ -6,7 +6,7 @@ export const ROWS = 14;
 export const WIDTH = COLS * TILE;
 export const HEIGHT = ROWS * TILE;
 
-export const START_GOLD = 150;
+export const START_GOLD = 140;
 export const START_LIVES = 20;
 export const MAX_WAVES = 20;
 export const SELL_RATIO = 0.7;
@@ -80,17 +80,21 @@ export const TOWER_TYPES = {
 export const ENEMY_TYPES = {
   grunt: { name: 'Goblin', hp: 40, speed: 1.4, reward: 6, leak: 1, radius: 11, color: '#6fbf4a' },
   runner: { name: 'Flitzer', hp: 25, speed: 2.6, reward: 5, leak: 1, radius: 9, color: '#f2c14e' },
-  tank: { name: 'Panzer-Troll', hp: 160, speed: 0.8, reward: 14, leak: 2, radius: 14, color: '#b5523b' },
-  boss: { name: 'Oger-König', hp: 900, speed: 0.6, reward: 80, leak: 5, radius: 18, color: '#7a2e8e' },
+  tank: { name: 'Panzer-Troll', hp: 450, speed: 0.8, reward: 14, leak: 2, radius: 14, color: '#b5523b' },
+  boss: { name: 'Oger-König', hp: 850, speed: 0.6, reward: 80, leak: 6, radius: 18, color: '#7a2e8e' },
 };
 
 export function waveBonus(wave) {
-  return 20 + wave * 2;
+  return 10 + wave;
 }
 
 // HP-Multiplikator pro Welle: Gegner werden mit jeder Welle zäher.
+// Welle 1-5 moderat (+15 %), Welle 5-10 steil (+30,5 %), danach flach (+6 %), damit Welle 20 schaffbar bleibt.
 export function hpScale(wave) {
-  return Math.pow(1.13, wave - 1);
+  const early = Math.min(wave, 5) - 1;
+  const mid = Math.max(Math.min(wave, 10) - 5, 0);
+  const late = Math.max(wave - 10, 0);
+  return Math.pow(1.15, early) * Math.pow(1.305, mid) * Math.pow(1.06, late);
 }
 
 // Erzeugt die Spawn-Liste einer Welle: [{ type, at }] (at = Sekunden nach Wellenstart)
@@ -105,9 +109,9 @@ export function waveFor(wave) {
     t += 1;
   };
 
-  add('grunt', 6 + wave * 2, Math.max(0.35, 0.9 - wave * 0.03));
-  if (wave >= 3) add('runner', 3 + wave, 0.4);
-  if (wave >= 5) add('tank', Math.floor(wave / 2), 1.2);
+  add('grunt', 6 + wave * 3, Math.max(0.3, 0.9 - wave * 0.04));
+  if (wave >= 3) add('runner', 3 + wave * 2, 0.35);
+  if (wave >= 5) add('tank', Math.floor(wave / 2) + 1, 1.0);
   if (wave % 5 === 0) add('boss', Math.floor(wave / 10) + 1, 3);
   return list;
 }
