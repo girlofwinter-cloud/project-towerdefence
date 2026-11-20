@@ -287,7 +287,7 @@ test('Schwierigkeit: mehrere gemischte Strategien schaffen Welle 20 mit Reserve 
     for (const dt of [1 / 30, 1 / 60]) {
       const s = playDt(mix, dt);
       assert.equal(s.status, 'won', `${mix.join(',')} dt=${dt}: Status ${s.status} in Welle ${s.wave}`);
-      assert.ok(s.lives >= 8, `${mix.join(',')} dt=${dt}: nur ${s.lives} Leben übrig`);
+      assert.ok(s.lives >= 2, `${mix.join(',')} dt=${dt}: nur ${s.lives} Leben übrig`);
     }
   }
 });
@@ -325,7 +325,7 @@ test('Schwierigkeit (robust): Kanonen-lastige Strategie gewinnt bei dt 1/30 und 
   for (const dt of [1 / 30, 1 / 60]) {
     const s = playDt(['arrow', 'cannon', 'cannon', 'frost'], dt);
     assert.equal(s.status, 'won', `dt=${dt}: Status ${s.status} in Welle ${s.wave}`);
-    assert.ok(s.lives >= 8, `dt=${dt}: nur ${s.lives} Leben`);
+    assert.ok(s.lives >= 2, `dt=${dt}: nur ${s.lives} Leben`);
   }
 });
 
@@ -361,14 +361,14 @@ test('Schwierigkeit (Runde 3): Pfeil>Kanone>Kanone>Frost gewinnt auch bei dt 1/2
   for (const dt of [1 / 20, 1 / 120]) {
     const s = playDt(['arrow', 'cannon', 'cannon', 'frost'], dt);
     assert.equal(s.status, 'won', `dt=${dt}: Status ${s.status} in Welle ${s.wave}`);
-    assert.ok(s.lives >= 8, `dt=${dt}: nur ${s.lives} Leben`);
+    assert.ok(s.lives >= 2, `dt=${dt}: nur ${s.lives} Leben`);
   }
 });
 
 test('Schwierigkeit (Runde 3): Kanone>Pfeil>Pfeil>Frost gewinnt bei dt 1/120 mit Reserve', () => {
   const s = playDt(['cannon', 'arrow', 'arrow', 'frost'], 1 / 120);
   assert.equal(s.status, 'won', `Status ${s.status} in Welle ${s.wave}`);
-  assert.ok(s.lives >= 8, `nur ${s.lives} Leben`);
+  assert.ok(s.lives >= 2, `nur ${s.lives} Leben`);
 });
 
 test('Schwierigkeit (Runde 3): nur Pfeile verlieren auch bei dt 1/20 und 1/120 vor Welle 12', () => {
@@ -1693,4 +1693,16 @@ test('B-012 Tester R2: Sperrzeit - neuer Weg leert Sperre; kleine Explosion setz
   boom(s3);
   syncFx(fx3, s3);
   assert.ok(Number.isFinite(fx3.shakeLock) || fx3.shakeLock === -Infinity);
+});
+
+// --- B-019: nur noch 3 Leben ---
+
+test('B-019: START_LIVES ist 3, ein durchgelassener Boss beendet das Spiel mit Leben 0 (nicht negativ)', () => {
+  assert.equal(START_LIVES, 3);
+  const s = createGame();
+  assert.equal(s.lives, 3);
+  spawnEnemy(s, 'boss', 1); // Boss kostet 6 Leben, mehr als vorhanden
+  run(s, 600);
+  assert.equal(s.status, 'lost');
+  assert.equal(s.lives, 0);
 });

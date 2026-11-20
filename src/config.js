@@ -7,7 +7,7 @@ export const WIDTH = COLS * TILE;
 export const HEIGHT = ROWS * TILE;
 
 export const START_GOLD = 140;
-export const START_LIVES = 20;
+export const START_LIVES = 3;
 export const MAX_WAVES = 20;
 export const SELL_RATIO = 0.7;
 export const MAX_LEVEL = 3;
@@ -89,12 +89,12 @@ export function waveBonus(wave) {
 }
 
 // HP-Multiplikator pro Welle: Gegner werden mit jeder Welle zäher.
-// Welle 1-5 moderat (+15 %), Welle 5-10 steil (+30,5 %), danach flach (+6 %), damit Welle 20 schaffbar bleibt.
+// Welle 1-5 moderat (+15 %), Welle 5-10 steil (+26 %), danach flach (+7 %), damit Welle 20 schaffbar bleibt.
 export function hpScale(wave) {
   const early = Math.min(wave, 5) - 1;
   const mid = Math.max(Math.min(wave, 10) - 5, 0);
   const late = Math.max(wave - 10, 0);
-  return Math.pow(1.15, early) * Math.pow(1.305, mid) * Math.pow(1.06, late);
+  return Math.pow(1.15, early) * Math.pow(1.26, mid) * Math.pow(1.07, late);
 }
 
 // Erzeugt die Spawn-Liste einer Welle: [{ type, at }] (at = Sekunden nach Wellenstart)

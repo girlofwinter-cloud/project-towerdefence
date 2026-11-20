@@ -65,7 +65,7 @@ Die Pipeline nimmt nur Einträge mit Status `offen`, von oben nach unten.
   - Test: `status` wird erst 'won', wenn alle Wellen gespawnt und alle Gegner tot sind.
 
 ### B-006: Heiler und Schildträger
-- Status: vorschlag
+- Status: offen
 - Aufwand: M
 - Idee: Schamane heilt Gegner in der Nähe periodisch; Schildträger reduziert Pfeil-Schaden stark, wird aber vom Kanonen-Splash normal getroffen. Ab Welle 7 bzw. 9. Risiko: Balancing und O(n²)-Radiusprüfung.
 - Akzeptanzkriterien:
@@ -141,7 +141,7 @@ Die Pipeline nimmt nur Einträge mit Status `offen`, von oben nach unten.
   - `npm test` bleibt grün.
 
 ### B-013: Spätphase fordernder machen
-- Status: vorschlag
+- Status: offen
 - Aufwand: M
 - Idee: Seit B-008 sind die Wellen 14 bis 20 für gute Strategien verlustfrei, die Schwierigkeit konzentriert sich auf Welle 8 bis 10. Die Spätphase soll über Gegnermix und Spawn-Dichte (mehr Trolle und Flitzer ab Welle 15, Boss-Begleiter) fordernder werden statt über `hpScale`, das nur auf Messers Schneide steht.
 - Akzeptanzkriterien:
@@ -192,3 +192,13 @@ Die Pipeline nimmt nur Einträge mit Status `offen`, von oben nach unten.
   - Nur `src/fx-system.js`, `src/render-fx.js`, `src/render.js`.
   - Bei Spielende ist der Shake-Versatz 0, per Test belegt.
   - `npm test` bleibt grün.
+
+### B-019: Nur noch 3 Leben
+- Status: fertig
+- Aufwand: S
+- Idee: Der Mensch will ein deutlich härteres Spiel: `START_LIVES` von 20 auf 3. Damit entscheidet schon ein einziger Durchbruch (Boss: Leak 6) über Sieg oder Niederlage. Das Balancing muss so nachgezogen werden, dass das Spiel hart, aber mit guter Strategie weiter schaffbar bleibt.
+- Akzeptanzkriterien:
+  - `START_LIVES = 3` in `src/config.js`. Weitere Anpassungen nur an Zahlen in `src/config.js` (Gegnerwerte, Leak, Wellen), keine neue Mechanik.
+  - Die HUD-Anzeige zeigt nie weniger als 0 Leben (`game.js` begrenzt bereits auf 0).
+  - Gute Strategien (die zwei robusten Reihenfolgen aus den Tests) gewinnen Welle 20 bei dt 1/30 und 1/60 mit mindestens 1 Leben. "Nur Pfeiltürme" verliert weiter vor Welle 12. Welle 1 verliert mit dem Startgold kein Leben.
+  - Die drei Tests mit der festen Reserve `lives >= 8` (`tests/game.test.js`) werden durch die neue Reserve ersetzt (mindestens 1 Leben, also gewonnen). Das ist die einzige zulässige Änderung an bestehenden Tests und wird im Ledger ausdrücklich genannt. Alle anderen Tests bleiben unverändert.

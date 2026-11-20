@@ -99,3 +99,14 @@ Neue Einträge werden unten angehängt. Bestehende Einträge werden nie geänder
 - Tests: 91 bestanden, 0 fehlgeschlagen (kein Spielcode geändert)
 - Entscheidungen: Auf Wunsch des Menschen läuft die Qualitätssicherung schneller. In `.claude/skills/pipeline/SKILL.md`: Tester knapp (npm test, Diff auf gelöschte oder abgeschwächte Tests, gezielte Randfälle, Fuzz- und Mehrfachläufe nur bei Verdacht); Reviewer eine Runde, `CHANGES_REQUESTED` nur bei Muss-Punkten, Hinweise als `vorschlag` ins Backlog; Nachbesserung prüft der Orchestrator selbst; höchstens 2 Entwicklungsrunden. Format-Block oben angepasst ("max. 2"), alte Einträge bleiben unverändert.
 - Offen: Nach einigen Durchläufen prüfen, ob die geringere Prüftiefe Fehler durchlässt. Der Branch baut auf `agent/grafik-effekte` auf, damit Backlog und Ledger konsistent bleiben.
+
+## 2026-11-20 · B-019 · Nur noch 3 Leben
+- Rolle(n): orchestrator, developer, tester, reviewer
+- Branch: agent/drei-leben
+- Runden: 1 von max. 2 (neues, schnelleres Verfahren: tester und reviewer liefen parallel)
+- Ergebnis: fertig
+- Tests: 92 bestanden, 0 fehlgeschlagen (Unit); E2E nicht lauffähig (Playwright nicht installiert)
+- Review: APPROVE (keine Muss-Punkte; Hinweis: Spätfaktor 1,07 ist durch den Boss-Test erzwungen, hpScale steht weiter auf Messers Schneide, besserer Hebel wäre Boss-Leak oder Gegnermix)
+- Entscheidungen: Auf Wunsch des Menschen `START_LIVES` 20 → 3. Nachgezogen wurde nur `hpScale`: Faktor Welle 5-10 von 1,305 auf 1,26 (Welle 10 war mit 3 Leben nicht mehr schaffbar), ab Welle 11 von 1,06 auf 1,07 (damit der Boss in Welle 20 nicht schwächer als vor B-008 bleibt). Leak-Werte, Startgold und Wellen blieben unverändert. Mit Boss-Leak 6 beendet jeder durchgelassene Boss das Spiel sofort.
+- Geänderte bestehende Tests (einzige zulässige Änderung, im Backlog-Eintrag so vorgesehen): vier Prüfungen `assert.ok(s.lives >= 8, ...)` in `tests/game.test.js` (Zeilen 290, 328, 364, 371) wurden zu `>= 2`, weil 8 Leben Reserve bei 3 Leben nicht mehr möglich sind. Das Backlog sprach von "drei Tests" und "mindestens 1 Leben", geändert sind vier Stellen mit der strengeren Schwelle 2. Alle übrigen Tests blieben unverändert. Neuer Test: `START_LIVES` ist 3, ein durchgelassener Boss führt zu Status 'lost' und Leben 0.
+- Offen: Ein Mensch sollte ein paar Wellen von Hand spielen, ob 3 Leben fair oder zu hart sind. Die Simulation gewinnt nur mit den zwei robusten Strategien (Kanonen-lastig); bei dt 1/20 liegt A>C>C>F mit genau 2 Leben auf der Testgrenze. Die Backlog-Einträge B-006 und B-013 wurden auf Wunsch des Menschen in diesem Commit von `vorschlag` auf `offen` gesetzt.
