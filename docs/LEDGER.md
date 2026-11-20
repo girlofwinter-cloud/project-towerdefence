@@ -8,7 +8,7 @@ Neue Einträge werden unten angehängt. Bestehende Einträge werden nie geänder
 ## <JJJJ-MM-TT> · <Backlog-ID> · <Titel>
 - Rolle(n): orchestrator, developer, tester, reviewer
 - Branch: agent/<name>
-- Runden: <n> von max. 3
+- Runden: <n> von max. 2
 - Ergebnis: fertig | blockiert
 - Tests: <n> bestanden, <n> fehlgeschlagen
 - Review: APPROVE | CHANGES_REQUESTED (Kernpunkte)
@@ -91,3 +91,11 @@ Neue Einträge werden unten angehängt. Bestehende Einträge werden nie geänder
 - Review: CHANGES_REQUESTED in Runde 1 (Muss: ein neuer Shake-Test bestand nur im Gesamtlauf, weil er vom Hintergrund-Cache früherer Tests abhing). Behoben durch frisches Modul und Grundlinie; der Orchestrator hat die Behebung per Einzellauf geprüft, der Tester per Einzel- und Umkehr-Lauf aller neuen Tests.
 - Entscheidungen: Reine Partikel-Logik in `src/fx-system.js` (Pool mit 256 Plätzen als Typed Arrays, Ringpuffer, deterministischer Zufall über `tileRand`, Zeit nur über `state.time`, Reset bei neuem Weg oder Zeitsprung rückwärts). Zeichnung in `src/render-fx.js`. Treffer werden daran erkannt, dass ein Projektil aus der Liste verschwindet; `game.js` blieb unberührt. Screen-Shake nur per `ctx.translate` in `render()`, höchstens 3 px, Eingabe unbeeinflusst. Weil jede Kanonenexplosion groß genug ist, gibt es eine Sperrzeit `SHAKE_COOLDOWN` von 1,2 s, damit das Bild bei mehreren Kanonen nicht dauernd wackelt.
 - Offen: Ein einzelner Testlauf beim Entwickler meldete 612 s; in insgesamt 33 Läufen (Orchestrator und Tester, teils unter Last) nicht reproduzierbar, keine Ursache im Code gefunden, vermutlich Umgebungseffekt. Falls es wieder passiert: `node --test --test-reporter=spec` zeigt den hängenden Test. Optik im Browser ansehen (Schweife, Rauch, Funken, Münzen, Shake bei mehreren Kanonen, Hover während des Shakes). Der ältere Turm-Render-Test aus B-010 ist reihenfolgeabhängig (siehe B-017). B-017 und B-018 sind in diesem Commit. Der Branch baut auf `agent/grafik-gegner` auf (B-008 bis B-011).
+
+## 2026-11-20 · Prozess · Pipeline schneller
+- Rolle(n): Mensch + Claude (interaktiv)
+- Branch: agent/pipeline-schneller
+- Ergebnis: fertig
+- Tests: 91 bestanden, 0 fehlgeschlagen (kein Spielcode geändert)
+- Entscheidungen: Auf Wunsch des Menschen läuft die Qualitätssicherung schneller. In `.claude/skills/pipeline/SKILL.md`: Tester knapp (npm test, Diff auf gelöschte oder abgeschwächte Tests, gezielte Randfälle, Fuzz- und Mehrfachläufe nur bei Verdacht); Reviewer eine Runde, `CHANGES_REQUESTED` nur bei Muss-Punkten, Hinweise als `vorschlag` ins Backlog; Nachbesserung prüft der Orchestrator selbst; höchstens 2 Entwicklungsrunden. Format-Block oben angepasst ("max. 2"), alte Einträge bleiben unverändert.
+- Offen: Nach einigen Durchläufen prüfen, ob die geringere Prüftiefe Fehler durchlässt. Der Branch baut auf `agent/grafik-effekte` auf, damit Backlog und Ledger konsistent bleiben.
