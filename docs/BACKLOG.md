@@ -414,15 +414,6 @@ Reihenfolge ist Abhängigkeit: B-062 und B-063 zuerst, dann gemeinsame Sichtprü
   - Kartenhöhe nicht größer als jetzt, alle Karten ohne Scrollen erreichbar.
   - Kontrast Text/Hintergrund mindestens 4,5:1.
 
-### B-071: Wiese 1/7: Weg mit welligem Rand, Saum und heller Mitte (Design-Overhaul, Ziel Variante B)
-- Status: offen
-- Aufwand: M
-- Idee: Zielbild: `docs/design/wiese-ziel-1x.png` und `-2x.png` (Entwurf Variante B des designers, eigene Zeichnung; Referenz war ein Kingdom-Rush-Screenshot, nicht im Repo). Weg bekommt welligen Rand (Kreiskette), dunkle Kontur, grünen Saum, Rillen, Randsteine und eine helle Wegmitte. Reihenfolge der sieben Wiesen-Einträge: B-071, B-077, B-078, B-079, B-080, B-081, B-082. Alles nur Zeichnen (`render*.js`, `decor.js`), alles Statische einmal in `bgCanvas`. Spiellogik, Wegverlauf und Baufelder bleiben unverändert.
-- Akzeptanzkriterien:
-  - Wegbreite in Kachelmitte 40 px, Rand höchstens 4 px darüber hinaus.
-  - Gegner haben mindestens 25 % Helligkeitsabstand zur Wegmitte (Test mit Farbwerten aus `config.js`).
-  - Weg im Hintergrund-Cache; kein Zeichnen des Weges im Frame-Pfad (render-Test).
-  - Screenshots Desktop 1280x800 und Handy 390x844.
 
 ### B-077: Wiese 2/7: Baumrahmen am Rand (Design-Overhaul)
 - Status: offen
@@ -527,3 +518,10 @@ Reihenfolge ist Abhängigkeit: B-062 und B-063 zuerst, dann gemeinsame Sichtprü
 - Akzeptanzkriterien:
   - Tote Zweige entfernt, `npm test` grün.
   - Testtitel stimmt mit der Prüfung überein.
+
+### B-085: Gegner-Lesbarkeit auf hellem Weg (Hinweise aus dem Review von B-071)
+- Status: vorschlag
+- Aufwand: S
+- Idee: Gegner-Körperfarben erreichen auf der hellen Wegmitte der Wiese (`#ecd5a0`, Helligkeit 0,84) nicht die geforderten 25 % Abstand: Flitzer 0,07, Goblin 0,19, Schamane 0,21 (Schildträger 0,32, Troll 0,44, Oger 0,57). B-071 prüft stattdessen die dunkle Gegner-Kontur (`outlineOf`, Abstand mindestens 0,49). Am schwächsten ist der gelbe Flitzer. Mit den Gegner-Einträgen (B-065/B-066) dunklerer Körperton oder stärkere Kontur für Flitzer und Goblin. Außerdem: Der Dekor-Test zählt `arc`/`ellipse` als Dekoration, der Weg zeichnet Kreise deshalb mit `ctx.roundRect`; langfristig den Dekor-Test auf den Frame-Pfad eingrenzen. Der Saum ist nur Kreise, die Grasbüschel des Entwurfs fehlen (optional, B-079).
+- Akzeptanzkriterien:
+  - Flitzer und Goblin sind auf der Wegmitte der Wiese im Screenshot klar lesbar; Körperfarbe oder Kontur so, dass der Abstand mindestens 0,25 (Helligkeit) beträgt, `ENEMY_TYPES`-Farben und HP-Anzeige bleiben konsistent.

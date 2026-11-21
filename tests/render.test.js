@@ -553,3 +553,89 @@ test('Render: Pfeilturm Stufe 1-3 im neuen Stil, Stufen unterscheiden sich, ande
     assert.ok(draw(type, 1).total > 0 && draw(type, 3).total > draw(type, 1).total);
   }
 });
+
+// ---------- Weg im Flat-Pop-Stil (B-071) ----------
+test('Weg: Breite 40 px in Kachelmitte, Rand ragt hoechstens 4 px darueber hinaus', async () => {
+  const { PATH_STYLE, MAPS } = await import('../src/config.js');
+  const { pathReach } = await import('../src/render-path.js');
+  assert.ok(pathReach() - TILE / 2 <= PATH_STYLE.overhangMax, `Rand ragt ${pathReach() - TILE / 2} px hinaus`);
+  assert.ok(PATH_STYLE.sandWidth < TILE);
+  assert.equal(MAPS.meadow.theme.path.main, '#e2c88f');
+});
+
+test('Weg: Gegner-Konturen heben sich mindestens 25 % von der Wegmitte ab', async () => {
+  const { PATH_STYLE, MAPS, ENEMY_TYPES } = await import('../src/config.js');
+  const { brightness, outlineOf } = await import('../src/draw-utils.js');
+  for (const theme of [MAPS.meadow.theme.path, PATH_STYLE.colors]) {
+    for (const [k, def] of Object.entries(ENEMY_TYPES)) {
+      const d = Math.abs(brightness(theme.mid) - brightness(outlineOf(def.color)));
+      assert.ok(d >= 0.25, `${k}: Abstand ${d.toFixed(2)}`);
+    }
+  }
+});
+
+test('Weg: im Frame-Pfad wird nichts vom Weg gezeichnet, Aufbau bleibt schnell', async () => {
+  const { render } = await import('../src/render.js?weg');
+  const offscreen = [];
+  globalThis.document = { createElement() { const m = mockCtx(); const c = { width: 0, height: 0, getContext: () => m.ctx, m }; offscreen.push(c); return c; } };
+  try {
+    const s = createGame();
+    const main = mockCtx();
+    const t0 = performance.now();
+    render(main.ctx, s, {});
+    const ms = performance.now() - t0;
+    const off = offscreen[offscreen.length - 1];
+    assert.ok(off.m.counts.roundRect > 0, 'Randkreise im Cache');
+    const before = { ...main.counts };
+    render(main.ctx, s, {});
+    for (const k of ['roundRect', 'arc', 'stroke', 'ellipse']) assert.ok((main.counts[k] || 0) - (before[k] || 0) <= 0, `Frame-Pfad zeichnet ${k}`);
+    assert.ok(ms < 60, `Aufbau ${ms.toFixed(1)} ms`);
+  } finally { delete globalThis.document; }
+});
+
+// ---------- Weg: Randfaelle (Tester B-071) ----------
+test('Weg: alle Karten rendern ausgewogen, Cache wird einmal gebaut und bei Kartenwechsel neu', async () => {
+  const { render } = await import('../src/render.js?wegmaps');
+  const { MAPS } = await import('../src/config.js');
+  const offscreen = [];
+  globalThis.document = { createElement() { const m = mockCtx(); const c = { width: 0, height: 0, getContext: () => m.ctx, m }; offscreen.push(c); return c; } };
+  try {
+    for (const mapId of Object.keys(MAPS)) {
+      const s = createGame({ mapId });
+      const main = mockCtx();
+      render(main.ctx, s, {});
+      const off = offscreen[0];
+      const strokes = off.m.counts.stroke || 0;
+      assert.ok(strokes > 0, `${mapId}: Weg im Cache`);
+      render(main.ctx, s, {});
+      assert.equal(off.m.counts.stroke || 0, strokes, `${mapId}: zweiter Aufruf zeichnet Weg nicht neu`);
+      assert.equal(off.m.depth, 0, `${mapId}: save/restore ausgewogen`);
+      assert.equal(main.depth, 0);
+    }
+  } finally { delete globalThis.document; }
+});
+
+test('Weg: drawPathStyled ist deterministisch, endlich und deckt Randecken und mehrere Wege ab', async () => {
+  const { drawPathStyled } = await import('../src/render-path.js');
+  const { MAPS, WIDTH, HEIGHT } = await import('../src/config.js');
+  const run = (paths, theme) => {
+    const calls = [];
+    const m = mockCtx();
+    const ctx = new Proxy(m.ctx, { get(t, k) { const v = t[k]; return typeof v === 'function' ? (...a) => { calls.push([k, ...a]); return v.apply(t, a); } : v; } });
+    drawPathStyled(ctx, paths, theme);
+    assert.equal(m.depth, 0);
+    return calls;
+  };
+  const corner = [{ points: [{ x: 0, y: 0 }, { x: WIDTH, y: 0 }, { x: WIDTH, y: HEIGHT }, { x: 0, y: HEIGHT }] }];
+  const degenerate = [{ points: [{ x: 5, y: 5 }, { x: 5, y: 5 }, { x: 5, y: 5 }] }];
+  for (const paths of [corner, degenerate]) {
+    const a = run(paths), b = run(paths);
+    assert.deepEqual(a, b, 'gleiche Aufrufe');
+    for (const c of a) for (const v of c.slice(1)) if (typeof v === 'number') assert.ok(Number.isFinite(v), `${c[0]} nicht endlich`);
+  }
+  for (const id of Object.keys(MAPS)) {
+    const s = createGame({ mapId: id });
+    const paths = s.paths || [s.path];
+    assert.deepEqual(run(paths, MAPS[id].theme), run(paths, MAPS[id].theme), `${id} deterministisch`);
+  }
+});

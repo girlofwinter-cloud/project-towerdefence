@@ -2,6 +2,7 @@
 import { TILE, COLS, ROWS, WIDTH, HEIGHT, TOWER_TYPES, MAPS, ABILITIES } from './config.js';
 import { towerStats, enemyPath } from './game.js';
 import { rect, tri, disc } from './draw-utils.js';
+import { drawPathStyled } from './render-path.js';
 import { drawArrowTower } from './render-arrow.js';
 import { recoilOffset } from './tower-fx.js';
 import { drawEnemy, drawHealAura } from './render-enemies.js';
@@ -38,10 +39,6 @@ export function render(ctx, state, ui) {
 const GRASS_COLORS = ['#4d9c41', '#51a145']; // Schachbrett-Grundton
 const GRASS_SHIFT = 0.07; // max. Helligkeitsversatz pro Kachel (Deckkraft)
 const GRASS_BLADE = '#37802f';
-const PATH_EDGE = '#8f7140';
-const PATH_MAIN = '#dcc189';
-const PATH_PEBBLES = ['#bfa06a', '#ead4a0', '#a98a58'];
-const PATH_EDGE_WIDTH = 5; // Randbreite in Pixeln
 const GATE_WOOD = '#5b3a1e';
 const GATE_WOOD_LIGHT = '#7a5230';
 const EXIT_STONE = '#6b6f78';
@@ -113,29 +110,7 @@ function drawGrass(ctx, theme) {
 }
 
 function drawPath(ctx, state) {
-  const all = state.paths || [state.path];
-  ctx.lineCap = 'butt';
-  ctx.lineJoin = 'miter';
-  // dunkler Rand aller Wege, darueber der erdige Weg (so verschmelzen Kreuzungen)
-  ctx.strokeStyle = PATH_EDGE;
-  ctx.lineWidth = TILE;
-  for (const p of all) strokePath(ctx, p.points);
-  ctx.strokeStyle = PATH_MAIN;
-  ctx.lineWidth = TILE - PATH_EDGE_WIDTH * 2;
-  for (const p of all) strokePath(ctx, p.points);
-  // Kiesel auf Weg-Kacheln (deterministisch)
-  for (const key of state.blocked) {
-    const [c, r] = key.split(',').map(Number);
-    if (c < 0 || r < 0 || c >= COLS || r >= ROWS) continue;
-    for (let i = 0; i < 4; i++) {
-      const x = c * TILE + 8 + tileRand(c, r, 40 + i) * (TILE - 16);
-      const y = r * TILE + 8 + tileRand(c, r, 50 + i) * (TILE - 16);
-      ctx.fillStyle = PATH_PEBBLES[tileHash(c, r, 60 + i) % PATH_PEBBLES.length];
-      ctx.beginPath();
-      ctx.ellipse(x, y, 2 + tileRand(c, r, 70 + i) * 2, 1.5 + tileRand(c, r, 80 + i), 0, 0, Math.PI * 2);
-      ctx.fill();
-    }
-  }
+  drawPathStyled(ctx, state.paths || [state.path], MAPS[state.mapId]?.theme);
 }
 
 // Dekoration: Regeln stehen in decor.js (gross nur am Rand, innen nur klein, nie auf dem Weg).
@@ -274,13 +249,6 @@ function drawExit(ctx, end, prev) {
     ctx.fillStyle = EXIT_STONE;
     for (let i = -2; i <= 2; i++) ctx.fillRect(14, i * 9 - 3, 4, 6); // Zinnen
   });
-}
-
-function strokePath(ctx, pts) {
-  ctx.beginPath();
-  ctx.moveTo(pts[0].x, pts[0].y);
-  for (const p of pts.slice(1)) ctx.lineTo(p.x, p.y);
-  ctx.stroke();
 }
 
 function drawHover(ctx, state, ui) {

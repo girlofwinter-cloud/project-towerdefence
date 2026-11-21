@@ -247,3 +247,13 @@ Agents lesen diese Datei nur bei konkretem Bedarf.
   - Bei 1x und 0,75x erkennbar vom Boden getrennt (Screenshot, auch auf Eis).
   - Drehung zum Ziel und Rückstoß unverändert.
   - Zeichenzeit mit 20 Türmen nicht merklich höher (Messung).
+
+### B-071: Wiese 1/7: Weg mit welligem Rand, Saum und heller Mitte (Design-Overhaul, Ziel Variante B)
+- Status: fertig
+- Aufwand: M
+- Idee: Zielbild: `docs/design/wiese-ziel-1x.png` und `-2x.png` (Entwurf Variante B des designers, eigene Zeichnung; Referenz war ein Kingdom-Rush-Screenshot, nicht im Repo). Weg bekommt welligen Rand (Kreiskette), dunkle Kontur, grünen Saum, Rillen, Randsteine und eine helle Wegmitte. Reihenfolge der sieben Wiesen-Einträge: B-071, B-077, B-078, B-079, B-080, B-081, B-082. Alles nur Zeichnen (`render*.js`, `decor.js`), alles Statische einmal in `bgCanvas`. Spiellogik, Wegverlauf und Baufelder bleiben unverändert.
+- Akzeptanzkriterien:
+  - Wegbreite in Kachelmitte 40 px, Rand höchstens 4 px darüber hinaus.
+  - Gegner haben mindestens 25 % Helligkeitsabstand zur Wegmitte (Test mit Farbwerten aus `config.js`).
+  - Weg im Hintergrund-Cache; kein Zeichnen des Weges im Frame-Pfad (render-Test).
+  - Screenshots Desktop 1280x800 und Handy 390x844.
