@@ -717,4 +717,15 @@ export const ENEMY_STYLE = {
     skin: '#b5523b', plate: '#9aa3a8', plateDark: '#6d767b', tusk: '#f1e8d2',
     main: { skin: 0.5, plate: 0.2, plateDark: 0.3 },
   },
+  healer: {
+    ref: 11,
+    skin: '#3fbf8f', robe: '#1f6e50', robeDark: '#154c37', face: '#bfe8cf', staff: '#6b4a2b', orb: '#b8ffd8', cross: '#1f6e50',
+    orbRadius: 2.6, orbPulse: 0.3, orbSpeed: 4, // Leuchtkugel: Grundradius, Pulsausschlag (px), Tempo (rad/s)
+    main: { skin: 0.3, robe: 0.7 },
+  },
+  shielded: {
+    ref: 13,
+    skin: '#6f86a8', body: '#4f607c', helm: '#9aa7ba', shield: '#7a5530', rim: '#c9ccd2', emblem: '#e8d27a',
+    main: { skin: 0.3, body: 0.3, shield: 0.4 },
+  },
 };

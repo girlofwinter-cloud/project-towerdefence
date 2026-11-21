@@ -4,7 +4,7 @@
 // Keine Allokationen pro Frame: Konstanten und Tabellen liegen auf Modulebene.
 import { ENEMY_TYPES, TILE } from './config.js';
 import { rect, tri, disc, groundShadow } from './draw-utils.js';
-import { drawGruntFlat, drawRunnerFlat, drawTankFlat } from './render-enemies-flat.js';
+import { drawGruntFlat, drawRunnerFlat, drawTankFlat, drawHealerFlat, drawShieldedFlat } from './render-enemies-flat.js';
 import { walkPhase, animSpeedFactor, facingFor, facingFlip, facingTilt } from './enemy-fx.js';
 
 const TWO_PI = Math.PI * 2;
@@ -36,8 +36,6 @@ const HP_BOSS_LIFT = 6; // Boss-Krone ragt hoeher -> Balken weiter oben
 const WHITE = '#fff';
 const EYE_DARK = '#1a1a1a';
 const OGRE = { skin: '#7a2e8e', light: '#9a4cb0', dark: '#55206a', gold: '#f2c94c', goldDark: '#b8912a', aura: 'rgba(180,90,220,0.2)', club: '#6b4a2b', tusk: '#f0e6d2', eye: '#ff4a4a' };
-const SHAMAN = { robe: '#2f8f6a', dark: '#1f6148', skin: '#8fd4a8', staff: '#6b4a2b', glow: '#b8ffd8', hood: '#3fbf8f' };
-const SHIELDED = { skin: '#7d8fae', dark: '#4f607c', helm: '#9aa7ba', shield: '#8a6a3a', shieldDark: '#5b4425', rim: '#c9ccd2', boss: '#e8d27a', feet: '#2c3646' };
 // Heil-Aura (deutlich dezenter als der Frost-Ring)
 const HEAL_AURA_FILL = 'rgba(90,230,150,0.07)';
 const HEAL_AURA_RING = 'rgba(120,240,170,0.28)';
@@ -91,42 +89,6 @@ function drawBoss(ctx, phase, time) {
   disc(ctx, OGRE.eye, 0.21, -0.8, 0.05);
 }
 
-// Schamane: gruene Robe mit Kapuze, Stab mit leuchtender Kugel
-function drawHealer(ctx, phase, time) {
-  leg(ctx, SHAMAN.dark, 0.26, -0.2, 0.5, 0.38, phase, 0.16, 0.1);
-  leg(ctx, SHAMAN.dark, 0.26, 0.2, 0.5, 0.38, phase + Math.PI, 0.16, 0.1);
-  ctx.translate(0, -Math.abs(Math.sin(phase)) * BOB);
-  // Stab hinter der Robe, vorn mit pulsierendem Leuchten
-  rect(ctx, SHAMAN.staff, 0.55, -0.75, 0.1, 1.45);
-  disc(ctx, SHAMAN.glow, 0.6, -0.85, 0.2 + Math.sin(time * 4) * 0.03);
-  disc(ctx, SHAMAN.hood, 0.6, -0.85, 0.11);
-  // Robe (unten breiter)
-  tri(ctx, SHAMAN.dark, -0.65, 0.6, 0.1, -0.5, 0.65, 0.6);
-  tri(ctx, SHAMAN.robe, -0.55, 0.55, 0.05, -0.45, 0.55, 0.55);
-  // Kopf mit Kapuze
-  disc(ctx, SHAMAN.hood, 0.08, -0.5, 0.4);
-  disc(ctx, SHAMAN.skin, 0.2, -0.45, 0.26);
-  disc(ctx, WHITE, 0.3, -0.48, 0.08);
-  disc(ctx, EYE_DARK, 0.33, -0.48, 0.04);
-}
-
-// Schildtraeger: kleine Gestalt hinter einem grossen Schild, der die Vorderseite abdeckt
-function drawShielded(ctx, phase) {
-  leg(ctx, SHIELDED.feet, 0.3, -0.25, 0.5, 0.38, phase, 0.14, 0.08);
-  leg(ctx, SHIELDED.feet, 0.3, 0.25, 0.5, 0.38, phase + Math.PI, 0.14, 0.08);
-  ctx.translate(0, -Math.abs(Math.sin(phase)) * BOB * 0.6);
-  oval(ctx, SHIELDED.dark, -0.2, 0.05, 0.6, 0.55, 0);
-  disc(ctx, SHIELDED.skin, -0.05, -0.55, 0.36);
-  rect(ctx, SHIELDED.helm, -0.4, -0.9, 0.7, 0.2);
-  disc(ctx, WHITE, 0.12, -0.55, 0.08);
-  disc(ctx, EYE_DARK, 0.15, -0.55, 0.04);
-  // Grosser Schild vorn (Rand, Holz, Buckel)
-  oval(ctx, SHIELDED.rim, 0.5, 0.05, 0.5, 0.88, 0);
-  oval(ctx, SHIELDED.shield, 0.5, 0.05, 0.41, 0.77, 0);
-  oval(ctx, SHIELDED.shieldDark, 0.5, 0.05, 0.14, 0.55, 0);
-  disc(ctx, SHIELDED.boss, 0.5, 0.05, 0.14);
-}
-
 // Unbekannter Typ: generische Figur (Kreis in def.color, falls vorhanden) mit Augen
 function drawGeneric(ctx, phase, time, color) {
   ctx.translate(0, -Math.abs(Math.sin(phase)) * BOB);
@@ -141,10 +103,10 @@ const FIGURES = new Map([
   ['runner', drawRunnerFlat],
   ['tank', drawTankFlat],
   ['boss', drawBoss],
-  ['healer', drawHealer],
-  ['shielded', drawShielded],
+  ['healer', drawHealerFlat],
+  ['shielded', drawShieldedFlat],
 ]);
-const FLAT_TYPES = new Set(['grunt', 'runner', 'tank']);
+const FLAT_TYPES = new Set(['grunt', 'runner', 'tank', 'healer', 'shielded']);
 const FALLBACK_COLOR = '#999';
 
 // Frost: bluelicher Glanz ueber der Figur plus kleine Eiskristalle (lokale Einheiten)

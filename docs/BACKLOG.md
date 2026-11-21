@@ -346,7 +346,7 @@ Reihenfolge ist Abhängigkeit: B-062 und B-063 zuerst, dann gemeinsame Sichtprü
   - Reichweitenkreis und Auswahlrahmen bleiben sichtbar.
 
 ### B-065: Gegner Teil 1: Goblin, Flitzer, Troll (Design-Overhaul)
-- Status: offen
+- Status: erledigt
 - Aufwand: M
 - Idee: `render-enemies.js`: Lauf-Phasen, Kontur, Bodenschatten.
 - Akzeptanzkriterien:
@@ -354,13 +354,14 @@ Reihenfolge ist Abhängigkeit: B-062 und B-063 zuerst, dann gemeinsame Sichtprü
   - Drei Typen auf Handy-Screenshot unterscheidbar; mindestens 25 % Helligkeitsabstand zum Weg.
 
 ### B-066: Gegner Teil 2: Schamane, Schildträger, weitere (Design-Overhaul)
-- Status: offen
+- Status: erledigt
 - Aufwand: M
 - Idee: Übrige Gegnertypen (inkl. Fliegende, Splitter/Tarn, sofern vorhanden). Zustände Schild, Heilung, Eingefroren zusätzlich über Form/Symbol.
 - Akzeptanzkriterien:
   - Je Typ ein Screenshot-Beleg, keine reine Farbunterscheidung.
 
 ### B-067: Boss Oger-König (Design-Overhaul)
+- Hinweis: In `tests/fx.test.js` ("Boss ist am groessten") entfiel der Zeichenspur-Vergleich Boss > Schamane (mit B-066 auf Wunsch des Menschen entfernt); mit dem neuen Boss einen Vergleich wieder ergänzen.
 - Status: vorschlag
 - Aufwand: M
 - Idee: 1,6x Größe, Krone, Keule, Aura, Auftritts-Effekt (Bodenschlag, Wackeln unter 3 px).

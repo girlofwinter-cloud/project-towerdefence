@@ -1,4 +1,4 @@
-// Gegner im Flat-Pop-Stil (B-065): Goblin, Flitzer, Panzer-Troll. Nur Darstellung.
+// Gegner im Flat-Pop-Stil (B-065): Goblin, Flitzer, Panzer-Troll; B-066: Schamane, Schildträger. Nur Darstellung.
 // Gezeichnet wird in Design-Pixeln bei Radius `ref` (ENEMY_STYLE); der Aufrufer arbeitet in Radius-Einheiten,
 // daher skaliert beginFigure mit 1/ref. Blick nach +x, Boden bei y ~ +0.8 Radien.
 import { ENEMY_STYLE as ES } from './config.js';
@@ -40,7 +40,7 @@ export function drawGruntFlat(ctx, phase) {
   stub(ctx, 3.2, 4, 3.6, 5, phase, c.skin);
   ell(ctx, -1, 2, 5.6, 4.6, c.tunic, W);
   line(ctx, [[-4.5, 3.5], [2.5, 3.5]], c.belt, 1);
-  poly(ctx, [[-4, -5], [-8.5, -7], [-4.5, -8.5]], shd(c.skin, 0.1), W); // Ohr hinten
+  poly(ctx, [[-4, -5], [-7.5, -7], [-4.5, -7.5]], shd(c.skin, 0.1), W); // Ohr hinten
   ell(ctx, 1.5, -3.6, 7.2, 5.8, c.skin, W);                             // Kopf
   poly(ctx, [[-1, -8], [-3.5, -11.4], [1.5, -9.2]], lit(c.skin, 0.05), W);  // Ohr oben
   ell(ctx, 8.4, -2, 1.9, 1.6, shd(c.skin, 0.1), W * 0.7);                 // Nase
@@ -54,7 +54,7 @@ export function drawGruntFlat(ctx, phase) {
 export function drawRunnerFlat(ctx, phase) {
   const c = ES.runner;
   beginFigure(ctx, c.ref, phase);
-  line(ctx, [[-8.5, -2.5], [-5.5, -2.5]], c.streak, 1.2);
+  line(ctx, [[-7.5, -2.5], [-5.5, -2.5]], c.streak, 1.2);
   line(ctx, [[-9, 0.5], [-5, 0.5]], c.streak, 1.2);
   line(ctx, [[-8, 3.5], [-5.5, 3.5]], c.streak, 1.2);
   stub(ctx, -2.5, 3, 2.8, 4.5, phase + Math.PI, shd(c.skin, 0.25));
@@ -89,5 +89,41 @@ export function drawTankFlat(ctx, phase) {
   ctx.beginPath();
   ctx.arc(10, 4.5, 1.2, 0, Math.PI * 2);
   ctx.fill();
+  ctx.restore();
+}
+
+// Schamane: Robe mit Kapuze, Stab mit pulsierender Heilkugel (Kreuz-Symbol)
+export function drawHealerFlat(ctx, phase, time = 0) {
+  const c = ES.healer;
+  beginFigure(ctx, c.ref, phase, 0.8);
+  line(ctx, [[6.5, 8], [6.5, -5]], c.staff, 1.4);                              // Stab hinter der Robe
+  stub(ctx, -2.5, 6.5, 3.4, 3, phase + Math.PI, c.robeDark);
+  stub(ctx, 2.5, 6.5, 3.4, 3, phase, c.robeDark);
+  poly(ctx, [[-6.5, 8], [6, 8], [3, -2], [-3.5, -2]], c.robe, W);          // Robe (unten breiter)
+  poly(ctx, [[-2, 8], [2, 8], [1.2, 0], [-1.2, 0]], c.robeDark, 0);        // Falte
+  ell(ctx, 0, -4.6, 4.8, 4.8, c.skin, W);                                    // Kapuze
+  ell(ctx, 2.2, -4.6, 3.2, 3.4, c.face, W * 0.7);                          // Gesicht
+  eye(ctx, 3.2, -4.8, 1.5, 1.8);
+  const r = c.orbRadius + Math.sin(time * c.orbSpeed) * c.orbPulse;
+  ell(ctx, 6.5, -7.5, r, r, c.orb, W);                                       // Leuchtkugel
+  line(ctx, [[6.5, -7.5 - r * 0.6], [6.5, -7.5 + r * 0.6]], c.cross, 0.9);     // Heilkreuz
+  line(ctx, [[6.5 - r * 0.6, -7.5], [6.5 + r * 0.6, -7.5]], c.cross, 0.9);
+  ctx.restore();
+}
+
+// Schildträger: kleine Gestalt mit Helm hinter einem großen Schild (Wappenkreuz) vorn
+export function drawShieldedFlat(ctx, phase) {
+  const c = ES.shielded;
+  beginFigure(ctx, c.ref, phase, 0.6);
+  stub(ctx, -4.5, 7, 4.2, 4.5, phase, c.body);
+  stub(ctx, 1.5, 7, 4.2, 4.5, phase + Math.PI, c.body);
+  ell(ctx, -3, 1.5, 6.4, 6.4, c.body, W);                                  // Körper
+  ell(ctx, -2, -6, 4.8, 4.8, c.skin, W);                                   // Kopf
+  rr(ctx, -7, -11.2, 10, 4.4, 2, c.helm, W);                               // Helm
+  eye(ctx, 1.4, -5.6, 1.8, 2.1);
+  poly(ctx, [[2, -8], [11.5, -8], [11.5, 1], [6.8, 10.5], [2, 1]], c.rim, W); // Schild: Rand
+  poly(ctx, [[3.6, -6.4], [9.9, -6.4], [9.9, 0.4], [6.8, 7.6], [3.6, 0.4]], c.shield, W * 0.5);
+  line(ctx, [[6.8, -5], [6.8, 4.5]], c.emblem, 1.3);                       // Wappenkreuz
+  line(ctx, [[4.6, -1.5], [9, -1.5]], c.emblem, 1.3);
   ctx.restore();
 }
