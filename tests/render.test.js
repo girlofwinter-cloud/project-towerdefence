@@ -248,7 +248,7 @@ async function recordTower(type, level, cooldown = 0, angle = 0, selected = fals
 const TOP_ALLOWED = { arrow: 28, cannon: 4, frost: 14, sniper: 20, lightning: 16 };
 
 test('Turm-Zeichnung: alle Typen/Stufen ohne Fehler, ausgewogen, innerhalb der Kachel', async () => {
-    for (const type of Object.keys(TOWER_TYPES)) {
+  for (const type of Object.keys(TOWER_TYPES)) {
     const tolUp = TOP_ALLOWED[type]; // hohe Tuerme ragen ueber die Kachel
     for (let level = 1; level <= 3; level++) {
       for (const cooldown of [0, 0.5, TOWER_TYPES[type].rate]) {
