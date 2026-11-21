@@ -862,3 +862,24 @@ test('Wiesen-Deko (flatpop): nur im Cache, Aufbau schnell', async () => {
     assert.ok(ms < 60, `Aufbau ${ms.toFixed(1)} ms`);
   } finally { delete globalThis.document; }
 });
+
+test('Wiesen-Akzente: nur im Cache, zweiter Frame zeichnet nichts neu, Aufbau schnell', async () => {
+  const { render } = await import('../src/render.js?akzente');
+  const offscreen = [];
+  globalThis.document = { createElement() { const m = mockCtx(); const c = { width: 0, height: 0, getContext: () => m.ctx, m }; offscreen.push(c); return c; } };
+  try {
+    const main = mockCtx();
+    const s = createGame();
+    const t0 = performance.now();
+    render(main.ctx, s, {});
+    const ms = performance.now() - t0;
+    console.log(`B-080 Aufbau bgCanvas Wiese: ${ms.toFixed(1)} ms`);
+    const off = offscreen[offscreen.length - 1];
+    const e = off.m.counts.bezierCurveTo, f = off.m.counts.fill;
+    assert.ok(e > 0, 'Akzente im Cache');
+    render(main.ctx, s, {});
+    assert.equal(off.m.counts.bezierCurveTo, e, 'zweiter Frame zeichnet Akzente nicht neu');
+    assert.equal(off.m.counts.fill, f);
+    assert.ok(ms < 60, `Aufbau ${ms.toFixed(1)} ms`);
+  } finally { delete globalThis.document; }
+});

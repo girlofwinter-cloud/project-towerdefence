@@ -260,3 +260,65 @@ test('DECOR_STYLE: Konturbreite 1,3 bis 2,3 px, Anteile der Streu-Deko ergeben 1
   assert.equal(MAPS.meadow.theme.decorStyle, 'flatpop');
   for (const id of ['forest', 'ice', 'fork']) assert.equal(MAPS[id].theme?.decorStyle, undefined);
 });
+
+// ---------- Akzente (B-080) ----------
+test('accentsFor: deterministisch, Wand/Teich/Brunnen im Randring, nur Wiese', async () => {
+  const { accentsFor } = await import('../src/decor.js');
+  const { TREE_FRAME, WIDTH, HEIGHT } = await import('../src/config.js');
+  const a = accentsFor('meadow');
+  assert.deepEqual(a, accentsFor('meadow'));
+  assert.deepEqual(a.map((x) => x.kind).sort(), ['pond', 'wall', 'well']);
+  for (const k of a) {
+    assert.ok(k.x >= 0 && k.x + k.w <= WIDTH && k.y >= 0 && k.y + k.h <= HEIGHT, `${k.kind} im Feld`);
+    const into = Math.min(k.y + k.h, HEIGHT - k.y, k.x + k.w, WIDTH - k.x);
+    if (k.kind === 'wall') assert.ok(k.y + k.h <= TREE_FRAME.maxOverhang, 'Mauer in oberster Reihe plus Ueberhang');
+    else assert.ok(HEIGHT - k.y <= TREE_FRAME.maxOverhang, `${k.kind} im unteren Randring`);
+    if (k.kind === 'well') assert.ok(k.w < TILE && k.h < TILE, 'Brunnen kleiner als eine Kachel');
+    assert.ok(into > 0);
+  }
+  for (const id of Object.keys(MAPS)) if (id !== 'meadow') assert.deepEqual(accentsFor(id), [], `${id} ohne Akzente`);
+});
+
+test('accentsFor: Abstand zur Wegachse, zu Start und Ziel; Kronen meiden die Akzente', async () => {
+  const { accentsFor, treeFrame } = await import('../src/decor.js');
+  const { pathReach } = await import('../src/render-path.js');
+  const pts = MAPS.meadow.waypoints.map(([c, r]) => ({ x: (c + 0.5) * TILE, y: (r + 0.5) * TILE }));
+  const dist = (x, y) => {
+    let m = Infinity;
+    for (let i = 0; i < pts.length - 1; i++) {
+      const p = pts[i], q = pts[i + 1], dx = q.x - p.x, dy = q.y - p.y;
+      const t = Math.max(0, Math.min(1, ((x - p.x) * dx + (y - p.y) * dy) / (dx * dx + dy * dy)));
+      m = Math.min(m, Math.hypot(x - p.x - t * dx, y - p.y - t * dy));
+    }
+    return m;
+  };
+  const acc = accentsFor('meadow');
+  for (const a of acc) {
+    for (let i = 0; i <= 10; i++) for (let j = 0; j <= 5; j++) {
+      assert.ok(dist(a.x + (a.w * i) / 10, a.y + (a.h * j) / 5) >= pathReach() + 1, `${a.kind} zu nah am Weg`);
+    }
+    // Tor links (Start) und Burg rechts (Ziel) bleiben frei: mindestens 3 Kacheln Abstand
+    for (const e of [pts[0], pts[pts.length - 1]]) {
+      const dx = Math.max(a.x - e.x, 0, e.x - (a.x + a.w)), dy = Math.max(a.y - e.y, 0, e.y - (a.y + a.h));
+      assert.ok(Math.hypot(dx, dy) >= 3 * TILE, `${a.kind} zu nah an Ein-/Ausgang`);
+    }
+  }
+  const crowns = treeFrame('meadow');
+  assert.ok(crowns.length >= 60);
+  for (const c of crowns) for (const a of acc) {
+    const dx = Math.max(a.x - c.x, 0, c.x - (a.x + a.w)), dy = Math.max(a.y - c.y, 0, c.y - (a.y + a.h));
+    assert.ok(Math.hypot(dx, dy) >= c.r, `Krone ueberdeckt ${a.kind}`);
+  }
+});
+
+test('accentsFor (Randfaelle): undefined = Wiese, unbekannte Id ohne Akzente, endliche Zahlen; Kronen anderer Karten ohne Blocker', async () => {
+  const { accentsFor, treeFrame } = await import('../src/decor.js');
+  assert.deepEqual(accentsFor(undefined), accentsFor('meadow'));
+  assert.deepEqual(accentsFor('gibtsnicht'), []);
+  for (const a of accentsFor('meadow')) for (const v of [a.x, a.y, a.w, a.h]) assert.ok(Number.isFinite(v) && (v === a.x || v === a.y || v > 0));
+  for (const id of ['forest', 'ice', 'fork']) {
+    assert.deepEqual(accentsFor(id), []);
+    assert.deepEqual(treeFrame(id), treeFrame(id));
+    assert.ok(treeFrame(id).length >= 60, `${id}: mindestens 60 Kronen`);
+  }
+});

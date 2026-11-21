@@ -9,8 +9,9 @@ import { drawEnemy, drawHealAura } from './render-enemies.js';
 import { updateFx, shakeX, shakeY, drawProjectileFx, drawParticles } from './render-fx.js';
 import { drawTreeFrame } from './render-trees.js';
 import * as flat from './render-decor.js';
+import { drawAccents } from './render-accents.js';
 import { drawGround as drawGroundFill, drawGroundTufts } from './render-ground.js';
-import { tileHash, tileRand, decorFor, obstacleKind, treeFrame, groundPatches, coveredByCrown, scatterFor, LARGE_DECOR_RADIUS } from './decor.js';
+import { tileHash, tileRand, decorFor, obstacleKind, treeFrame, groundPatches, accentsFor, coveredByCrown, scatterFor, LARGE_DECOR_RADIUS } from './decor.js';
 
 export function render(ctx, state, ui) {
   // Partikel aus dem Zustand ableiten (nur lesen), danach Shake-Versatz bestimmen.
@@ -84,6 +85,7 @@ function paintBackground(ctx, state) {
   const crowns = MAPS[state.mapId]?.theme?.treeFrame ? treeFrame(state.mapId) : null;
   drawDecor(ctx, state, crowns);
   if (crowns) drawTreeFrame(ctx, crowns);
+  if (MAPS[state.mapId]?.theme?.accents) drawAccents(ctx, accentsFor(state.mapId));
   for (const path of state.paths || [state.path]) {
     const pts = path.points;
     drawGate(ctx, pts[0], pts[1]);

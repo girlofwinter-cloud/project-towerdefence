@@ -40,7 +40,7 @@ export const MAPS = {
       [20, 11],
     ],
     // B-071: Wegpalette der Wiese (STIL.md); Wald, Eis und Fork nutzen vorerst PATH_STYLE.colors.
-    theme: { treeFrame: true, ground: true, decorStyle: 'flatpop', path: { main: '#e2c88f', edge: '#8f6a3b', outline: '#4a3418', mid: '#ecd5a0', fringe: '#6fbf4e' } },
+    theme: { treeFrame: true, ground: true, accents: true, decorStyle: 'flatpop', path: { main: '#e2c88f', edge: '#8f6a3b', outline: '#4a3418', mid: '#ecd5a0', fringe: '#6fbf4e' } },
   },
   forest: {
     name: 'Wald',
@@ -453,4 +453,18 @@ export const DECOR_STYLE = {
   scatterEndMargin: 1,    // Abstand (Kacheln, Chebyshev) zu Tor und Ziel
   scatterOffset: [0.3, 0.7], // Lage innerhalb der Kachel
   scatterKinds: [['mushroom', 0.3], ['stakes', 0.2], ['log', 0.15], ['barrel', 0.1], ['sign', 0.1], ['pebbles', 0.15]],
+};
+
+// Akzente der Wiese (B-080): Burgmauer oben, Teich und Brunnen unten. Nur Optik, Maße in px bei 1x.
+// Aktiv nur mit MAPS.<id>.theme.accents. Rechtecke liegen im Randring (Überhang höchstens TREE_FRAME.maxOverhang).
+export const ACCENT_STYLE = {
+  pathMargin: 36,         // Abstand Akzent-Rechteck zur Wegachse, mindestens (größer als pathReach der Wegzeichnung)
+  crownGap: 4,            // Kronen, die ein Akzent-Rechteck um weniger berühren, entfallen
+  wall: { cx: 360, base: 34, w: 150, height: 34 },    // Rechteck: x = cx - w/2, y = base - height
+  pond: { cx: 330, cy: 543, rx: 56, ry: 13, reedLift: 19 },
+  well: { cx: 70, base: 556, w: 32, height: 28 },
+  stone: '#b3adaa', stoneTop: '#c8c2bd', towerStone: '#a7a19e', roof: '#4f7fc8',
+  wood: '#c58f55', woodDark: '#8a5a34', gate: '#6b4a2b', wellRoof: '#d4503f',
+  water: '#5aa9d6', bank: '#6a8a3e', mud: '#8a6a42', pad: '#4aa84a', padFlower: '#ff8fb1', padCenter: '#ffe07a', reed: '#4d8a3a', reedHead: '#7a4a2a',
+  towerW: 14, towerBody: 22, towerRoof: 10, wallHeight: 16, merlon: [8, 5], merlonStep: 11, gateW: 16, gateH: 12,
 };

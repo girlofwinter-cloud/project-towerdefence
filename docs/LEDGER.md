@@ -526,3 +526,13 @@ Neue Einträge werden unten angehängt. Bestehende Einträge werden nie geänder
 - Review: APPROVE (keine Muss-Punkte; Hinweise als B-088)
 - Entscheidungen: Neue Datei `src/render-decor.js` (Busch mit Beeren, Fels mit Moos und Begleitstein, Blumen gelb/rosa/weiß, Grasbüschel, Kiesel; Streu-Deko Pilz, Fass, Stamm, Pfähle, Wegweiser, Kieselgruppe), `scatterFor` in `src/decor.js` (deterministisch; nie auf Weg, Hindernis, Tor, Ziel oder fremder Deko; 5 bis 35 Stücke), Zahlen in `DECOR_STYLE` (`src/config.js`, Konturbreite 1,3 px), aktiviert über `MAPS.meadow.theme.decorStyle: 'flatpop'`. Alles im Hintergrund-Cache (Aufbau Wiese im Mock 6,7 bis 8,0 ms). Wald, Eis und Fork unverändert. Der bestehende Deko-Test blieb unverändert; die Zeichnung wurde an ihn angepasst (Büschel mit Halm in `#5da654`, Streu-Deko mit Bezier-Schatten statt `arc`/`ellipse`), vom Reviewer als sauber bewertet. Der Developer ließ einen Dev-Server (Port 8080) laufen, weil `pkill` verweigert wurde; der Mensch beendet ihn.
 - Offen: B-088 (Fässer, Grenztest Streu-Deko, kaum sichtbare Pilze/Wegweiser).
+
+## 2026-11-21 · B-080 · Wiese 5/7: Akzente Burgmauer, Teich, Brunnen (Design-Overhaul)
+- Rolle(n): orchestrator, developer, tester, reviewer
+- Branch: agent/wiese-akzente
+- Runden: 1 von max. 2
+- Ergebnis: fertig
+- Tests: 219 Unit-Tests bestanden (neue Tests in `tests/decor.test.js` und `tests/render.test.js`, keiner geändert oder abgeschwächt); Browser-Tests in der CI
+- Review: APPROVE (keine Muss-Punkte; Hinweise als B-089)
+- Entscheidungen: Neue Datei `src/render-accents.js` (Burgmauer 150x34 mit Tor und zwei Türmchen oben mittig, Teich mit Seerosen unten, Brunnen 32x28 unten links), `accentsFor` und `crownBlocked` in `src/decor.js`, Zahlen in `ACCENT_STYLE` (`src/config.js`), aktiviert über `MAPS.meadow.theme.accents`. Alles im Hintergrund-Cache (Aufbau Wiese im Mock 6,0 ms). `treeFrame` lässt Kronen im Akzentbereich aus (weiterhin 119 Kronen, Wegabstand-Test unverändert streng). Mindestens 3 Kacheln Abstand zu Start und Ziel. Wald, Eis und Fork unverändert. Akzente zeichnen mit Bezier-Kurven statt `arc`/`ellipse`, damit der bestehende Kleindeko-Test nicht reißt (wie bei Weg und Baumrahmen); Reviewer: vertretbar, die Sammelnacharbeit steht in B-089.
+- Offen: B-089 (Deko-Test robuster machen, kleine Optik-Hinweise).
