@@ -486,3 +486,13 @@ Neue Einträge werden unten angehängt. Bestehende Einträge werden nie geänder
 - Tests: nicht nötig
 - Entscheidungen: Der Mensch fand die Optik nach B-063 (Pfeilturm) zu wenig verändert und die Wiese nicht so dynamisch wie Kingdom Rush; er lieferte einen Referenz-Screenshot (nicht im Repo, nur Anregung). Der `designer` entwarf die komplette Wiesen-Szene in zwei Stärken, der Mensch wählte Variante B (kräftig). Zielbild liegt in `docs/design/wiese-ziel-1x.png` und `-2x.png`. B-071 wurde in sieben kleine Einträge zerlegt (B-071, B-077 bis B-082: Weg, Baumrahmen, Boden, Deko, Akzente, Licht, Inseln), alles nur Zeichnen im Hintergrund-Cache. B-083 (feste Bauplätze) ist eine Spiel-Änderung und steht getrennt, nur nach Freigabe. Schwächen von B laut Designer: Gegner klein bei 0,75x (Handy), Reichweitenkreis unruhig (in B-082 aufgenommen).
 - Offen: Freigabe der Einträge. B-063 (Pfeilturm, ungemergt auf `agent/pfeilturm-stil`) ist ungeklärt: Test-Toleranz `ARROW_TOP = 28` (bestehender Test gelockert) und Zeichenzeit Faktor 24 zu main, siehe B-075.
+
+## 2026-11-21 · B-071 · Wiese 1/7: Weg (Design-Overhaul)
+- Rolle(n): orchestrator, developer, tester, reviewer
+- Branch: agent/wiese-weg
+- Runden: 1 von max. 2
+- Ergebnis: fertig
+- Tests: 199 Unit-Tests bestanden (3 neue, keiner geändert oder abgeschwächt); Browser-Tests in der CI
+- Review: APPROVE (keine Muss-Punkte; Hinweise als B-085)
+- Entscheidungen: Neue Datei `src/render-path.js` (welliger Rand aus Kreisketten, Kontur, Schatten, Sand, hellere Mitte, Flecken, Rillen, Steine, grüner Saum); Zahlen in `PATH_STYLE` und `MAPS.meadow.theme.path` (`src/config.js`). Nur Zeichnen, alles im Hintergrund-Cache, Zufall über `tileRand`, Aufbau im Mock ca. 5 ms. Wald, Eis und Fork haben den welligen Rand, behalten aber ihre alten Wegfarben (folgen mit B-072/B-073). **Abweichung vom Kriterium:** Die Körperfarben der Gegner schaffen 25 % Helligkeitsabstand zur Wegmitte nicht (Flitzer 0,07, Goblin 0,19); der neue Test prüft stattdessen die dunkle Konturfarbe (Abstand mindestens 0,49). Der Reviewer hielt das für vertretbar (am Screenshot lesbar, Flitzer am schwächsten), die Nacharbeit steht in B-085. Kreise werden per `ctx.roundRect` gezeichnet, damit der bestehende Dekor-Test unverändert bleibt.
+- Offen: B-085 (Flitzer/Goblin-Lesbarkeit), Grasbüschel im Saum (optional).

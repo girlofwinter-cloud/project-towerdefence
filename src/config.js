@@ -39,6 +39,8 @@ export const MAPS = {
       [16, 11],
       [20, 11],
     ],
+    // B-071: Wegpalette der Wiese (STIL.md); Wald, Eis und Fork nutzen vorerst PATH_STYLE.colors.
+    theme: { path: { main: '#e2c88f', edge: '#8f6a3b', outline: '#4a3418', mid: '#ecd5a0', fringe: '#6fbf4e' } },
   },
   forest: {
     name: 'Wald',
@@ -327,4 +329,41 @@ export const ARROW_TOWER = {
   iconScale: 0.75,          // Skalierung in der Shop-Vorschau (40x40-Platz, Turm ist höher)
   iconDy: 9,                // Verschiebung der Shop-Vorschau nach unten in px
   arrowLength: 11,          // Länge des aufgelegten Pfeils
+};
+
+// Weg im Flat-Pop-Stil (B-071). Maße in px bei 1x. Gesamtbreite in Kachelmitte = TILE, der wellige
+// Rand ragt höchstens `overhangMax` darüber hinaus (Test in tests/render.test.js).
+export const PATH_STYLE = {
+  overhangMax: 4,          // so weit darf der Rand über die halbe Kachel hinausragen
+  edgeOffset: 15.5,        // Abstand der Randkreise von der Wegachse (Mittelwert)
+  edgeRadius: 5.2,         // Radius der Kontur-Kreise (außen)
+  edgeInner: 3.6,          // Radius des helleren Randbands
+  waveAmp: 2,              // Amplitude der Welle in px
+  waveHarmonic: 0.4,       // Anteil der zweiten, schnelleren Welle
+  waveLength: 0.11,        // Wellenzahl der Grundwelle (rad pro px)
+  circleStep: 4.5,         // Abstand der Randkreise entlang des Wegs
+  sandWidth: 32,           // Breite der Sandfläche (liegt über den Randkreisen)
+  midWidth: 20,            // Breite der helleren Wegmitte
+  shadowWidth: 44,         // Breite des Schlagschattens auf dem Gras
+  shadowOffset: [2, 4],    // Versatz des Schlagschattens
+  shadowColor: 'rgba(43,27,61,0.3)',
+  bandShade: 0.12,         // Randband = Wegfarbe um diesen Anteil zum Schattenton gemischt
+  fringeStep: 6,           // Abstand der Gras-Säume entlang des Wegs (0 = kein Saum)
+  fringeRadius: 3.4,       // Radius eines Saumpunkts
+  fringeOffset: [21, 24],  // Abstand der Saumpunkte von der Achse (von, bis)
+  rutOffset: 7.5,          // Abstand der Spurrillen von der Achse
+  rutWidth: 1.6,           // Breite der Rillen
+  rutDash: [16, 7, 5, 10], // Strichmuster der Rillen
+  rutColor: 'rgba(143,106,59,0.34)',
+  stoneStep: 6,            // Abstand der Randsteine/Kiesel entlang des Wegs
+  stoneChance: 0.45,       // Anteil Randsteine (der Rest: kleine Kiesel in der Mitte)
+  stoneOffset: [11, 14],   // Abstand der Randsteine von der Achse (von, bis)
+  stoneSize: [2.6, 4.6],   // Größe der Randsteine
+  pebbleSize: [1.1, 2.2],  // Größe der Mittelkiesel
+  patchStep: 9,            // Abstand der Bodenflecken entlang des Wegs
+  patchChance: 0.4,        // Wahrscheinlichkeit eines Flecks pro Schritt
+  stoneColors: ['#b8b0a2', '#dcd6c6'], // Stein: Basis, Glanz
+  pebbleColors: ['#c9ad74', '#f3e2b4'],
+  // Standardfarben (heutiger Look), solange eine Karte kein theme.path liefert.
+  colors: { main: '#dcc189', edge: '#8f7140', outline: '#8f7140', mid: '#dcc189', fringe: null },
 };
