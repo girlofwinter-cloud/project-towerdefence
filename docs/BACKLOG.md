@@ -359,7 +359,7 @@ Erledigte Einträge (`fertig`) liegen in `docs/archiv/BACKLOG-fertig.md`. Beim A
 Reihenfolge ist Abhängigkeit: B-062 und B-063 zuerst, dann gemeinsame Sichtprüfung mit dem Menschen, erst danach B-064 bis B-075. Keine Logik- oder Balancing-Änderungen in dieser Reihe. Jeder Eintrag endet mit Screenshot-Prüfung (Desktop 1280x800, Handy 390x844) und grünem `npm test`.
 
 ### B-062: Stil-Fundament (Design-Overhaul)
-- Status: vorschlag
+- Status: offen
 - Aufwand: M
 - Idee: `src/draw-utils.js` bekommt die Helfer `part`, `poly`, `rr`, `ell`, `lit`, `shd`, `shadow` und die Palette-/Kontur-Konstanten aus `docs/STIL.md` (Zahlen in `src/config.js`).
 - Akzeptanzkriterien:
@@ -367,7 +367,7 @@ Reihenfolge ist Abhängigkeit: B-062 und B-063 zuerst, dann gemeinsame Sichtprü
   - Bestehende Optik unverändert.
 
 ### B-063: Pfeilturm im neuen Stil als Referenz (Design-Overhaul)
-- Status: vorschlag
+- Status: offen
 - Aufwand: S
 - Idee: Pfeilturm Stufe 1 bis 3 mit eigener Form im Flat-Pop-Stil.
 - Akzeptanzkriterien:
