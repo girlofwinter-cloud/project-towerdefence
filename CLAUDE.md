@@ -16,7 +16,7 @@ Zweck des Repos: Lernprojekt für agentische Entwicklung mit Claude Code. Siehe 
 
 ## Regeln für alle Agenten
 1. Kleine Änderungen: ein Feature oder ein Fix pro Durchlauf.
-2. Neue Logik braucht einen Test in `tests/game.test.js`. Tests nie löschen oder abschwächen, um grün zu werden.
+2. Neue Logik braucht einen Test in `tests/` (passende Datei nach Modul: `game`, `decor`, `render`, `fx`, `input`; gemeinsame Helfer in `tests/helpers.js`). Tests nie löschen oder abschwächen, um grün zu werden.
 3. Nie direkt auf `main` pushen. Immer Branch `agent/<kurzname>`, Änderung per Pull Request.
 4. Geschützte Dateien (`.claude/settings.json`, `.claude/hooks/`, `.github/workflows/`) ändern nur Menschen.
 5. Keine neuen Abhängigkeiten ohne Rückfrage.

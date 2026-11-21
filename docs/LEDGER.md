@@ -258,3 +258,11 @@ Neue Einträge werden unten angehängt. Bestehende Einträge werden nie geänder
 - Tests: alle Unit-Tests bestanden (kein Code in `src/` geändert)
 - Entscheidungen: Reviewer von Opus auf Sonnet (Änderungen sind klein, Prüfliste konkret). Erledigte Backlog-Einträge nach `docs/archiv/BACKLOG-fertig.md` ausgelagert, damit Ideator und Orchestrator weniger lesen; das Ledger bleibt wegen Append-Only unverändert, der Ideator liest dort nur Überschriften. Testausgaben auf `tail -15` gekürzt, Berichte der Subagents auf 10 bis 15 Zeilen begrenzt.
 - Offen: Wirkung messen (`/cost` vor und nach einem Durchlauf) und prüfen, ob Sonnet im Review genauso viele Muss-Punkte findet wie Opus.
+
+## 2026-11-21 · Prozess · Token-Optimierung Teil 2
+- Rolle(n): Mensch + Claude (interaktiv)
+- Branch: agent/token-optimierung-2
+- Ergebnis: fertig
+- Tests: 122 bestanden, 0 fehlgeschlagen (vorher ebenfalls 122, nur verschoben)
+- Entscheidungen: `tests/game.test.js` (2228 Zeilen) nach Modul in `game`, `decor`, `render`, `fx`, `input` aufgeteilt, gemeinsame Helfer in `tests/helpers.js`; Testanzahl unverändert. Developer-Prompt auf CLAUDE.md verwiesen statt Regeln zu wiederholen. Pipeline: Reviewer entfällt, wenn weder `game.js`, `path.js` noch `tests/` berührt sind; bei Diff bis ca. 50 Zeilen übernimmt der Reviewer den Testlauf (kein Tester); Browser-Tests nur in der CI; Orchestrator gibt Dateiliste und `--stat` an Subagents mit.
+- Offen: Grenzen (50 Zeilen, Reviewer-Auslöser) nach einigen Durchläufen prüfen; Qualität ohne Tester im Auge behalten.
