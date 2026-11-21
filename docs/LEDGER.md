@@ -266,3 +266,11 @@ Neue Einträge werden unten angehängt. Bestehende Einträge werden nie geänder
 - Tests: 122 bestanden, 0 fehlgeschlagen (vorher ebenfalls 122, nur verschoben)
 - Entscheidungen: `tests/game.test.js` (2228 Zeilen) nach Modul in `game`, `decor`, `render`, `fx`, `input` aufgeteilt, gemeinsame Helfer in `tests/helpers.js`; Testanzahl unverändert. Developer-Prompt auf CLAUDE.md verwiesen statt Regeln zu wiederholen. Pipeline: Reviewer entfällt, wenn weder `game.js`, `path.js` noch `tests/` berührt sind; bei Diff bis ca. 50 Zeilen übernimmt der Reviewer den Testlauf (kein Tester); Browser-Tests nur in der CI; Orchestrator gibt Dateiliste und `--stat` an Subagents mit.
 - Offen: Grenzen (50 Zeilen, Reviewer-Auslöser) nach einigen Durchläufen prüfen; Qualität ohne Tester im Auge behalten.
+
+## 2026-11-21 · Ideen · Welten, Maps und neue Mechaniken
+- Rolle(n): Mensch + Claude (interaktiv)
+- Branch: agent/ideen-welten
+- Ergebnis: fertig
+- Tests: nicht nötig (nur Dokumentation, kein Code geändert)
+- Entscheidungen: 15 Vorschläge B-027 bis B-041 (Status `vorschlag`). B-027 (Map-Auswahl) ist Fundament für die Welten B-028 bis B-033, deshalb zuerst freigeben. Bestehende Ideen B-005 (Frühstart) und B-007 (Fallen) bleiben unverändert.
+- Offen: Mensch gibt Einträge frei (Status `offen`); Reihenfolge-Empfehlung: B-027, dann B-028 oder B-029, dann B-034.
