@@ -379,3 +379,11 @@ Neue Einträge werden unten angehängt. Bestehende Einträge werden nie geänder
 - Review: APPROVE (keine Muss-Punkte; Hinweise als B-051)
 - Entscheidungen: Fünfter Turm `lightning` (Taste 5): Kosten 110, Reichweite 3, Schaden 14, Rate 1,1 s, bis zu 3 Sprünge im Radius 1,6 Kacheln mit Faktor 0,7 je Sprung. Der Blitz trifft sofort (kein Projektil), Effekt `bolt` in `state.effects`. Bewusst ein Kompromiss-Turm (schwach gegen einzelne Bosse, stark gegen Schwärme), damit das Spiel nicht leichter wird. Zwei bestehende Tests angepasst, beide von Tester und Reviewer als gleich scharf bewertet: Typzählung im Render-Test (`12` -> `Object.keys(TOWER_TYPES).length * 3`) und Zielmodus-Test (liest bei `lightning` das Ziel aus dem Blitz-Effekt statt aus einem Projektil). In render.js fällt kein Turmtyp mehr still in den Scharfschützen-Zweig (`else` -> `else if (type === 'sniper')`). Textbauer der `special.text` bekommen die Turm-Definition übergeben.
 - Offen: Spieltest, ob Flitzer zu leicht werden (`chainRange` ist der Regler); Balancing-Läufe nutzen den Blitzturm nicht (B-051).
+
+## 2026-11-21 · B-034 (Korrektur) · Browser-Test erwartete 4 Türme
+- Rolle(n): orchestrator
+- Branch: agent/blitzturm
+- Ergebnis: fertig
+- Tests: 178 Unit und 4 Browser-Tests bestanden
+- Entscheidungen: Die CI schlug fehl, weil `tests/e2e/smoke.test.mjs` genau 4 Turm-Buttons erwartete. Wie schon beim Render-Test liest der Browser-Test die Anzahl jetzt aus `TOWER_TYPES` (gleich scharf, wächst mit neuen Türmen). Browser-Tests laufen in der Pipeline nur in der CI und waren im Durchlauf nicht gelaufen; bei Änderungen an Shop, Türmen oder HUD vor dem PR zusätzlich `npm run test:e2e` lokal ausführen.
+- Offen: Nichts.
