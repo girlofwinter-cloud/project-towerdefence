@@ -312,3 +312,13 @@ Neue Einträge werden unten angehängt. Bestehende Einträge werden nie geänder
 - Tests: 140 bestanden, 0 fehlgeschlagen (Anzahl unverändert)
 - Entscheidungen: Der Mensch hat die Schlucht nach Sichtprüfung im Browser verworfen. Karte aus `MAPS` entfernt. Bestehende Tests, die `canyon` als Beispielkarte nutzten, wurden auf `forest` bzw. `ice` umgestellt (gleiche Prüfungen, keine abgeschwächt, keiner gelöscht); die Gültigkeitsprüfung läuft weiter über alle Karten in `MAPS`.
 - Offen: B-042 (3) erwähnt den Schlucht-Test, der nicht mehr existiert; beim Abarbeiten ignorieren.
+
+## 2026-11-21 · B-044 (Teil) · Eiswelt schwerer: Glatteis
+- Rolle(n): orchestrator, developer, reviewer (ohne Tester, kleiner Diff)
+- Branch: agent/eis-balancing
+- Runden: 1 von max. 2
+- Ergebnis: fertig
+- Tests: 142 bestanden, 0 fehlgeschlagen (2 neu)
+- Review: APPROVE (Hinweis: Test "nur Pfeile verlieren vor Welle 12" liegt bei Messwert ca. Welle 10 nahe am Limit; bei künftigem Balancing eher die Schwelle lockern)
+- Entscheidungen: Spieler fand die Eiswelt "etwas zu einfach". Messung: mit Gegnertempo 0,85 und Kanone 1,25 gewannen alle drei Strategien mit 10 Leben. Mit Kanonenbonus 1,25 war der Übergang zwischen Sieg und Niederlage je nach Zeitschritt uneinheitlich, deshalb der Mensch entschied für "Glatteis": Gegner 1,18-fach, Kanone 0,95-fach, Frost unverändert. Ergebnis: a>c>c>f 10 Leben, c>a>a>f 6 Leben, a>a>c>f verliert ab Welle 17, nur Pfeile verliert um Welle 10. Der Test, der die alte Richtung festschrieb, wurde bewusst umgedreht und umbenannt (Richtung der Asserts geändert, Schärfe gleich); drei feste `1.25` in Tests lesen jetzt den Config-Wert.
+- Offen: Sichtprüfung/Playtest durch den Menschen; B-044 (3) Farbschema, (4) Eis-Deko.
