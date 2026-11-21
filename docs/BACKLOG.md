@@ -286,3 +286,10 @@ Erledigte Einträge (`fertig`) liegen in `docs/archiv/BACKLOG-fertig.md`. Beim A
 - Idee: Hinweise aus Tester und Review von B-038. (1) `doAbility` in `src/main.js`: Q bei Status 'won'/'lost' schaltet `ui.aiming` an, die Fehlermeldung kommt erst beim Klick; früh abbrechen (`if (state.status !== 'playing') return;`). (2) Zielmodus bleibt bei Pause oder Ablauf der Abklingzeit aktiv (unkritisch, Meldung beim Klick); optional beenden. (3) Touch: Tippen löst sofort ohne Vorschau aus, weil `hoverPx` erst durch `pointermove` gesetzt wird; optional zweistufig wie beim Bauen. (4) Kälteschock verlängert das Ende eines stärkeren aktiven Slows auf die Schockdauer; ein späterer Frostturm-Treffer überschreibt den Faktor wie bisher. Beides nicht getestet, Verhalten entscheiden und per Test festhalten. (5) Spieltest: Sind die Zahlen (Meteor 150 Schaden/50 s, Kälteschock 70 %/4 s/60 s, Reparatur 2 Nutzungen/120 s) passend?
 - Akzeptanzkriterien:
   - `npm test` und `npm run test:e2e` bleiben grün, kein Test abgeschwächt.
+
+### B-054: Shop-Karten: Barrierefreiheit
+- Status: vorschlag
+- Aufwand: S
+- Idee: Hinweis aus dem Review von agent/shop-kompakt. Der Fähigkeiten-Text steht im `title`-Tooltip der Shop-Karte; für Touch und Screenreader hilft das nur bedingt (das Turm-Info-Panel `#ti-special` deckt es nach der Turmwahl ab). Optional `aria-describedby` oder `aria-label` auf der Karte.
+- Akzeptanzkriterien:
+  - Nur Markup in `src/main.js`; `npm test` und `npm run test:e2e` bleiben grün.

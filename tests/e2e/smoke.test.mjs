@@ -34,6 +34,15 @@ test('Seite lädt ohne Fehler', async () => {
   assert.deepEqual(errors, []);
 });
 
+test('Desktop 1280x800: alle Turm-Buttons ohne Scrollen sichtbar', async () => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  const btns = page.locator('#shop .tower-btn');
+  const n = await btns.count();
+  for (let i = 0; i < n; i++) assert.equal(await btns.nth(i).isVisible(), true);
+  const box = await btns.nth(n - 1).boundingBox();
+  assert.ok(box.y + box.height <= 800, `Letzter Turm endet bei ${box.y + box.height}`);
+});
+
 test('Turm bauen per Klick', async () => {
   const goldBefore = await page.evaluate(() => window.__game().gold);
   await page.locator('.tower-btn[data-type="arrow"]').click();
