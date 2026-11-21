@@ -416,3 +416,11 @@ Neue Einträge werden unten angehängt. Bestehende Einträge werden nie geänder
 - Review: APPROVE (keine Muss-Punkte; Hinweis als B-054)
 - Entscheidungen: Rückmeldung des Menschen mit Screenshot: Auf dem Desktop muss man scrollen, um den Blitzturm zu erreichen. Gemessen mit Playwright: Bei 1280x720 bis 1440x900 lagen die Shop-Unterkanten bei 470/597/709/863/1020 px, die Seite war 1323 px hoch; Ursache waren die langen Fähigkeiten-Texte (`special.text`) in den Karten. Jetzt zeigt die Karte nur die kurze Beschreibung (2 Zeilen), der Fähigkeiten-Text steht im Tooltip und im Turm-Info-Panel (`#ti-special`); Karten und Steuerung kompakter. Nachher 404/466/528/612/685 px, Dokumenthöhe 983 px. Handy unverändert gut. Hilfetext "1-4" -> "1-5". Neuer Browser-Test bei 1280x800 sichert ab, dass der letzte Turm sichtbar bleibt.
 - Offen: Desktop-Zoom nicht separat geprüft; Barrierefreiheit der Karten (B-054).
+
+## 2026-11-21 · Prozess · Neue Rolle `designer` (Visual Design und UI)
+- Rolle(n): Mensch + Claude (interaktiv)
+- Branch: agent/designer-rolle
+- Ergebnis: fertig
+- Tests: nicht nötig (nur Rollenbeschreibung, Skill und Doku, kein Code in `src/`)
+- Entscheidungen: Der Mensch wünschte einen Spieldesigner, der auf Anfrage Aussehen und Bedienung prüft und Vorschläge für neue Designs macht. Neue Rolle `.claude/agents/designer.md` ohne Schreibrechte auf das Projekt (Tools: Read, Grep, Glob, Bash; Bash nur lesend und für Screenshot-Skripte im Scratchpad außerhalb des Repos), damit er wie reviewer und ideator nur bewertet und vorschlägt; gebaut wird über die Pipeline. Er arbeitet mit echten Playwright-Screenshots auf Desktop und Handy statt mit Vermutungen (Anlass: der Blitzturm lag auf dem Desktop unter dem Fenster, das fiel erst dem Menschen auf). Prüfliste: Lesbarkeit, Platz/Scrollen, Hierarchie, Konsistenz, Erkennbarkeit, Game Feel, Touch, Barrierefreiheit, Stimmung der Welten. Regeln: keine Abhängigkeiten oder Fremd-Assets, Architektur (Zeichnen in `render*.js`, Layout in CSS) einhalten. Aufruf nur auf Anfrage über den Skill `/design` (trägt Muss-Befunde und Vorschläge als `vorschlag` ins Backlog ein); die Pipeline bleibt unverändert. `CLAUDE.md` und `docs/LERNEN.md` ergänzt.
+- Offen: Neue Subagents werden beim Sitzungsstart geladen; für den ersten Aufruf Claude Code einmal neu starten. Erster Probelauf von `/design` steht aus.
