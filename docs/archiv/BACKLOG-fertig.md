@@ -155,3 +155,14 @@ Agents lesen diese Datei nur bei konkretem Bedarf.
   - Map-Feld `modifiers` (Gegnertempo, Turmschaden je Typ) in `src/config.js`.
   - Test: Modifikatoren wirken auf Tempo und Schaden, Standard-Map bleibt unverändert.
   - Balancing-Zahlen nur in der Config.
+
+### B-033: Mehrere Eingänge (zwei Spawn-Punkte)
+- Status: fertig
+- Aufwand: L
+- Idee: Neue Karte mit zwei Eingängen, deren Wege später zusammenlaufen. Gegner verteilen sich abwechselnd auf beide Wege. Bestehende Karten bleiben mit einem Weg unverändert. Hängt von B-027 ab, verwandt mit B-032 (Verzweigungen).
+- Akzeptanzkriterien:
+  - Map-Feld `extraPaths` (Liste weiterer Wegpunkt-Listen); `state.path` bleibt der Hauptweg, `state.paths` enthält alle Wege.
+  - Jeder Gegner hat eine `lane` (abwechselnd) und läuft auf seinem Weg; Ziel- und Leak-Logik gelten pro Weg.
+  - Zielwahl "Erster/Letzter/Stärkster/Nächster" bleibt sinnvoll bei unterschiedlich langen Wegen (Restweg statt reiner Laufstrecke).
+  - Weg-Kacheln aller Wege sind nicht bebaubar; Render zeichnet alle Wege und alle Eingänge.
+  - Test: Gegner starten an beiden Eingängen, Gesamtanzahl pro Welle unverändert; beide Wege erreichen das Ziel; alte Karten verhalten sich unverändert.

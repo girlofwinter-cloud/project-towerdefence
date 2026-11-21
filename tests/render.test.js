@@ -458,3 +458,14 @@ test('Render: Kartenwechsel ice -> meadow ohne Theme-Reste', async () => {
   render(b.ctx, createGame(), {});
   assert.ok(!b.seen.has('#cfe6f2') && !b.seen.has('#9cc3d8') && !b.seen.has('#d9edf6'));
 });
+
+test('Render: Karte Zangenangriff zeichnet beide Wege ohne Fehler', async () => {
+  const { render } = await import('../src/render.js');
+  const m = mockCtx();
+  const s = createGame({ mapId: 'fork' });
+  const { spawnEnemy } = await import('../src/game.js');
+  spawnEnemy(s, 'grunt');
+  spawnEnemy(s, 'grunt');
+  render(m.ctx, s, {});
+  assert.equal(m.depth, 0);
+});
