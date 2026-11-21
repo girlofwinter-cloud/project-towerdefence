@@ -5,11 +5,18 @@ import {
 } from './config.js';
 import { buildPath, pointAt, pathTiles } from './path.js';
 
+// Map-Modifikatoren mit Standardwerten (1 = unverändert); unbekannte Karte = Standardkarte.
+export function mapModifiers(mapId) {
+  const m = (Object.hasOwn(MAPS, mapId) ? MAPS[mapId] : MAPS[DEFAULT_MAP_ID]).modifiers || {};
+  return { enemySpeed: m.enemySpeed ?? 1, towerDamage: { ...(m.towerDamage || {}) }, slowStrength: m.slowStrength ?? 1 };
+}
+
 export function createGame({ mapId, ...overrides } = {}) {
   const id = Object.hasOwn(MAPS, mapId) ? mapId : DEFAULT_MAP_ID;
   const waypoints = MAPS[id].waypoints;
   return {
     mapId: id,
+    modifiers: mapModifiers(id),
     gold: START_GOLD,
     lives: START_LIVES,
     wave: 0,
@@ -36,12 +43,15 @@ export function createGame({ mapId, ...overrides } = {}) {
 
 // ---------- Türme ----------
 
-export function towerStats(tower) {
+export function towerStats(tower, modifiers) {
   const base = TOWER_TYPES[tower.type];
   const lvl = tower.level - 1;
+  const dmgMod = modifiers?.towerDamage?.[tower.type] ?? 1;
+  const slowMod = modifiers?.slowStrength ?? 1;
   return {
     ...base,
-    damage: base.damage * Math.pow(1.5, lvl),
+    ...(base.slow ? { slow: base.slow * slowMod } : {}),
+    damage: base.damage * Math.pow(1.5, lvl) * dmgMod,
     range: base.range * Math.pow(1.1, lvl),
     rate: base.rate * Math.pow(0.92, lvl),
   };
@@ -144,7 +154,7 @@ export function spawnEnemy(state, type, wave = state.wave) {
     type,
     hp,
     maxHp: hp,
-    speed: def.speed,
+    speed: def.speed * (state.modifiers?.enemySpeed ?? 1),
     reward: def.reward,
     leak: def.leak,
     radius: def.radius,
@@ -268,7 +278,7 @@ function towersStep(state, dt) {
   for (const tower of state.towers) {
     tower.cooldown -= dt;
     if (tower.cooldown > 0) continue;
-    const stats = towerStats(tower);
+    const stats = towerStats(tower, state.modifiers);
     const target = findTarget(state, tower, stats.range * TILE);
     if (!target) {
       tower.cooldown = 0;

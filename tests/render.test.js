@@ -443,3 +443,18 @@ test('Render: Karte Wald mit Hindernissen zeichnet ohne Fehler, auch nach Karten
   render(m.ctx, createGame({ mapId: 'forest' }), {});
   assert.equal(m.depth, 0);
 });
+
+test('Render: Kartenwechsel ice -> meadow ohne Theme-Reste', async () => {
+  const { render } = await import('../src/render.js?eis') // frische Instanz, kein Cache aus anderen Tests;
+  const styles = () => {
+    const seen = new Set();
+    const ctx = new Proxy({}, { get: () => () => {}, set(_, k, v) { if (k === 'fillStyle' || k === 'strokeStyle') seen.add(v); return true; } });
+    return { ctx, seen };
+  };
+  const a = styles();
+  render(a.ctx, createGame({ mapId: 'ice' }), {});
+  assert.ok(a.seen.has('#cfe6f2'), 'Eis-Theme sichtbar');
+  const b = styles();
+  render(b.ctx, createGame(), {});
+  assert.ok(!b.seen.has('#cfe6f2') && !b.seen.has('#9cc3d8') && !b.seen.has('#d9edf6'));
+});

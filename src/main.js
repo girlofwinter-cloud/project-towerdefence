@@ -230,7 +230,7 @@ function refreshUI() {
   const t = state.towers.find((x) => x.id === ui.selectedTowerId);
   $('tower-info').hidden = !t;
   if (t) {
-    const s = towerStats(t);
+    const s = towerStats(t, state.modifiers);
     const up = upgradeCost(t);
     $('ti-name').textContent = `${s.name} (Stufe ${t.level})`;
     $('ti-stats').textContent = `Schaden ${Math.round(s.damage)} · Reichweite ${s.range.toFixed(1)} · ${(1 / s.rate).toFixed(1)} Schuss/s`;

@@ -294,3 +294,13 @@ Neue Einträge werden unten angehängt. Bestehende Einträge werden nie geänder
 - Review: APPROVE (keine Muss-Punkte; Hinweise als B-043)
 - Entscheidungen: Hindernisse in eigenem Feld `state.obstacles` statt in `state.blocked`, damit "Weg" und "nicht bebaubar" getrennte Begriffe bleiben (sonst Kiesel auf Bäumen, Deko-Regeln vermischt). Karte `forest` mit eigenem Weg (44 Kacheln, 9 Kurven) und 39 Hindernissen, 125 baubare Kacheln im Abstand bis 2 zum Weg. Wellen-Balancing unverändert.
 - Offen: Sichtprüfung im Browser; Wald-Balancing nur über die Standardkarte abgesichert (Wellen sind pro Karte gleich); PR #21 und #22 müssen vorher gemergt werden.
+
+## 2026-11-21 · B-029 · Welt Eis (Gegner-/Turm-Modifikatoren pro Map)
+- Rolle(n): orchestrator, developer, tester, reviewer
+- Branch: agent/eiswelt (aufgebaut auf agent/wald, PR #23)
+- Runden: 1 von max. 2
+- Ergebnis: fertig
+- Tests: 140 bestanden, 0 fehlgeschlagen (7 neu, keiner abgeschwächt)
+- Review: CHANGES_REQUESTED nur wegen des fehlenden Ledger-Eintrags (hier erledigt), sonst keine Muss-Punkte; Hinweise als B-044. Kommentar in `config.js` zum Eis-Gelände korrigiert.
+- Entscheidungen: Modifikatoren pro Karte (`enemySpeed`, `towerDamage` je Typ, `slowStrength`) mit Standardwert 1 über `mapModifiers`; `towerStats(tower, modifiers)` mit optionalem 2. Parameter, damit alte Aufrufe und Tests unverändert bleiben und Anzeige die echten Werte zeigt. Eiswelt: Gegner 0,85-fach, Kanone 1,25-fach, Frost 0,7-fach Schaden und Verlangsamung. Dazu ein optionales Farbschema `theme` (kühles Weiß-Blau) in nur wenigen Zeilen Render-Code.
+- Offen: Playtest und Sichtprüfung im Browser; keine kartenspezifischen Balancing-Tests; PR #21, #22, #23 vorher mergen.

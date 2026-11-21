@@ -1,5 +1,5 @@
 // Zeichnet den Spielzustand auf ein Canvas. Keine Spiel-Logik hier!
-import { TILE, COLS, ROWS, WIDTH, HEIGHT, TOWER_TYPES } from './config.js';
+import { TILE, COLS, ROWS, WIDTH, HEIGHT, TOWER_TYPES, MAPS } from './config.js';
 import { towerStats } from './game.js';
 import { rect, tri, disc } from './draw-utils.js';
 import { recoilOffset } from './tower-fx.js';
@@ -74,7 +74,7 @@ function drawGround(ctx, state) {
 
 function paintBackground(ctx, state) {
   ctx.save();
-  drawGrass(ctx);
+  drawGrass(ctx, MAPS[state.mapId]?.theme);
   drawPath(ctx, state);
   drawDecor(ctx, state);
   const pts = state.path.points;
@@ -83,17 +83,19 @@ function paintBackground(ctx, state) {
   ctx.restore();
 }
 
-function drawGrass(ctx) {
+function drawGrass(ctx, theme) {
+  const colors = theme?.grass || GRASS_COLORS;
+  const blade = theme?.blade || GRASS_BLADE;
   for (let r = 0; r < ROWS; r++) {
     for (let c = 0; c < COLS; c++) {
-      ctx.fillStyle = GRASS_COLORS[(r + c) % 2];
+      ctx.fillStyle = colors[(r + c) % 2];
       ctx.fillRect(c * TILE, r * TILE, TILE, TILE);
       // kleiner Helligkeitsversatz je Kachel, das Schachbrett bleibt erkennbar
       const shift = (tileHash(c, r, 10) / 4294967296 - 0.5) * 2 * GRASS_SHIFT;
       ctx.fillStyle = shift >= 0 ? `rgba(255,255,255,${shift})` : `rgba(0,0,0,${-shift})`;
       ctx.fillRect(c * TILE, r * TILE, TILE, TILE);
       // ein paar dunkle Halme
-      ctx.strokeStyle = GRASS_BLADE;
+      ctx.strokeStyle = blade;
       ctx.lineWidth = 1;
       for (let i = 0; i < 3; i++) {
         const x = c * TILE + 4 + tileRand(c, r, 20 + i) * (TILE - 8);
@@ -278,7 +280,7 @@ function strokePath(ctx, pts) {
 
 function drawHover(ctx, state, ui) {
   const selected = state.towers.find((t) => t.id === ui.selectedTowerId);
-  if (selected) rangeCircle(ctx, selected.x, selected.y, towerStats(selected).range * TILE, 'rgba(255,255,255,0.15)');
+  if (selected) rangeCircle(ctx, selected.x, selected.y, towerStats(selected, state.modifiers).range * TILE, 'rgba(255,255,255,0.15)');
 
   if (!ui.hover || !ui.buildType) return;
   const { col, row, ok } = ui.hover;
