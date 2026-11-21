@@ -691,3 +691,30 @@ export const RANGE_STYLE = {
   ringWidth: 2,
   maxFillAlpha: 0.1,      // Obergrenze (Test)
 };
+
+// B-065: Gegner im Flat-Pop-Stil (Goblin, Flitzer, Troll). Maße in Design-Pixeln bei Radius `ref`
+// (die Figur wird mit radius/ref skaliert). `main` = Flächenanteil der Hauptfarben (Summe 1) für den Kontrasttest.
+export const ENEMY_STYLE = {
+  legSwing: 2.6,     // Beinschwung vor/zurück in px
+  bob: 1.1,          // Wippen in px
+  legLift: 1.2,      // Fuß hebt sich im Vorschwung
+  outlineWidth: 1.8, // kräftigere Kontur als STYLE.outlineWidth (Lesbarkeit auf hellem Weg, B-085)
+  eyeRim: '#ffffff',
+  eyeDark: '#1a1a1a',
+  browColor: '#2a1d1a',
+  grunt: {
+    ref: 12,
+    skin: '#6fbf4a', tunic: '#764324', belt: '#4a2a18',
+    main: { skin: 0.4, tunic: 0.6 },
+  },
+  runner: {
+    ref: 10.5,
+    skin: '#f2c14e', suit: '#a8500f', cap: '#7a3a14', streak: 'rgba(122,58,20,0.55)',
+    main: { skin: 0.35, suit: 0.5, cap: 0.15 },
+  },
+  tank: {
+    ref: 14,
+    skin: '#b5523b', plate: '#9aa3a8', plateDark: '#6d767b', tusk: '#f1e8d2',
+    main: { skin: 0.5, plate: 0.2, plateDark: 0.3 },
+  },
+};

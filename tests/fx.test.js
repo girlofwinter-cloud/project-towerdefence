@@ -121,7 +121,7 @@ test('Gegner-Zeichnung: Typen unterscheiden sich, Boss ist am groessten', async 
   }
   const keys = Object.keys(prints);
   for (let i = 0; i < keys.length; i++) for (let j = i + 1; j < keys.length; j++) assert.notEqual(prints[keys[i]], prints[keys[j]], `${keys[i]} == ${keys[j]}`);
-  assert.ok(prints.boss.length > prints.grunt.length, 'Boss ist aufwendiger');
+  assert.ok(prints.boss.length > prints.healer.length, 'Boss ist aufwendiger (als der noch einfache Schamane; Goblin/Flitzer/Troll sind seit B-065 detaillierter)');
   assert.ok(extent.boss > extent.grunt && extent.boss > 1.15, `Boss-Ausdehnung ${extent.boss}`);
   // Unbekannter Typ nutzt den Rueckfall (weiter zeichnen, nicht crashen)
   assert.ok(prints.healer.length > 0);
@@ -666,3 +666,83 @@ test('B-012 Tester R2: Sperrzeit - neuer Weg leert Sperre; kleine Explosion setz
   assert.ok(Number.isFinite(fx3.shakeLock) || fx3.shakeLock === -Infinity);
 });
 
+
+// ---------- Gegner im Flat-Pop-Stil (B-065): Goblin, Flitzer, Troll ----------
+
+const FLAT = ['grunt', 'runner', 'tank'];
+
+test('Flat-Pop-Gegner: zeichnen ausgewogen, Figur (inkl. Licht-/Schattenversatz) bleibt im Kreis radius*1,3', async () => {
+  const paths = [buildPath([[0, 0], [5, 0]], TILE), buildPath([[5, 0], [0, 0]], TILE), buildPath([[0, 0], [0, 5]], TILE), buildPath([[0, 5], [0, 0]], TILE)];
+  for (const type of FLAT) {
+    for (const slow of [false, true]) for (const time of [0, 0.2, 0.45, 0.7, 1.1]) for (const path of paths) {
+      const r = await recordEnemy({ type, slowUntil: slow ? 99 : 0 }, time, path);
+      assert.equal(r.depth, 0, `${type}: save/restore`);
+      // Mock-Extent: Mittelpunkt-Abstand plus groesster Radius, konservativ (Schattenband-Kopien zaehlen mit)
+      for (const p of r.figure.filter((q) => q.depth > 0)) {
+        assert.ok(Math.hypot(p.x - r.e.x, p.y - r.e.y) + p.ext <= 1.3 * r.e.radius + 1e-9, `${type}: ${(Math.hypot(p.x - r.e.x, p.y - r.e.y) + p.ext) / r.e.radius}`);
+      }
+    }
+  }
+});
+
+test('Flat-Pop-Gegner: Beine schwingen mit der Lauf-Phase (andere Phase = andere Beinpositionen), Wippen bis 1,1 px', async () => {
+  for (const type of FLAT) {
+    const seen = new Set();
+    for (const time of [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6]) seen.add((await recordEnemy({ type }, time)).print);
+    assert.ok(seen.size >= 4, `${type}: Phasen unterscheiden sich`);
+  }
+  // Beinversatz: die Fuss-Rechtecke (arcTo-Pfade) liegen bei Phase pi/2 und -pi/2 um 2 * legSwing auseinander
+  const { ENEMY_STYLE } = await import('../src/config.js');
+  const { drawGruntFlat } = await import('../src/render-enemies-flat.js');
+  const xs = [Math.PI / 2, -Math.PI / 2].map((phase) => {
+    const moves = [];
+    const ctx = new Proxy({}, { get: (_, k) => (...a) => { if (k === 'moveTo') moves.push(a); }, set: () => true });
+    drawGruntFlat(ctx, phase);
+    return moves[1][0]; // vorderes Bein (zweiter Beinstummel), Pfadstart x + rad
+  });
+  assert.ok(Math.abs(Math.abs(xs[0] - xs[1]) - 2 * ENEMY_STYLE.legSwing) < 1e-9, `Beinschwung ${xs}`);
+});
+
+test('Flat-Pop-Gegner: Frost-Overlay, Ring und HP-Balken sind unveraendert (gleiche Aufrufe wie vorher)', async () => {
+  for (const type of FLAT) {
+    const r = await recordEnemy({ type, slowUntil: 99, hp: 10, maxHp: 10 });
+    const tail = r.calls.slice(r.calls.findIndex((c) => c.startsWith('arc:0.00,0.00,0.95')));
+    assert.equal(tail[0].split('|')[1], 'rgba(150,220,255,0.4)', `${type}: Frost-Tint`);
+    assert.equal(tail.filter((c) => c.startsWith('moveTo')).length, 3, `${type}: 3 Frost-Kristalle`);
+    assert.equal(tail.filter((c) => c.startsWith('lineTo')).length, 6);
+    const ring = tail.find((c) => c.startsWith('arc:200.00,150.00'));
+    assert.ok(ring && ring.endsWith('#bdf0ff'), `${type}: Frost-Ring`);
+    assert.equal(r.props.lineWidth, 2.5);
+    assert.deepEqual(r.calls.filter((c) => c.startsWith('fillRect')).map((c) => c.split('|')[1]), ['#300', '#4cd964'], `${type}: HP-Balken`);
+  }
+  // Heil-Aura bleibt dem Schamanen vorbehalten
+  const { drawHealAura } = await import('../src/render-enemies.js');
+  for (const type of FLAT) {
+    let n = 0;
+    drawHealAura(new Proxy({}, { get: () => () => { n++; }, set: () => true }), { type, x: 1, y: 1 }, 0);
+    assert.equal(n, 0, `${type}: keine Aura`);
+  }
+});
+
+test('Flat-Pop-Gegner (B-085): Hauptfarbflaechen haben >= 0,25 Helligkeitsabstand zu allen Wegfarben, Kontur >= 0,25', async () => {
+  const { ENEMY_STYLE, MAPS, PATH_STYLE } = await import('../src/config.js');
+  const { brightness, outlineOf } = await import('../src/draw-utils.js');
+  // Wiese und Eis (Wald/Zangenangriff: siehe Bericht, dort liegt der Abstand des Goblins bei ca. 0,22)
+  const roads = new Set();
+  for (const id of ['meadow', 'ice']) { const p = { ...PATH_STYLE.colors, ...(MAPS[id].theme.path || {}) }; roads.add(p.mid); } // Wegmitte (der Wegrand `main` ist dunkler)
+  for (const type of FLAT) {
+    const c = ENEMY_STYLE[type];
+    // Gemessen: Flaechenanteil-gewichtete mittlere Helligkeit der Hauptfarben (c.main) gegen jede Wegfarbe
+    let mean = 0, sum = 0;
+    for (const [name, w] of Object.entries(c.main)) { mean += w * brightness(c[name]); sum += w; }
+    assert.ok(Math.abs(sum - 1) < 1e-9, `${type}: Anteile summieren auf 1`);
+    const printed = (await recordEnemy({ type })).print;
+    for (const name of Object.keys(c.main)) assert.ok(printed.includes('fill:|' + c[name]), `${type}: ${name} wird gezeichnet`);
+    for (const road of roads) {
+      assert.ok(Math.abs(mean - brightness(road)) >= 0.25, `${type}: Koerper ${mean.toFixed(2)} gegen Weg ${road}`);
+      assert.ok(Math.abs(brightness(outlineOf(c.skin)) - brightness(road)) >= 0.25, `${type}: Kontur gegen ${road}`);
+    }
+    // Die Hauptfarbe der Config (HP-/Schadensfarbe) bleibt in der Figur sichtbar (Kopf bzw. Haut)
+    assert.equal(c.skin, ENEMY_TYPES[type].color, `${type}: skin == ENEMY_TYPES.color`);
+  }
+});

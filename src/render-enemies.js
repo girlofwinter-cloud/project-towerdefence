@@ -3,7 +3,8 @@
 // damit sie ungefaehr in den Kreis des Gegners passen (Krone/Waffe bis ca. 1,3x).
 // Keine Allokationen pro Frame: Konstanten und Tabellen liegen auf Modulebene.
 import { ENEMY_TYPES, TILE } from './config.js';
-import { rect, tri, disc } from './draw-utils.js';
+import { rect, tri, disc, groundShadow } from './draw-utils.js';
+import { drawGruntFlat, drawRunnerFlat, drawTankFlat } from './render-enemies-flat.js';
 import { walkPhase, animSpeedFactor, facingFor, facingFlip, facingTilt } from './enemy-fx.js';
 
 const TWO_PI = Math.PI * 2;
@@ -13,6 +14,8 @@ const SHADOW_COLOR = 'rgba(0,0,0,0.3)';
 const SHADOW_DY = 0.8; // Versatz nach unten (in Radien)
 const SHADOW_RX = 0.9;
 const SHADOW_RY = 0.33;
+const FLAT_SHADOW_DY = 0.72; // Bodenschatten der Flat-Pop-Figuren: Mitte (in Radien)
+const FLAT_SHADOW_R = 0.8; // und Groesse (haelt ihn im Rahmen von 1,6 Radien)
 // Laufen
 const BOB = 0.07; // Wippen nach oben (in Radien)
 // Frost
@@ -32,9 +35,6 @@ const HP_BOSS_LIFT = 6; // Boss-Krone ragt hoeher -> Balken weiter oben
 // Farben
 const WHITE = '#fff';
 const EYE_DARK = '#1a1a1a';
-const GOBLIN = { skin: '#6fbf4a', dark: '#4a8a33', feet: '#2f5a22', ear: '#8ad45f' };
-const RUNNER = { skin: '#f2c14e', dark: '#c8962a', feet: '#8a6418', streak: 'rgba(242,193,78,0.5)' };
-const TANK = { skin: '#b5523b', dark: '#7d3626', plate: '#9aa3a8', plateDark: '#6d767b', rivet: '#d8dcde', feet: '#4a2418' };
 const OGRE = { skin: '#7a2e8e', light: '#9a4cb0', dark: '#55206a', gold: '#f2c94c', goldDark: '#b8912a', aura: 'rgba(180,90,220,0.2)', club: '#6b4a2b', tusk: '#f0e6d2', eye: '#ff4a4a' };
 const SHAMAN = { robe: '#2f8f6a', dark: '#1f6148', skin: '#8fd4a8', staff: '#6b4a2b', glow: '#b8ffd8', hood: '#3fbf8f' };
 const SHIELDED = { skin: '#7d8fae', dark: '#4f607c', helm: '#9aa7ba', shield: '#8a6a3a', shieldDark: '#5b4425', rim: '#c9ccd2', boss: '#e8d27a', feet: '#2c3646' };
@@ -63,58 +63,6 @@ function leg(ctx, color, width, hx, hy, len, phase, swing, lift) {
   ctx.moveTo(hx, hy);
   ctx.lineTo(fx, fy);
   ctx.stroke();
-}
-
-// Goblin: kleine gruene Gestalt mit spitzen Ohren
-function drawGrunt(ctx, phase) {
-  leg(ctx, GOBLIN.feet, 0.28, -0.22, 0.45, 0.4, phase, 0.22, 0.14);
-  leg(ctx, GOBLIN.feet, 0.28, 0.22, 0.45, 0.4, phase + Math.PI, 0.22, 0.14);
-  ctx.translate(0, -Math.abs(Math.sin(phase)) * BOB);
-  oval(ctx, GOBLIN.dark, -0.05, 0.12, 0.55, 0.52, 0);
-  tri(ctx, GOBLIN.ear, -0.3, -0.5, -0.98, -0.78, -0.3, -0.88);
-  tri(ctx, GOBLIN.ear, 0.15, -0.8, 0.55, -1.0, 0.45, -0.55);
-  disc(ctx, GOBLIN.skin, 0.12, -0.45, 0.46);
-  disc(ctx, WHITE, 0.3, -0.5, 0.15);
-  disc(ctx, EYE_DARK, 0.35, -0.5, 0.075);
-  rect(ctx, GOBLIN.feet, 0.12, -0.22, 0.34, 0.07);
-}
-
-// Flitzer: schlanke gelbe Gestalt in Streckhaltung (Oberkoerper nach vorn gelehnt)
-function drawRunner(ctx, phase) {
-  leg(ctx, RUNNER.feet, 0.2, -0.1, 0.3, 0.55, phase, 0.45, 0.25);
-  leg(ctx, RUNNER.feet, 0.2, 0.1, 0.3, 0.55, phase + Math.PI, 0.45, 0.25);
-  ctx.translate(0, -Math.abs(Math.sin(phase)) * BOB);
-  rect(ctx, RUNNER.streak, -0.98, -0.2, 0.4, 0.07);
-  rect(ctx, RUNNER.streak, -0.85, 0.05, 0.35, 0.07);
-  oval(ctx, RUNNER.dark, 0, 0, 0.7, 0.28, -0.35);
-  oval(ctx, RUNNER.skin, 0.05, -0.05, 0.6, 0.24, -0.35);
-  disc(ctx, RUNNER.skin, 0.55, -0.4, 0.3);
-  tri(ctx, RUNNER.dark, 0.35, -0.6, 0.15, -0.9, 0.55, -0.68);
-  disc(ctx, WHITE, 0.66, -0.43, 0.1);
-  disc(ctx, EYE_DARK, 0.69, -0.43, 0.05);
-}
-
-// Panzer-Troll: breite rotbraune Gestalt mit Ruestungsplatten und Schild
-function drawTank(ctx, phase) {
-  leg(ctx, TANK.feet, 0.34, -0.35, 0.5, 0.38, phase, 0.14, 0.08);
-  leg(ctx, TANK.feet, 0.34, 0.35, 0.5, 0.38, phase + Math.PI, 0.14, 0.08);
-  ctx.translate(0, -Math.abs(Math.sin(phase)) * BOB * 0.6);
-  rect(ctx, TANK.dark, -0.9, -0.5, 1.8, 1.05);
-  rect(ctx, TANK.skin, -0.85, -0.45, 1.7, 0.95);
-  rect(ctx, TANK.plate, -0.7, -0.4, 0.35, 0.85);
-  rect(ctx, TANK.plate, -0.25, -0.4, 0.35, 0.85);
-  rect(ctx, TANK.plateDark, -0.7, 0.2, 0.8, 0.12);
-  disc(ctx, TANK.rivet, -0.52, -0.25, 0.05);
-  disc(ctx, TANK.rivet, -0.07, -0.25, 0.05);
-  // Kopf mit Helm
-  disc(ctx, TANK.skin, 0.45, -0.55, 0.3);
-  rect(ctx, TANK.plateDark, 0.15, -0.88, 0.62, 0.22);
-  disc(ctx, WHITE, 0.55, -0.5, 0.09);
-  disc(ctx, EYE_DARK, 0.58, -0.5, 0.045);
-  // Schild vorn
-  rect(ctx, TANK.plateDark, 0.5, -0.35, 0.42, 0.9);
-  rect(ctx, TANK.plate, 0.55, -0.3, 0.32, 0.8);
-  disc(ctx, TANK.rivet, 0.71, 0.1, 0.1);
 }
 
 // Oger-Koenig: grosse violette Gestalt mit Krone, Keule und pulsierender Aura
@@ -189,13 +137,14 @@ function drawGeneric(ctx, phase, time, color) {
 
 // Tabelle statt Objekt-Literal-Lookup (kein Prototype-Treffer bei exotischen Typnamen)
 const FIGURES = new Map([
-  ['grunt', drawGrunt],
-  ['runner', drawRunner],
-  ['tank', drawTank],
+  ['grunt', drawGruntFlat],
+  ['runner', drawRunnerFlat],
+  ['tank', drawTankFlat],
   ['boss', drawBoss],
   ['healer', drawHealer],
   ['shielded', drawShielded],
 ]);
+const FLAT_TYPES = new Set(['grunt', 'runner', 'tank']);
 const FALLBACK_COLOR = '#999';
 
 // Frost: bluelicher Glanz ueber der Figur plus kleine Eiskristalle (lokale Einheiten)
@@ -240,11 +189,14 @@ export function drawEnemy(ctx, e, time, path) {
   const angle = facingFor(path, e.dist);
   const phase = walkPhase(time, e.id, animSpeedFactor(e, time));
 
-  // Schatten (Weltkoordinaten, dreht sich nicht mit)
-  ctx.fillStyle = SHADOW_COLOR;
-  ctx.beginPath();
-  ctx.ellipse(e.x, e.y + r * SHADOW_DY, r * SHADOW_RX, r * SHADOW_RY, 0, 0, TWO_PI);
-  ctx.fill();
+  // Schatten (Weltkoordinaten, dreht sich nicht mit); Flat-Pop-Figuren nutzen den Stil-Bodenschatten
+  if (FLAT_TYPES.has(e.type)) groundShadow(ctx, e.x, e.y + r * FLAT_SHADOW_DY, r * FLAT_SHADOW_R);
+  else {
+    ctx.fillStyle = SHADOW_COLOR;
+    ctx.beginPath();
+    ctx.ellipse(e.x, e.y + r * SHADOW_DY, r * SHADOW_RX, r * SHADOW_RY, 0, 0, TWO_PI);
+    ctx.fill();
+  }
 
   // Figur: Ursprung = Gegnermitte, gespiegelt/geneigt, Einheit = Radius
   ctx.save();
