@@ -397,3 +397,13 @@ Neue Einträge werden unten angehängt. Bestehende Einträge werden nie geänder
 - Review: APPROVE (keine Muss-Punkte; Hinweise als B-052)
 - Entscheidungen: `ABILITIES` in der Config: Meteor (Q, 50 s, 150 Schaden, Radius 1,8, Rüstung wie bei jedem Splash ignoriert), Kälteschock (W, 60 s, 70 % langsamer für 4 s, auch Bosse), Reparatur (E, 120 s, höchstens 2 Nutzungen, nie über START_LIVES, bei vollen Leben kein Verbrauch). Lange Abklingzeiten, damit das als "recht schwer, aber gut" empfundene Spiel nicht merklich leichter wird (Kälteschock ca. 7 % Uptime); Balancing-Tests nutzen keine Fähigkeiten und blieben unverändert. Zielmodus-Logik als reine Funktion `aimStep` in `input.js`. Vor dem PR wurden Unit- und Browser-Tests lokal ausgeführt (Lehre aus der roten CI bei B-034).
 - Offen: Spieltest der Zahlen; Feinschliff in B-052.
+
+## 2026-11-21 · Aufräumen · Feinschliff aus B-042 bis B-052
+- Rolle(n): orchestrator, developer, reviewer (ohne Tester, reiner Aufräum-Durchlauf)
+- Branch: agent/aufraeumen-2
+- Runden: 1 von max. 2
+- Ergebnis: fertig
+- Tests: 190 Unit-Tests und 5 Browser-Tests bestanden, 0 fehlgeschlagen (2 neu: Slow/Heilung bei Eingefrorenen, Sniper mit unbekanntem Typ)
+- Review: APPROVE (keine Muss-Punkte)
+- Entscheidungen: Nur reine Code-Hinweise umgesetzt, keine Balancing-Zahlen und kein Spielverhalten geändert: `OBSTACLE_TREE_SHARE` und `OBSTACLE_SHADE` als Konstanten, `enemyPath` auch im Render, `iceRun` zu `mapRun`, `knockBack` lesbarer, Sniper-Schwelle mit Fallback, Farbkonstanten sortiert, `doAbility` bricht außerhalb von 'playing' früh ab und eine Pause beendet den Meteor-Zielmodus (neu, vom Reviewer als sinnvoll bewertet). `tests/forest-edge.test.js` wurde 1:1 in `tests/game.test.js` und `tests/decor.test.js` verschoben (gleiche Namen und Assertions, Testanzahl gleich). Bewusst nicht angefasst: Punkte, die einen Spieltest oder eine Entscheidung brauchen (Eis-Farbschema, `chainRange` des Blitzturms, Zahlen der Fähigkeiten, Pfeil-Strategie mit 10 Leben, Kartenwahl-Speicher, `p.special`-Bündelung).
+- Offen: Die Backlog-Einträge B-042, B-043, B-047, B-048, B-050, B-051, B-052 tragen jeweils einen Vermerk, was erledigt und was offen ist.

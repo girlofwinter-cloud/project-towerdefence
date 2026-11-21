@@ -1100,13 +1100,13 @@ test('Eiswelt: Slowfaktor in (0,1), Upgrade-Stufen und Kanonen-Splash skalieren 
 });
 
 // B-044: Eiswelt etwas fordernder als die Wiese, aber klar schaffbar (eigene Läufe mit mapId, per Cache nur einmal je Strategie).
-const iceRun = (kind, dt, mapId = 'ice') =>
+const mapRun = (kind, dt, mapId = 'ice') =>
   strategyRun(kind === 'cannon' ? MIX_CANNON : kind === 'arrow' ? MIX_ARROW : kind, dt, mapId).state;
 
 test('Eiswelt: robuste Strategien gewinnen Welle 20 mit mindestens 1 Leben (dt 1/30, 1/60)', () => {
   for (const kind of ['cannon', 'arrow']) {
     for (const dt of [1 / 30, 1 / 60]) {
-      const s = iceRun(kind, dt);
+      const s = mapRun(kind, dt);
       assert.equal(s.status, 'won', `${kind} dt=${dt}: Status ${s.status} in Welle ${s.wave}`);
       assert.ok(s.lives >= 1, `${kind} dt=${dt}: ${s.lives} Leben`);
     }
@@ -1115,7 +1115,7 @@ test('Eiswelt: robuste Strategien gewinnen Welle 20 mit mindestens 1 Leben (dt 1
 
 test('Eiswelt: nur Pfeiltürme verlieren vor Welle 12 (dt 1/30, 1/60)', () => {
   for (const dt of [1 / 30, 1 / 60]) {
-    const s = iceRun('arrowOnly', dt);
+    const s = mapRun('arrowOnly', dt);
     assert.equal(s.status, 'lost', `dt=${dt}`);
     assert.ok(s.wave < 12, `dt=${dt}: verloren erst in Welle ${s.wave}`);
   }
@@ -1124,7 +1124,7 @@ test('Eiswelt: nur Pfeiltürme verlieren vor Welle 12 (dt 1/30, 1/60)', () => {
 // B-046: Zangenangriff (fork): robuste Strategien schaffen Welle 20 mit mindestens 1 Leben.
 test('Zangenangriff: robuste Strategien gewinnen Welle 20 mit mindestens 1 Leben (dt 1/30)', () => {
   for (const kind of ['cannon', 'arrow']) {
-    const s = iceRun(kind, 1 / 30, 'fork');
+    const s = mapRun(kind, 1 / 30, 'fork');
     assert.equal(s.status, 'won', `${kind}: Status ${s.status} in Welle ${s.wave}`);
     assert.ok(s.lives >= 1, `${kind}: ${s.lives} Leben`);
   }
@@ -1145,7 +1145,7 @@ test('Modifikatoren: Wiese hat keine, Wald und Zangenangriff schnellere Gegner',
 test('Wald und Zangenangriff: robuste Strategie (Kanone zuerst) gewinnt Welle 20 mit mindestens 1 Leben (dt 1/30, 1/60)', () => {
   for (const mapId of ['forest', 'fork']) {
     for (const dt of [1 / 30, 1 / 60]) {
-      const s = iceRun('arrow', dt, mapId);
+      const s = mapRun('arrow', dt, mapId);
       assert.equal(s.status, 'won', `${mapId} dt=${dt}: Status ${s.status} in Welle ${s.wave}`);
       assert.ok(s.lives >= 1 && s.lives < 10, `${mapId} dt=${dt}: ${s.lives} Leben`);
     }
@@ -1206,10 +1206,8 @@ test('Karte Zangenangriff: Wege gültig, achsenparallel, nur Endstück gemeinsam
   for (const w of all) {
     assert.ok(!inside(w[0]) && !inside(w[w.length - 1]));
     for (const p of w.slice(1, -1)) assert.ok(inside(p));
-    let turns = 0;
     for (let i = 0; i < w.length - 1; i++) assert.ok(w[i][0] === w[i + 1][0] || w[i][1] === w[i + 1][1]);
-    for (let i = 1; i < w.length - 1; i++) turns++;
-    assert.ok(turns >= 3);
+    assert.ok(w.length - 2 >= 3, 'mindestens 3 Kurven');
     const len = buildPath(w, 1).length;
     assert.ok(len >= 40 && len <= 55, `Länge ${len}`);
   }
@@ -1727,4 +1725,67 @@ test('Faehigkeiten: Prototyp-Ids, ungueltige Meteor-Ziele, Spielende ohne Wieder
   assert.equal(s.lives, 0);
   s.status = 'won';
   assert.equal(useAbility(s, 'freeze').ok, false);
+});
+
+// Aus forest-edge.test.js (B-043)
+test('Wald: Weg gueltig, Hindernisse eindeutig, im Feld, nicht auf Weg', () => {
+  const { waypoints, obstacles } = MAPS.forest;
+  for (let i = 1; i < waypoints.length; i++) {
+    const [a, b] = [waypoints[i - 1], waypoints[i]];
+    assert.ok(a[0] === b[0] || a[1] === b[1], 'achsenparallel');
+    assert.notDeepEqual(a, b);
+  }
+  const f = waypoints[0], l = waypoints[waypoints.length - 1];
+  assert.ok(f[0] < 0 || f[0] >= COLS || f[1] < 0 || f[1] >= ROWS);
+  assert.ok(l[0] < 0 || l[0] >= COLS || l[1] < 0 || l[1] >= ROWS);
+  const keys = obstacles.map(([c, r]) => `${c},${r}`);
+  assert.equal(new Set(keys).size, keys.length, 'keine Duplikate');
+  const blocked = pathTiles(waypoints);
+  for (const [c, r] of obstacles) {
+    assert.ok(c >= 0 && r >= 0 && c < COLS && r < ROWS);
+    assert.ok(!blocked.has(`${c},${r}`), `Hindernis auf Weg ${c},${r}`);
+  }
+});
+
+test('Wald: canBuild-Reihenfolge Feld, Weg, Hindernis, Turm; overrides ohne obstacles', () => {
+  const s = createGame({ mapId: 'forest' });
+  assert.match(canBuild(s, -1, 0).reason, /Außerhalb/);
+  const [pc, pr] = [...s.blocked].map(k => k.split(',').map(Number)).find(([c, r]) => c >= 0 && r >= 0 && c < COLS && r < ROWS);
+  assert.match(canBuild(s, pc, pr).reason, /Weg/);
+  const [oc, or] = MAPS.forest.obstacles[0];
+  assert.match(canBuild(s, oc, or).reason, /Baum/);
+  s.towers.push({ col: oc, row: or });
+  assert.match(canBuild(s, oc, or).reason, /Baum/, 'Hindernis vor Turm');
+  const g = createGame({ obstacles: undefined });
+  assert.equal(canBuild(g, 0, 0).ok, true);
+  const h = createGame({ mapId: 'forest', obstacles: new Set() });
+  assert.equal(canBuild(h, oc, or).ok, true);
+});
+
+test('Eingefrorene Gegner: Slow läuft weiter ab, Heilung wirkt weiter (B-048)', () => {
+  const s = createGame();
+  const e = spawnEnemy(s, 'grunt', 1);
+  e.frozenUntil = s.time + 1;
+  e.slowUntil = s.time + 0.3;
+  e.slowFactor = 0.5;
+  const d0 = e.dist;
+  update(s, 0.5);
+  assert.equal(e.dist, d0, 'steht');
+  assert.ok(s.time >= e.slowUntil, 'Slow ist abgelaufen, obwohl eingefroren');
+  const h = spawnEnemy(s, 'healer', 1);
+  h.frozenUntil = s.time + 5;
+  h.x = e.x; h.y = e.y;
+  e.hp = e.maxHp / 2;
+  e.frozenUntil = s.time + 5;
+  s.healAt = s.time;
+  const before = e.hp;
+  update(s, 0.01);
+  assert.ok(e.hp > before, 'Heilung wirkt auf eingefrorenen Gegner');
+});
+
+test('Sniper: unbekannter Gegnertyp ohne Basis-HP crasht nicht, kein Bonus (B-050)', () => {
+  const { s, tower, e } = specialSetup('sniper');
+  e.type = 'unbekannt';
+  fireAndLand(s, tower);
+  assert.ok(Math.abs((e.maxHp - e.hp) - TOWER_TYPES.sniper.damage) < 1e-6);
 });

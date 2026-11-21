@@ -379,7 +379,7 @@ function towersStep(state, dt) {
       lightningStrike(state, tower, stats, target);
       continue;
     }
-    const breaker = sp.bonusMinHp !== undefined && ENEMY_TYPES[target.type].hp >= sp.bonusMinHp;
+    const breaker = sp.bonusMinHp !== undefined && (ENEMY_TYPES[target.type]?.hp ?? 0) >= sp.bonusMinHp;
     state.projectiles.push({
       id: state.nextId++,
       towerType: tower.type,
@@ -444,9 +444,9 @@ function hit(state, p, target) {
     for (const e of state.enemies) {
       if (Math.hypot(e.x - p.tx, e.y - p.ty) <= p.splash) {
         damage(state, e, p);
-        if (p.knockback && e === target) knockBack(state, e, p);
       }
     }
+    if (p.knockback && target) knockBack(state, target, p);
     state.effects.push({ kind: 'explosion', x: p.tx, y: p.ty, r: p.splash, ttl: 0.3, max: 0.3 });
   } else if (target) {
     damage(state, target, p, true);

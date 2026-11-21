@@ -15,7 +15,7 @@ const ctx = canvas.getContext('2d');
 
 const $ = (id) => document.getElementById(id);
 const ui = { buildType: null, selectedTowerId: null, hover: null, pending: null, aiming: false, hoverPx: null, speed: SPEED_STEPS[0], message: '', messageKind: 'error', messageTtl: 0 };
-let mapId = undefined;
+let mapId;
 let state = createGame();
 
 // Für Tests und Neugierige: im Browser-Konsole `__game` eintippen.
@@ -59,6 +59,7 @@ for (const [id, def] of Object.entries(ABILITIES)) {
 
 // Meteor braucht ein Ziel (Zielmodus), die anderen lösen sofort aus.
 function doAbility(id) {
+  if (state.status !== 'playing') return;
   if (id === 'meteor') {
     ui.aiming = aimStep(ui.aiming, 'key').aiming;
     if (ui.aiming) { ui.buildType = null; ui.selectedTowerId = null; ui.pending = null; }
@@ -238,6 +239,7 @@ window.addEventListener('keydown', (ev) => {
 
 // ---------- HUD ----------
 function refreshUI() {
+  if (state.status !== 'playing' || state.paused) ui.aiming = false; // Zielmodus nur im laufenden Spiel
   $('gold').textContent = state.gold;
   $('lives').textContent = state.lives;
   $('hearts').textContent = livesText(state.lives);

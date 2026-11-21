@@ -5,7 +5,7 @@
 //  - Grosse Dekoration (Baum, Busch, Fels) nur auf Randkacheln des Spielfelds.
 //  - Im Inneren nur kleine Dekoration (Blumen, Grasbuschel, Kiesel), die flach bleibt.
 //  - Die Dekoration wird in den Hintergrund gezeichnet; gebaute Tuerme liegen darueber.
-import { COLS, ROWS, TILE } from './config.js';
+import { COLS, ROWS, TILE, OBSTACLE_TREE_SHARE } from './config.js';
 
 // Dichten (Wahrscheinlichkeit pro Kachel, 0..1)
 export const BORDER_DECOR_CHANCE = 0.3;
@@ -64,5 +64,5 @@ export const LARGE_DECOR_RADIUS = { tree: 11, bush: 10, rock: 10 };
 
 // Hindernis-Art je Kachel (deterministisch): ueberwiegend Baeume, manchmal Felsen.
 export function obstacleKind(col, row) {
-  return tileRand(col, row, 6) < 0.7 ? 'tree' : 'rock';
+  return tileRand(col, row, 6) < OBSTACLE_TREE_SHARE ? 'tree' : 'rock';
 }
