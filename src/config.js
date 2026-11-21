@@ -183,19 +183,19 @@ export const TOWER_TYPES = {
   lightning: {
     name: 'Blitzturm',
     key: '5',
-    cost: 110,
+    cost: 100,
     range: 3,
-    damage: 14,
-    rate: 1.1,
+    damage: 16,
+    rate: 0.8,
     projectileSpeed: 0, // Blitz trifft sofort, kein Projektil
     // Kettenblitz: springt auf bis zu chainCount weitere Gegner im Umkreis chainRange (Kacheln);
     // jeder Sprung macht nur chainFalloff (Anteil) des Schadens des vorigen Treffers. Skaliert nicht mit der Stufe.
-    chainCount: 3,
-    chainRange: 1.6,
-    chainFalloff: 0.7,
+    chainCount: 6,
+    chainRange: 2.2,
+    chainFalloff: 0.9,
     boltDuration: 0.25, // Sekunden, die die Blitzlinie sichtbar bleibt
     color: '#e8c93a',
-    description: 'Kettenblitz springt auf nahe Gegner. Konter gegen Schwärme.',
+    description: 'Kettenblitz trifft sofort und verfehlt nie. Ideal gegen schnelle Flitzer und Schwärme.',
     special: {},
   },
 };

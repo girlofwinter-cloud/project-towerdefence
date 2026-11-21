@@ -1595,6 +1595,58 @@ test('Blitzturm: Kette funktioniert auf der Karte fork; Stufen skalieren Schaden
   assert.equal(st3.chainFalloff, st1.chainFalloff);
 });
 
+// B-053: eigene Rolle des Blitzturms. Gleiche Anzahl Türme am selben Wegstück (2 Blitztürme kosten mehr als 2 Kanonen: Vorteil für die Kanone).
+function duel(type, n, enemyType, count, gap, wave) {
+  const s = createGame();
+  s.gold = 1e6;
+  s.lives = 1000;
+  s.wave = wave;
+  s.waveActive = true;
+  const spots = rankedSpots(s, TOWER_TYPES[type].range);
+  for (let i = 0; i < n; i++) buildTower(s, type, spots[i].c, spots[i].r);
+  s.spawnQueue = Array.from({ length: count }, (_, i) => ({ type: enemyType, at: i * gap }));
+  const seen = new Map();
+  for (let k = 0; k < 600 * 30 && (s.spawnQueue.length || s.enemies.length); k++) {
+    update(s, 1 / 30);
+    for (const e of s.enemies) seen.set(e.id, e);
+  }
+  let dealt = 0;
+  for (const e of seen.values()) dealt += e.maxHp - Math.max(0, e.hp);
+  return { leaked: 1000 - s.lives, dealt };
+}
+
+test('Blitzturm-Rolle: gegen Flitzer- und Goblin-Schwärme besser als Kanonen, gegen Boss und Panzer-Troll schlechter', () => {
+  const swarms = [['runner', 16, 0.35, 8], ['grunt', 20, 0.5, 8]];
+  for (const [type, count, gap, wave] of swarms) {
+    const l = duel('lightning', 2, type, count, gap, wave);
+    const c = duel('cannon', 2, type, count, gap, wave);
+    assert.ok(l.leaked < c.leaked, `${type}: Blitz ${l.leaked} Durchbrüche, Kanone ${c.leaked}`);
+    assert.ok(l.dealt > c.dealt, `${type}: Blitz ${Math.round(l.dealt)} Schaden, Kanone ${Math.round(c.dealt)}`);
+  }
+  for (const [type, count, gap, wave] of [['boss', 1, 3, 3], ['tank', 3, 1, 5]]) {
+    const l = duel('lightning', 2, type, count, gap, wave);
+    const c = duel('cannon', 2, type, count, gap, wave);
+    assert.ok(l.dealt < c.dealt, `${type}: Blitz ${Math.round(l.dealt)} Schaden, Kanone ${Math.round(c.dealt)}`);
+  }
+  assert.ok(LT.damage / LT.rate < TOWER_TYPES.cannon.damage / TOWER_TYPES.cannon.rate, 'Einzelziel-Schaden pro Sekunde unter der Kanone');
+});
+
+// Blitz-Mix (Kanone, Pfeil, Blitz, Frost): gewinnt Welle 20 auf Wiese und Eiswelt mit mindestens 1 Leben, unabhängig vom Zeitschritt.
+const MIX_LIGHTNING = ['cannon', 'arrow', 'lightning', 'frost'];
+test('Strategie: Blitz-Mix gewinnt Welle 20 auf Wiese und Eiswelt (dt 1/30, 1/60), nicht deutlich leichter als der Kanonen-Mix', () => {
+  for (const mapId of ['meadow', 'ice']) {
+    for (const dt of [1 / 30, 1 / 60]) {
+      const s = strategyRun(MIX_LIGHTNING, dt, mapId).state;
+      assert.equal(s.status, 'won', `${mapId} dt=${dt}: Status ${s.status} in Welle ${s.wave}`);
+      assert.ok(s.lives >= 1, `${mapId} dt=${dt}: ${s.lives} Leben`);
+    }
+  }
+  for (const dt of [1 / 30, 1 / 60]) {
+    const s = strategyRun(MIX_LIGHTNING, dt).state;
+    assert.ok(s.lives <= strategyRun(MIX_CANNON, dt).state.lives, `Wiese dt=${dt}: Blitz-Mix nicht mit mehr Reserve als der Kanonen-Mix`);
+  }
+});
+
 // ---------- B-038: Fähigkeiten ----------
 import { useAbility, abilityCooldownLeft } from '../src/game.js';
 import { ABILITIES, WIDTH, HEIGHT } from '../src/config.js';

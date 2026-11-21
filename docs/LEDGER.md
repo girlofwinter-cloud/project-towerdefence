@@ -417,6 +417,16 @@ Neue Einträge werden unten angehängt. Bestehende Einträge werden nie geänder
 - Entscheidungen: Rückmeldung des Menschen mit Screenshot: Auf dem Desktop muss man scrollen, um den Blitzturm zu erreichen. Gemessen mit Playwright: Bei 1280x720 bis 1440x900 lagen die Shop-Unterkanten bei 470/597/709/863/1020 px, die Seite war 1323 px hoch; Ursache waren die langen Fähigkeiten-Texte (`special.text`) in den Karten. Jetzt zeigt die Karte nur die kurze Beschreibung (2 Zeilen), der Fähigkeiten-Text steht im Tooltip und im Turm-Info-Panel (`#ti-special`); Karten und Steuerung kompakter. Nachher 404/466/528/612/685 px, Dokumenthöhe 983 px. Handy unverändert gut. Hilfetext "1-4" -> "1-5". Neuer Browser-Test bei 1280x800 sichert ab, dass der letzte Turm sichtbar bleibt.
 - Offen: Desktop-Zoom nicht separat geprüft; Barrierefreiheit der Karten (B-054).
 
+## 2026-11-21 · B-053 · Blitzturm aufwerten (eigene Rolle)
+- Rolle(n): orchestrator, developer, reviewer (ohne Tester, nur Config und Tests)
+- Branch: agent/blitzturm-staerker
+- Runden: 1 von max. 2
+- Ergebnis: fertig
+- Tests: 192 Unit-Tests und 6 Browser-Tests bestanden (2 neue, keiner geändert oder abgeschwächt)
+- Review: APPROVE (keine Muss-Punkte; Hinweise als B-055)
+- Entscheidungen: Rückmeldung des Menschen nach dem Spieltest: Blitzturm zu schwach, die Kanone ist billiger und wirkt besser. Neue Rolle des Blitzturms: Konter gegen Schwärme schneller Gegner, schwächer gegen Zähe. Zahlen `lightning` (alt -> neu): Preis 110 -> 100, Schaden 14 -> 16, Rate 1,1 -> 0,8 s, `chainCount` 3 -> 6, `chainRange` 1,6 -> 2,2, `chainFalloff` 0,7 -> 0,9, neue Beschreibung. Messung (2 Blitztürme gegen 2 Kanonen, Wiese, dt 1/30): Flitzer Welle 8: 0 Durchbrüche statt 8, Goblins Welle 8: 0 statt 8, Flitzer Welle 14: 21 statt 22; Boss-Schaden 576 statt 1050, 3 Trolle 1518 statt 2354 (Kanone besser gegen Zähe, wie gewünscht). Der Blitz-Mix (Kanone, Pfeil, Blitz, Frost) gewinnt Welle 20 mit mindestens 1 Leben (Wiese 4, Eis/Wald/fork 10). Schaden und Rate bewusst niedrig gehalten (ein Schaden über ca. 22 bei Rate 0,7 hätte den Blitz auch gegen Bosse stärker als die Kanone gemacht). Kein Schockeffekt nötig. Die Läufe sind bei Schaden 30 bis 40 identisch; bei späteren Änderungen zuerst den Preis prüfen.
+- Offen: Spieltest durch den Menschen, ob die Rolle jetzt spürbar ist; Flackerrisiko der knappen Reserve (4 Leben auf der Wiese), siehe B-055.
+
 ## 2026-11-21 · Prozess · Neue Rolle `designer` (Visual Design und UI)
 - Rolle(n): Mensch + Claude (interaktiv)
 - Branch: agent/designer-rolle
