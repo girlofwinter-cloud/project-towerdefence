@@ -266,3 +266,12 @@ Agents lesen diese Datei nur bei konkretem Bedarf.
   - Unit-Test: keine Krone schneidet den Weg; Überhang ins Feld höchstens 36 px (im Durchlauf von 16 px angehoben: Zielbild ist tiefer).
   - Mindestens 40 Bäume im Randring; Positionen deterministisch (gleicher Seed, gleiches Ergebnis).
   - Alles im Hintergrund-Cache; Handy-Screenshot: Gegner und Türme bleiben lesbar.
+
+### B-078: Wiese 3/7: Boden mit Flecken und Plateaus statt Schachbrett (Design-Overhaul)
+- Status: fertig
+- Aufwand: M
+- Idee: Boden aus gestapelten Flecken (je 4 Lagen für weiche Kanten, kein `shadowBlur`), in B zusätzlich Plateaus mit dunkler Kante (Höhenversatz) und Gras-Cluster.
+- Akzeptanzkriterien:
+  - Screenshot ohne Schachbrettraster.
+  - Aufbauzeit von `bgCanvas` unter 60 ms (Test misst, Node mit Mock genügt).
+  - Kein Aufruf im Frame-Pfad (render-Test).
