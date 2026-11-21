@@ -58,7 +58,8 @@ export const MAPS = {
       [11, 6], [13, 4], [13, 6], [13, 10], [13, 11], [13, 12], [14, 4], [14, 6], [15, 3], [15, 8],
       [15, 9], [16, 3], [17, 3], [17, 5], [18, 5], [18, 9], [18, 12], [19, 7], [19, 12],
     ],
-    // B-046: schnellere Gegner im Dickicht.
+    // B-046: schnellere Gegner im Dickicht. ACHTUNG: gemessen und nur in einem schmalen Bereich stabil
+    // (enemySpeed 1,19 trägt zwischen etwa 1,17 und 1,20), nicht ahnungslos ändern; Strategie-Tests prüfen das.
     modifiers: { enemySpeed: 1.19 },
   },
   // Eiswelt (B-029, Glatteis): Gegner rutschen schneller, Kanone und Frost sind schwächer. Modifikatoren (enemySpeed, towerDamage je Typ, slowStrength) und kühles Farbschema (theme).
@@ -95,7 +96,8 @@ export const MAPS = {
       [18, 12],
       [20, 12],
     ],
-    // B-046: etwas schnellere Gegner, schwächere Kanone und Pfeile.
+    // B-046: etwas schnellere Gegner, schwächere Kanone und Pfeile. ACHTUNG: die Werte sind kombiniert gemessen
+    // und nur in einem schmalen Bereich stabil (wie bei forest), nicht ahnungslos ändern.
     modifiers: { enemySpeed: 1.03, towerDamage: { cannon: 0.92, arrow: 0.97 } },
     extraPaths: [
       [
