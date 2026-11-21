@@ -544,3 +544,13 @@ Neue Einträge werden unten angehängt. Bestehende Einträge werden nie geänder
 - Tests: nicht nötig
 - Entscheidungen: Der Mensch wollte weniger Schleifen und ein gemeinsames Review am Ende. Neuer Abschnitt "Sammelmodus" in `.claude/skills/pipeline/SKILL.md`: auf Wunsch, nur für Serien reiner Optik-Einträge; ein Branch für 3 bis 4 Einträge, pro Eintrag nur der `developer` (ein Commit), danach einmal `tester` und `reviewer` über den ganzen Diff, ein PR. Ausgeschlossen: Spiel-Logik, Balancing, Eingabe und Layout. Grenze ca. 600 Zeilen pro Block. Tests werden nie abgeschwächt; angepasste Tests prüft der Reviewer. Erste Anwendung: Wiese B-081 und B-082.
 - Offen: PR enthält `.claude/`, daher Merge durch einen Menschen.
+
+## 2026-11-21 · B-081 und B-082 · Wiese 6/7 und 7/7 (Design-Overhaul, Sammelmodus)
+- Rolle(n): orchestrator, developer (je Eintrag), danach einmal tester und reviewer über den Block
+- Branch: agent/wiese-licht
+- Runden: 1 von max. 2
+- Ergebnis: fertig
+- Tests: 223 Unit-Tests bestanden (neue Tests in `tests/render.test.js`, einer vom Tester; Mock-Proxys in `tests/helpers.js`, `tests/render.test.js`, `tests/fx.test.js` nur additiv um Gradient-Objekte erweitert, keine Assertion geändert); Browser-Tests in der CI
+- Review: APPROVE (keine Muss-Punkte; Hinweise als B-090)
+- Entscheidungen: **B-081:** Neue Datei `src/render-light.js` (Baumschatten, Lichtstreifen, Verlauf, Vignette), Zahlen in `LIGHT_STYLE`, aktiviert über `MAPS.meadow.theme.light`; nur im Hintergrund-Cache, Gradienten nur dort, mittlere Helligkeit 147,28 gegenüber 147,21 vorher, Aufbau 2,4 ms. Licht liegt vor den Toren, damit Start und Ziel nicht abgedunkelt werden; Baumschatten per `roundRect` (Deko-Test, siehe B-089). **B-082:** Neue Datei `src/render-island.js`, Inseln (7 Ellipsen, Modi built/ghost/bad) im Frame-Pfad vor den Türmen, nur Wiese (`theme.islands`), `drawTower`, `render-arrow.js` und Shop-Vorschau unverändert; Hover-Vorschau-Insel; Reichweitenkreis als Ring (Alpha 0,75, 2 px) mit Fläche 0,08 (`RANGE_STYLE`), Zeichenzeit mit 20 Türmen im Mock 0,025 auf 0,050 ms je Frame. **Nebenwirkung:** Der neue Ring gilt auf allen Karten und für den Meteor-Kreis. Erstmals im Sammelmodus (ein Branch, ein gemeinsames Review).
+- Offen: B-090 (Lichtstreifen, Ring auf hellen Karten prüfen).

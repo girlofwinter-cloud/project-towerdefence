@@ -291,3 +291,20 @@ Agents lesen diese Datei nur bei konkretem Bedarf.
 - Akzeptanzkriterien:
   - Akzente nur im Randring oder kleiner als eine Kachel im Feld.
   - Screenshot Wiese; Einstieg und Ausgang des Weges bleiben klar erkennbar.
+
+### B-081: Wiese 6/7: Licht, Vignette und Baumschatten (Design-Overhaul)
+- Status: fertig
+- Aufwand: S
+- Idee: Lichtstreifen, sanfter Verlauf, Vignette und Baumschatten, nur im Cache (Gradient-Objekte nur dort, nie pro Frame).
+- Akzeptanzkriterien:
+  - Mittlere Helligkeit des Feldes mindestens 85 % von heute (Gegner und Türme bleiben lesbar).
+  - Kein Gradient und kein `shadowBlur` im Frame-Pfad.
+
+### B-082: Wiese 7/7: Bauplatz-Inseln unter Türmen und Hover-Vorschau (Design-Overhaul)
+- Status: fertig
+- Aufwand: S
+- Idee: Grüne Insel als Sprite unter jedem gebauten Turm und als Vorschau beim Hover. Kein Bauen auf neuen Kacheln, `canBuild` unverändert. Dazu: Reichweitenkreis nur als Ring plus ca. 8 % Füllfläche, damit er über der Deko nicht unruhig wirkt.
+- Akzeptanzkriterien:
+  - Insel wird mit dem Turm gezeichnet, nicht im Hintergrund-Cache (Türme sind dynamisch).
+  - `canBuild`-Verhalten und Tests unverändert.
+  - Reichweitenkreis auf dem Handy-Screenshot ruhig und lesbar.

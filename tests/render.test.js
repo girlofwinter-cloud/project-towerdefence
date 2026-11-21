@@ -65,6 +65,7 @@ test('Render: gezeichnete Dekoration verlaesst ihre Kachel nicht und ragt nie au
   const ctx = new Proxy({}, {
     get(_, k) {
       if (k in props) return props[k];
+      if (k === 'createLinearGradient' || k === 'createRadialGradient') return () => ({ addColorStop() {} });
       return (...a) => {
         if (k === 'arc') prims.push({ k, x: a[0], y: a[1], rx: a[2], ry: a[2] });
         if (k === 'ellipse') prims.push({ k, x: a[0], y: a[1], rx: a[2], ry: a[3] });
@@ -107,6 +108,7 @@ test('Render (Wiese mit Baumrahmen): uebrige Einzel-Deko verlaesst ihre Kachel n
   const ctx = new Proxy({}, {
     get(_, k) {
       if (k in props) return props[k];
+      if (k === 'createLinearGradient' || k === 'createRadialGradient') return () => ({ addColorStop() {} });
       return (...a) => {
         if (k === 'arc') prims.push({ k, x: a[0], y: a[1], rx: a[2], ry: a[2] });
         if (k === 'ellipse') prims.push({ k, x: a[0], y: a[1], rx: a[2], ry: a[3] });
@@ -218,6 +220,7 @@ async function recordTower(type, level, cooldown = 0, angle = 0, selected = fals
   const ctx = new Proxy({}, {
     get(_, k) {
       if (k in props) return props[k];
+      if (k === 'createLinearGradient' || k === 'createRadialGradient') return () => ({ addColorStop() {} });
       return (...a) => {
         calls.push(k + ':' + a.map((v) => (typeof v === 'number' ? v.toFixed(2) : v)).join(',') + '|' + props.fillStyle + '|' + props.strokeStyle);
         if (k === 'save') { depth++; stack.push([ox, oy, rotated, slack, sc]); }
@@ -327,6 +330,7 @@ async function worldExtent(type, level, cooldown, angle) {
   const ctx = new Proxy({}, {
     get(_, k) {
       if (k in props) return props[k];
+      if (k === 'createLinearGradient' || k === 'createRadialGradient') return () => ({ addColorStop() {} });
       return (...a) => {
         if (k === 'save') stack.push(M);
         else if (k === 'restore') M = stack.pop();
@@ -436,7 +440,8 @@ test('Effekt-Render: deterministisch, aendert sich ueber die Zeit, Pause friert 
     const log = [];
     const props = {};
     const ctx = new Proxy({}, {
-      get(_, k) { if (k in props) return props[k]; return (...a) => { log.push(k + a.map((v) => (typeof v === 'number' ? v.toFixed(3) : '')).join(',')); }; },
+      get(_, k) { if (k in props) return props[k];
+      if (k === 'createLinearGradient' || k === 'createRadialGradient') return () => ({ addColorStop() {} }); return (...a) => { log.push(k + a.map((v) => (typeof v === 'number' ? v.toFixed(3) : '')).join(',')); }; },
       set(_, k, v) { props[k] = v; return true; },
     });
     for (let i = 0; i < steps; i++) { s.time += dtStep; render(ctx, s, {}); }
@@ -490,7 +495,7 @@ test('Effekt-Render: Shake verschiebt nur die Zeichnung (translate <= 3 px), Hov
   const calls = [];
   const props = {};
   const ctx = new Proxy({}, {
-    get(_, k) { if (k in props) return props[k]; return (...a) => { if (k === 'translate') calls.push(a); }; },
+    get(_, k) { if (k in props) return props[k]; if (k === 'createLinearGradient' || k === 'createRadialGradient') return () => ({ addColorStop() {} }); return (...a) => { if (k === 'translate') calls.push(a); }; },
     set(_, k, v) { props[k] = v; return true; },
   });
   render(ctx, s, ui); // fuellt ggf. den Cache
@@ -528,7 +533,7 @@ test('Render: Kartenwechsel ice -> meadow ohne Theme-Reste', async () => {
   const { render } = await import('../src/render.js?eis') // frische Instanz, kein Cache aus anderen Tests;
   const styles = () => {
     const seen = new Set();
-    const ctx = new Proxy({}, { get: () => () => {}, set(_, k, v) { if (k === 'fillStyle' || k === 'strokeStyle') seen.add(v); return true; } });
+    const ctx = new Proxy({}, { get: (_, k) => (k === 'createLinearGradient' || k === 'createRadialGradient' ? () => ({ addColorStop() {} }) : () => {}), set(_, k, v) { if (k === 'fillStyle' || k === 'strokeStyle') seen.add(v); return true; } });
     return { ctx, seen };
   };
   const a = styles();
@@ -882,4 +887,112 @@ test('Wiesen-Akzente: nur im Cache, zweiter Frame zeichnet nichts neu, Aufbau sc
     assert.equal(off.m.counts.fill, f);
     assert.ok(ms < 60, `Aufbau ${ms.toFixed(1)} ms`);
   } finally { delete globalThis.document; }
+});
+
+test('Wiesen-Licht: Abdunklung begrenzt, nur Wiese, Gradienten nur im Cache, Aufbau schnell', async () => {
+  const { LIGHT_STYLE: L, MAPS } = await import('../src/config.js');
+  assert.ok(L.vignetteAlpha <= L.maxDarken && L.treeShadowAlpha <= L.maxDarken, 'Abdunklung höchstens 15 %');
+  assert.ok(L.maxDarken <= 0.15);
+  const lighten = L.gradientAlpha + L.beamAlpha * L.beams.length;
+  assert.ok(lighten <= 0.3, 'Aufhellung bleibt dezent');
+  assert.equal(MAPS.meadow.theme.light, true);
+  for (const id of Object.keys(MAPS)) if (id !== 'meadow') assert.ok(!MAPS[id].theme?.light, `${id} ohne Licht`);
+  const { render } = await import('../src/render.js?licht');
+  const offscreen = [];
+  globalThis.document = { createElement() { const m = mockCtx(); const c = { width: 0, height: 0, getContext: () => m.ctx, m }; offscreen.push(c); return c; } };
+  try {
+    const main = mockCtx();
+    const s = createGame();
+    const t0 = performance.now();
+    render(main.ctx, s, {});
+    const ms = performance.now() - t0;
+    console.log(`B-081 Aufbau bgCanvas Wiese: ${ms.toFixed(1)} ms`);
+    const off = offscreen[offscreen.length - 1];
+    assert.equal(off.m.counts.createLinearGradient, 1, 'Verlauf im Cache');
+    assert.equal(off.m.counts.createRadialGradient, 1, 'Vignette im Cache');
+    assert.equal(off.m.props.shadowBlur, undefined);
+    assert.equal(off.m.props.globalAlpha, undefined);
+    const built = offscreen.length;
+    render(main.ctx, s, {});
+    assert.equal(offscreen.length, built, 'Hintergrund nur einmal gebaut');
+    assert.equal(off.m.counts.createLinearGradient, 1);
+    assert.equal(off.m.counts.createRadialGradient, 1);
+    for (const k of ['createLinearGradient', 'createRadialGradient']) assert.equal(main.counts[k], undefined, `Frame-Pfad: kein ${k}`);
+    assert.equal(main.props.shadowBlur, undefined);
+    assert.ok(ms < 60, `Aufbau ${ms.toFixed(1)} ms`);
+  } finally { delete globalThis.document; }
+});
+
+test('B-082: Insel wird im Frame-Pfad mit dem Turm gezeichnet (nur Wiese), nicht im Hintergrund-Cache', async () => {
+  const { MAPS } = await import('../src/config.js');
+  const { render } = await import('../src/render.js?insel');
+  assert.equal(MAPS.meadow.theme.islands, true);
+  for (const id of Object.keys(MAPS)) if (id !== 'meadow') assert.ok(!MAPS[id].theme?.islands, `${id} ohne Inseln`);
+  const offscreen = [];
+  globalThis.document = { createElement() { const m = mockCtx(); const c = { width: 0, height: 0, getContext: () => m.ctx, m }; offscreen.push(c); return c; } };
+  try {
+    const frame = (s, ui = {}) => { const m = mockCtx(); render(m.ctx, s, ui); return m.counts.ellipse || 0; };
+    const build = (s) => { s.gold = 9999; for (const [c, r] of [[3, 1], [5, 1], [7, 1]]) assert.ok(buildTower(s, 'cannon', c, r).ok, `${s.mapId} ${c},${r}`); };
+    const s = createGame({ mapId: 'meadow' });
+    const empty = frame(s);
+    const cache = offscreen[offscreen.length - 1];
+    const bgEll = cache.m.counts.ellipse || 0;
+    build(s);
+    const withTowers = frame(s);
+    assert.equal(cache.m.counts.ellipse || 0, bgEll, 'Cache enthält keine Insel');
+    assert.ok(withTowers > empty, 'Insel im Frame-Pfad');
+    assert.equal(frame(s), withTowers, 'zweiter Frame zeichnet die Insel erneut');
+    // gleiche Türme auf dem Wald: weniger Ellipsen pro Turm (keine Inseln)
+    const f = createGame({ mapId: 'forest' });
+    const forestEmpty = frame(f);
+    build(f);
+    assert.ok(withTowers - empty > frame(f) - forestEmpty, 'Wiese zeichnet je Turm zusätzlich eine Insel');
+    // Vorschau: gültig und ungültig bekommen eine Insel (nur Wiese)
+    const hover = (map, ok) => frame(createGame({ mapId: map }), { buildType: 'cannon', hover: { col: 3, row: 1, ok } });
+    assert.ok(hover('meadow', true) > frame(createGame({ mapId: 'meadow' })));
+    assert.ok(hover('meadow', false) > frame(createGame({ mapId: 'meadow' })));
+  } finally { delete globalThis.document; }
+});
+
+test('B-082: Reichweitenkreis ist Ring mit dezenter Fläche; drawTower (Shop-Vorschau) zeichnet keine Insel', async () => {
+  const { RANGE_STYLE } = await import('../src/config.js');
+  const { render, drawTower } = await import('../src/render.js?reichweite');
+  assert.ok(RANGE_STYLE.fillAlpha <= RANGE_STYLE.maxFillAlpha && RANGE_STYLE.maxFillAlpha <= 0.1);
+  assert.ok(RANGE_STYLE.ringAlpha > RANGE_STYLE.fillAlpha * 4, 'Ring deutlich kräftiger als Fläche');
+  assert.ok(RANGE_STYLE.ringWidth >= 2);
+  const s = createGame({ mapId: 'meadow' });
+  s.gold = 9999;
+  const { tower } = buildTower(s, 'cannon', 3, 1);
+  const strokes = [];
+  const m = mockCtx();
+  const spy = new Proxy(m.ctx, { get(t, k) { return k === 'stroke' ? () => strokes.push([m.props.strokeStyle, m.props.lineWidth]) : t[k]; }, set(t, k, v) { t[k] = v; return true; } });
+  render(spy, s, { selectedTowerId: tower.id });
+  assert.ok(strokes.some(([c, w]) => c === `rgba(255,255,255,${RANGE_STYLE.ringAlpha})` && w === RANGE_STYLE.ringWidth), 'Ring gezeichnet');
+  const a = mockCtx(), b = mockCtx();
+  drawTower(a.ctx, tower, false);
+  render(b.ctx, s, {});
+  assert.ok((b.counts.ellipse || 0) > (a.counts.ellipse || 0), 'drawTower allein ohne Insel');
+});
+
+test('Tester B-082: Rand-Turm, Hover null/Rand, Meteor-Zielkreis und Kartenwechsel crashen nicht; Inseln nur auf der Wiese', async () => {
+  const { render } = await import('../src/render.js?tester082');
+  const run = (s, ui) => { const m = mockCtx(); render(m.ctx, s, ui); return m; };
+  const s = createGame();
+  s.gold = 99999;
+  buildTower(s, 'arrow', 0, 0);
+  buildTower(s, 'arrow', COLS - 1, ROWS - 1);
+  assert.ok(s.towers.length >= 1);
+  for (const ui of [{}, { hover: null, buildType: 'arrow' }, { hover: undefined }, { hover: { col: -1, row: 99, ok: false }, buildType: 'arrow' },
+    { hover: { col: 0, row: 0, ok: true }, buildType: 'arrow' }, { aiming: true, hoverPx: { x: 0, y: 0 } }, { aiming: true }])
+    run(s, ui);
+  const wiese = run(s, {}).counts.ellipse || 0;
+  const wald = createGame({ mapId: 'forest' });
+  for (const id of ['forest', 'ice', 'fork']) {
+    const g = createGame({ mapId: id }); g.gold = 99999;
+    buildTower(g, 'arrow', 0, 0); buildTower(g, 'arrow', COLS - 1, ROWS - 1);
+    const g0 = createGame({ mapId: id });
+    const withT = run(g, {}).counts.ellipse || 0, without = run(g0, {}).counts.ellipse || 0;
+    assert.ok(withT - without < 20, `${id}: keine Insel-Ellipsen (Insel hätte 7 je Turm)`);
+  }
+  assert.ok(wiese > 0 && wald);
 });

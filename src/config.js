@@ -40,7 +40,7 @@ export const MAPS = {
       [20, 11],
     ],
     // B-071: Wegpalette der Wiese (STIL.md); Wald, Eis und Fork nutzen vorerst PATH_STYLE.colors.
-    theme: { treeFrame: true, ground: true, accents: true, decorStyle: 'flatpop', path: { main: '#e2c88f', edge: '#8f6a3b', outline: '#4a3418', mid: '#ecd5a0', fringe: '#6fbf4e' } },
+    theme: { treeFrame: true, ground: true, accents: true, light: true, islands: true, decorStyle: 'flatpop', path: { main: '#e2c88f', edge: '#8f6a3b', outline: '#4a3418', mid: '#ecd5a0', fringe: '#6fbf4e' } },
   },
   forest: {
     name: 'Wald',
@@ -455,6 +455,25 @@ export const DECOR_STYLE = {
   scatterKinds: [['mushroom', 0.3], ['stakes', 0.2], ['log', 0.15], ['barrel', 0.1], ['sign', 0.1], ['pebbles', 0.15]],
 };
 
+// Licht der Wiese (B-081): Lichtstreifen von oben links, sanfter Verlauf, Vignette und Baumschatten.
+// Nur Optik im Hintergrund-Cache, aktiv nur mit MAPS.<id>.theme.light. Alle Farben als rgba (kein globalAlpha).
+export const LIGHT_STYLE = {
+  tint: '255,243,201',     // Lichtton (STIL.md)
+  shadow: '43,27,61',      // Schattenton (STIL.md)
+  gradientAlpha: 0.1,      // Aufhellung links oben (Verlauf diagonal, läuft nach rechts unten aus)
+  gradientReach: 0.7,      // Länge des Verlaufs als Anteil der Felddiagonale
+  beamAlpha: 0.045,        // Deckkraft je Lichtstreifen
+  beamAngle: 0.5,          // Neigung der Streifen in rad (Lichtrichtung oben links nach rechts unten)
+  beams: [[0.04, 0.09], [0.26, 0.05], [0.5, 0.11]], // [Startanteil an der Oberkante, Breite als Anteil der Feldbreite]
+  vignetteAlpha: 0.14,     // Abdunklung in den Ecken (Radialverlauf, Mitte unberührt)
+  vignetteInner: 0.55,     // Radius ohne Abdunklung, Anteil der halben Felddiagonale
+  treeShadowAlpha: 0.15,  // Baumschatten (Schattenton)
+  treeShadowDx: 0.45,      // Versatz nach rechts, Anteil des Kronenradius
+  treeShadowDy: 0.6,       // Versatz nach unten, Anteil des Kronenradius
+  treeShadowScale: 1.0,    // Radius des Schattens, Anteil des Kronenradius
+  maxDarken: 0.15,         // Obergrenze je dunkelnder Schicht (Vignette, Baumschatten), Test
+};
+
 // Akzente der Wiese (B-080): Burgmauer oben, Teich und Brunnen unten. Nur Optik, Maße in px bei 1x.
 // Aktiv nur mit MAPS.<id>.theme.accents. Rechtecke liegen im Randring (Überhang höchstens TREE_FRAME.maxOverhang).
 export const ACCENT_STYLE = {
@@ -467,4 +486,26 @@ export const ACCENT_STYLE = {
   wood: '#c58f55', woodDark: '#8a5a34', gate: '#6b4a2b', wellRoof: '#d4503f',
   water: '#5aa9d6', bank: '#6a8a3e', mud: '#8a6a42', pad: '#4aa84a', padFlower: '#ff8fb1', padCenter: '#ffe07a', reed: '#4d8a3a', reedHead: '#7a4a2a',
   towerW: 14, towerBody: 22, towerRoof: 10, wallHeight: 16, merlon: [8, 5], merlonStep: 11, gateW: 16, gateH: 12,
+};
+
+// Bauplatz-Inseln der Wiese (B-082): Gras-Plateau mit Kontur und kurzer Wand unter jedem Turm, blasse Vorschau beim Hover.
+// Nur Optik im Frame-Pfad (Türme sind dynamisch), aktiv nur mit MAPS.<id>.theme.islands. Maße in px bei 1x.
+export const ISLAND_STYLE = {
+  offsetY: 11,            // Mittelpunkt der Insel unterhalb der Turmmitte
+  rx: 30, ry: 15,         // Halbachsen der Grasfläche
+  wall: 4,                // Höhe der Wand unter der Grasfläche
+  outline: 1.5,           // Konturbreite
+  colors: { shadow: '43,27,61', outline: '47,106,44', wall: '58,125,50', top: '116,193,87', light: '147,217,107' },
+  shadowAlpha: 0.3,       // Schlagschatten rechts unten
+  ghostAlpha: 0.45,       // Deckkraft der Vorschau-Insel (Hover, gültig)
+  badTint: '255,60,60',   // Rötung bei ungültiger Kachel
+  badAlpha: 0.45,
+};
+
+// Reichweitenkreis (B-082): kräftiger Ring, sehr dezente Fläche (ca. 8 %), damit er über Deko und Plateaus ruhig wirkt.
+export const RANGE_STYLE = {
+  fillAlpha: 0.08,
+  ringAlpha: 0.75,
+  ringWidth: 2,
+  maxFillAlpha: 0.1,      // Obergrenze (Test)
 };

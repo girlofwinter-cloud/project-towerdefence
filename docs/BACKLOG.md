@@ -419,22 +419,7 @@ Reihenfolge ist Abhängigkeit: B-062 und B-063 zuerst, dann gemeinsame Sichtprü
 
 
 
-### B-081: Wiese 6/7: Licht, Vignette und Baumschatten (Design-Overhaul)
-- Status: offen
-- Aufwand: S
-- Idee: Lichtstreifen, sanfter Verlauf, Vignette und Baumschatten, nur im Cache (Gradient-Objekte nur dort, nie pro Frame).
-- Akzeptanzkriterien:
-  - Mittlere Helligkeit des Feldes mindestens 85 % von heute (Gegner und Türme bleiben lesbar).
-  - Kein Gradient und kein `shadowBlur` im Frame-Pfad.
 
-### B-082: Wiese 7/7: Bauplatz-Inseln unter Türmen und Hover-Vorschau (Design-Overhaul)
-- Status: offen
-- Aufwand: S
-- Idee: Grüne Insel als Sprite unter jedem gebauten Turm und als Vorschau beim Hover. Kein Bauen auf neuen Kacheln, `canBuild` unverändert. Dazu: Reichweitenkreis nur als Ring plus ca. 8 % Füllfläche, damit er über der Deko nicht unruhig wirkt.
-- Akzeptanzkriterien:
-  - Insel wird mit dem Turm gezeichnet, nicht im Hintergrund-Cache (Türme sind dynamisch).
-  - `canBuild`-Verhalten und Tests unverändert.
-  - Reichweitenkreis auf dem Handy-Screenshot ruhig und lesbar.
 
 ### B-083: Feste Bauplätze wie im Referenzbild (Spiel-Änderung, nur nach Freigabe)
 - Status: vorschlag
@@ -525,3 +510,11 @@ Reihenfolge ist Abhängigkeit: B-062 und B-063 zuerst, dann gemeinsame Sichtprü
 - Akzeptanzkriterien:
   - Alle Hintergrund-Elemente dürfen wieder `arc`/`ellipse` nutzen, ohne dass der Test reißt; der Test prüft weiterhin die Kachelgrenzen der Kleindeko.
   - Keine Abschwächung: dieselben Fälle (Kachelgrenzen, nie auf Weg) bleiben abgedeckt.
+
+### B-090: Wiesen-Licht und Inseln: Feinschliff (Hinweise aus dem Block-Review B-081/B-082)
+- Status: vorschlag
+- Aufwand: S
+- Idee: (1) Lichtstreifen sind sehr dezent (`LIGHT_STYLE.beamAlpha` 0,045, im Screenshot kaum sichtbar); auf ca. 0,07 anheben, die Gesamt-Aufhellung ist per Test bei 0,3 gedeckelt. (2) Der kräftigere Reichweiten-Ring (Alpha 0,75, 2 px) und die Fläche 0,08 gelten auf allen Karten und für den Meteor-Kreis; Lesbarkeit auf den hellen Wegen von Wald/Eis/Fork per Screenshot prüfen. (3) Baumschatten per `roundRect` mit `ellipse`-Fallback: nach B-089 zurück auf `ellipse`. (4) Inseln sind 60 px breit (`ISLAND_STYLE`), bei direkt benachbarten Türmen überlappen sie leicht. (5) Tests: Der Wald/Eis/Fork-Insel-Test ist grob (weniger als 20 zusätzliche Ellipsen); Reichweitenkreis mit r=0/NaN, Kartenwechsel mit Inseln und ungültiger `ui.buildType` in `drawHover` (wirft schon vor B-082) sind ungetestet; die frühere Fläche 0,15/0,12 ist in `RANGE_STYLE` zu 0,08 zusammengefallen.
+- Akzeptanzkriterien:
+  - Lichtstreifen im Screenshot sichtbar, mittlere Helligkeit des Feldes mindestens 85 % von heute.
+  - Reichweitenkreis auf Eis, Wald und Fork im Screenshot lesbar.
