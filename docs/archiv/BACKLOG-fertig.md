@@ -308,3 +308,43 @@ Agents lesen diese Datei nur bei konkretem Bedarf.
   - Insel wird mit dem Turm gezeichnet, nicht im Hintergrund-Cache (Türme sind dynamisch).
   - `canBuild`-Verhalten und Tests unverändert.
   - Reichweitenkreis auf dem Handy-Screenshot ruhig und lesbar.
+
+### B-072: Welten Wald und Zangenangriff (Design-Overhaul)
+- Status: fertig
+- Aufwand: M
+- Idee: Wald mit Tannen, Pilzen, Moos; Zangenangriff mit Herbstlaub. Überschneidet sich mit B-043 und B-059, bei Umsetzung zusammenlegen.
+- Akzeptanzkriterien:
+  - Eigene Palette, auf Screenshot klar von der Wiese unterscheidbar.
+
+### B-073: Welt Eis (Design-Overhaul)
+- Status: fertig
+- Aufwand: M
+- Idee: Schnee, Eiskristalle, Tannen mit Schneekappe, dunklerer Weg. Überschneidet sich mit B-044 und B-059.
+- Akzeptanzkriterien:
+  - Weg vom Boden unterscheidbar, Gegner mit Kontrastregel aus `docs/STIL.md` lesbar.
+  - Tests der Hindernisse grün.
+
+### B-043: Welt Wald: Feinschliff
+- Status: fertig
+- Teilweise erledigt (agent/aufraeumen-2): Punkte (1), (2) und (3). Offen: (4) Sichtprüfung der Waldkarte im Browser.
+- Aufwand: S
+- Idee: Hinweise aus dem Review von B-028. (1) Baum-Anteil `0.7` aus `obstacleKind` in `src/decor.js` nach `src/config.js` (`OBSTACLE_TREE_SHARE`). (2) Schattenfarbe `rgba(10,40,15,0.35)` in `drawObstacle` (`src/render.js`) als benannte Konstante. (3) `tests/forest-edge.test.js` in `tests/game.test.js` und `tests/decor.test.js` einsortieren (Regel: Tests nach Modul). (4) Sichtprüfung der Waldkarte im Browser: Lesbarkeit der Hindernisse, Gefühl der knappen Bauplätze.
+- Akzeptanzkriterien:
+  - `npm test` bleibt grün, kein Test abgeschwächt oder gelöscht.
+
+### B-044: Eiswelt: Feinschliff
+- Status: fertig
+- Teilweise erledigt (agent/eis-balancing): Punkte (1) und (2). Die Eiswelt war dem Spieler zu einfach und wurde auf "Glatteis" umgestellt (Gegner 1,18-fach, Kanone 0,95-fach), mit Balancing-Tests. Offen: (3) und (4).
+- Aufwand: S
+- Idee: Hinweise aus dem Review von B-029. (1) Playtest der Eiswelt (erledigt). (2) Kartenspezifische Balancing-Tests für die Eiswelt (erledigt). (3) Sichtprüfung des Farbschemas im Browser. (4) Eiswelt hat keine Hindernisse; eigene Eis-Deko (Schneehaufen, Eisfelsen) wäre ein eigener Eintrag.
+- Akzeptanzkriterien:
+  - `npm test` bleibt grün, kein Test abgeschwächt.
+
+### B-059: Welten optisch unterscheidbar: Eis und Wald (Sollte, Design-Prüfung)
+- Status: fertig
+- Aufwand: M
+- Idee: Der Weg ist auf Wiese, Wald und Eis fast gleich (braun), Deko auf Eis ist wie auf der Wiese, der Zangenangriff sieht aus wie die Wiese. Eis: bläulicher glatter Weg, Schnee statt Gras, Kristalle, Flocken. Wald: dunkler Moos-Weg. Wegstil über `theme` in `src/config.js`, Deko einmalig in Off-Screen-Canvas. Überschneidet sich mit B-043 und B-044, bei Umsetzung zusammenlegen. Risiko: Gegner auf hellem Grund schlecht lesbar. Screenshots: map-ice.png, map-forest.png, map-fork.png.
+- Akzeptanzkriterien:
+  - Wegfarbe der Eiskarte ist nicht braun und deutlich verschieden von der Wiese; Deko-Sets unterscheiden sich je Welt.
+  - Zahlen nur in `src/config.js`; Frame-Zeit bleibt unter 16 ms.
+  - Tests in `tests/decor` und `tests/render` laufen weiter, neue Test für Deko-Set je Welt.

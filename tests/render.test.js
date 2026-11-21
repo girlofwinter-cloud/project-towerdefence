@@ -1195,3 +1195,20 @@ test('B-073: Eis nur im Hintergrund-Cache, kein Neuzeichnen, Licht bläulich, Au
     assert.notDeepEqual(off.m.counts, calls, 'Wechsel zur Wiese baut neu');
   } finally { delete globalThis.document; }
 });
+
+test('Tester Welten-Block: Kartenwechsel durch alle 4 Karten ist reproduzierbar (kein Cache-Rest), unbekannte Id/undefined werfen nicht', async () => {
+  const { render } = await import('../src/render.js?welten4');
+  const { themed, MAPS: M, PATH_STYLE } = await import('../src/config.js');
+  const sig = (id) => {
+    const seen = new Set();
+    const ctx = new Proxy({}, { get: (_, k) => (k === 'createLinearGradient' || k === 'createRadialGradient' ? () => ({ addColorStop() {} }) : () => {}), set(_, k, v) { if (k === 'fillStyle' || k === 'strokeStyle') seen.add(String(v)); return true; } });
+    render(ctx, createGame({ mapId: id }), {});
+    return [...seen].sort().join('|');
+  };
+  const ids = Object.keys(M);
+  const first = {};
+  for (const id of ids) first[id] = sig(id);
+  for (const id of [...ids].reverse().concat(ids)) assert.equal(sig(id), first[id], `${id}: gleiche Farben nach Kartenwechsel`);
+  assert.equal(new Set(Object.values(first)).size, ids.length, 'jede Karte sieht anders aus');
+  for (const a of [undefined, null, 'gibtsnicht']) for (const k of ['path', 'pathStyle', 'decor', 'ground', 'light']) assert.doesNotThrow(() => themed(a, k, PATH_STYLE), `themed(${a},${k})`);
+});
