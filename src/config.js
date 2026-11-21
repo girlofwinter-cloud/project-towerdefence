@@ -21,6 +21,9 @@ export const TARGET_MODE_NAMES = { first: 'Erster', last: 'Letzter', strong: 'St
 export const SPEED_STEPS = [1, 2, 3];
 export const MAX_SUBSTEP = 0.05;
 
+// Anteil Bäume bei Hindernissen (Rest sind Felsen), 0..1.
+export const OBSTACLE_TREE_SHARE = 0.7;
+
 // Karten: Wegpunkte in Kachel-Koordinaten [spalte, zeile].
 // Erster und letzter Punkt liegen außerhalb des Spielfelds (Ein-/Ausgang).
 export const MAPS = {

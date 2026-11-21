@@ -5,7 +5,7 @@ import { createGame } from '../src/game.js';
 import { tileHash, decorFor, isBorderTile, LARGE_DECOR_KINDS, LARGE_DECOR_RADIUS, BORDER_DECOR_CHANCE, INNER_DECOR_CHANCE } from '../src/decor.js';
 
 import { pathTiles } from '../src/path.js';
-import { WAYPOINTS, TILE, COLS, ROWS } from '../src/config.js';
+import { WAYPOINTS, TILE, COLS, ROWS, MAPS } from '../src/config.js';
 
 // ---------- Dekoration (src/decor.js) ----------
 
@@ -173,4 +173,13 @@ test('Hindernis-Art: deterministisch, nur tree/rock; Kleindeko nie auf Hindernis
     if (s.obstacles.has(`${c},${r}`)) assert.equal(decorFor(c, r, s.blocked, s.obstacles), null);
   }
   assert.equal(kinds.size, 2);
+});
+
+// Aus forest-edge.test.js (B-043)
+test('decorFor: 3-Parameter-Aufruf unveraendert', () => {
+  const b = pathTiles(MAPS.forest.waypoints);
+  for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
+    assert.deepEqual(decorFor(c, r, b), decorFor(c, r, b, undefined));
+    assert.deepEqual(decorFor(c, r, b), decorFor(c, r, b, new Set()));
+  }
 });

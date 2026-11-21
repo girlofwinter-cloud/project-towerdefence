@@ -1,6 +1,6 @@
 // Zeichnet den Spielzustand auf ein Canvas. Keine Spiel-Logik hier!
 import { TILE, COLS, ROWS, WIDTH, HEIGHT, TOWER_TYPES, MAPS, ABILITIES } from './config.js';
-import { towerStats } from './game.js';
+import { towerStats, enemyPath } from './game.js';
 import { rect, tri, disc } from './draw-utils.js';
 import { recoilOffset } from './tower-fx.js';
 import { drawEnemy, drawHealAura } from './render-enemies.js';
@@ -25,7 +25,7 @@ export function render(ctx, state, ui) {
   drawHover(ctx, state, ui);
   for (const t of state.towers) drawTower(ctx, t, ui.selectedTowerId === t.id);
   for (const e of state.enemies) drawHealAura(ctx, e, state.time);
-  for (const e of state.enemies) drawEnemy(ctx, e, state.time, (state.paths && state.paths[e.lane || 0]) || state.path);
+  for (const e of state.enemies) drawEnemy(ctx, e, state.time, enemyPath(state, e));
   for (const p of state.projectiles) drawProjectile(ctx, p);
   drawParticles(ctx);
   for (const fx of state.effects) drawEffect(ctx, fx);
@@ -159,11 +159,13 @@ function drawDecor(ctx, state) {
   }
 }
 
+const OBSTACLE_SHADE = 'rgba(10,40,15,0.35)';
+
 // Hindernis-Kachel: dunkler Grund, darauf Baum (dichter, zwei Kronen) oder Fels.
 function drawObstacle(ctx, c, r) {
   const x0 = c * TILE;
   const y0 = r * TILE;
-  ctx.fillStyle = 'rgba(10,40,15,0.35)';
+  ctx.fillStyle = OBSTACLE_SHADE;
   ctx.fillRect(x0, y0, TILE, TILE);
   const v = Math.floor(tileRand(c, r, 3) * 3);
   if (obstacleKind(c, r) === 'rock') {
@@ -317,9 +319,9 @@ const METAL = '#3d4048';
 const GOLD = '#ffd54a';
 const GOLD_DARK = '#c9a227';
 const BANNER_RED = '#c0392b';
-const ICE_LIGHT = '#e3f6fc';
 const COIL_BLUE = '#3f6fb5';
 const BOLT_GLOW = 'rgba(255,240,120,0.35)';
+const ICE_LIGHT = '#e3f6fc';
 const ICE_DARK = '#4a8fb0';
 const FROST_GLOW = 'rgba(110,198,232,0.35)';
 const BASE_HALF = 13; // halbe Sockelbreite auf Stufe 1

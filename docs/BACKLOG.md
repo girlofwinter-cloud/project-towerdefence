@@ -225,6 +225,7 @@ Erledigte Einträge (`fertig`) liegen in `docs/archiv/BACKLOG-fertig.md`. Beim A
 
 ### B-042: Map-Auswahl: Feinschliff
 - Status: vorschlag
+- Teilweise erledigt (agent/aufraeumen-2): Punkte (1) und (5) (der Test existiert schon); (3) entfällt (Schlucht entfernt). Offen: (2) Kartenwahl in `localStorage` und (4) Weglängen-Test.
 - Aufwand: S
 - Idee: Hinweise aus dem Review von B-027. (1) `let mapId = undefined;` in `src/main.js` zu `let mapId;`. (2) Kartenwahl in `localStorage` merken (mit try/catch), damit sie nach dem Neuladen bleibt. (3) Im Schlucht-Test die Magic Number `7` und den Text "mindestens 5 Kurven" angleichen. (4) Test, dass die Weglänge jeder Karte höchstens ±40 % von der Wiese abweicht. (5) Alter Aufruf `createGame` mit `path`/`blocked`-Overrides hat keinen eigenen Test.
 - Akzeptanzkriterien:
@@ -232,6 +233,7 @@ Erledigte Einträge (`fertig`) liegen in `docs/archiv/BACKLOG-fertig.md`. Beim A
 
 ### B-043: Welt Wald: Feinschliff
 - Status: vorschlag
+- Teilweise erledigt (agent/aufraeumen-2): Punkte (1), (2) und (3). Offen: (4) Sichtprüfung der Waldkarte im Browser.
 - Aufwand: S
 - Idee: Hinweise aus dem Review von B-028. (1) Baum-Anteil `0.7` aus `obstacleKind` in `src/decor.js` nach `src/config.js` (`OBSTACLE_TREE_SHARE`). (2) Schattenfarbe `rgba(10,40,15,0.35)` in `drawObstacle` (`src/render.js`) als benannte Konstante. (3) `tests/forest-edge.test.js` in `tests/game.test.js` und `tests/decor.test.js` einsortieren (Regel: Tests nach Modul). (4) Sichtprüfung der Waldkarte im Browser: Lesbarkeit der Hindernisse, Gefühl der knappen Bauplätze.
 - Akzeptanzkriterien:
@@ -247,6 +249,7 @@ Erledigte Einträge (`fertig`) liegen in `docs/archiv/BACKLOG-fertig.md`. Beim A
 
 ### B-047: Zwei Eingänge: Feinschliff und Balancing
 - Status: vorschlag
+- Teilweise erledigt (agent/aufraeumen-2): Punkte (1) und (2); (3) Balancing-Test für `fork` kam mit B-046. Offen: (4) doppelt gezeichneter Ausgang (harmlos).
 - Aufwand: S
 - Idee: Hinweise aus dem Review von B-033. (1) `render.js` dupliziert die Logik von `enemyPath` (`state.paths[e.lane||0] || state.path`); `drawEnemy` bekommt den Weg schon aufgelöst oder `enemyPath` wird genutzt. (2) Im Test der Karte "Zangenangriff" ist die Schleife zum Kurvenzählen unnötig kompliziert. (3) Balancing der Karte `fork` ist nicht gemessen: Strategie-Test wie bei der Eiswelt (robuste Strategien gewinnen Welle 20, nur Pfeile verlieren früh); beide Ströme treffen gleichzeitig im Zusammenlauf ein. Zusammen mit B-046 angehen. (4) Ausgang wird auf `fork` doppelt an derselben Stelle gezeichnet (harmlos).
 - Akzeptanzkriterien:
@@ -254,6 +257,7 @@ Erledigte Einträge (`fertig`) liegen in `docs/archiv/BACKLOG-fertig.md`. Beim A
 
 ### B-048: Turm-Fähigkeiten: Feinschliff
 - Status: vorschlag
+- Teilweise erledigt (agent/aufraeumen-2): Punkt (1) mit B-046, (2) `knockBack` lesbarer (nicht: `p.special`-Bündelung, Diff zu groß), (3) Test zu Slow/Heilung bei eingefrorenen Gegnern. Offen: `p.special`-Bündelung am Projektil und (4) bläulicher Effekt für eingefrorene Gegner.
 - Aufwand: S
 - Idee: Hinweise aus dem Review von B-045. (1) Config-Texte (`special.text`) enthalten feste Zahlen wie "12 %" und "50 %"; aus den Werten bauen oder per Test absichern. (2) `knockBack` wird in der Splash-Schleife mit `e === target` aufgerufen; klarer nach der Schleife. Das Projektil trägt sieben Spezialfelder, ein `p.special`-Verweis wäre kompakter. (3) Kein Test, dass Slow und Heilung bei eingefrorenen Gegnern weiterlaufen. (4) Optional bläulicher Effekt für eingefrorene Gegner im Render.
 - Akzeptanzkriterien:
@@ -261,6 +265,7 @@ Erledigte Einträge (`fertig`) liegen in `docs/archiv/BACKLOG-fertig.md`. Beim A
 
 ### B-050: Restpunkte aus B-049
 - Status: vorschlag
+- Teilweise erledigt (agent/aufraeumen-2): Punkte (2) und (3). Offen: (1) a>c>c>f endet überall mit 10 Leben, Entscheidung nötig (Balancing).
 - Aufwand: S
 - Idee: (1) Die Strategie a>c>c>f (Pfeilturm zuerst) endet auf allen Karten mit 10 Leben; prüfen, ob das gewollt ist oder ob mehr Gold-Senke nötig ist (Logikänderung in `game.js`). (2) `ENEMY_TYPES[target.type]` in der Sniper-Schwelle crasht bei Hand-Gegnern ohne `type`; Fallback nur, falls ein Test das braucht. (3) Der Test-Helfer `iceRun` in `tests/game.test.js` bedient jetzt alle Karten; umbenennen in `mapRun`.
 - Akzeptanzkriterien:
@@ -268,6 +273,7 @@ Erledigte Einträge (`fertig`) liegen in `docs/archiv/BACKLOG-fertig.md`. Beim A
 
 ### B-051: Blitzturm: Spieltest und Feinschliff
 - Status: vorschlag
+- Teilweise erledigt (agent/aufraeumen-2): Punkt (2). Offen: (1) Spieltest `chainRange`, (3) Boss-Test, (4) Blitzturm in Balancing-Läufen.
 - Aufwand: S
 - Idee: Hinweise aus dem Review von B-034. (1) Nach einem Spieltest prüfen, ob die Flitzer jetzt zu leicht werden: `chainRange` 1,6 Kacheln ist eher großzügig und der Hauptregler; grobe Rechnung: Einzelziel ca. 12,7 DPS (Pfeil 20 DPS bei halbem Preis), ein voller Blitz auf 4 Gegner ca. 32 DPS Gesamtschaden. (2) `COIL_BLUE` und `BOLT_GLOW` in `src/render.js` stehen zwischen den Eis-Farben (ICE_LIGHT/ICE_DARK); sortieren. (3) Boss-Test prüft nur `frozenUntil`, nicht ausdrücklich "kein Boss-Rückstoß"; für den Blitzturm irrelevant. (4) Optional eigener Strategie-Test mit Blitzturm, falls er in Balancing-Läufe aufgenommen wird.
 - Akzeptanzkriterien:
@@ -275,6 +281,7 @@ Erledigte Einträge (`fertig`) liegen in `docs/archiv/BACKLOG-fertig.md`. Beim A
 
 ### B-052: Fähigkeiten: Feinschliff
 - Status: vorschlag
+- Teilweise erledigt (agent/aufraeumen-2): Punkte (1) und (2). Offen: (3) Touch-Vorschau, (4) Verhalten Kälteschock/Frost per Test festhalten, (5) Spieltest der Zahlen.
 - Aufwand: S
 - Idee: Hinweise aus Tester und Review von B-038. (1) `doAbility` in `src/main.js`: Q bei Status 'won'/'lost' schaltet `ui.aiming` an, die Fehlermeldung kommt erst beim Klick; früh abbrechen (`if (state.status !== 'playing') return;`). (2) Zielmodus bleibt bei Pause oder Ablauf der Abklingzeit aktiv (unkritisch, Meldung beim Klick); optional beenden. (3) Touch: Tippen löst sofort ohne Vorschau aus, weil `hoverPx` erst durch `pointermove` gesetzt wird; optional zweistufig wie beim Bauen. (4) Kälteschock verlängert das Ende eines stärkeren aktiven Slows auf die Schockdauer; ein späterer Frostturm-Treffer überschreibt den Faktor wie bisher. Beides nicht getestet, Verhalten entscheiden und per Test festhalten. (5) Spieltest: Sind die Zahlen (Meteor 150 Schaden/50 s, Kälteschock 70 %/4 s/60 s, Reparatur 2 Nutzungen/120 s) passend?
 - Akzeptanzkriterien:
