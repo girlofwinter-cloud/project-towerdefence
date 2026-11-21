@@ -422,14 +422,75 @@ Reihenfolge ist Abhängigkeit: B-062 und B-063 zuerst, dann gemeinsame Sichtprü
   - Kartenhöhe nicht größer als jetzt, alle Karten ohne Scrollen erreichbar.
   - Kontrast Text/Hintergrund mindestens 4,5:1.
 
-### B-071: Welt Wiese: Boden, Weg, Deko (Design-Overhaul)
+### B-071: Wiese 1/7: Weg mit welligem Rand, Saum und heller Mitte (Design-Overhaul, Ziel Variante B)
 - Status: vorschlag
 - Aufwand: M
-- Idee: Neue Palette, Wegkanten mit Steinen, Büsche, Blumen; `decor.js`-Regeln bleiben.
+- Idee: Zielbild: `docs/design/wiese-ziel-1x.png` und `-2x.png` (Entwurf Variante B des designers, eigene Zeichnung; Referenz war ein Kingdom-Rush-Screenshot, nicht im Repo). Weg bekommt welligen Rand (Kreiskette), dunkle Kontur, grünen Saum, Rillen, Randsteine und eine helle Wegmitte. Reihenfolge der sieben Wiesen-Einträge: B-071, B-077, B-078, B-079, B-080, B-081, B-082. Alles nur Zeichnen (`render*.js`, `decor.js`), alles Statische einmal in `bgCanvas`. Spiellogik, Wegverlauf und Baufelder bleiben unverändert.
 - Akzeptanzkriterien:
-  - Gegner auf dem Weg mit mindestens 25 % Helligkeitsabstand.
-  - Keine Deko auf Weg-Kacheln (bestehender Test grün).
+  - Wegbreite in Kachelmitte 40 px, Rand höchstens 4 px darüber hinaus.
+  - Gegner haben mindestens 25 % Helligkeitsabstand zur Wegmitte (Test mit Farbwerten aus `config.js`).
+  - Weg im Hintergrund-Cache; kein Zeichnen des Weges im Frame-Pfad (render-Test).
+  - Screenshots Desktop 1280x800 und Handy 390x844.
 
+### B-077: Wiese 2/7: Baumrahmen am Rand (Design-Overhaul)
+- Status: vorschlag
+- Aufwand: M
+- Idee: Dichter, mehrfarbiger Rahmen aus runden Baumkronen (Laub, Apfel, Blüte, einzelne Tannen) mit dicker dunkler Kontur, nur im Randring. `decor.js` liefert die Positionen deterministisch. Ziel ca. 60 Kronen statt heute ca. 16 Bäume.
+- Akzeptanzkriterien:
+  - Unit-Test: keine Krone schneidet den Weg; Überhang ins Feld höchstens 16 px.
+  - Mindestens 40 Bäume im Randring; Positionen deterministisch (gleicher Seed, gleiches Ergebnis).
+  - Alles im Hintergrund-Cache; Handy-Screenshot: Gegner und Türme bleiben lesbar.
+
+### B-078: Wiese 3/7: Boden mit Flecken und Plateaus statt Schachbrett (Design-Overhaul)
+- Status: vorschlag
+- Aufwand: M
+- Idee: Boden aus gestapelten Flecken (je 4 Lagen für weiche Kanten, kein `shadowBlur`), in B zusätzlich Plateaus mit dunkler Kante (Höhenversatz) und Gras-Cluster.
+- Akzeptanzkriterien:
+  - Screenshot ohne Schachbrettraster.
+  - Aufbauzeit von `bgCanvas` unter 60 ms (Test misst, Node mit Mock genügt).
+  - Kein Aufruf im Frame-Pfad (render-Test).
+
+### B-079: Wiese 4/7: Felsen, Büsche, Blumen, Pilze und Streu-Deko neu (Design-Overhaul)
+- Status: vorschlag
+- Aufwand: M
+- Idee: Felsgruppen mit Moos, Büsche, Blumen, Pilze im Flat-Pop-Stil mit Kontur; kleine Streu-Deko (Fass, Baumstämme, Zaunspitzen, Wegweiser) flach im Feld, unter Türmen verdeckt.
+- Akzeptanzkriterien:
+  - Konturbreite 1,3 bis 2,3 px.
+  - Keine Deko auf Weg-Kacheln (bestehende `decor`-Tests grün); neue Streu-Deko bleibt in Bereichen, die sie nicht unspielbar machen (bebaubar bleibt jede freie Kachel).
+
+### B-080: Wiese 5/7: Akzente Burgmauer, Teich, Brunnen (Design-Overhaul)
+- Status: vorschlag
+- Aufwand: M
+- Idee: Steinmauer mit Tor am oberen Rand, Teich und Brunnen als Akzente, nur im Randring bzw. klein. Teich/Mauer als Hindernis im Feld wäre Logik und gehört nicht hierher. Andere Karten folgen mit B-072 bis B-074 nach der Palette aus `docs/STIL.md`.
+- Akzeptanzkriterien:
+  - Akzente nur im Randring oder kleiner als eine Kachel im Feld.
+  - Screenshot Wiese; Einstieg und Ausgang des Weges bleiben klar erkennbar.
+
+### B-081: Wiese 6/7: Licht, Vignette und Baumschatten (Design-Overhaul)
+- Status: vorschlag
+- Aufwand: S
+- Idee: Lichtstreifen, sanfter Verlauf, Vignette und Baumschatten, nur im Cache (Gradient-Objekte nur dort, nie pro Frame).
+- Akzeptanzkriterien:
+  - Mittlere Helligkeit des Feldes mindestens 85 % von heute (Gegner und Türme bleiben lesbar).
+  - Kein Gradient und kein `shadowBlur` im Frame-Pfad.
+
+### B-082: Wiese 7/7: Bauplatz-Inseln unter Türmen und Hover-Vorschau (Design-Overhaul)
+- Status: vorschlag
+- Aufwand: S
+- Idee: Grüne Insel als Sprite unter jedem gebauten Turm und als Vorschau beim Hover. Kein Bauen auf neuen Kacheln, `canBuild` unverändert. Dazu: Reichweitenkreis nur als Ring plus ca. 8 % Füllfläche, damit er über der Deko nicht unruhig wirkt.
+- Akzeptanzkriterien:
+  - Insel wird mit dem Turm gezeichnet, nicht im Hintergrund-Cache (Türme sind dynamisch).
+  - `canBuild`-Verhalten und Tests unverändert.
+  - Reichweitenkreis auf dem Handy-Screenshot ruhig und lesbar.
+
+### B-083: Feste Bauplätze wie im Referenzbild (Spiel-Änderung, nur nach Freigabe)
+- Status: vorschlag
+- Aufwand: L
+- Idee: Im Referenzbild gibt es feste Bauplätze, bei uns ist jede Nicht-Weg-Kachel bebaubar. Feste Plätze brauchen eine Config-Liste `buildSpots` je Karte, Prüfung in `canBuild`, Eingabe/Hover, neue Tests und Balancing (weniger Standorte, andere Strategie, Strategie-Tests neu). Bricht Annahmen der bisherigen Spielmechanik, daher nur nach ausdrücklicher Freigabe durch einen Menschen. Optik der Inseln siehe B-082.
+- Akzeptanzkriterien:
+  - Pro Karte `buildSpots` in `src/config.js`; `canBuild` erlaubt nur dort.
+  - Alle Strategie-Läufe (Welle 20) auf allen Karten weiter gewinnbar; Zahlen im Ledger.
+  - Test: Bauen außerhalb der Plätze scheitert; Hover zeigt freie/belegte Plätze.
 ### B-072: Welten Wald und Zangenangriff (Design-Overhaul)
 - Status: vorschlag
 - Aufwand: M

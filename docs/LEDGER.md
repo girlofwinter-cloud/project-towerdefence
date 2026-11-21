@@ -468,3 +468,11 @@ Neue Einträge werden unten angehängt. Bestehende Einträge werden nie geänder
 - Tests: nicht nötig
 - Entscheidungen: Der Mensch wünschte, dass der `reviewer` mehr Aufgaben übernimmt und PRs abnehmen und mergen darf, wenn der Mensch nicht da ist. Neuer "PR-Modus" in `.claude/agents/reviewer.md`: Merge per `gh pr merge --merge` nur, wenn der PR offen und mergebar ist, die CI grün ist, `.claude/`, `.github/` und Abhängigkeiten unberührt sind, keine Tests abgeschwächt wurden, das Review APPROVE ohne Muss-Punkte ergibt, ein Ledger-Eintrag existiert und nur ein Feature enthalten ist. Sonst bleibt der PR offen und der Mensch entscheidet. Auslöser nur auf Delegation (`/pipeline abnahme`, neuer Schritt 10 im Skill), nicht automatisch. Dateien bleiben für den reviewer schreibgeschützt. Rollen, Skills, Hooks und Workflows (also auch dieser PR) mergt weiterhin nur ein Mensch.
 - Offen: `.claude/settings.json` ist für Agents geschützt: Damit `gh pr merge` ohne Rückfrage läuft, muss der Mensch die Berechtigung `Bash(/opt/homebrew/bin/gh pr merge:*)` (und `gh pr view/diff/checks`) dort eintragen. Neue Subagent-Definitionen werden beim Sitzungsstart geladen.
+
+## 2026-11-21 · Design-Overhaul · Wiesen-Szene (Entwurf) und Backlog B-071 bis B-083
+- Rolle(n): orchestrator, designer
+- Branch: agent/design-wiese
+- Ergebnis: fertig (nur Doku und Referenzbilder, kein Code geändert)
+- Tests: nicht nötig
+- Entscheidungen: Der Mensch fand die Optik nach B-063 (Pfeilturm) zu wenig verändert und die Wiese nicht so dynamisch wie Kingdom Rush; er lieferte einen Referenz-Screenshot (nicht im Repo, nur Anregung). Der `designer` entwarf die komplette Wiesen-Szene in zwei Stärken, der Mensch wählte Variante B (kräftig). Zielbild liegt in `docs/design/wiese-ziel-1x.png` und `-2x.png`. B-071 wurde in sieben kleine Einträge zerlegt (B-071, B-077 bis B-082: Weg, Baumrahmen, Boden, Deko, Akzente, Licht, Inseln), alles nur Zeichnen im Hintergrund-Cache. B-083 (feste Bauplätze) ist eine Spiel-Änderung und steht getrennt, nur nach Freigabe. Schwächen von B laut Designer: Gegner klein bei 0,75x (Handy), Reichweitenkreis unruhig (in B-082 aufgenommen).
+- Offen: Freigabe der Einträge. B-063 (Pfeilturm, ungemergt auf `agent/pfeilturm-stil`) ist ungeklärt: Test-Toleranz `ARROW_TOP = 28` (bestehender Test gelockert) und Zeichenzeit Faktor 24 zu main, siehe B-075.
