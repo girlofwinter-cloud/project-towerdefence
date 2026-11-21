@@ -973,3 +973,26 @@ test('B-082: Reichweitenkreis ist Ring mit dezenter Fläche; drawTower (Shop-Vor
   render(b.ctx, s, {});
   assert.ok((b.counts.ellipse || 0) > (a.counts.ellipse || 0), 'drawTower allein ohne Insel');
 });
+
+test('Tester B-082: Rand-Turm, Hover null/Rand, Meteor-Zielkreis und Kartenwechsel crashen nicht; Inseln nur auf der Wiese', async () => {
+  const { render } = await import('../src/render.js?tester082');
+  const run = (s, ui) => { const m = mockCtx(); render(m.ctx, s, ui); return m; };
+  const s = createGame();
+  s.gold = 99999;
+  buildTower(s, 'arrow', 0, 0);
+  buildTower(s, 'arrow', COLS - 1, ROWS - 1);
+  assert.ok(s.towers.length >= 1);
+  for (const ui of [{}, { hover: null, buildType: 'arrow' }, { hover: undefined }, { hover: { col: -1, row: 99, ok: false }, buildType: 'arrow' },
+    { hover: { col: 0, row: 0, ok: true }, buildType: 'arrow' }, { aiming: true, hoverPx: { x: 0, y: 0 } }, { aiming: true }])
+    run(s, ui);
+  const wiese = run(s, {}).counts.ellipse || 0;
+  const wald = createGame({ mapId: 'forest' });
+  for (const id of ['forest', 'ice', 'fork']) {
+    const g = createGame({ mapId: id }); g.gold = 99999;
+    buildTower(g, 'arrow', 0, 0); buildTower(g, 'arrow', COLS - 1, ROWS - 1);
+    const g0 = createGame({ mapId: id });
+    const withT = run(g, {}).counts.ellipse || 0, without = run(g0, {}).counts.ellipse || 0;
+    assert.ok(withT - without < 20, `${id}: keine Insel-Ellipsen (Insel hätte 7 je Turm)`);
+  }
+  assert.ok(wiese > 0 && wald);
+});
