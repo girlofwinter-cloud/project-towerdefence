@@ -125,6 +125,8 @@ export const TOWER_TYPES = {
     projectileSpeed: 12,
     color: '#c8a165',
     description: 'Günstig und schnell. Guter Allrounder.',
+    // Aufwärmen: Schussabstand sinkt je Folgeschuss auf dasselbe Ziel um warmupStep (Anteil), höchstens um warmupMax.
+    special: { warmupStep: 0.03, warmupMax: 0.12, text: 'Aufwärmen: Schießt er dasselbe Ziel weiter an, feuert er bis zu 12 % schneller.' },
   },
   cannon: {
     name: 'Kanone',
@@ -137,6 +139,9 @@ export const TOWER_TYPES = {
     splash: 1.1,
     color: '#5a5f6b',
     description: 'Flächenschaden gegen Gruppen.',
+    // Rückstoß: das getroffene Ziel wird knockback Kacheln auf seinem Weg zurückgeworfen (Boss nur Faktor bossKnockbackFactor),
+    // danach knockbackCooldown Sekunden Schutzzeit. Bewusst schwach: die Spätphasen-Messung der Tests verträgt kaum mehr.
+    special: { knockback: 0.08, bossKnockbackFactor: 0.5, knockbackCooldown: 6, text: 'Rückstoß: Treffer wirft das Ziel ein Stück auf dem Weg zurück (Bosse nur halb).' },
   },
   frost: {
     name: 'Frostturm',
@@ -150,6 +155,8 @@ export const TOWER_TYPES = {
     slowDuration: 1.5,
     color: '#6ec6e8',
     description: 'Verlangsamt Gegner um 50 %.',
+    // Einfrieren: jeder freezeEvery-te Treffer des Turms stoppt das Ziel für freezeDuration Sekunden (Boss immun).
+    special: { freezeEvery: 12, freezeDuration: 0.4, text: 'Einfrieren: Jeder 12. Treffer stoppt das Ziel kurz (Bosse sind immun).' },
   },
   sniper: {
     name: 'Scharfschütze',
@@ -161,6 +168,8 @@ export const TOWER_TYPES = {
     projectileSpeed: 30,
     color: '#8e5bd1',
     description: 'Riesige Reichweite, hoher Einzelschaden.',
+    // Rüstungsbrecher: gegen Gegner mit maxHp >= bonusMinHp Faktor bonusDamage auf den Schaden; ignoriert dabei Rüstung.
+    special: { bonusMinHp: 300, bonusDamage: 1.5, ignoreArmor: true, text: 'Rüstungsbrecher: Gegen zähe Gegner 50 % mehr Schaden, Rüstung wird ignoriert.' },
   },
 };
 

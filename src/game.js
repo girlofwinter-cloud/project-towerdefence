@@ -108,6 +108,9 @@ export function buildTower(state, type, col, row) {
     cooldown: 0,
     angle: 0,
     targetMode: TARGET_MODES[0],
+    focusId: null, // Pfeilturm: aktuelles Ziel für Aufwärmen
+    focusStacks: 0, // Pfeilturm: Folgeschüsse auf dasselbe Ziel
+    hitCount: 0, // Frostturm: Treffer-Zähler
   };
   state.towers.push(tower);
   return { ok: true, tower };
@@ -227,6 +230,7 @@ function spawnStep(state, dt) {
 
 function moveEnemies(state, dt) {
   for (const e of state.enemies) {
+    if (state.time < (e.frozenUntil || 0)) continue; // eingefroren: keine Bewegung
     const slowed = state.time < e.slowUntil ? e.slowFactor : 1;
     e.dist += e.speed * TILE * slowed * dt;
     const p = pointAt(enemyPath(state, e), e.dist);
@@ -298,12 +302,21 @@ function towersStep(state, dt) {
     if (tower.cooldown > 0) continue;
     const stats = towerStats(tower, state.modifiers);
     const target = findTarget(state, tower, stats.range * TILE);
+    const sp = stats.special || {};
     if (!target) {
       tower.cooldown = 0;
+      tower.focusId = null;
+      tower.focusStacks = 0;
       continue;
     }
     tower.angle = Math.atan2(target.y - tower.y, target.x - tower.x);
     tower.cooldown = stats.rate;
+    if (sp.warmupStep) {
+      if (tower.focusId === target.id) tower.focusStacks = (tower.focusStacks || 0) + 1;
+      else { tower.focusId = target.id; tower.focusStacks = 0; }
+      tower.cooldown = stats.rate * (1 - Math.min(tower.focusStacks * sp.warmupStep, sp.warmupMax));
+    }
+    const breaker = sp.bonusMinHp !== undefined && target.maxHp >= sp.bonusMinHp;
     state.projectiles.push({
       id: state.nextId++,
       towerType: tower.type,
@@ -313,7 +326,14 @@ function towersStep(state, dt) {
       tx: target.x,
       ty: target.y,
       speed: stats.projectileSpeed * TILE,
-      damage: stats.damage,
+      damage: breaker ? stats.damage * sp.bonusDamage : stats.damage,
+      ignoreArmor: breaker && !!sp.ignoreArmor,
+      towerId: tower.id,
+      knockback: sp.knockback ? sp.knockback * TILE : 0,
+      bossKnockbackFactor: sp.bossKnockbackFactor ?? 1,
+      knockbackCooldown: sp.knockbackCooldown || 0,
+      freezeEvery: sp.freezeEvery || 0,
+      freezeDuration: sp.freezeDuration || 0,
       splash: stats.splash ? stats.splash * TILE : 0,
       slow: stats.slow || 0,
       slowDuration: stats.slowDuration || 0,
@@ -348,19 +368,38 @@ function projectilesStep(state, dt) {
 function hit(state, p, target) {
   if (p.splash) {
     for (const e of state.enemies) {
-      if (Math.hypot(e.x - p.tx, e.y - p.ty) <= p.splash) damage(state, e, p);
+      if (Math.hypot(e.x - p.tx, e.y - p.ty) <= p.splash) {
+        damage(state, e, p);
+        if (p.knockback && e === target) knockBack(state, e, p);
+      }
     }
     state.effects.push({ kind: 'explosion', x: p.tx, y: p.ty, r: p.splash, ttl: 0.3, max: 0.3 });
   } else if (target) {
     damage(state, target, p, true);
+    const tower = p.freezeEvery ? state.towers.find((t) => t.id === p.towerId) : null;
+    if (tower) {
+      tower.hitCount = (tower.hitCount || 0) + 1;
+      if (tower.hitCount % p.freezeEvery === 0 && target.type !== 'boss') target.frozenUntil = state.time + p.freezeDuration;
+    }
   }
+}
+
+// Rückstoß: Gegner entlang seines Wegs zurückwerfen (nie unter den Weganfang); Boss nur anteilig.
+function knockBack(state, e, p) {
+  if (state.time < (e.knockUntil || 0)) return; // Schutzzeit: kein Dauer-Zurückwerfen
+  e.knockUntil = state.time + p.knockbackCooldown;
+  const amount = p.knockback * (e.type === 'boss' ? p.bossKnockbackFactor : 1);
+  e.dist = Math.max(0, e.dist - amount);
+  const pt = pointAt(enemyPath(state, e), e.dist);
+  e.x = pt.x;
+  e.y = pt.y;
 }
 
 // Rüstung (Schildträger): gilt nur für Direkttreffer (direct = true), also Pfeil, Frost
 // und Scharfschütze. Kanonen-Splash trifft immer mit vollem Schaden. Der Frost-Slow
 // wirkt unabhängig von der Rüstung unverändert.
 function damage(state, enemy, p, direct = false) {
-  enemy.hp -= direct ? p.damage * (1 - (enemy.armor || 0)) : p.damage;
+  enemy.hp -= direct ? p.damage * (p.ignoreArmor ? 1 : 1 - (enemy.armor || 0)) : p.damage;
   if (p.slow) {
     enemy.slowFactor = 1 - p.slow;
     enemy.slowUntil = state.time + p.slowDuration;

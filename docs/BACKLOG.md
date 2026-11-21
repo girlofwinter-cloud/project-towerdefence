@@ -263,26 +263,26 @@ Erledigte Einträge (`fertig`) liegen in `docs/archiv/BACKLOG-fertig.md`. Beim A
 - Akzeptanzkriterien:
   - `npm test` bleibt grün, kein Test abgeschwächt.
 
-### B-045: Türme klarer unterscheiden (Spezialfähigkeiten)
-- Status: vorschlag
+### B-046: Spiel insgesamt schwerer machen und Turm-Fähigkeiten spürbar machen
+- Status: offen
 - Aufwand: L
-- Idee: Der Spieler findet, dass sich die Waffen zu ähnlich anfühlen. Jeder Turm bekommt eine eigene Mechanik statt nur anderer Zahlen: Pfeilturm schießt schneller, je länger er dasselbe Ziel beschießt (Aufwärmen). Kanone macht Flächenschaden und stößt Gegner ein Stück zurück. Frostturm friert mit kleiner Chance kurz komplett ein. Scharfschütze macht Zusatzschaden gegen Gegner mit viel Leben (Bosse, Trolle) und durchschlägt Schilde. Dazu passen B-034 (Blitzturm) und B-039 (verzweigte Upgrades). Vor dem Umsetzen ein Mensch wählt, welche Mechaniken gewünscht sind; Balancing danach mit B-046 abgleichen.
+- Idee: Der Spieler findet das Spiel zu einfach (auch auf Wiese und Wald) und wollte die Waffen klarer unterscheiden. B-045 hat die Fähigkeiten eingebaut, aber bewusst schwach, weil der empfindliche Spätphasen-Test ("in mindestens 3 der Wellen 14-20 dringt ein Gegner über 55 % des Wegs vor") bei stärkeren Werten kippte. Plan: Erst die Gegnerseite verschärfen (Druck), dann die Fähigkeiten spürbarer machen. Hebel: Gold-Überschuss in der Spätphase abbauen (siehe B-020: Gold-Senke oder gedeckelte Belohnungen), weniger Startgold, mehr Gegner oder höheres Tempo in der Spätphase, stärkere Bosse. Danach Fähigkeiten stärker: Aufwärmen (max. 12 % ist kaum spürbar), Rückstoß (0,08 Kacheln sind wenige Pixel), Einfrieren (0,4 s bei jedem 12. Treffer ist selten). Außerdem Scharfschützen-Schwelle `bonusMinHp` auf die Basis-HP des Gegnertyps statt der skalierten `maxHp` (heute trifft sie ab Welle 14 fast alle Gegner). Config-Texte der Fähigkeiten aus den Werten bauen oder per Test absichern. Mit den Strategie-Tests messen, auf Wiese, Eiswelt und `fork` (B-047).
 - Akzeptanzkriterien:
-  - Pro Turm ein Konfig-Block mit den Zahlen der Spezialfähigkeit in `src/config.js`, Logik in `src/game.js`.
-  - Test je Fähigkeit; bestehende Tests unverändert.
-  - Turm-Info nennt die Fähigkeit in einem Satz.
-
-### B-046: Spiel insgesamt schwerer machen
-- Status: vorschlag
-- Aufwand: M
-- Idee: Der Spieler findet das Spiel zu einfach (auch auf Wiese und Wald). Mögliche Hebel: Gold-Überschuss in der Spätphase abbauen (siehe B-020), weniger Startgold, mehr Gegner oder Tempo, stärkere Bosse, optional Schwierigkeitswahl (Leicht/Normal/Schwer) im Menü. Vorher mit den Strategie-Tests messen; erst nach B-033 und B-045 angehen, weil beides die Schwierigkeit verschiebt.
-- Akzeptanzkriterien:
-  - Gute Strategien gewinnen Welle 20 weiter, aber mit deutlich weniger Reserve (Zielwert im Eintrag festlegen).
-  - Nur Zahlen in `src/config.js` bzw. Schwierigkeits-Konfig; kein Test abgeschwächt (Reserve-Konstanten in Tests ausdrücklich im Ledger nennen).
+  - Gute Strategien gewinnen Welle 20 weiter, aber mit deutlich weniger Reserve (Wiese und Eiswelt, dt 1/30 und 1/60, mindestens 1 Leben).
+  - Fähigkeiten sind für den Spieler erkennbar (Rückstoß mindestens etwa eine halbe Kachel, Aufwärmen mindestens 25 %, Einfrieren mindestens etwa jeder 5. Treffer); Zahlen nur in `src/config.js`.
+  - Der Test "Spätphase ... 55 %" und andere Balancing-Konstanten dürfen angepasst werden, wenn der Druck bewusst erhöht wird; jede geänderte Konstante wird im Ledger genannt und nichts wird nur zum Grünwerden abgeschwächt.
+  - `npm test` grün.
 
 ### B-047: Zwei Eingänge: Feinschliff und Balancing
 - Status: vorschlag
 - Aufwand: S
 - Idee: Hinweise aus dem Review von B-033. (1) `render.js` dupliziert die Logik von `enemyPath` (`state.paths[e.lane||0] || state.path`); `drawEnemy` bekommt den Weg schon aufgelöst oder `enemyPath` wird genutzt. (2) Im Test der Karte "Zangenangriff" ist die Schleife zum Kurvenzählen unnötig kompliziert. (3) Balancing der Karte `fork` ist nicht gemessen: Strategie-Test wie bei der Eiswelt (robuste Strategien gewinnen Welle 20, nur Pfeile verlieren früh); beide Ströme treffen gleichzeitig im Zusammenlauf ein. Zusammen mit B-046 angehen. (4) Ausgang wird auf `fork` doppelt an derselben Stelle gezeichnet (harmlos).
+- Akzeptanzkriterien:
+  - `npm test` bleibt grün, kein Test abgeschwächt.
+
+### B-048: Turm-Fähigkeiten: Feinschliff
+- Status: vorschlag
+- Aufwand: S
+- Idee: Hinweise aus dem Review von B-045. (1) Config-Texte (`special.text`) enthalten feste Zahlen wie "12 %" und "50 %"; aus den Werten bauen oder per Test absichern. (2) `knockBack` wird in der Splash-Schleife mit `e === target` aufgerufen; klarer nach der Schleife. Das Projektil trägt sieben Spezialfelder, ein `p.special`-Verweis wäre kompakter. (3) Kein Test, dass Slow und Heilung bei eingefrorenen Gegnern weiterlaufen. (4) Optional bläulicher Effekt für eingefrorene Gegner im Render.
 - Akzeptanzkriterien:
   - `npm test` bleibt grün, kein Test abgeschwächt.

@@ -166,3 +166,17 @@ Agents lesen diese Datei nur bei konkretem Bedarf.
   - Zielwahl "Erster/Letzter/Stärkster/Nächster" bleibt sinnvoll bei unterschiedlich langen Wegen (Restweg statt reiner Laufstrecke).
   - Weg-Kacheln aller Wege sind nicht bebaubar; Render zeichnet alle Wege und alle Eingänge.
   - Test: Gegner starten an beiden Eingängen, Gesamtanzahl pro Welle unverändert; beide Wege erreichen das Ziel; alte Karten verhalten sich unverändert.
+
+### B-045: Türme klarer unterscheiden (Spezialfähigkeiten)
+- Status: fertig
+- Aufwand: L
+- Idee: Der Spieler findet, dass sich die Waffen zu ähnlich anfühlen. Jeder der vier Türme bekommt eine eigene Mechanik statt nur anderer Zahlen (alles deterministisch, ohne Zufall):
+  - Pfeilturm "Aufwärmen": schießt dasselbe Ziel hintereinander, wird pro Schuss schneller (Schussabstand sinkt je Treffer um einen Anteil bis zu einer Obergrenze); bei Zielwechsel zurück auf 0.
+  - Kanone "Rückstoß": Treffer stößt getroffene Gegner entlang ihres Wegs ein Stück zurück (Bosse nur halb).
+  - Frostturm "Einfrieren": jeder N-te Treffer (Zähler pro Turm) friert das Ziel kurz komplett ein; Bosse sind immun.
+  - Scharfschütze "Rüstungsbrecher": Zusatzschaden gegen zähe Gegner (maxHp ab Schwelle, also Trolle und Bosse) und ignoriert die Rüstung von Schildträgern.
+- Akzeptanzkriterien:
+  - Pro Turm ein Konfig-Block in `src/config.js` (z. B. `special`), alle Zahlen dort; Logik in `src/game.js`, kein DOM.
+  - Test je Fähigkeit (inkl. Grenzfälle: Zielwechsel, Obergrenze, Boss-Immunität/-Rückstoß, Rückstoß nie unter Weganfang, Frost-Zähler, Schildträger-Rüstung); bestehende Tests unverändert.
+  - Turm-Info nennt die Fähigkeit in einem Satz (Beschreibung in der Config).
+  - Strategie-Balancing-Tests der Wiese und Eiswelt bleiben grün; müssen Konstanten angepasst werden, Anpassung der Zahlen in `config.js` statt Tests, sonst im Ledger nennen.
