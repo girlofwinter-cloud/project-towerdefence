@@ -10,6 +10,7 @@ import { updateFx, shakeX, shakeY, drawProjectileFx, drawParticles } from './ren
 import { drawTreeFrame } from './render-trees.js';
 import * as flat from './render-decor.js';
 import { drawAccents } from './render-accents.js';
+import { drawTreeShadows, drawLight } from './render-light.js';
 import { drawGround as drawGroundFill, drawGroundTufts } from './render-ground.js';
 import { tileHash, tileRand, decorFor, obstacleKind, treeFrame, groundPatches, accentsFor, coveredByCrown, scatterFor, LARGE_DECOR_RADIUS } from './decor.js';
 
@@ -84,8 +85,11 @@ function paintBackground(ctx, state) {
   if (ground) drawGroundTufts(ctx, ground);
   const crowns = MAPS[state.mapId]?.theme?.treeFrame ? treeFrame(state.mapId) : null;
   drawDecor(ctx, state, crowns);
+  const light = MAPS[state.mapId]?.theme?.light;
+  if (crowns && light) drawTreeShadows(ctx, crowns); // vor den Kronen
   if (crowns) drawTreeFrame(ctx, crowns);
   if (MAPS[state.mapId]?.theme?.accents) drawAccents(ctx, accentsFor(state.mapId));
+  if (light) drawLight(ctx); // Licht und Vignette vor den Toren, damit Start/Ziel lesbar bleiben
   for (const path of state.paths || [state.path]) {
     const pts = path.points;
     drawGate(ctx, pts[0], pts[1]);

@@ -31,6 +31,7 @@ export function mockCtx(counts = {}) {
         if (k in props) return props[k];
         return (...a) => {
           counts[k] = (counts[k] || 0) + 1;
+          if (k === 'createLinearGradient' || k === 'createRadialGradient') return { addColorStop() {} };
           if (k === 'save') depth++;
           if (k === 'restore') { depth--; assert.ok(depth >= 0, 'restore ohne save'); }
         };

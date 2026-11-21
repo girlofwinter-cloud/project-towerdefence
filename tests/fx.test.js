@@ -187,6 +187,7 @@ function plainCtx() {
   const ctx = new Proxy({}, {
     get(_, k) {
       if (k in props) return props[k];
+      if (k === 'createLinearGradient' || k === 'createRadialGradient') return () => ({ addColorStop() {} });
       return (...a) => {
         if (k === 'save') st.depth++;
         if (k === 'restore') { st.depth--; st.minDepth = Math.min(st.minDepth, st.depth); }
@@ -548,7 +549,7 @@ test('B-012 Tester: Reihenfolge-Unabhaengigkeit, Shake-Rendering ohne Hintergrun
   const calls = [];
   const props = { globalAlpha: 1 };
   const ctx = new Proxy({}, {
-    get(_, k) { if (k in props) return props[k]; return (...a) => { if (k === 'translate') calls.push(a); }; },
+    get(_, k) { if (k in props) return props[k]; if (k === 'createLinearGradient' || k === 'createRadialGradient') return () => ({ addColorStop() {} }); return (...a) => { if (k === 'translate') calls.push(a); }; },
     set(_, k, v) { props[k] = v; return true; },
   });
   render(ctx, s, {});
