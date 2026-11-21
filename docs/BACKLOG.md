@@ -300,3 +300,57 @@ Erledigte Einträge (`fertig`) liegen in `docs/archiv/BACKLOG-fertig.md`. Beim A
 - Idee: Hinweise aus dem Review von B-053. (1) Der Vergleich "Blitz-Mix hat nicht mehr Leben als der Kanonen-Mix" (`lives <= MIX_CANNON`, in `tests/game.test.js` bei den Blitz-Strategie-Tests) mit ±1 Leben Toleranz versehen oder nur auf "gewonnen" prüfen; auf der Wiese bleiben nur 4 Leben Reserve, eine Abweichung um ein Leben kippt sonst den Test (Flackerrisiko bei dt-Änderungen). (2) Die `description` des Blitzturms ist statischer Text ohne Zahlen; ein Test, dass sie die Rolle (schnelle Gegner/Schwärme) nennt, ist nicht nötig, aber bei geänderten Werten die Aussage "verfehlt nie, ideal gegen Schwärme" gegen die Messung prüfen. (3) Bei einer späteren Änderung der Zeitschritte zuerst die beiden Blitz-Strategie-Tests ansehen.
 - Akzeptanzkriterien:
   - `npm test` bleibt grün, keine Prüfung abgeschwächt (nur Toleranz, wo die Reserve knapp ist).
+
+### B-056: Handy: Turm-Panel als feste Leiste am unteren Rand (Muss, Design-Prüfung)
+- Status: vorschlag
+- Aufwand: M
+- Idee: Auf dem Handy liegt das Turm-Panel (Verbessern, Verkaufen, Zielregel) unter Spielfeld und Bedienleiste; man muss scrollen und sieht das Feld nicht mehr. Der Turmname fehlt, weil `aside h3 { display:none }` (style.css ca. Zeile 217) auch `#ti-name` versteckt. Lösung: Panel als feste Leiste (Schublade) am unteren Bildschirmrand mit Name, Stufe, Verbessern, Verkaufen, Zielregel; Schließen per Tippen aufs Feld. Risiko: Leiste verdeckt unten das Feld. Screenshots: m390-4select.png, m360-4select.png im Scratchpad der Design-Prüfung 2026-11-21.
+- Akzeptanzkriterien:
+  - Bei 390x844 und 360x740 liegen nach dem Antippen eines Turms Verbessern und Verkaufen komplett im Bild (Unterkante < innerHeight) und sind mindestens 44 px hoch.
+  - Turmname und Stufe sind sichtbar.
+  - Das Canvas bleibt mit mindestens 280 px Höhe sichtbar.
+  - Browser-Test für beide Größen; kein horizontaler Scroll.
+
+### B-057: Desktop: Turm-Panel ohne Scrollen erreichbar (Muss, Design-Prüfung)
+- Status: vorschlag
+- Aufwand: S
+- Idee: Bei 1280x800 und 1366x768 endet Verkaufen bei y=958, die Seite ist 1262 px hoch; das Panel liegt unter Turmliste und Hilfe. Panel oben in der Seitenleiste (vor den Turmkarten) oder neben das Feld, Hilfe einklappen. Risiko: Layout-Sprünge. Screenshot: d1280-4select.png.
+- Akzeptanzkriterien:
+  - Bei 1280x800 und 1366x768 liegt `#sell` bei gewähltem Turm mit Unterkante < 800 bzw. 768.
+  - Alle Turmkarten bleiben ohne Scrollen sichtbar (bestehender Browser-Test aus shop-kompakt bleibt grün).
+
+### B-058: Fähigkeitsknöpfe: Tippgröße, Symbol und Abklingbalken (Muss, Design-Prüfung)
+- Status: vorschlag
+- Aufwand: S
+- Idee: 10 Buttons unter 44 px Höhe auf dem Handy (Meteor, Kälteschock, Notfall-Reparatur, Zoom). Label "Notfall-Reparatur (E) bereit (2x)" ist umständlich, "bereit" und "lädt" sind kaum unterscheidbar. Großes Symbol, Kürzel klein, Abklingzeit als Füllbalken, auf dem Handy keine Tastenkürzel.
+- Akzeptanzkriterien:
+  - `.abilities button` und Zoom-Knopf sind auf Handy und Desktop mindestens 44 px hoch.
+  - Zustand "bereit" und "lädt" ist ohne Text unterscheidbar (Balken oder Helligkeit).
+  - Tastenkürzel-Hinweise sind auf dem Handy ausgeblendet (auch bei Pause und Tempo).
+  - Unit-/Browser-Test prüft die Mindesthöhe.
+
+### B-059: Welten optisch unterscheidbar: Eis und Wald (Sollte, Design-Prüfung)
+- Status: vorschlag
+- Aufwand: M
+- Idee: Der Weg ist auf Wiese, Wald und Eis fast gleich (braun), Deko auf Eis ist wie auf der Wiese, der Zangenangriff sieht aus wie die Wiese. Eis: bläulicher glatter Weg, Schnee statt Gras, Kristalle, Flocken. Wald: dunkler Moos-Weg. Wegstil über `theme` in `src/config.js`, Deko einmalig in Off-Screen-Canvas. Überschneidet sich mit B-043 und B-044, bei Umsetzung zusammenlegen. Risiko: Gegner auf hellem Grund schlecht lesbar. Screenshots: map-ice.png, map-forest.png, map-fork.png.
+- Akzeptanzkriterien:
+  - Wegfarbe der Eiskarte ist nicht braun und deutlich verschieden von der Wiese; Deko-Sets unterscheiden sich je Welt.
+  - Zahlen nur in `src/config.js`; Frame-Zeit bleibt unter 16 ms.
+  - Tests in `tests/decor` und `tests/render` laufen weiter, neue Test für Deko-Set je Welt.
+
+### B-060: Wellen-Vorschau mit Symbolen und Fortschritt am Start-Knopf (Sollte, Design-Prüfung)
+- Status: vorschlag
+- Aufwand: S
+- Idee: Vorschau "Kommt: 12x Goblin" ist klein und versteckt. Gegner-Symbole statt Fließtext, direkt unter dem Start-Knopf; der Knopf zeigt während der Welle einen Fortschrittsbalken statt grauem "Welle läuft...". Shop-Beschreibungen (`.t-desc`, 0,74 rem) sind klein und auf dem Handy ganz ausgeblendet; bei der Umsetzung mitprüfen (siehe B-054).
+- Akzeptanzkriterien:
+  - Die Vorschau ist bei 360x740 ohne Scrollen sichtbar, Schrift mindestens 0,85 rem.
+  - Während einer Welle zeigt der Start-Knopf den Fortschritt (z. B. besiegte/gespawnte Gegner).
+  - Fortschrittsberechnung als reine Funktion in `src/game.js` mit Test.
+
+### B-061: Design-Prüfung: Lücken nachholen
+- Status: vorschlag
+- Aufwand: S
+- Idee: Die erste Prüfung zeigte keine laufende Welle mit vielen Gegnern und Effekten (Treffer, Explosion, Blitz, Frost), kein Game-Over-Overlay, keinen Boss und keine Zustände Heilung/Schild/Eingefroren. Von Hand spielen oder ein Skript mit schwächerer Verteidigung (nicht Gold 3000) bauen und diese Zustände prüfen. Kleinigkeiten: Herzen im Leerlauf grau, Kartenauswahl auf dem Handy gleich laut obwohl nur vor Spielbeginn änderbar.
+- Akzeptanzkriterien:
+  - Screenshots von Welle mit Effekten, Boss, Game Over liegen vor und sind bewertet.
+  - Befunde sind als Einträge oder Hinweise im Backlog.
