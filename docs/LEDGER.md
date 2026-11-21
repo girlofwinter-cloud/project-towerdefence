@@ -470,3 +470,19 @@ Neue Einträge werden unten angehängt. Bestehende Einträge werden nie geänder
 - Review: APPROVE (keine Muss-Punkte; Hinweise als B-084), Tester: PASS
 - Entscheidungen: Neue Datei `src/render-arrow.js` zeichnet den Pfeilturm (Stufe 1 bis 3) mit den Helfern aus B-062; `drawTower` ruft sie nur für `arrow` auf, die anderen Typen bleiben unverändert. Höhe ca. 60 px, Breite ca. 29 px, Stufen über die Form (Dach, Banner, Gold). Shop-Icon beim Pfeilturm mit Skalierung 0,75 (`ARROW_TOWER.iconScale`). **Bestehende Tests angepasst:** Die Helfer `recordTower`/`worldExtent` kennen jetzt `ctx.scale` (nötig, sonst falsche Grenzen). Für den Pfeil gilt oben eine eigene Toleranz `ARROW_TOP = 28` (vorher 1,5 bis 3,5 px), weil der Turm bewusst über die Kachel ragt (gemessen ca. 25 px, ca. 3 px Luft). Links, rechts, unten und alle anderen Typen bleiben unverändert streng; Review: vertretbar, keine Abschwächung. Zeichenzeit im Mock ca. 20 µs je Turm (Faktor ca. 24 gegenüber vorher), ca. 0,4 ms für 20 Türme; Sprite-Cache siehe B-075. Der Mensch fand den Unterschied zum alten Turm klein und wünschte die kräftige Wiese (Variante B); das folgt mit B-071 ff. B-079 bis B-082 hat der Mensch zusätzlich freigegeben mit der Anweisung, sie nacheinander zu entwickeln, per PR zu mergen und nicht nachzufragen (B-083 ausgenommen).
 - Offen: Aufräumen und Hinweise in B-084. Shop-Vorschau nicht im Browser geprüft.
+
+## 2026-11-21 · Prozess · Reviewer darf PRs abnehmen und mergen (Vertretung)
+- Rolle(n): Mensch + Claude (interaktiv)
+- Branch: agent/reviewer-merge
+- Ergebnis: fertig (Rollenbeschreibung, Skill, Doku; kein Code in `src/`)
+- Tests: nicht nötig
+- Entscheidungen: Der Mensch wünschte, dass der `reviewer` mehr Aufgaben übernimmt und PRs abnehmen und mergen darf, wenn der Mensch nicht da ist. Neuer "PR-Modus" in `.claude/agents/reviewer.md`: Merge per `gh pr merge --merge` nur, wenn der PR offen und mergebar ist, die CI grün ist, `.claude/`, `.github/` und Abhängigkeiten unberührt sind, keine Tests abgeschwächt wurden, das Review APPROVE ohne Muss-Punkte ergibt, ein Ledger-Eintrag existiert und nur ein Feature enthalten ist. Sonst bleibt der PR offen und der Mensch entscheidet. Auslöser nur auf Delegation (`/pipeline abnahme`, neuer Schritt 10 im Skill), nicht automatisch. Dateien bleiben für den reviewer schreibgeschützt. Rollen, Skills, Hooks und Workflows (also auch dieser PR) mergt weiterhin nur ein Mensch.
+- Offen: `.claude/settings.json` ist für Agents geschützt: Damit `gh pr merge` ohne Rückfrage läuft, muss der Mensch die Berechtigung `Bash(/opt/homebrew/bin/gh pr merge:*)` (und `gh pr view/diff/checks`) dort eintragen. Neue Subagent-Definitionen werden beim Sitzungsstart geladen.
+
+## 2026-11-21 · Design-Overhaul · Wiesen-Szene (Entwurf) und Backlog B-071 bis B-083
+- Rolle(n): orchestrator, designer
+- Branch: agent/design-wiese
+- Ergebnis: fertig (nur Doku und Referenzbilder, kein Code geändert)
+- Tests: nicht nötig
+- Entscheidungen: Der Mensch fand die Optik nach B-063 (Pfeilturm) zu wenig verändert und die Wiese nicht so dynamisch wie Kingdom Rush; er lieferte einen Referenz-Screenshot (nicht im Repo, nur Anregung). Der `designer` entwarf die komplette Wiesen-Szene in zwei Stärken, der Mensch wählte Variante B (kräftig). Zielbild liegt in `docs/design/wiese-ziel-1x.png` und `-2x.png`. B-071 wurde in sieben kleine Einträge zerlegt (B-071, B-077 bis B-082: Weg, Baumrahmen, Boden, Deko, Akzente, Licht, Inseln), alles nur Zeichnen im Hintergrund-Cache. B-083 (feste Bauplätze) ist eine Spiel-Änderung und steht getrennt, nur nach Freigabe. Schwächen von B laut Designer: Gegner klein bei 0,75x (Handy), Reichweitenkreis unruhig (in B-082 aufgenommen).
+- Offen: Freigabe der Einträge. B-063 (Pfeilturm, ungemergt auf `agent/pfeilturm-stil`) ist ungeklärt: Test-Toleranz `ARROW_TOP = 28` (bestehender Test gelockert) und Zeichenzeit Faktor 24 zu main, siehe B-075.
