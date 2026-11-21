@@ -145,3 +145,134 @@ Erledigte Einträge (`fertig`) liegen in `docs/archiv/BACKLOG-fertig.md`. Beim A
 - Akzeptanzkriterien:
   - Je Punkt einzeln bewertbar, nur CSS/UI, keine Spiel-Logik.
   - `npm test` und `npm run test:e2e` bleiben grün.
+
+### B-027: Map-Auswahl (mehrere Karten)
+- Status: vorschlag
+- Aufwand: M
+- Idee: Fundament für alle Welten. `WAYPOINTS` wird zu einer Liste von Maps in `src/config.js` (Name, Wegpunkte, Farbschema, gesperrte Kacheln). Auswahlmenü vor dem Spielstart, Spielzustand und Render lesen die gewählte Map. Voraussetzung für B-028 bis B-031.
+- Akzeptanzkriterien:
+  - `MAPS` in `src/config.js`, bestehende Karte bleibt unverändert als erste Map.
+  - `game.js` und `path.js` bekommen die Map als Parameter, kein DOM.
+  - Test: Jede Map hat einen gültigen Weg (zusammenhängend, Ein- und Ausgang außerhalb, keine Überschneidung mit gesperrten Kacheln).
+  - Bestehende Tests laufen unverändert.
+
+### B-028: Welt Wald (blockierte Bauplätze)
+- Status: vorschlag
+- Aufwand: M
+- Idee: Zweite Map mit Bäumen und Felsen, die Kacheln blockieren. Wenige, dafür gute Bauplätze zwingen zu Entscheidungen. Hängt von B-027 ab.
+- Akzeptanzkriterien:
+  - Map `forest` mit `blocked`-Kacheln; `canBuild` lehnt sie ab.
+  - Test: Bauen auf blockierter Kachel scheitert, Weg ist trotzdem begehbar.
+  - Deko in `src/decor.js` passend zum Thema.
+
+### B-029: Welt Eis (Gegner-/Turm-Modifikatoren pro Map)
+- Status: vorschlag
+- Aufwand: M
+- Idee: Maps können Modifikatoren tragen: In der Eiswelt sind Gegner von Grund auf etwas langsamer, der Frostturm ist schwächer, Kanone stärker. Hängt von B-027 ab.
+- Akzeptanzkriterien:
+  - Map-Feld `modifiers` (Gegnertempo, Turmschaden je Typ) in `src/config.js`.
+  - Test: Modifikatoren wirken auf Tempo und Schaden, Standard-Map bleibt unverändert.
+  - Balancing-Zahlen nur in der Config.
+
+### B-030: Welt Vulkan (Lava-Felder)
+- Status: vorschlag
+- Aufwand: L
+- Idee: Lava-Felder neben dem Weg schaden Gegnern in Reichweite; Türme zu nah an Lava überhitzen und schießen langsamer. Hängt von B-027 ab. Risiko: Balancing.
+- Akzeptanzkriterien:
+  - Map `volcano` mit `hazards` (Lava-Kacheln, Schaden pro Sekunde, Überhitzungsradius).
+  - Test: Gegner neben Lava nehmen Schaden; Turm in Lava-Nähe hat längere Schussrate.
+  - Beide robusten Strategien aus den Balancing-Tests können Welle 20 noch schaffen.
+
+### B-031: Welt Wüste (Sandsturm)
+- Status: vorschlag
+- Aufwand: M
+- Idee: Zeitweise Sandstürme verkürzen die Reichweite aller Türme (Warnung im HUD vor Beginn). Hängt von B-027 ab.
+- Akzeptanzkriterien:
+  - `STORM_*`-Werte in `src/config.js` (Dauer, Abstand, Reichweiten-Faktor).
+  - Test: Während des Sturms ist die effektive Reichweite reduziert, danach wieder normal.
+  - HUD-Hinweis vor und während des Sturms.
+
+### B-032: Weggabelungen und Schleifen
+- Status: vorschlag
+- Aufwand: L
+- Idee: Weg teilt sich oder läuft zweimal an derselben Stelle vorbei. Bricht die Annahme eines einzelnen Wegs in `path.js`; Gegner wählen eine Abzweigung (abwechselnd oder je Gegner fest). Hängt von B-027 ab.
+- Akzeptanzkriterien:
+  - Map-Format erlaubt mehrere Wegabschnitte mit Verzweigung.
+  - Test: Gegner verteilen sich gemäß Regel auf beide Zweige, beide erreichen das Ziel.
+  - Zielwahl der Türme (`first`/`last`) bleibt sinnvoll definiert.
+
+### B-033: Mehrere Eingänge (zwei Spawn-Punkte)
+- Status: vorschlag
+- Aufwand: M
+- Idee: Zwei Eingänge, deren Wege später zusammenlaufen. Spawn-Einträge bekommen einen `lane`-Wert. Hängt von B-027 ab, verwandt mit B-032.
+- Akzeptanzkriterien:
+  - `waveFor` oder Map-Konfiguration verteilt Gegner auf Eingänge.
+  - Test: Gegner starten an beiden Eingängen, Gesamtanzahl pro Welle unverändert.
+
+### B-034: Blitzturm mit Kettenblitz
+- Status: vorschlag
+- Aufwand: M
+- Idee: Neuer Turm, dessen Treffer auf bis zu N nahe Gegner überspringt (abnehmender Schaden). Konter gegen Flitzerschwärme.
+- Akzeptanzkriterien:
+  - `TOWER_TYPES.lightning` mit `chainCount`, `chainRange`, `chainFalloff`, Taste 5.
+  - Test: Treffer springt auf nahe Gegner, nie zweimal auf denselben, Schaden sinkt je Sprung.
+  - Render und Effekt passend zu den anderen Türmen.
+
+### B-035: Unterstützungsturm (Banner)
+- Status: vorschlag
+- Aufwand: M
+- Idee: Turm ohne eigenen Angriff, der Türme im Umkreis schneller schießen lässt. Macht Turmgruppen sinnvoll. Mehrere Banner wirken nicht kumulativ.
+- Akzeptanzkriterien:
+  - `TOWER_TYPES.banner` mit `auraRange` und `rateBonus`.
+  - Test: Turm im Radius schießt schneller, außerhalb unverändert, zwei Banner stapeln nicht.
+
+### B-036: Fliegende Gegner
+- Status: vorschlag
+- Aufwand: L
+- Idee: Flieger ignorieren den Weg und fliegen in gerader Linie zum Ziel. Nur Pfeilturm, Scharfschütze und Blitzturm treffen sie. Bricht die Annahme "alle Gegner folgen dem Weg" in `game.js`.
+- Akzeptanzkriterien:
+  - `ENEMY_TYPES.flyer` mit `flying: true`; Türme haben `canHitAir`.
+  - Test: Kanone und Frostturm ignorieren Flieger, Pfeilturm trifft sie, Flieger verliert Leben am Ziel.
+  - Wellen ab etwa Welle 8 enthalten Flieger, Balancing-Tests bleiben grün.
+
+### B-037: Splitter- und Tarn-Gegner
+- Status: vorschlag
+- Aufwand: M
+- Idee: Splitter zerfällt beim Tod in zwei kleine Gegner. Tarn-Gegner sind erst im Nahbereich eines Turms zielbar.
+- Akzeptanzkriterien:
+  - Neue Typen in `ENEMY_TYPES` mit `splitInto` bzw. `stealth`.
+  - Test: Splitter erzeugt Kinder an gleicher Wegposition; Tarn-Gegner ist außerhalb des Radius nicht zielbar.
+
+### B-038: Fähigkeiten (Meteor, Einfrieren, Reparatur)
+- Status: vorschlag
+- Aufwand: L
+- Idee: Aktive Fähigkeiten mit Abklingzeit, per Taste oder Button: Meteor (Flächenschaden), Einfrieren (alle Gegner kurz verlangsamt), Notfall-Reparatur (+1 Leben, selten). Gibt dem Spieler auch mitten in der Welle etwas zu tun.
+- Akzeptanzkriterien:
+  - `ABILITIES` in `src/config.js` (Abklingzeit, Wirkung).
+  - Test: Fähigkeit wirkt, geht in Abklingzeit, ist nach Ablauf wieder nutzbar.
+  - Reparatur kann Leben nie über `START_LIVES` heben.
+
+### B-039: Verzweigte Upgrades auf Stufe 3
+- Status: vorschlag
+- Aufwand: L
+- Idee: Bei Stufe 3 wählt der Spieler einen Pfad, z. B. Kanone → Brandbombe (Brennschaden) oder Streubombe (größerer Radius). Verbindet Türme mit echten Entscheidungen.
+- Akzeptanzkriterien:
+  - `branches` je Turmtyp in `src/config.js`.
+  - Test: Pfadwahl ändert Werte, ist endgültig, Verkaufswert berücksichtigt die Kosten.
+  - Turm-Info zeigt die Wahl verständlich an.
+
+### B-040: Bonus-Auswahl zwischen den Wellen
+- Status: vorschlag
+- Aufwand: M
+- Idee: Nach jeder zweiten Welle drei zufällige Boni zur Auswahl (+Reichweite, +Gold, +Schaden für einen Turmtyp), wie bei einem Roguelike. Zufall über einen Seed, damit Tests deterministisch bleiben.
+- Akzeptanzkriterien:
+  - `BONUS_POOL` in `src/config.js`, Auswahl über Seed-Zufall.
+  - Test: Gleiche Seeds ergeben gleiche Angebote; gewählter Bonus wirkt genau einmal.
+
+### B-041: Endlos-Modus nach Welle 20
+- Status: vorschlag
+- Aufwand: M
+- Idee: Nach dem Sieg kann man weiterspielen; Wellen skalieren weiter, Rekord ist die erreichte Welle. Löst nebenbei das Gold-Überschuss-Problem aus B-020 (Belohnungen gedeckelt oder sinkend).
+- Akzeptanzkriterien:
+  - `waveFor` und `hpScale` sind über Welle 20 hinaus definiert, Wellen 1 bis 20 bleiben unverändert.
+  - Test: Welle 21+ erzeugt gültige Spawn-Listen; Status 'won' erst im normalen Modus.
