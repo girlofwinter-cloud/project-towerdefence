@@ -25,6 +25,7 @@ Du bist der **Orchestrator**. Du schreibst selbst keinen Spielcode, du koordinie
 7. **Schleifenbremse.** Maximal **2** Entwicklungsrunden. Ist danach noch ein Muss-Punkt offen, Status `blockiert` setzen, Ledger-Eintrag schreiben und einen Menschen fragen. Nicht weiter probieren.
 8. **Ledger.** Hänge einen Eintrag an `docs/LEDGER.md` an (Format dort) und setze den Backlog-Status auf `fertig` oder `blockiert`. Bei `fertig` verschiebst du den Eintrag aus `docs/BACKLOG.md` nach `docs/archiv/BACKLOG-fertig.md`.
 9. **Abschluss.** `npm test` ein letztes Mal selbst ausführen, committen, `git push -u origin agent/<kurzname>`. Pull Request nur auf ausdrücklichen Wunsch.
+10. **Abnahme durch den reviewer (nur wenn der Mensch sie delegiert hat, z. B. `/pipeline abnahme` oder "der reviewer soll mergen").** Dann legst du den PR an (Beschreibung wie üblich, mit Hinweis auf Backlog-Eintrag und Ledger) und rufst den `reviewer` im **PR-Modus** mit der PR-Nummer auf. Er mergt nur, wenn alle Bedingungen in seiner Rollenbeschreibung gelten (CI grün, keine Änderungen an `.claude/`, `.github/`, Abhängigkeiten usw.). Sonst bleibt der PR offen, und du meldest dem Menschen den Grund. Ohne diese Delegation mergt immer der Mensch.
 
 ## Regeln
 - Immer nur ein Feature pro Durchlauf.

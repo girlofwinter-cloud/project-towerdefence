@@ -26,5 +26,6 @@ Zweck des Repos: Lernprojekt für agentische Entwicklung mit Claude Code. Siehe 
 
 ## Pipeline
 Rollen liegen in `.claude/agents/`, der Ablauf in `.claude/skills/pipeline/SKILL.md`.
+Auf Wunsch des Menschen (`/pipeline abnahme`) nimmt der `reviewer` im PR-Modus Pull Requests ab und mergt sie, wenn alle Bedingungen in `.claude/agents/reviewer.md` erfüllt sind. PRs, die `.claude/`, `.github/` oder Abhängigkeiten ändern, mergt nur ein Mensch.
 Backlog der Feature-Ideen: `docs/BACKLOG.md`.
 Der `designer` prüft auf Anfrage Optik und Bedienung (Desktop und Handy, mit Screenshots) und macht Designvorschläge: `/design`. Er ändert keinen Code.
