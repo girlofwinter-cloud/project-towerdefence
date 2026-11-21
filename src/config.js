@@ -463,6 +463,38 @@ export const ARROW_TOWER = {
   arrowLength: 11,          // Länge des aufgelegten Pfeils
 };
 
+// Kanone, Frostturm, Scharfschütze und Blitzturm im Flat-Pop-Stil (B-064). Maße in px, Ursprung = Bodenmitte,
+// y nach oben negativ. Arrays haben je einen Wert für Stufe 1 bis 3. iconScale/iconDy: Shop-Vorschau (48x48).
+export const TOWER_STYLE = {
+  cannon: {
+    scale: 0.9, groundDy: 13, shadowR: 15, iconScale: 1.1, iconDy: 4,
+    halfWidth: [15, 16.5, 18],    // halbe Breite des Steinbunkers
+    height: [12, 14, 16],         // Höhe des Bunkers bis zur Zinne
+    merlons: [3, 4, 5],           // Anzahl der Zinnen
+    barrelLength: [16, 17.5, 19], // Rohrlänge ab Drehpunkt
+    barrelThick: [1, 1.1, 1.2],   // Rohrdicke (Faktor)
+  },
+  frost: {
+    scale: 0.9, groundDy: 13, shadowR: 14, iconScale: 0.9, iconDy: 7,
+    pivotY: -35,                  // Drehpunkt des Eissplitters
+    shardLength: [11, 13, 15],    // Länge des Eissplitters
+    icicleLength: [5, 7, 9],      // Länge der Eiszapfen am Kragen
+    crystals: [0, 1, 2],          // Paare seitlicher Eiskristalle am Schaft
+  },
+  sniper: {
+    scale: 0.8, groundDy: 13, shadowR: 13, iconScale: 0.85, iconDy: 8,
+    shaftHeight: [30, 33, 36],    // Höhe des Schafts
+    barrelLength: [17, 19, 21],   // Länge des Zielrohrs
+  },
+  lightning: {
+    scale: 0.9, groundDy: 13, shadowR: 14, iconScale: 0.9, iconDy: 7,
+    pivotY: -37,                 // Drehpunkt des Kristalls
+    rings: [2, 3, 4],             // Metallringe an der Spule
+    crystalSize: [1, 1.15, 1.3],  // Größe des Kristalls (Faktor)
+    arms: [0, 1, 2],              // Paare von Fangarmen mit Leuchtkugel
+  },
+};
+
 // Weg im Flat-Pop-Stil (B-071). Maße in px bei 1x. Gesamtbreite in Kachelmitte = TILE, der wellige
 // Rand ragt höchstens `overhangMax` darüber hinaus (Test in tests/render.test.js).
 export const PATH_STYLE = {

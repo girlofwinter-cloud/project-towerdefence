@@ -136,6 +136,19 @@ export function ell(ctx, x, y, rx, ry, color) {
   }, color);
 }
 
+// Linie durch eine Punktliste [[x, y], ...] mit runden Enden
+export function line(ctx, pts, color, w) {
+  ctx.save();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = w;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(pts[0][0], pts[0][1]);
+  for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1]);
+  ctx.stroke();
+  ctx.restore();
+}
+
 // Bodenschatten unter einem Objekt mit Radius r (Mittelpunkt x, y), leicht nach rechts unten versetzt
 export function shadow(ctx, x, y, r) {
   ctx.save();
