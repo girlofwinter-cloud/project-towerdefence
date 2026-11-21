@@ -5,7 +5,7 @@
 //  - Grosse Dekoration (Baum, Busch, Fels) nur auf Randkacheln des Spielfelds.
 //  - Im Inneren nur kleine Dekoration (Blumen, Grasbuschel, Kiesel), die flach bleibt.
 //  - Die Dekoration wird in den Hintergrund gezeichnet; gebaute Tuerme liegen darueber.
-import { COLS, ROWS, TILE, WIDTH, HEIGHT, OBSTACLE_TREE_SHARE, MAPS, TREE_FRAME, GROUND_STYLE } from './config.js';
+import { COLS, ROWS, TILE, WIDTH, HEIGHT, OBSTACLE_TREE_SHARE, MAPS, TREE_FRAME, GROUND_STYLE, DECOR_STYLE } from './config.js';
 import { buildPath } from './path.js';
 
 // Dichten (Wahrscheinlichkeit pro Kachel, 0..1)
@@ -161,4 +161,28 @@ export function groundPatches(mapId = 'meadow') {
     out.tufts.push({ x, y, s: lerp(G.tuftScale, tileRand(i, 0, 82)), dark: i % 3 === 0, seed: tileHash(i, 0, 83) });
   }
   return out;
+}
+
+// Streu-Deko (B-079): flache Einzelstuecke auf freien Kacheln (nicht Weg, Hindernis, Tor/Ziel, ohne anderes Dekor).
+// Nur auf Karten mit theme.decorStyle 'flatpop'. Rueckgabe: null oder { kind, ox, oy, angle (rad) }.
+// Alle Kacheln bleiben bebaubar; Tuerme verdecken die Deko (sie liegt im Hintergrund-Cache).
+export function scatterFor(col, row, blocked, obstacles, mapId = 'meadow') {
+  const map = MAPS[mapId];
+  if (map?.theme?.decorStyle !== 'flatpop') return null;
+  if (col < 0 || row < 0 || col >= COLS || row >= ROWS) return null;
+  if (isPathTile(blocked, col, row)) return null;
+  if (obstacles && obstacles.has(`${col},${row}`)) return null;
+  if (decorFor(col, row, blocked, obstacles)) return null;
+  const D = DECOR_STYLE;
+  const wp = map.waypoints;
+  for (const [wc, wr] of [wp[0], wp[wp.length - 1]]) {
+    const ec = Math.min(Math.max(wc, 0), COLS - 1), er = Math.min(Math.max(wr, 0), ROWS - 1);
+    if (Math.max(Math.abs(col - ec), Math.abs(row - er)) <= D.scatterEndMargin) return null;
+  }
+  if (tileRand(col, row, 90) >= D.scatterChance) return null;
+  const q = tileRand(col, row, 91);
+  let acc = 0, kind = D.scatterKinds[D.scatterKinds.length - 1][0];
+  for (const [k, share] of D.scatterKinds) if (q < (acc += share)) { kind = k; break; }
+  const [lo, hi] = D.scatterOffset;
+  return { kind, ox: lo + tileRand(col, row, 92) * (hi - lo), oy: lo + tileRand(col, row, 93) * (hi - lo), angle: (tileRand(col, row, 94) - 0.5) * 0.6 };
 }

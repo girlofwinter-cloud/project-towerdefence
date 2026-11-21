@@ -216,3 +216,47 @@ test('treeFrame: keine Krone schneidet den Weg (inkl. Wegrand), Ein- und Ausgang
     }
   }
 });
+
+// ---------- Streu-Deko (B-079) ----------
+test('scatterFor: deterministisch, nie auf Weg, Hindernis, Tor/Ziel oder fremdem Dekor, nur auf der Wiese', async () => {
+  const { scatterFor, decorFor } = await import('../src/decor.js');
+  const { DECOR_STYLE: D } = await import('../src/config.js');
+  const s = createGame({ mapId: 'meadow' });
+  const obstacles = new Set(['3,5', '9,9']);
+  let n = 0;
+  const kinds = new Set();
+  for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
+    const a = scatterFor(c, r, s.blocked, obstacles, 'meadow');
+    assert.deepEqual(a, scatterFor(c, r, s.blocked, obstacles, 'meadow'), 'deterministisch');
+    if (!a) continue;
+    n++;
+    kinds.add(a.kind);
+    assert.ok(!s.blocked.has(`${c},${r}`), `Streu-Deko auf Weg ${c},${r}`);
+    assert.ok(!obstacles.has(`${c},${r}`), `Streu-Deko auf Hindernis ${c},${r}`);
+    assert.equal(decorFor(c, r, s.blocked, obstacles), null, 'kein Doppel mit anderem Dekor');
+    assert.ok(a.ox >= D.scatterOffset[0] && a.ox <= D.scatterOffset[1] && a.oy >= D.scatterOffset[0] && a.oy <= D.scatterOffset[1]);
+    // Abstand zu Tor und Ziel
+    const wp = MAPS.meadow.waypoints;
+    for (const [wc, wr] of [wp[0], wp[wp.length - 1]]) {
+      const ec = Math.min(Math.max(wc, 0), COLS - 1), er = Math.min(Math.max(wr, 0), ROWS - 1);
+      assert.ok(Math.max(Math.abs(c - ec), Math.abs(r - er)) > D.scatterEndMargin, `Streu-Deko am Tor/Ziel ${c},${r}`);
+    }
+  }
+  assert.ok(n >= 5 && n <= 35, `ruhig: ${n} Stuecke`);
+  assert.ok(kinds.size >= 4, `Vielfalt: ${[...kinds]}`);
+  for (const id of ['forest', 'ice', 'fork']) {
+    const g = createGame({ mapId: id });
+    for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) assert.equal(scatterFor(c, r, g.blocked, null, id), null, `${id} ohne Streu-Deko`);
+  }
+  assert.equal(scatterFor(-1, 0, s.blocked, null, 'meadow'), null);
+  assert.equal(scatterFor(0, ROWS, s.blocked, null, 'meadow'), null);
+});
+
+test('DECOR_STYLE: Konturbreite 1,3 bis 2,3 px, Anteile der Streu-Deko ergeben 1', async () => {
+  const { DECOR_STYLE: D, STYLE } = await import('../src/config.js');
+  for (const w of [D.outlineWidth, STYLE.outlineWidth]) assert.ok(w >= 1.3 && w <= 2.3, `Kontur ${w}`);
+  assert.equal(D.outlineWidth, STYLE.outlineWidth, 'part() zeichnet mit STYLE.outlineWidth');
+  assert.ok(Math.abs(D.scatterKinds.reduce((a, k) => a + k[1], 0) - 1) < 1e-9);
+  assert.equal(MAPS.meadow.theme.decorStyle, 'flatpop');
+  for (const id of ['forest', 'ice', 'fork']) assert.equal(MAPS[id].theme?.decorStyle, undefined);
+});

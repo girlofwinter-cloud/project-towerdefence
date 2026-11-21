@@ -8,8 +8,9 @@ import { recoilOffset } from './tower-fx.js';
 import { drawEnemy, drawHealAura } from './render-enemies.js';
 import { updateFx, shakeX, shakeY, drawProjectileFx, drawParticles } from './render-fx.js';
 import { drawTreeFrame } from './render-trees.js';
+import * as flat from './render-decor.js';
 import { drawGround as drawGroundFill, drawGroundTufts } from './render-ground.js';
-import { tileHash, tileRand, decorFor, obstacleKind, treeFrame, groundPatches, coveredByCrown, LARGE_DECOR_RADIUS } from './decor.js';
+import { tileHash, tileRand, decorFor, obstacleKind, treeFrame, groundPatches, coveredByCrown, scatterFor, LARGE_DECOR_RADIUS } from './decor.js';
 
 export function render(ctx, state, ui) {
   // Partikel aus dem Zustand ableiten (nur lesen), danach Shake-Versatz bestimmen.
@@ -124,6 +125,7 @@ function drawPath(ctx, state) {
 // Dekoration: Regeln stehen in decor.js (gross nur am Rand, innen nur klein, nie auf dem Weg).
 // crowns: Der Baumrahmen ersetzt die einzelnen Rand-Baeume, soweit eine Krone sie verdeckt (kein Doppel).
 function drawDecor(ctx, state, crowns) {
+  const flatpop = MAPS[state.mapId]?.theme?.decorStyle === 'flatpop'; // B-079: neue Deko nur auf der Wiese
   for (let r = 0; r < ROWS; r++) {
     for (let c = 0; c < COLS; c++) {
       if (state.obstacles && state.obstacles.has(`${c},${r}`)) {
@@ -131,10 +133,22 @@ function drawDecor(ctx, state, crowns) {
         continue;
       }
       const d = decorFor(c, r, state.blocked, state.obstacles);
-      if (!d) continue;
+      if (!d) {
+        const sc = flatpop && scatterFor(c, r, state.blocked, state.obstacles, state.mapId);
+        if (sc) flat.drawScatter(ctx, sc, c * TILE + sc.ox * TILE, r * TILE + sc.oy * TILE);
+        continue;
+      }
       const x = c * TILE + d.ox * TILE;
       const y = r * TILE + d.oy * TILE;
       if (crowns && d.kind === 'tree' && coveredByCrown(crowns, x, y)) continue;
+      if (flatpop && d.kind !== 'tree') {
+        if (d.kind === 'bush') flat.drawBush(ctx, x, y, d.variant);
+        else if (d.kind === 'rock') flat.drawRock(ctx, x, y, d.variant);
+        else if (d.kind === 'flower') flat.drawFlower(ctx, x, y, d.variant);
+        else if (d.kind === 'tuft') flat.drawTuft(ctx, x, y);
+        else flat.drawPebble(ctx, x, y);
+        continue;
+      }
       if (d.kind === 'tree') drawTree(ctx, x, y, d.variant);
       else if (d.kind === 'bush') drawBush(ctx, x, y, d.variant);
       else if (d.kind === 'rock') drawRock(ctx, x, y, d.variant);

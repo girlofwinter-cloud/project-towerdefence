@@ -516,3 +516,13 @@ Neue Einträge werden unten angehängt. Bestehende Einträge werden nie geänder
 - Review: APPROVE (keine Muss-Punkte; Hinweise als B-087)
 - Entscheidungen: Neue Datei `src/render-ground.js` (Grund, Flecken mit 4 Lagen, Plateaus mit Wand und dezenter Kante, Gras-Büschel), `groundPatches` in `src/decor.js` (deterministisch, Abstand zur Wegachse), Zahlen in `GROUND_STYLE` (`src/config.js`), aktiviert über `MAPS.meadow.theme.ground`. Alles im Hintergrund-Cache (Aufbau Wiese im Mock 19,1 ms inkl. Weg, Deko und Baumrahmen). Wald, Eis und Fork behalten ihr Schachbrett (folgen mit B-072/B-073). `rgba`-Farben statt `globalAlpha`, weil ein bestehender Test `globalAlpha` im Cache verbietet. Plateaus sind nur Optik, jede freie Kachel bleibt bebaubar.
 - Offen: B-087 (überlappende Plateaus, Magic Numbers, Kiesel-/Blumengruppen).
+
+## 2026-11-21 · B-079 · Wiese 4/7: Deko neu (Design-Overhaul)
+- Rolle(n): orchestrator, developer, tester, reviewer
+- Branch: agent/wiese-deko
+- Runden: 1 von max. 2
+- Ergebnis: fertig
+- Tests: 215 Unit-Tests bestanden (neue Tests in `tests/decor.test.js`, `tests/render.test.js` und ein Grenztest des Testers in `tests/scatter-bounds.test.js`, keiner geändert oder abgeschwächt); Browser-Tests in der CI
+- Review: APPROVE (keine Muss-Punkte; Hinweise als B-088)
+- Entscheidungen: Neue Datei `src/render-decor.js` (Busch mit Beeren, Fels mit Moos und Begleitstein, Blumen gelb/rosa/weiß, Grasbüschel, Kiesel; Streu-Deko Pilz, Fass, Stamm, Pfähle, Wegweiser, Kieselgruppe), `scatterFor` in `src/decor.js` (deterministisch; nie auf Weg, Hindernis, Tor, Ziel oder fremder Deko; 5 bis 35 Stücke), Zahlen in `DECOR_STYLE` (`src/config.js`, Konturbreite 1,3 px), aktiviert über `MAPS.meadow.theme.decorStyle: 'flatpop'`. Alles im Hintergrund-Cache (Aufbau Wiese im Mock 6,7 bis 8,0 ms). Wald, Eis und Fork unverändert. Der bestehende Deko-Test blieb unverändert; die Zeichnung wurde an ihn angepasst (Büschel mit Halm in `#5da654`, Streu-Deko mit Bezier-Schatten statt `arc`/`ellipse`), vom Reviewer als sauber bewertet. Der Developer ließ einen Dev-Server (Port 8080) laufen, weil `pkill` verweigert wurde; der Mensch beendet ihn.
+- Offen: B-088 (Fässer, Grenztest Streu-Deko, kaum sichtbare Pilze/Wegweiser).

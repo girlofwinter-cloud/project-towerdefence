@@ -275,3 +275,11 @@ Agents lesen diese Datei nur bei konkretem Bedarf.
   - Screenshot ohne Schachbrettraster.
   - Aufbauzeit von `bgCanvas` unter 60 ms (Test misst, Node mit Mock genügt).
   - Kein Aufruf im Frame-Pfad (render-Test).
+
+### B-079: Wiese 4/7: Felsen, Büsche, Blumen, Pilze und Streu-Deko neu (Design-Overhaul)
+- Status: fertig
+- Aufwand: M
+- Idee: Felsgruppen mit Moos, Büsche, Blumen, Pilze im Flat-Pop-Stil mit Kontur; kleine Streu-Deko (Fass, Baumstämme, Zaunspitzen, Wegweiser) flach im Feld, unter Türmen verdeckt.
+- Akzeptanzkriterien:
+  - Konturbreite 1,3 bis 2,3 px.
+  - Keine Deko auf Weg-Kacheln (bestehende `decor`-Tests grün); neue Streu-Deko bleibt in Bereichen, die sie nicht unspielbar machen (bebaubar bleibt jede freie Kachel).
