@@ -407,3 +407,12 @@ Neue Einträge werden unten angehängt. Bestehende Einträge werden nie geänder
 - Review: APPROVE (keine Muss-Punkte)
 - Entscheidungen: Nur reine Code-Hinweise umgesetzt, keine Balancing-Zahlen und kein Spielverhalten geändert: `OBSTACLE_TREE_SHARE` und `OBSTACLE_SHADE` als Konstanten, `enemyPath` auch im Render, `iceRun` zu `mapRun`, `knockBack` lesbarer, Sniper-Schwelle mit Fallback, Farbkonstanten sortiert, `doAbility` bricht außerhalb von 'playing' früh ab und eine Pause beendet den Meteor-Zielmodus (neu, vom Reviewer als sinnvoll bewertet). `tests/forest-edge.test.js` wurde 1:1 in `tests/game.test.js` und `tests/decor.test.js` verschoben (gleiche Namen und Assertions, Testanzahl gleich). Bewusst nicht angefasst: Punkte, die einen Spieltest oder eine Entscheidung brauchen (Eis-Farbschema, `chainRange` des Blitzturms, Zahlen der Fähigkeiten, Pfeil-Strategie mit 10 Leben, Kartenwahl-Speicher, `p.special`-Bündelung).
 - Offen: Die Backlog-Einträge B-042, B-043, B-047, B-048, B-050, B-051, B-052 tragen jeweils einen Vermerk, was erledigt und was offen ist.
+
+## 2026-11-21 · UI · Shop kompakt, alle fünf Türme ohne Scrollen sichtbar
+- Rolle(n): orchestrator, developer, reviewer (ohne Tester, reine UI)
+- Branch: agent/shop-kompakt
+- Ergebnis: fertig
+- Tests: 190 Unit-Tests und 6 Browser-Tests bestanden (1 neuer Browser-Test)
+- Review: APPROVE (keine Muss-Punkte; Hinweis als B-054)
+- Entscheidungen: Rückmeldung des Menschen mit Screenshot: Auf dem Desktop muss man scrollen, um den Blitzturm zu erreichen. Gemessen mit Playwright: Bei 1280x720 bis 1440x900 lagen die Shop-Unterkanten bei 470/597/709/863/1020 px, die Seite war 1323 px hoch; Ursache waren die langen Fähigkeiten-Texte (`special.text`) in den Karten. Jetzt zeigt die Karte nur die kurze Beschreibung (2 Zeilen), der Fähigkeiten-Text steht im Tooltip und im Turm-Info-Panel (`#ti-special`); Karten und Steuerung kompakter. Nachher 404/466/528/612/685 px, Dokumenthöhe 983 px. Handy unverändert gut. Hilfetext "1-4" -> "1-5". Neuer Browser-Test bei 1280x800 sichert ab, dass der letzte Turm sichtbar bleibt.
+- Offen: Desktop-Zoom nicht separat geprüft; Barrierefreiheit der Karten (B-054).
