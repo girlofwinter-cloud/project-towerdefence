@@ -37,21 +37,6 @@ export const MAPS = {
       [20, 11],
     ],
   },
-  canyon: {
-    name: 'Schlucht',
-    waypoints: [
-      [-1, 11],
-      [3, 11],
-      [3, 2],
-      [8, 2],
-      [8, 10],
-      [13, 10],
-      [13, 4],
-      [17, 4],
-      [17, 12],
-      [20, 12],
-    ],
-  },
   forest: {
     name: 'Wald',
     waypoints: [

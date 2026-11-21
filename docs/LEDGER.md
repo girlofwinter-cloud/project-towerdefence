@@ -304,3 +304,11 @@ Neue Einträge werden unten angehängt. Bestehende Einträge werden nie geänder
 - Review: CHANGES_REQUESTED nur wegen des fehlenden Ledger-Eintrags (hier erledigt), sonst keine Muss-Punkte; Hinweise als B-044. Kommentar in `config.js` zum Eis-Gelände korrigiert.
 - Entscheidungen: Modifikatoren pro Karte (`enemySpeed`, `towerDamage` je Typ, `slowStrength`) mit Standardwert 1 über `mapModifiers`; `towerStats(tower, modifiers)` mit optionalem 2. Parameter, damit alte Aufrufe und Tests unverändert bleiben und Anzeige die echten Werte zeigt. Eiswelt: Gegner 0,85-fach, Kanone 1,25-fach, Frost 0,7-fach Schaden und Verlangsamung. Dazu ein optionales Farbschema `theme` (kühles Weiß-Blau) in nur wenigen Zeilen Render-Code.
 - Offen: Playtest und Sichtprüfung im Browser; keine kartenspezifischen Balancing-Tests; PR #21, #22, #23 vorher mergen.
+
+## 2026-11-21 · Aufräumen · Karte Schlucht entfernt
+- Rolle(n): Mensch + Claude (interaktiv)
+- Branch: agent/schlucht-entfernen
+- Ergebnis: fertig
+- Tests: 140 bestanden, 0 fehlgeschlagen (Anzahl unverändert)
+- Entscheidungen: Der Mensch hat die Schlucht nach Sichtprüfung im Browser verworfen. Karte aus `MAPS` entfernt. Bestehende Tests, die `canyon` als Beispielkarte nutzten, wurden auf `forest` bzw. `ice` umgestellt (gleiche Prüfungen, keine abgeschwächt, keiner gelöscht); die Gültigkeitsprüfung läuft weiter über alle Karten in `MAPS`.
+- Offen: B-042 (3) erwähnt den Schlucht-Test, der nicht mehr existiert; beim Abarbeiten ignorieren.
