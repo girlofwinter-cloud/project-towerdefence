@@ -1,12 +1,15 @@
 // Spiel-Logik: kompletter Zustand + update(). Kein DOM, kein Canvas -> in Node testbar.
 import {
   TILE, COLS, ROWS, START_GOLD, START_LIVES, MAX_WAVES, SELL_RATIO, MAX_LEVEL, MAX_SUBSTEP, TARGET_MODES,
-  WAYPOINTS, TOWER_TYPES, ENEMY_TYPES, waveFor, waveBonus, hpScale,
+  MAPS, DEFAULT_MAP_ID, TOWER_TYPES, ENEMY_TYPES, waveFor, waveBonus, hpScale,
 } from './config.js';
 import { buildPath, pointAt, pathTiles } from './path.js';
 
-export function createGame(overrides = {}) {
+export function createGame({ mapId, ...overrides } = {}) {
+  const id = Object.hasOwn(MAPS, mapId) ? mapId : DEFAULT_MAP_ID;
+  const waypoints = MAPS[id].waypoints;
   return {
+    mapId: id,
     gold: START_GOLD,
     lives: START_LIVES,
     wave: 0,
@@ -24,8 +27,8 @@ export function createGame(overrides = {}) {
     nextId: 1,
     healAt: ENEMY_TYPES.healer.healInterval, // Zeitpunkt (state.time) des nächsten Heilimpulses
     healTick: 0, // Zähler der Heilimpulse (verhindert doppelte Heilung pro Impuls)
-    path: buildPath(WAYPOINTS, TILE),
-    blocked: pathTiles(WAYPOINTS),
+    path: buildPath(waypoints, TILE),
+    blocked: pathTiles(waypoints),
     ...overrides,
   };
 }

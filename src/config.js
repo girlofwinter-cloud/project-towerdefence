@@ -21,18 +21,41 @@ export const TARGET_MODE_NAMES = { first: 'Erster', last: 'Letzter', strong: 'St
 export const SPEED_STEPS = [1, 2, 3];
 export const MAX_SUBSTEP = 0.05;
 
-// Wegpunkte in Kachel-Koordinaten [spalte, zeile].
+// Karten: Wegpunkte in Kachel-Koordinaten [spalte, zeile].
 // Erster und letzter Punkt liegen außerhalb des Spielfelds (Ein-/Ausgang).
-export const WAYPOINTS = [
-  [-1, 2],
-  [5, 2],
-  [5, 8],
-  [11, 8],
-  [11, 3],
-  [16, 3],
-  [16, 11],
-  [20, 11],
-];
+export const MAPS = {
+  meadow: {
+    name: 'Wiese',
+    waypoints: [
+      [-1, 2],
+      [5, 2],
+      [5, 8],
+      [11, 8],
+      [11, 3],
+      [16, 3],
+      [16, 11],
+      [20, 11],
+    ],
+  },
+  canyon: {
+    name: 'Schlucht',
+    waypoints: [
+      [-1, 11],
+      [3, 11],
+      [3, 2],
+      [8, 2],
+      [8, 10],
+      [13, 10],
+      [13, 4],
+      [17, 4],
+      [17, 12],
+      [20, 12],
+    ],
+  },
+};
+export const DEFAULT_MAP_ID = 'meadow';
+// Alias für die Standardkarte (bestehender Code und Tests)
+export const WAYPOINTS = MAPS[DEFAULT_MAP_ID].waypoints;
 
 // range in Kacheln, rate = Sekunden zwischen Schüssen, projectileSpeed in Kacheln/Sekunde
 export const TOWER_TYPES = {
