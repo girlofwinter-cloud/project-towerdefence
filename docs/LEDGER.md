@@ -536,3 +536,11 @@ Neue Einträge werden unten angehängt. Bestehende Einträge werden nie geänder
 - Review: APPROVE (keine Muss-Punkte; Hinweise als B-089)
 - Entscheidungen: Neue Datei `src/render-accents.js` (Burgmauer 150x34 mit Tor und zwei Türmchen oben mittig, Teich mit Seerosen unten, Brunnen 32x28 unten links), `accentsFor` und `crownBlocked` in `src/decor.js`, Zahlen in `ACCENT_STYLE` (`src/config.js`), aktiviert über `MAPS.meadow.theme.accents`. Alles im Hintergrund-Cache (Aufbau Wiese im Mock 6,0 ms). `treeFrame` lässt Kronen im Akzentbereich aus (weiterhin 119 Kronen, Wegabstand-Test unverändert streng). Mindestens 3 Kacheln Abstand zu Start und Ziel. Wald, Eis und Fork unverändert. Akzente zeichnen mit Bezier-Kurven statt `arc`/`ellipse`, damit der bestehende Kleindeko-Test nicht reißt (wie bei Weg und Baumrahmen); Reviewer: vertretbar, die Sammelnacharbeit steht in B-089.
 - Offen: B-089 (Deko-Test robuster machen, kleine Optik-Hinweise).
+
+## 2026-11-21 · Prozess · Sammelmodus im Pipeline-Skill
+- Rolle(n): Mensch + Claude (interaktiv)
+- Branch: agent/pipeline-sammelmodus
+- Ergebnis: fertig (nur Skill und Doku, kein Code in `src/`)
+- Tests: nicht nötig
+- Entscheidungen: Der Mensch wollte weniger Schleifen und ein gemeinsames Review am Ende. Neuer Abschnitt "Sammelmodus" in `.claude/skills/pipeline/SKILL.md`: auf Wunsch, nur für Serien reiner Optik-Einträge; ein Branch für 3 bis 4 Einträge, pro Eintrag nur der `developer` (ein Commit), danach einmal `tester` und `reviewer` über den ganzen Diff, ein PR. Ausgeschlossen: Spiel-Logik, Balancing, Eingabe und Layout. Grenze ca. 600 Zeilen pro Block. Tests werden nie abgeschwächt; angepasste Tests prüft der Reviewer. Erste Anwendung: Wiese B-081 und B-082.
+- Offen: PR enthält `.claude/`, daher Merge durch einen Menschen.
