@@ -472,3 +472,53 @@ test('Render: Karte Zangenangriff zeichnet beide Wege ohne Fehler', async () => 
   render(m.ctx, s, {});
   assert.equal(m.depth, 0);
 });
+
+test('Stil-Helfer: lit/shd mischen Farben, Kontur dunkel', async () => {
+  const { lit, shd, outlineOf, brightness } = await import('../src/draw-utils.js');
+  const { STYLE } = await import('../src/config.js');
+  assert.equal(lit('#336699', 0), '#336699');
+  assert.equal(lit('#336699', 1), STYLE.lightTone);
+  assert.equal(shd('#336699', 0), '#336699');
+  assert.equal(shd('#336699', 1), STYLE.shadowTone);
+  assert.equal(shd('#000000', 0.5), '#160e1f');
+  assert.ok(brightness(lit('#336699', 0.5)) > brightness('#336699'));
+  for (const c of ['#ffffff', '#f4c542', '#e3f1fa', '#7bcb4f', '#2a6b3a', '#000000']) {
+    const o = outlineOf(c);
+    assert.ok(brightness(o) <= STYLE.outlineMaxLight + 0.01, c);
+    assert.ok(brightness(o) <= brightness(c) + 1e-9, c);
+  }
+  assert.ok(brightness(outlineOf('#7bcb4f')) < brightness('#7bcb4f') * 0.6);
+});
+
+test('Stil-Helfer: part/poly/rr/ell/shadow ausgewogen, Fuellung+Kontur, ohne Verlaeufe', async () => {
+  const { poly, rr, ell, shadow } = await import('../src/draw-utils.js');
+  const draws = [
+    (c) => poly(c, [[0, 0], [10, 0], [5, 8]], '#7bcb4f'),
+    (c) => rr(c, 0, 0, 20, 10, 3, '#4f7fc8'),
+    (c) => ell(c, 5, 5, 8, 4, '#d4503f'),
+  ];
+  for (const d of draws) {
+    const m = mockCtx();
+    d(m.ctx);
+    assert.equal(m.depth, 0);
+    assert.ok(m.counts.fill >= 3 && m.counts.stroke === 1 && m.counts.clip === 1);
+    assert.equal(m.props.lineJoin, 'round');
+    assert.equal(m.counts.createLinearGradient, undefined);
+    assert.equal(m.counts.createRadialGradient, undefined);
+  }
+  const m = mockCtx();
+  shadow(m.ctx, 10, 10, 12);
+  assert.equal(m.depth, 0);
+  assert.equal(m.counts.fill, 1);
+  assert.equal(m.counts.createRadialGradient, undefined);
+});
+
+test('Stil-Helfer: rr mit winzigem w/h und grossem Radius bleibt endlich und ausgewogen', async () => {
+  const { rr } = await import('../src/draw-utils.js');
+  for (const [w, h, r] of [[2, 2, 50], [0, 0, 5], [30, 1, 99]]) {
+    const m = mockCtx();
+    rr(m.ctx, 0, 0, w, h, r, '#ffffff');
+    assert.equal(m.depth, 0);
+    assert.equal(m.counts.stroke, 1);
+  }
+});

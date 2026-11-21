@@ -450,3 +450,13 @@ Neue Einträge werden unten angehängt. Bestehende Einträge werden nie geänder
 - Tests: nicht nötig
 - Entscheidungen: Der Mensch will eine Kingdom-Rush-artige Optik, gezeichnet im Canvas-Code (keine Fremd-Assets). Der `designer` lieferte einen Referenzbogen mit zwei Stilen; der Mensch wählte Stil B (Flat-Pop: drei Flächentöne, farbige Kontur 1,3 px). Der Designer hatte A empfohlen, weil die farbige Kontur auf hellem Boden verschwindet; in `docs/STIL.md` steht dafür eine Kontrastregel (Kontur nie heller als 35 %, kräftigerer Bodenschatten auf Eis/Wüste, 25 % Helligkeitsabstand Gegner/Weg). Neu: `docs/STIL.md`, Backlog B-062 bis B-075 (Status `vorschlag`).
 - Offen: Freigabe durch den Menschen; B-062/B-063 zuerst, dann Sichtprüfung. B-072/B-073 überschneiden sich mit B-043/B-044/B-059. Der Referenzbogen liegt nur im Scratchpad, nicht im Repo.
+
+## 2026-11-21 · B-062 · Stil-Fundament (Design-Overhaul)
+- Rolle(n): orchestrator, developer, tester, reviewer
+- Branch: agent/stil-fundament
+- Runden: 1 von max. 2
+- Ergebnis: fertig
+- Tests: 195 Unit-Tests bestanden (3 neue, keiner geändert oder abgeschwächt); Browser-Tests laufen in der CI
+- Review: APPROVE (keine Muss-Punkte; Hinweise als B-076)
+- Entscheidungen: `src/draw-utils.js` hat jetzt die Stil-Helfer `lit`, `shd`, `brightness`, `outlineOf`, `part`, `poly`, `rr`, `ell`, `shadow` (Flat-Pop nach `docs/STIL.md`: drei Flächentöne per Clip und versetzter Füllung, keine Verläufe, kein shadowBlur). Alle Zahlen und die gemeinsame Palette stehen im neuen Block `STYLE` in `src/config.js`; Welt-, UI- und Gegnerfarben sind noch nicht darin (kommen mit den jeweiligen Einträgen). Die Helfer sind noch nirgends eingebunden, die Optik ist unverändert.
+- Offen: Sichtprüfung der Helfer mit B-063; Breite des Schattenstreifens (ca. 1,4 px statt 2 px) und Hex-Kurzformen siehe B-076.

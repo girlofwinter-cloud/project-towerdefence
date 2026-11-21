@@ -230,3 +230,11 @@ Agents lesen diese Datei nur bei konkretem Bedarf.
   - Zahlen nur in `src/config.js`; Beschreibung/Text (`description`, `special.text`) passend.
   - Neuer Strategie-Test (Mix mit Blitzturm) und ggf. Test des Schockeffekts; bestehende Tests unverändert (Zählungen nur, falls zwingend, im Ledger nennen).
   - `npm test` und `npm run test:e2e` grün.
+
+### B-062: Stil-Fundament (Design-Overhaul)
+- Status: fertig
+- Aufwand: M
+- Idee: `src/draw-utils.js` bekommt die Helfer `part`, `poly`, `rr`, `ell`, `lit`, `shd`, `shadow` und die Palette-/Kontur-Konstanten aus `docs/STIL.md` (Zahlen in `src/config.js`).
+- Akzeptanzkriterien:
+  - Helfer mit Tests in `tests/render.test.js` (Farbmischung, Abdunkeln der Kontur).
+  - Bestehende Optik unverändert.
