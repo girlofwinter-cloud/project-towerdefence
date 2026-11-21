@@ -423,7 +423,7 @@ Reihenfolge ist Abhängigkeit: B-062 und B-063 zuerst, dann gemeinsame Sichtprü
   - Kontrast Text/Hintergrund mindestens 4,5:1.
 
 ### B-071: Wiese 1/7: Weg mit welligem Rand, Saum und heller Mitte (Design-Overhaul, Ziel Variante B)
-- Status: vorschlag
+- Status: offen
 - Aufwand: M
 - Idee: Zielbild: `docs/design/wiese-ziel-1x.png` und `-2x.png` (Entwurf Variante B des designers, eigene Zeichnung; Referenz war ein Kingdom-Rush-Screenshot, nicht im Repo). Weg bekommt welligen Rand (Kreiskette), dunkle Kontur, grünen Saum, Rillen, Randsteine und eine helle Wegmitte. Reihenfolge der sieben Wiesen-Einträge: B-071, B-077, B-078, B-079, B-080, B-081, B-082. Alles nur Zeichnen (`render*.js`, `decor.js`), alles Statische einmal in `bgCanvas`. Spiellogik, Wegverlauf und Baufelder bleiben unverändert.
 - Akzeptanzkriterien:
@@ -433,7 +433,7 @@ Reihenfolge ist Abhängigkeit: B-062 und B-063 zuerst, dann gemeinsame Sichtprü
   - Screenshots Desktop 1280x800 und Handy 390x844.
 
 ### B-077: Wiese 2/7: Baumrahmen am Rand (Design-Overhaul)
-- Status: vorschlag
+- Status: offen
 - Aufwand: M
 - Idee: Dichter, mehrfarbiger Rahmen aus runden Baumkronen (Laub, Apfel, Blüte, einzelne Tannen) mit dicker dunkler Kontur, nur im Randring. `decor.js` liefert die Positionen deterministisch. Ziel ca. 60 Kronen statt heute ca. 16 Bäume.
 - Akzeptanzkriterien:
@@ -442,7 +442,7 @@ Reihenfolge ist Abhängigkeit: B-062 und B-063 zuerst, dann gemeinsame Sichtprü
   - Alles im Hintergrund-Cache; Handy-Screenshot: Gegner und Türme bleiben lesbar.
 
 ### B-078: Wiese 3/7: Boden mit Flecken und Plateaus statt Schachbrett (Design-Overhaul)
-- Status: vorschlag
+- Status: offen
 - Aufwand: M
 - Idee: Boden aus gestapelten Flecken (je 4 Lagen für weiche Kanten, kein `shadowBlur`), in B zusätzlich Plateaus mit dunkler Kante (Höhenversatz) und Gras-Cluster.
 - Akzeptanzkriterien:
