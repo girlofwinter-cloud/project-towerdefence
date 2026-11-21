@@ -442,3 +442,11 @@ Neue Einträge werden unten angehängt. Bestehende Einträge werden nie geänder
 - Tests: nicht nötig
 - Entscheidungen: Prüfung ohne Schwerpunkt auf Desktop (1280x800, 1366x768) und Handy (390x844, 360x740), alle 4 Karten. Muss-Befunde: Turm-Panel am Handy außerhalb des Blickfelds und ohne Turmname, Panel am Desktop nur durch Scrollen erreichbar, Fähigkeitsknöpfe unter 44 px. Als `vorschlag` eingetragen: B-056 bis B-061 (Befunde 1 bis 5 gebündelt, Welten-Optik, Wellen-Vorschau, Lücken). Befunde "Nett" nur in B-061 gebündelt. Screenshots liegen im Scratchpad der Sitzung (`.../scratchpad/`, nicht im Repo).
 - Offen: Freigabe der Einträge durch den Menschen. Prüfung hatte Lücken (keine laufende Welle mit Effekten, kein Game-Over, kein Boss), siehe B-061.
+
+## 2026-11-21 · Design-Overhaul · Phase 1: Stilleitfaden
+- Rolle(n): orchestrator, designer
+- Branch: agent/design-stil (aufgesetzt auf agent/design-pruefung, PR #37)
+- Ergebnis: fertig (nur Doku, kein Code geändert)
+- Tests: nicht nötig
+- Entscheidungen: Der Mensch will eine Kingdom-Rush-artige Optik, gezeichnet im Canvas-Code (keine Fremd-Assets). Der `designer` lieferte einen Referenzbogen mit zwei Stilen; der Mensch wählte Stil B (Flat-Pop: drei Flächentöne, farbige Kontur 1,3 px). Der Designer hatte A empfohlen, weil die farbige Kontur auf hellem Boden verschwindet; in `docs/STIL.md` steht dafür eine Kontrastregel (Kontur nie heller als 35 %, kräftigerer Bodenschatten auf Eis/Wüste, 25 % Helligkeitsabstand Gegner/Weg). Neu: `docs/STIL.md`, Backlog B-062 bis B-075 (Status `vorschlag`).
+- Offen: Freigabe durch den Menschen; B-062/B-063 zuerst, dann Sichtprüfung. B-072/B-073 überschneiden sich mit B-043/B-044/B-059. Der Referenzbogen liegt nur im Scratchpad, nicht im Repo.
