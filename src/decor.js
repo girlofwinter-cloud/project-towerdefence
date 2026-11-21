@@ -5,7 +5,8 @@
 //  - Grosse Dekoration (Baum, Busch, Fels) nur auf Randkacheln des Spielfelds.
 //  - Im Inneren nur kleine Dekoration (Blumen, Grasbuschel, Kiesel), die flach bleibt.
 //  - Die Dekoration wird in den Hintergrund gezeichnet; gebaute Tuerme liegen darueber.
-import { COLS, ROWS, TILE, OBSTACLE_TREE_SHARE } from './config.js';
+import { COLS, ROWS, TILE, WIDTH, HEIGHT, OBSTACLE_TREE_SHARE, MAPS, TREE_FRAME } from './config.js';
+import { buildPath } from './path.js';
 
 // Dichten (Wahrscheinlichkeit pro Kachel, 0..1)
 export const BORDER_DECOR_CHANCE = 0.3;
@@ -65,4 +66,57 @@ export const LARGE_DECOR_RADIUS = { tree: 11, bush: 10, rock: 10 };
 // Hindernis-Art je Kachel (deterministisch): ueberwiegend Baeume, manchmal Felsen.
 export function obstacleKind(col, row) {
   return tileRand(col, row, 6) < OBSTACLE_TREE_SHARE ? 'tree' : 'rock';
+}
+
+// Kleinster Abstand eines Punkts zu den Wegsegmenten einer Karte (px).
+function distToWaypoints(points, x, y) {
+  let m = Infinity;
+  for (let i = 0; i < points.length - 1; i++) {
+    const a = points[i], b = points[i + 1], dx = b.x - a.x, dy = b.y - a.y;
+    const t = Math.max(0, Math.min(1, ((x - a.x) * dx + (y - a.y) * dy) / (dx * dx + dy * dy || 1)));
+    m = Math.min(m, Math.hypot(x - a.x - t * dx, y - a.y - t * dy));
+  }
+  return m;
+}
+
+// Baumrahmen (B-077): Kronen im Randring, deterministisch (tileRand, kein Math.random).
+// Rueckgabe: [{ x, y, r, row, shade, kind: 'leaf'|'apple'|'blossom'|'fir', seed }], hintere Reihe zuerst, darin kleines y zuerst.
+// Keine Krone beruehrt den Weg (Abstand >= r + pathMargin); sie ragt hoechstens maxOverhang ins Feld.
+// Spiellogik bleibt unberuehrt: jede Nicht-Weg-Kachel ist weiter bebaubar.
+export function treeFrame(mapId = 'meadow') {
+  const T = TREE_FRAME;
+  const points = buildPath(MAPS[mapId].waypoints, TILE).points;
+  const out = [];
+  // Seiten: Start, Richtung entlang des Rands, Richtung nach innen
+  const sides = [
+    { x: 0, y: 0, ax: 1, ay: 0, nx: 0, ny: 1, len: WIDTH },
+    { x: WIDTH, y: 0, ax: 0, ay: 1, nx: -1, ny: 0, len: HEIGHT },
+    { x: WIDTH, y: HEIGHT, ax: -1, ay: 0, nx: 0, ny: -1, len: WIDTH },
+    { x: 0, y: HEIGHT, ax: 0, ay: -1, nx: 1, ny: 0, len: HEIGHT },
+  ];
+  T.rows.forEach((row, ri) => sides.forEach((sd, rs) => {
+    const si = ri * 4 + rs; // eigener Hash-Strom je Reihe und Seite
+    let t = 4 + tileRand(si, 0, 40) * row.spacing * 0.5;
+    for (let i = 1; t < sd.len; i++) {
+      const r = row.radius[0] + tileRand(si, i, 41) * (row.radius[1] - row.radius[0]);
+      // Mitte so weit innen, dass der Kronenrand hoechstens maxOverhang ins Feld ragt
+      const f = row.depth[0] + tileRand(si, i, 42) * (row.depth[1] - row.depth[0]);
+      const depth = Math.max(0, T.maxOverhang - r) * f;
+      const x = sd.x + sd.ax * t + sd.nx * depth;
+      const y = sd.y + sd.ay * t + sd.ny * depth;
+      if (distToWaypoints(points, x, y) >= r + T.pathMargin) {
+        const q = tileRand(si, i, 43);
+        let acc = 0, k = 0;
+        while (k < T.kindShare.length - 1 && q >= (acc += T.kindShare[k])) k++;
+        out.push({ x, y, r, row: ri, shade: row.shade, kind: ['leaf', 'apple', 'blossom', 'fir'][k], seed: tileHash(si, i, 44) });
+      }
+      t += row.spacing + tileRand(si, i, 45) * T.spacingJitter;
+    }
+  }));
+  return out.sort((a, b) => a.row - b.row || a.y - b.y || a.x - b.x);
+}
+
+// Liegt ein Punkt im Bereich einer Krone des Rahmens? Dann entfaellt dort der alte Einzelbaum (kein Doppel).
+export function coveredByCrown(crowns, x, y) {
+  return crowns.some((c) => Math.hypot(c.x - x, c.y - y) < c.r + TREE_FRAME.coverMargin);
 }

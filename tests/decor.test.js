@@ -183,3 +183,36 @@ test('decorFor: 3-Parameter-Aufruf unveraendert', () => {
     assert.deepEqual(decorFor(c, r, b), decorFor(c, r, b, new Set()));
   }
 });
+
+// ---------- Baumrahmen (B-077) ----------
+test('treeFrame: mindestens 60 Kronen in mehreren Reihen, deterministisch, Kronen im Randring', async () => {
+  const { treeFrame } = await import('../src/decor.js');
+  const { TREE_FRAME, WIDTH, HEIGHT } = await import('../src/config.js');
+  const a = treeFrame('meadow');
+  assert.ok(a.length >= 60, `nur ${a.length} Kronen`);
+  assert.deepEqual(a, treeFrame('meadow'));
+  const kinds = new Set(a.map((c) => c.kind));
+  for (const k of ['leaf', 'apple', 'blossom', 'fir']) assert.ok(kinds.has(k), `Art ${k} fehlt`);
+  assert.ok(new Set(a.map((c) => c.row)).size >= 2, 'mehrere Reihen');
+  for (const c of a) {
+    const overhang = Math.min(c.x, c.y, WIDTH - c.x, HEIGHT - c.y) + c.r;
+    assert.ok(overhang <= TREE_FRAME.maxOverhang + 1e-9, `Krone ragt ${overhang} px ins Feld`);
+  }
+});
+
+test('treeFrame: keine Krone schneidet den Weg (inkl. Wegrand), Ein- und Ausgang bleiben frei', async () => {
+  const { treeFrame } = await import('../src/decor.js');
+  const { pathReach } = await import('../src/render-path.js');
+  for (const id of Object.keys(MAPS)) {
+    const pts = MAPS[id].waypoints.map(([c, r]) => ({ x: (c + 0.5) * TILE, y: (r + 0.5) * TILE }));
+    for (const c of treeFrame(id)) {
+      let m = Infinity;
+      for (let i = 0; i < pts.length - 1; i++) {
+        const p = pts[i], q = pts[i + 1], dx = q.x - p.x, dy = q.y - p.y;
+        const t = Math.max(0, Math.min(1, ((c.x - p.x) * dx + (c.y - p.y) * dy) / (dx * dx + dy * dy)));
+        m = Math.min(m, Math.hypot(c.x - p.x - t * dx, c.y - p.y - t * dy));
+      }
+      assert.ok(m >= c.r + pathReach(), `${id}: Krone ${c.x.toFixed(0)},${c.y.toFixed(0)} nur ${m.toFixed(1)} px vom Weg`);
+    }
+  }
+});

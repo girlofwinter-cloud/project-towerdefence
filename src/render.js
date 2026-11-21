@@ -7,7 +7,8 @@ import { drawArrowTower } from './render-arrow.js';
 import { recoilOffset } from './tower-fx.js';
 import { drawEnemy, drawHealAura } from './render-enemies.js';
 import { updateFx, shakeX, shakeY, drawProjectileFx, drawParticles } from './render-fx.js';
-import { tileHash, tileRand, decorFor, obstacleKind, LARGE_DECOR_RADIUS } from './decor.js';
+import { drawTreeFrame } from './render-trees.js';
+import { tileHash, tileRand, decorFor, obstacleKind, treeFrame, coveredByCrown, LARGE_DECOR_RADIUS } from './decor.js';
 
 export function render(ctx, state, ui) {
   // Partikel aus dem Zustand ableiten (nur lesen), danach Shake-Versatz bestimmen.
@@ -74,7 +75,9 @@ function paintBackground(ctx, state) {
   ctx.save();
   drawGrass(ctx, MAPS[state.mapId]?.theme);
   drawPath(ctx, state);
-  drawDecor(ctx, state);
+  const crowns = MAPS[state.mapId]?.theme?.treeFrame ? treeFrame(state.mapId) : null;
+  drawDecor(ctx, state, crowns);
+  if (crowns) drawTreeFrame(ctx, crowns);
   for (const path of state.paths || [state.path]) {
     const pts = path.points;
     drawGate(ctx, pts[0], pts[1]);
@@ -114,7 +117,8 @@ function drawPath(ctx, state) {
 }
 
 // Dekoration: Regeln stehen in decor.js (gross nur am Rand, innen nur klein, nie auf dem Weg).
-function drawDecor(ctx, state) {
+// crowns: Der Baumrahmen ersetzt die einzelnen Rand-Baeume, soweit eine Krone sie verdeckt (kein Doppel).
+function drawDecor(ctx, state, crowns) {
   for (let r = 0; r < ROWS; r++) {
     for (let c = 0; c < COLS; c++) {
       if (state.obstacles && state.obstacles.has(`${c},${r}`)) {
@@ -125,6 +129,7 @@ function drawDecor(ctx, state) {
       if (!d) continue;
       const x = c * TILE + d.ox * TILE;
       const y = r * TILE + d.oy * TILE;
+      if (crowns && d.kind === 'tree' && coveredByCrown(crowns, x, y)) continue;
       if (d.kind === 'tree') drawTree(ctx, x, y, d.variant);
       else if (d.kind === 'bush') drawBush(ctx, x, y, d.variant);
       else if (d.kind === 'rock') drawRock(ctx, x, y, d.variant);

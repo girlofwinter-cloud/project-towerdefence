@@ -77,7 +77,8 @@ test('Render: gezeichnete Dekoration verlaesst ihre Kachel nicht und ragt nie au
   try {
     // frische Modulinstanz, damit kein Cache aus anderen Tests verwendet wird
     const { render } = await import('../src/render.js?geometrie');
-    const s = createGame();
+    // Karte ohne Baumrahmen: hier gilt die alte Einzel-Deko (auf der Wiese ersetzt der Rahmen die Randbaeume)
+    const s = createGame({ mapId: 'fork' });
     render({ drawImage() {} }, s, {});
     const eps = 1e-9;
     const kinds = {};
@@ -97,6 +98,75 @@ test('Render: gezeichnete Dekoration verlaesst ihre Kachel nicht und ragt nie au
     }
     assert.ok(checked > 100);
     for (const k of ['tree', 'bush', 'rock', 'flower', 'tuft', 'pebble']) assert.ok(kinds[k] > 0, `Art ${k} nie gezeichnet`);
+  } finally { delete globalThis.document; }
+});
+
+test('Render (Wiese mit Baumrahmen): uebrige Einzel-Deko verlaesst ihre Kachel nicht und liegt nie auf dem Weg', async () => {
+  const prims = [];
+  const props = {};
+  const ctx = new Proxy({}, {
+    get(_, k) {
+      if (k in props) return props[k];
+      return (...a) => {
+        if (k === 'arc') prims.push({ k, x: a[0], y: a[1], rx: a[2], ry: a[2] });
+        if (k === 'ellipse') prims.push({ k, x: a[0], y: a[1], rx: a[2], ry: a[3] });
+        if (k === 'moveTo' || k === 'lineTo') prims.push({ k, x: a[0], y: a[1], rx: 0, ry: 0, stroke: props.strokeStyle });
+      };
+    },
+    set(_, k, v) { props[k] = v; return true; },
+  });
+  globalThis.document = { createElement: () => ({ width: 0, height: 0, getContext: () => ctx }) };
+  try {
+    // frische Modulinstanz, damit kein Cache aus anderen Tests verwendet wird
+    const { render } = await import('../src/render.js?geometrie-wiese');
+    // Wiese: Kronen nutzen roundRect (keine arc/ellipse), also pruefen arc/ellipse nur die Einzel-Deko
+    const s = createGame({ mapId: 'meadow' });
+    render({ drawImage() {} }, s, {});
+    const eps = 1e-9;
+    const kinds = {};
+    let checked = 0;
+    for (const p of prims) {
+      const c = Math.floor(p.x / TILE), r = Math.floor(p.y / TILE);
+      if (c < 0 || r < 0 || c >= COLS || r >= ROWS) continue;
+      if (s.blocked.has(`${c},${r}`)) continue; // Kiesel des Wegs selbst
+      if (p.k === 'moveTo' || p.k === 'lineTo') { if (p.stroke !== '#5da654') continue; } // nur Grasbuschel-Dekoration, keine Halme
+      const d = decorFor(c, r, s.blocked);
+      assert.ok(d, `Form ohne Dekoration auf ${c},${r}`);
+      checked++;
+      kinds[d.kind] = (kinds[d.kind] || 0) + 1;
+      const x0 = p.x - p.rx, x1 = p.x + p.rx, y0 = p.y - p.ry, y1 = p.y + p.ry;
+      assert.ok(x0 >= c * TILE - eps && x1 <= (c + 1) * TILE + eps && y0 >= r * TILE - eps && y1 <= (r + 1) * TILE + eps,
+        `${d.kind} auf ${c},${r} verlaesst die Kachel: x ${x0}..${x1}, y ${y0}..${y1}`);
+    }
+    assert.ok(checked > 100);
+    for (const k of ['bush', 'rock', 'flower', 'tuft', 'pebble']) assert.ok(kinds[k] > 0, `Art ${k} nie gezeichnet`);
+  } finally { delete globalThis.document; }
+});
+
+test('Render: Baumrahmen mit unbekannter/fehlender mapId wirft nicht, treeFrame liefert fuer alle Karten Daten', async () => {
+  const { treeFrame } = await import('../src/decor.js');
+  const { MAPS } = await import('../src/config.js');
+  const { render } = await import('../src/render.js?unbekannt');
+  globalThis.document = { createElement() { const m = mockCtx(); return { width: 0, height: 0, getContext: () => m.ctx }; } };
+  try {
+    for (const id of Object.keys(MAPS)) assert.ok(Array.isArray(treeFrame(id)));
+    const s = createGame();
+    for (const id of [undefined, 'gibtsnicht']) { s.mapId = id; render(mockCtx().ctx, s, {}); }
+    assert.ok(treeFrame(undefined).length > 0, 'Default ist die Wiese');
+  } finally { delete globalThis.document; }
+});
+
+test('Render: Kartenwechsel baut den Hintergrund-Cache neu (Kronen nur auf der Wiese)', async () => {
+  const { render } = await import('../src/render.js?kartenwechsel');
+  const offscreen = [];
+  globalThis.document = { createElement() { const m = mockCtx(); const c = { width: 0, height: 0, getContext: () => m.ctx, m }; offscreen.push(c); return c; } };
+  try {
+    const main = mockCtx();
+    render(main.ctx, createGame({ mapId: 'fork' }), {});
+    const forkCalls = offscreen[offscreen.length - 1].m.counts.roundRect || 0;
+    render(main.ctx, createGame({ mapId: 'meadow' }), {});
+    const meadowCalls = offscreen[offscreen.length - 1].m.counts.roundRect || 0;
+    assert.ok(meadowCalls > forkCalls + 1000, `Wiese ${meadowCalls} vs Fork ${forkCalls}`);
   } finally { delete globalThis.document; }
 });
 
@@ -638,4 +708,25 @@ test('Weg: drawPathStyled ist deterministisch, endlich und deckt Randecken und m
     const paths = s.paths || [s.path];
     assert.deepEqual(run(paths, MAPS[id].theme), run(paths, MAPS[id].theme), `${id} deterministisch`);
   }
+});
+
+// ---------- Baumrahmen (B-077) ----------
+test('Baumrahmen: nur im Hintergrund-Cache, Frame-Pfad zeichnet keine Kronen, Aufbau schnell', async () => {
+  const { render } = await import('../src/render.js?baumrahmen');
+  const offscreen = [];
+  globalThis.document = { createElement() { const m = mockCtx(); const c = { width: 0, height: 0, getContext: () => m.ctx, m }; offscreen.push(c); return c; } };
+  try {
+    const s = createGame();
+    const main = mockCtx();
+    const t0 = performance.now();
+    render(main.ctx, s, {});
+    const ms = performance.now() - t0;
+    const off = offscreen[offscreen.length - 1];
+    const n = off.m.counts.roundRect;
+    assert.ok(n > 100 * 20, `Kronen im Cache (${n} Kreise)`);
+    render(main.ctx, s, {});
+    assert.equal(off.m.counts.roundRect, n, 'zweiter Frame zeichnet keine Kronen neu');
+    for (const k of ['roundRect', 'arc', 'fill']) assert.equal(main.counts[k] || 0, 0, `Frame-Pfad zeichnet ${k}`);
+    assert.ok(ms < 60, `Aufbau ${ms.toFixed(1)} ms`);
+  } finally { delete globalThis.document; }
 });

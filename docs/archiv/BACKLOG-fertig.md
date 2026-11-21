@@ -257,3 +257,12 @@ Agents lesen diese Datei nur bei konkretem Bedarf.
   - Gegner haben mindestens 25 % Helligkeitsabstand zur Wegmitte (Test mit Farbwerten aus `config.js`).
   - Weg im Hintergrund-Cache; kein Zeichnen des Weges im Frame-Pfad (render-Test).
   - Screenshots Desktop 1280x800 und Handy 390x844.
+
+### B-077: Wiese 2/7: Baumrahmen am Rand (Design-Overhaul)
+- Status: fertig
+- Aufwand: M
+- Idee: Dichter, mehrfarbiger Rahmen aus runden Baumkronen (Laub, Apfel, Blüte, einzelne Tannen) mit dicker dunkler Kontur, nur im Randring. `decor.js` liefert die Positionen deterministisch. Ziel ca. 60 Kronen statt heute ca. 16 Bäume.
+- Akzeptanzkriterien:
+  - Unit-Test: keine Krone schneidet den Weg; Überhang ins Feld höchstens 36 px (im Durchlauf von 16 px angehoben: Zielbild ist tiefer).
+  - Mindestens 40 Bäume im Randring; Positionen deterministisch (gleicher Seed, gleiches Ergebnis).
+  - Alles im Hintergrund-Cache; Handy-Screenshot: Gegner und Türme bleiben lesbar.
