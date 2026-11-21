@@ -307,5 +307,24 @@ export const STYLE = {
   palette: {
     gold: '#f4c542', goldDark: '#b07a14', red: '#d4503f', heart: '#e8455a', blue: '#4f7fc8',
     ice: '#7fd8f4', iceLight: '#bff0ff', wood: '#c58f55', woodDark: '#8a5a34', stone: '#b3adaa',
+    skin: '#f2c9a0', leaf: '#4a8a3a', leafDark: '#3c7a30', dark: '#4a3030', pole: '#6b4a2b', string: '#f0e6d2',
   },
+};
+
+// Pfeilturm im Flat-Pop-Stil (B-063). Alle Maße in px, Ursprung = Bodenmitte des Turms, y nach oben negativ.
+export const ARROW_TOWER = {
+  scale: 0.85,              // Gesamtskalierung (Turm ca. 30 px breit, ca. 58 px hoch)
+  groundDy: 13,             // Boden liegt so weit unter der Turmmitte (x, y)
+  shadowR: 15,              // Radius des Bodenschattens
+  headY: -34,               // Drehpunkt des Bogens (Brust des Schützen)
+  roofBaseY: -41,           // Unterkante des Dachs
+  roofHeight: [17, 19, 22], // Dachhöhe je Stufe
+  roofHalf: [17, 17.5, 19], // halbe Dachbreite je Stufe
+  poleHeight: [0, 6, 5],    // Wimpelstange über dem Dach je Stufe (0 = kein Wimpel)
+  bowRadius: 8,             // Bogenradius
+  bowSpan: 1.1,             // halber Öffnungswinkel des Bogens (rad)
+  bowWidth: 1.6,            // Bogenbreite
+  iconScale: 0.75,          // Skalierung in der Shop-Vorschau (40x40-Platz, Turm ist höher)
+  iconDy: 9,                // Verschiebung der Shop-Vorschau nach unten in px
+  arrowLength: 11,          // Länge des aufgelegten Pfeils
 };

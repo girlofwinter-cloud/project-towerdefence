@@ -131,9 +131,10 @@ async function recordTower(type, level, cooldown = 0, angle = 0, selected = fals
   const calls = [];
   let depth = 0;
   const stack = [];
-  let ox = 0, oy = 0, rotated = false, slack = 0;
+  let ox = 0, oy = 0, rotated = false, slack = 0, sc = 1;
   const bounds = { minX: Infinity, maxX: -Infinity, minY: Infinity, maxY: -Infinity };
-  const pt = (x, y, rad = 0, radY = rad) => {
+  const pt = (x0, y0, rad0 = 0, radY0 = rad0) => {
+    const x = x0 * sc, y = y0 * sc, rad = rad0 * sc, radY = radY0 * sc;
     if (rotated) {
       // beweglicher Teil: Radius um den Drehpunkt (Drehwinkel egal)
       const d = Math.hypot(x, y) + rad + slack;
@@ -149,9 +150,10 @@ async function recordTower(type, level, cooldown = 0, angle = 0, selected = fals
       if (k in props) return props[k];
       return (...a) => {
         calls.push(k + ':' + a.map((v) => (typeof v === 'number' ? v.toFixed(2) : v)).join(',') + '|' + props.fillStyle + '|' + props.strokeStyle);
-        if (k === 'save') { depth++; stack.push([ox, oy, rotated, slack]); }
-        else if (k === 'restore') { depth--; assert.ok(depth >= 0); [ox, oy, rotated, slack] = stack.pop(); }
-        else if (k === 'translate') { if (rotated) { /* Rueckstoss zieht nur zurueck: Reichweite nach vorn wird kleiner */ } else { ox += a[0]; oy += a[1]; } }
+        if (k === 'save') { depth++; stack.push([ox, oy, rotated, slack, sc]); }
+        else if (k === 'restore') { depth--; assert.ok(depth >= 0); [ox, oy, rotated, slack, sc] = stack.pop(); }
+        else if (k === 'translate') { if (rotated) { /* Rueckstoss zieht nur zurueck: Reichweite nach vorn wird kleiner */ } else { ox += a[0] * sc; oy += a[1] * sc; } }
+        else if (k === 'scale') sc *= a[0];
         else if (k === 'rotate') rotated = true;
         else if (k === 'fillRect' || k === 'strokeRect') { pt(a[0], a[1]); pt(a[0] + a[2], a[1] + a[3]); }
         else if (k === 'arc') pt(a[0], a[1], a[2]);
@@ -165,9 +167,13 @@ async function recordTower(type, level, cooldown = 0, angle = 0, selected = fals
   return { t, calls, depth, props, bounds, print: calls.join('\n') };
 }
 
+// Pfeilturm: hoher Turm, darf bis ca. 58 px ueber dem Boden (= ca. 26 px ueber der Kachel) ragen
+const ARROW_TOP = 28;
+
 test('Turm-Zeichnung: alle Typen/Stufen ohne Fehler, ausgewogen, innerhalb der Kachel', async () => {
   const TOL_UP = 4; // bewegliche Teile duerfen beim Zielen max. 4 px ueber den oberen Kachelrand ragen
   for (const type of Object.keys(TOWER_TYPES)) {
+    const tolUp = type === 'arrow' ? ARROW_TOP : TOL_UP; // Pfeilturm (B-063) ragt als hoher Turm ueber die Kachel
     for (let level = 1; level <= 3; level++) {
       for (const cooldown of [0, 0.5, TOWER_TYPES[type].rate]) {
         const rec = await recordTower(type, level, cooldown, 0.7);
@@ -176,7 +182,7 @@ test('Turm-Zeichnung: alle Typen/Stufen ohne Fehler, ausgewogen, innerhalb der K
         const x0 = rec.t.col * TILE, y0 = rec.t.row * TILE;
         const b = rec.bounds;
         assert.ok(b.minX >= x0 && b.maxX <= x0 + TILE, `${type} L${level}: x ${b.minX}..${b.maxX}`);
-        assert.ok(b.minY >= y0 - TOL_UP && b.maxY <= y0 + TILE, `${type} L${level}: y ${b.minY}..${b.maxY}`);
+        assert.ok(b.minY >= y0 - tolUp && b.maxY <= y0 + TILE, `${type} L${level}: y ${b.minY}..${b.maxY}`);
       }
     }
   }
@@ -255,6 +261,7 @@ async function worldExtent(type, level, cooldown, angle) {
         if (k === 'save') stack.push(M);
         else if (k === 'restore') M = stack.pop();
         else if (k === 'translate') M = mul(M, [1, 0, 0, 1, a[0], a[1]]);
+        else if (k === 'scale') M = mul(M, [a[0], 0, 0, a[1], 0, 0]);
         else if (k === 'rotate') { const c = Math.cos(a[0]), sn = Math.sin(a[0]); M = mul(M, [c, sn, -sn, c, 0, 0]); }
         else if (k === 'fillRect' || k === 'strokeRect') { P(a[0], a[1]); P(a[0] + a[2], a[1]); P(a[0], a[1] + a[3]); P(a[0] + a[2], a[1] + a[3]); }
         else if (k === 'arc') { const full = Math.abs(a[4] - a[3]) >= 2 * Math.PI - 1e-9; for (let i = 0; i <= 64; i++) { const q = a[3] + (a[4] - a[3]) * i / 64; P(a[0] + a[2] * Math.cos(q), a[1] + a[2] * Math.sin(q)); } void full; }
@@ -273,7 +280,7 @@ async function worldExtent(type, level, cooldown, angle) {
 test('Turm: echte Weltkoordinaten bleiben links/rechts/unten in der Kachel, oben max. 3,5 px Ueberstand (nur Pfeil/Scharfschuetze)', async () => {
   const angles = [0, Math.PI / 4, Math.PI / 2, Math.PI, -Math.PI / 2, 3 * Math.PI / 2, 5.5];
   for (const type of Object.keys(TOWER_TYPES)) {
-    const maxTop = type === 'sniper' ? 3.5 : type === 'arrow' ? 1.5 : 0;
+    const maxTop = type === 'sniper' ? 3.5 : type === 'arrow' ? ARROW_TOP : 0;
     for (let level = 1; level <= 3; level++) {
       for (const angle of angles) {
         for (const frac of [0, 0.5, 1]) {
@@ -520,5 +527,29 @@ test('Stil-Helfer: rr mit winzigem w/h und grossem Radius bleibt endlich und aus
     rr(m.ctx, 0, 0, w, h, r, '#ffffff');
     assert.equal(m.depth, 0);
     assert.equal(m.counts.stroke, 1);
+  }
+});
+
+test('Render: Pfeilturm Stufe 1-3 im neuen Stil, Stufen unterscheiden sich, andere Typen unveraendert', async () => {
+  const { drawTower } = await import('../src/render.js');
+  const draw = (type, level) => {
+    const counts = {};
+    const m = mockCtx(counts);
+    const fills = new Set();
+    const ctx = new Proxy(m.ctx, {
+      get: (t, k) => t[k],
+      set: (t, k, v) => { if (k === 'fillStyle') fills.add(v); t[k] = v; return true; },
+    });
+    drawTower(ctx, { type, x: 100, y: 100, level, cooldown: 0.3, angle: 0.7 }, true);
+    assert.equal(m.depth, 0, 'save/restore ausgewogen');
+    return { total: Object.values(counts).reduce((a, b) => a + b, 0), fills };
+  };
+  const l1 = draw('arrow', 1);
+  const l2 = draw('arrow', 2);
+  const l3 = draw('arrow', 3);
+  assert.ok(l2.total > l1.total && l3.total > l2.total, 'mehr Zeichenoperationen je Stufe');
+  assert.ok(l3.fills.has('#f4c542') && !l1.fills.has('#f4c542'), 'Gold nur auf Stufe 3');
+  for (const type of ['cannon', 'frost', 'sniper', 'lightning']) {
+    assert.ok(draw(type, 1).total > 0 && draw(type, 3).total > draw(type, 1).total);
   }
 });

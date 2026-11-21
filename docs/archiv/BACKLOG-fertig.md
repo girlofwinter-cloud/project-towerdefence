@@ -238,3 +238,12 @@ Agents lesen diese Datei nur bei konkretem Bedarf.
 - Akzeptanzkriterien:
   - Helfer mit Tests in `tests/render.test.js` (Farbmischung, Abdunkeln der Kontur).
   - Bestehende Optik unverändert.
+
+### B-063: Pfeilturm im neuen Stil als Referenz (Design-Overhaul)
+- Status: fertig
+- Aufwand: S
+- Idee: Pfeilturm Stufe 1 bis 3 mit eigener Form im Flat-Pop-Stil.
+- Akzeptanzkriterien:
+  - Bei 1x und 0,75x erkennbar vom Boden getrennt (Screenshot, auch auf Eis).
+  - Drehung zum Ziel und Rückstoß unverändert.
+  - Zeichenzeit mit 20 Türmen nicht merklich höher (Messung).

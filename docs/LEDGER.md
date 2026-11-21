@@ -460,3 +460,13 @@ Neue Einträge werden unten angehängt. Bestehende Einträge werden nie geänder
 - Review: APPROVE (keine Muss-Punkte; Hinweise als B-076)
 - Entscheidungen: `src/draw-utils.js` hat jetzt die Stil-Helfer `lit`, `shd`, `brightness`, `outlineOf`, `part`, `poly`, `rr`, `ell`, `shadow` (Flat-Pop nach `docs/STIL.md`: drei Flächentöne per Clip und versetzter Füllung, keine Verläufe, kein shadowBlur). Alle Zahlen und die gemeinsame Palette stehen im neuen Block `STYLE` in `src/config.js`; Welt-, UI- und Gegnerfarben sind noch nicht darin (kommen mit den jeweiligen Einträgen). Die Helfer sind noch nirgends eingebunden, die Optik ist unverändert.
 - Offen: Sichtprüfung der Helfer mit B-063; Breite des Schattenstreifens (ca. 1,4 px statt 2 px) und Hex-Kurzformen siehe B-076.
+
+## 2026-11-21 · B-063 · Pfeilturm im neuen Stil als Referenz (Design-Overhaul)
+- Rolle(n): orchestrator, developer, tester, reviewer
+- Branch: agent/pfeilturm-stil
+- Runden: 1 von max. 2
+- Ergebnis: fertig
+- Tests: 196 Unit-Tests bestanden (1 neuer; bestehende Grenz-Tests angepasst, siehe Entscheidungen); Browser-Tests in der CI
+- Review: APPROVE (keine Muss-Punkte; Hinweise als B-084), Tester: PASS
+- Entscheidungen: Neue Datei `src/render-arrow.js` zeichnet den Pfeilturm (Stufe 1 bis 3) mit den Helfern aus B-062; `drawTower` ruft sie nur für `arrow` auf, die anderen Typen bleiben unverändert. Höhe ca. 60 px, Breite ca. 29 px, Stufen über die Form (Dach, Banner, Gold). Shop-Icon beim Pfeilturm mit Skalierung 0,75 (`ARROW_TOWER.iconScale`). **Bestehende Tests angepasst:** Die Helfer `recordTower`/`worldExtent` kennen jetzt `ctx.scale` (nötig, sonst falsche Grenzen). Für den Pfeil gilt oben eine eigene Toleranz `ARROW_TOP = 28` (vorher 1,5 bis 3,5 px), weil der Turm bewusst über die Kachel ragt (gemessen ca. 25 px, ca. 3 px Luft). Links, rechts, unten und alle anderen Typen bleiben unverändert streng; Review: vertretbar, keine Abschwächung. Zeichenzeit im Mock ca. 20 µs je Turm (Faktor ca. 24 gegenüber vorher), ca. 0,4 ms für 20 Türme; Sprite-Cache siehe B-075. Der Mensch fand den Unterschied zum alten Turm klein und wünschte die kräftige Wiese (Variante B); das folgt mit B-071 ff. B-079 bis B-082 hat der Mensch zusätzlich freigegeben mit der Anweisung, sie nacheinander zu entwickeln, per PR zu mergen und nicht nachzufragen (B-083 ausgenommen).
+- Offen: Aufräumen und Hinweise in B-084. Shop-Vorschau nicht im Browser geprüft.

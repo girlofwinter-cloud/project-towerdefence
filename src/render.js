@@ -2,6 +2,7 @@
 import { TILE, COLS, ROWS, WIDTH, HEIGHT, TOWER_TYPES, MAPS, ABILITIES } from './config.js';
 import { towerStats, enemyPath } from './game.js';
 import { rect, tri, disc } from './draw-utils.js';
+import { drawArrowTower } from './render-arrow.js';
 import { recoilOffset } from './tower-fx.js';
 import { drawEnemy, drawHealAura } from './render-enemies.js';
 import { updateFx, shakeX, shakeY, drawProjectileFx, drawParticles } from './render-fx.js';
@@ -477,6 +478,16 @@ export function drawTower(ctx, t, selected) {
   const bw = BASE_HALF + (t.level - 1) * BASE_GROW;
   // Rückstoß aus der Abklingzeit (game.js setzt cooldown beim Schuss auf das Intervall)
   const rec = recoilOffset(t.cooldown / def.rate) * RECOIL_PX[t.type];
+  if (t.type === 'arrow') {
+    // Pfeilturm im Flat-Pop-Stil (eigene Datei, eigener Bodenschatten)
+    drawArrowTower(ctx, x, y, t.level, t.angle, rec, def.color);
+    if (selected) {
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(x - 18, y - 18, 36, 36);
+    }
+    return;
+  }
   ctx.save();
   // Schatten
   ctx.fillStyle = TOWER_SHADOW;
