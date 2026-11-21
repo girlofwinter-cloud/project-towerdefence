@@ -922,3 +922,54 @@ test('Wiesen-Licht: Abdunklung begrenzt, nur Wiese, Gradienten nur im Cache, Auf
     assert.ok(ms < 60, `Aufbau ${ms.toFixed(1)} ms`);
   } finally { delete globalThis.document; }
 });
+
+test('B-082: Insel wird im Frame-Pfad mit dem Turm gezeichnet (nur Wiese), nicht im Hintergrund-Cache', async () => {
+  const { MAPS } = await import('../src/config.js');
+  const { render } = await import('../src/render.js?insel');
+  assert.equal(MAPS.meadow.theme.islands, true);
+  for (const id of Object.keys(MAPS)) if (id !== 'meadow') assert.ok(!MAPS[id].theme?.islands, `${id} ohne Inseln`);
+  const offscreen = [];
+  globalThis.document = { createElement() { const m = mockCtx(); const c = { width: 0, height: 0, getContext: () => m.ctx, m }; offscreen.push(c); return c; } };
+  try {
+    const frame = (s, ui = {}) => { const m = mockCtx(); render(m.ctx, s, ui); return m.counts.ellipse || 0; };
+    const build = (s) => { s.gold = 9999; for (const [c, r] of [[3, 1], [5, 1], [7, 1]]) assert.ok(buildTower(s, 'cannon', c, r).ok, `${s.mapId} ${c},${r}`); };
+    const s = createGame({ mapId: 'meadow' });
+    const empty = frame(s);
+    const cache = offscreen[offscreen.length - 1];
+    const bgEll = cache.m.counts.ellipse || 0;
+    build(s);
+    const withTowers = frame(s);
+    assert.equal(cache.m.counts.ellipse || 0, bgEll, 'Cache enthält keine Insel');
+    assert.ok(withTowers > empty, 'Insel im Frame-Pfad');
+    assert.equal(frame(s), withTowers, 'zweiter Frame zeichnet die Insel erneut');
+    // gleiche Türme auf dem Wald: weniger Ellipsen pro Turm (keine Inseln)
+    const f = createGame({ mapId: 'forest' });
+    const forestEmpty = frame(f);
+    build(f);
+    assert.ok(withTowers - empty > frame(f) - forestEmpty, 'Wiese zeichnet je Turm zusätzlich eine Insel');
+    // Vorschau: gültig und ungültig bekommen eine Insel (nur Wiese)
+    const hover = (map, ok) => frame(createGame({ mapId: map }), { buildType: 'cannon', hover: { col: 3, row: 1, ok } });
+    assert.ok(hover('meadow', true) > frame(createGame({ mapId: 'meadow' })));
+    assert.ok(hover('meadow', false) > frame(createGame({ mapId: 'meadow' })));
+  } finally { delete globalThis.document; }
+});
+
+test('B-082: Reichweitenkreis ist Ring mit dezenter Fläche; drawTower (Shop-Vorschau) zeichnet keine Insel', async () => {
+  const { RANGE_STYLE } = await import('../src/config.js');
+  const { render, drawTower } = await import('../src/render.js?reichweite');
+  assert.ok(RANGE_STYLE.fillAlpha <= RANGE_STYLE.maxFillAlpha && RANGE_STYLE.maxFillAlpha <= 0.1);
+  assert.ok(RANGE_STYLE.ringAlpha > RANGE_STYLE.fillAlpha * 4, 'Ring deutlich kräftiger als Fläche');
+  assert.ok(RANGE_STYLE.ringWidth >= 2);
+  const s = createGame({ mapId: 'meadow' });
+  s.gold = 9999;
+  const { tower } = buildTower(s, 'cannon', 3, 1);
+  const strokes = [];
+  const m = mockCtx();
+  const spy = new Proxy(m.ctx, { get(t, k) { return k === 'stroke' ? () => strokes.push([m.props.strokeStyle, m.props.lineWidth]) : t[k]; }, set(t, k, v) { t[k] = v; return true; } });
+  render(spy, s, { selectedTowerId: tower.id });
+  assert.ok(strokes.some(([c, w]) => c === `rgba(255,255,255,${RANGE_STYLE.ringAlpha})` && w === RANGE_STYLE.ringWidth), 'Ring gezeichnet');
+  const a = mockCtx(), b = mockCtx();
+  drawTower(a.ctx, tower, false);
+  render(b.ctx, s, {});
+  assert.ok((b.counts.ellipse || 0) > (a.counts.ellipse || 0), 'drawTower allein ohne Insel');
+});

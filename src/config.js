@@ -40,7 +40,7 @@ export const MAPS = {
       [20, 11],
     ],
     // B-071: Wegpalette der Wiese (STIL.md); Wald, Eis und Fork nutzen vorerst PATH_STYLE.colors.
-    theme: { treeFrame: true, ground: true, accents: true, light: true, decorStyle: 'flatpop', path: { main: '#e2c88f', edge: '#8f6a3b', outline: '#4a3418', mid: '#ecd5a0', fringe: '#6fbf4e' } },
+    theme: { treeFrame: true, ground: true, accents: true, light: true, islands: true, decorStyle: 'flatpop', path: { main: '#e2c88f', edge: '#8f6a3b', outline: '#4a3418', mid: '#ecd5a0', fringe: '#6fbf4e' } },
   },
   forest: {
     name: 'Wald',
@@ -486,4 +486,26 @@ export const ACCENT_STYLE = {
   wood: '#c58f55', woodDark: '#8a5a34', gate: '#6b4a2b', wellRoof: '#d4503f',
   water: '#5aa9d6', bank: '#6a8a3e', mud: '#8a6a42', pad: '#4aa84a', padFlower: '#ff8fb1', padCenter: '#ffe07a', reed: '#4d8a3a', reedHead: '#7a4a2a',
   towerW: 14, towerBody: 22, towerRoof: 10, wallHeight: 16, merlon: [8, 5], merlonStep: 11, gateW: 16, gateH: 12,
+};
+
+// Bauplatz-Inseln der Wiese (B-082): Gras-Plateau mit Kontur und kurzer Wand unter jedem Turm, blasse Vorschau beim Hover.
+// Nur Optik im Frame-Pfad (Türme sind dynamisch), aktiv nur mit MAPS.<id>.theme.islands. Maße in px bei 1x.
+export const ISLAND_STYLE = {
+  offsetY: 11,            // Mittelpunkt der Insel unterhalb der Turmmitte
+  rx: 30, ry: 15,         // Halbachsen der Grasfläche
+  wall: 4,                // Höhe der Wand unter der Grasfläche
+  outline: 1.5,           // Konturbreite
+  colors: { shadow: '43,27,61', outline: '47,106,44', wall: '58,125,50', top: '116,193,87', light: '147,217,107' },
+  shadowAlpha: 0.3,       // Schlagschatten rechts unten
+  ghostAlpha: 0.45,       // Deckkraft der Vorschau-Insel (Hover, gültig)
+  badTint: '255,60,60',   // Rötung bei ungültiger Kachel
+  badAlpha: 0.45,
+};
+
+// Reichweitenkreis (B-082): kräftiger Ring, sehr dezente Fläche (ca. 8 %), damit er über Deko und Plateaus ruhig wirkt.
+export const RANGE_STYLE = {
+  fillAlpha: 0.08,
+  ringAlpha: 0.75,
+  ringWidth: 2,
+  maxFillAlpha: 0.1,      // Obergrenze (Test)
 };
