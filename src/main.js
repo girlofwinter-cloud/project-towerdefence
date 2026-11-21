@@ -1,5 +1,5 @@
 // Verbindet Spiel-Logik, Rendering und Bedienung (DOM, Maus, Tastatur).
-import { TILE, WIDTH, HEIGHT, TOWER_TYPES, ENEMY_TYPES, MAX_WAVES, SPEED_STEPS, TARGET_MODES, TARGET_MODE_NAMES, MAX_SUBSTEP, LOW_LIVES, waveSummary } from './config.js';
+import { TILE, WIDTH, HEIGHT, TOWER_TYPES, ENEMY_TYPES, MAX_WAVES, MAPS, SPEED_STEPS, TARGET_MODES, TARGET_MODE_NAMES, MAX_SUBSTEP, LOW_LIVES, waveSummary } from './config.js';
 import {
   createGame, stepGame, togglePause, buildTower, upgradeTower, sellTower, setTargetMode, startWave,
   canBuild, towerAt, towerStats, upgradeCost, sellValue,
@@ -15,6 +15,7 @@ const ctx = canvas.getContext('2d');
 
 const $ = (id) => document.getElementById(id);
 const ui = { buildType: null, selectedTowerId: null, hover: null, pending: null, speed: SPEED_STEPS[0], message: '', messageKind: 'error', messageTtl: 0 };
+let mapId = undefined;
 let state = createGame();
 
 // Für Tests und Neugierige: im Browser-Konsole `__game` eintippen.
@@ -112,6 +113,21 @@ canvas.addEventListener('contextmenu', (ev) => {
 
 // ---------- Buttons & Tastatur ----------
 $('start-wave').addEventListener('click', doStartWave);
+
+// Kartenauswahl: nur vor Welle 1 möglich
+const mapSelect = $('map-select');
+for (const [id, def] of Object.entries(MAPS)) {
+  const opt = document.createElement('option');
+  opt.value = id;
+  opt.textContent = def.name;
+  mapSelect.appendChild(opt);
+}
+mapSelect.value = state.mapId;
+mapSelect.addEventListener('change', () => {
+  if (state.wave !== 0 || state.waveActive) { mapSelect.value = state.mapId; return; }
+  mapId = mapSelect.value;
+  restart();
+});
 $('speed').addEventListener('click', toggleSpeed);
 $('pause').addEventListener('click', doTogglePause);
 $('upgrade').addEventListener('click', doUpgrade);
@@ -161,7 +177,7 @@ function doSell() {
   refreshUI();
 }
 function restart() {
-  state = createGame();
+  state = createGame({ mapId });
   Object.assign(ui, { buildType: null, selectedTowerId: null, pending: null, speed: SPEED_STEPS[0] });
   refreshUI();
 }
@@ -191,6 +207,8 @@ function refreshUI() {
   // Deutliches Banner über dem Spielfeld (nur Anzeige, Bauen bleibt möglich)
   $('pause-banner').hidden = !state.paused;
   $('pause').textContent = state.paused ? '▶ Weiter (P)' : '⏸ Pause (P)';
+  mapSelect.disabled = state.wave !== 0 || state.waveActive;
+  mapSelect.value = state.mapId;
   $('start-wave').disabled = state.waveActive || state.status !== 'playing';
   $('start-wave').textContent = state.waveActive ? 'Welle läuft…' : `Welle ${state.wave + 1} starten (Leertaste)`;
 

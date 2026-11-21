@@ -146,16 +146,6 @@ Erledigte Einträge (`fertig`) liegen in `docs/archiv/BACKLOG-fertig.md`. Beim A
   - Je Punkt einzeln bewertbar, nur CSS/UI, keine Spiel-Logik.
   - `npm test` und `npm run test:e2e` bleiben grün.
 
-### B-027: Map-Auswahl (mehrere Karten)
-- Status: offen
-- Aufwand: M
-- Idee: Fundament für alle Welten. `WAYPOINTS` wird zu einer Liste von Maps in `src/config.js` (Name, Wegpunkte, Farbschema, gesperrte Kacheln). Auswahlmenü vor dem Spielstart, Spielzustand und Render lesen die gewählte Map. Voraussetzung für B-028 bis B-031.
-- Akzeptanzkriterien:
-  - `MAPS` in `src/config.js`, bestehende Karte bleibt unverändert als erste Map.
-  - `game.js` und `path.js` bekommen die Map als Parameter, kein DOM.
-  - Test: Jede Map hat einen gültigen Weg (zusammenhängend, Ein- und Ausgang außerhalb, keine Überschneidung mit gesperrten Kacheln).
-  - Bestehende Tests laufen unverändert.
-
 ### B-028: Welt Wald (blockierte Bauplätze)
 - Status: vorschlag
 - Aufwand: M
@@ -276,3 +266,10 @@ Erledigte Einträge (`fertig`) liegen in `docs/archiv/BACKLOG-fertig.md`. Beim A
 - Akzeptanzkriterien:
   - `waveFor` und `hpScale` sind über Welle 20 hinaus definiert, Wellen 1 bis 20 bleiben unverändert.
   - Test: Welle 21+ erzeugt gültige Spawn-Listen; Status 'won' erst im normalen Modus.
+
+### B-042: Map-Auswahl: Feinschliff
+- Status: vorschlag
+- Aufwand: S
+- Idee: Hinweise aus dem Review von B-027. (1) `let mapId = undefined;` in `src/main.js` zu `let mapId;`. (2) Kartenwahl in `localStorage` merken (mit try/catch), damit sie nach dem Neuladen bleibt. (3) Im Schlucht-Test die Magic Number `7` und den Text "mindestens 5 Kurven" angleichen. (4) Test, dass die Weglänge jeder Karte höchstens ±40 % von der Wiese abweicht. (5) Alter Aufruf `createGame` mit `path`/`blocked`-Overrides hat keinen eigenen Test.
+- Akzeptanzkriterien:
+  - `npm test` bleibt grün, kein Test abgeschwächt.

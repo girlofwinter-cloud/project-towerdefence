@@ -6,7 +6,7 @@ import { createGame, update, buildTower, upgradeTower, sellTower, startWave, spa
 import { livesText } from '../src/hud.js';
 
 import { buildPath, pointAt, pathTiles } from '../src/path.js';
-import { TOWER_TYPES, MAX_WAVES, START_GOLD, START_LIVES, LOW_LIVES, WAYPOINTS, TILE, COLS, ROWS, TARGET_MODES, waveFor, waveBonus, waveSummary, hpScale, ENEMY_TYPES, SPEED_STEPS, MAX_SUBSTEP } from '../src/config.js';
+import { TOWER_TYPES, MAX_WAVES, START_GOLD, START_LIVES, LOW_LIVES, WAYPOINTS, MAPS, DEFAULT_MAP_ID, TILE, COLS, ROWS, TARGET_MODES, waveFor, waveBonus, waveSummary, hpScale, ENEMY_TYPES, SPEED_STEPS, MAX_SUBSTEP } from '../src/config.js';
 
 import { run, freeTileNearPath, mockCtx, recordEnemy } from './helpers.js';
 
@@ -885,3 +885,47 @@ test('livesText: gefüllte und leere Herzen, nie negativ, gekappt', () => {
   assert.ok(LOW_LIVES >= 1 && LOW_LIVES < START_LIVES);
 });
 
+
+// ---------- Karten (MAPS) ----------
+
+test('Jede Karte hat einen gültigen, überschneidungsfreien Weg', () => {
+  for (const [id, map] of Object.entries(MAPS)) {
+    const w = map.waypoints;
+    assert.ok(w.length >= 7, `${id}: mindestens 5 Kurven`);
+    const out = ([c, r]) => c < 0 || r < 0 || c >= COLS || r >= ROWS;
+    assert.ok(out(w[0]) && out(w[w.length - 1]), `${id}: Ein-/Ausgang außerhalb`);
+    let steps = 0;
+    for (let i = 0; i < w.length - 1; i++) {
+      const dc = w[i + 1][0] - w[i][0];
+      const dr = w[i + 1][1] - w[i][1];
+      assert.ok((dc === 0) !== (dr === 0), `${id}: Segment ${i} achsenparallel`);
+      steps += Math.abs(dc) + Math.abs(dr);
+    }
+    for (let i = 1; i < w.length - 1; i++) assert.ok(!out(w[i]), `${id}: innerer Punkt im Feld`);
+    const tiles = pathTiles(w);
+    assert.equal(tiles.size, steps + 1, `${id}: keine Kachel doppelt`);
+  }
+  assert.equal(WAYPOINTS, MAPS[DEFAULT_MAP_ID].waypoints);
+});
+
+test('createGame wählt Karte per mapId, unbekannte fällt auf Standard zurück', () => {
+  const def = createGame();
+  assert.equal(def.mapId, DEFAULT_MAP_ID);
+  const c = createGame({ mapId: 'canyon' });
+  assert.equal(c.mapId, 'canyon');
+  assert.notDeepEqual(c.path.points, def.path.points);
+  assert.deepEqual(c.path.points, buildPath(MAPS.canyon.waypoints, TILE).points);
+  const u = createGame({ mapId: 'gibt-es-nicht' });
+  assert.equal(u.mapId, DEFAULT_MAP_ID);
+  assert.deepEqual(u.path.points, def.path.points);
+  assert.equal(createGame({ mapId: 'toString' }).mapId, DEFAULT_MAP_ID);
+});
+
+test('Zweitkarte: Weg-Kacheln blockiert, Gegner erreichen das Ziel', () => {
+  const s = createGame({ mapId: 'canyon' });
+  assert.equal(canBuild(s, 3, 5).ok, false);
+  assert.equal(canBuild(s, 5, 5).ok, true);
+  spawnEnemy(s, 'grunt', 1);
+  run(s, 120);
+  assert.ok(s.lives < START_LIVES);
+});

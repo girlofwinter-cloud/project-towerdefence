@@ -161,6 +161,8 @@ button.primary {
 .controls { display: flex; flex-wrap: wrap; gap: 8px; }
 .controls .primary { flex: 1 1 100%; }
 .controls button:not(.primary) { flex: 1; }
+.map-pick { flex: 1 1 100%; display: flex; align-items: center; gap: 8px; }
+.map-pick select { flex: 1; padding: 6px; }
 #wave-preview { margin: 10px 0 0; padding: 6px 8px; font-size: .85rem; color: var(--muted); background: rgba(0,0,0,.25); border-radius: 6px; }
 #wave-preview[hidden] { display: none; }
 #shop { display: flex; flex-direction: column; gap: 8px; }

@@ -274,3 +274,13 @@ Neue Einträge werden unten angehängt. Bestehende Einträge werden nie geänder
 - Tests: nicht nötig (nur Dokumentation, kein Code geändert)
 - Entscheidungen: 15 Vorschläge B-027 bis B-041 (Status `vorschlag`). B-027 (Map-Auswahl) ist Fundament für die Welten B-028 bis B-033, deshalb zuerst freigeben. Bestehende Ideen B-005 (Frühstart) und B-007 (Fallen) bleiben unverändert.
 - Offen: Mensch gibt Einträge frei (Status `offen`); Reihenfolge-Empfehlung: B-027, dann B-028 oder B-029, dann B-034.
+
+## 2026-11-21 · B-027 · Map-Auswahl (mehrere Karten)
+- Rolle(n): orchestrator, developer, tester, reviewer
+- Branch: agent/map-auswahl (aufgebaut auf agent/ideen-welten, da B-027 dort erst eingetragen und freigegeben wurde)
+- Runden: 1 von max. 2
+- Ergebnis: fertig
+- Tests: 125 bestanden, 0 fehlgeschlagen (3 neue)
+- Review: APPROVE (keine Muss-Punkte; Hinweise als B-042 im Backlog)
+- Entscheidungen: `MAPS` mit Wiese (unverändert) und einer zweiten Karte "Schlucht" (52 statt 40 Wegschritte), damit das Auswahlmenü sofort Sinn hat; `WAYPOINTS` bleibt als Alias, bestehende Tests unverändert. Kartenwechsel nur vor Welle 1 und startet das Spiel neu. Farbschema pro Map bewusst nicht Teil von B-027, kommt mit den Welten (B-028 ff.).
+- Offen: Sichtprüfung der Schlucht und der Auswahl im Browser durch einen Menschen; PR #21 muss vor diesem PR gemergt werden.
