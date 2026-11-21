@@ -322,3 +322,10 @@ Neue Einträge werden unten angehängt. Bestehende Einträge werden nie geänder
 - Review: APPROVE (Hinweis: Test "nur Pfeile verlieren vor Welle 12" liegt bei Messwert ca. Welle 10 nahe am Limit; bei künftigem Balancing eher die Schwelle lockern)
 - Entscheidungen: Spieler fand die Eiswelt "etwas zu einfach". Messung: mit Gegnertempo 0,85 und Kanone 1,25 gewannen alle drei Strategien mit 10 Leben. Mit Kanonenbonus 1,25 war der Übergang zwischen Sieg und Niederlage je nach Zeitschritt uneinheitlich, deshalb der Mensch entschied für "Glatteis": Gegner 1,18-fach, Kanone 0,95-fach, Frost unverändert. Ergebnis: a>c>c>f 10 Leben, c>a>a>f 6 Leben, a>a>c>f verliert ab Welle 17, nur Pfeile verliert um Welle 10. Der Test, der die alte Richtung festschrieb, wurde bewusst umgedreht und umbenannt (Richtung der Asserts geändert, Schärfe gleich); drei feste `1.25` in Tests lesen jetzt den Config-Wert.
 - Offen: Sichtprüfung/Playtest durch den Menschen; B-044 (3) Farbschema, (4) Eis-Deko.
+
+## 2026-11-21 · Korrektur · Backlog-Pflege B-029/B-044
+- Rolle(n): orchestrator
+- Branch: agent/eis-balancing
+- Ergebnis: fertig
+- Entscheidungen: Beim Abschluss von B-029 war ein Befehl fehlgeschlagen und hatte das Verschieben nach `docs/archiv/BACKLOG-fertig.md` sowie das Anlegen von B-044 übersprungen (der Ledger-Eintrag zu B-029 verweist trotzdem auf B-044). Beides jetzt nachgeholt. Ledger bleibt append-only, der frühere Eintrag wird nicht geändert.
+- Offen: Nichts.

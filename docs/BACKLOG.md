@@ -146,15 +146,6 @@ Erledigte Einträge (`fertig`) liegen in `docs/archiv/BACKLOG-fertig.md`. Beim A
   - Je Punkt einzeln bewertbar, nur CSS/UI, keine Spiel-Logik.
   - `npm test` und `npm run test:e2e` bleiben grün.
 
-### B-029: Welt Eis (Gegner-/Turm-Modifikatoren pro Map)
-- Status: offen
-- Aufwand: M
-- Idee: Maps können Modifikatoren tragen: In der Eiswelt sind Gegner von Grund auf etwas langsamer, der Frostturm ist schwächer, Kanone stärker. Hängt von B-027 ab.
-- Akzeptanzkriterien:
-  - Map-Feld `modifiers` (Gegnertempo, Turmschaden je Typ) in `src/config.js`.
-  - Test: Modifikatoren wirken auf Tempo und Schaden, Standard-Map bleibt unverändert.
-  - Balancing-Zahlen nur in der Config.
-
 ### B-030: Welt Vulkan (Lava-Felder)
 - Status: vorschlag
 - Aufwand: L
@@ -271,3 +262,11 @@ Erledigte Einträge (`fertig`) liegen in `docs/archiv/BACKLOG-fertig.md`. Beim A
 - Idee: Hinweise aus dem Review von B-028. (1) Baum-Anteil `0.7` aus `obstacleKind` in `src/decor.js` nach `src/config.js` (`OBSTACLE_TREE_SHARE`). (2) Schattenfarbe `rgba(10,40,15,0.35)` in `drawObstacle` (`src/render.js`) als benannte Konstante. (3) `tests/forest-edge.test.js` in `tests/game.test.js` und `tests/decor.test.js` einsortieren (Regel: Tests nach Modul). (4) Sichtprüfung der Waldkarte im Browser: Lesbarkeit der Hindernisse, Gefühl der knappen Bauplätze.
 - Akzeptanzkriterien:
   - `npm test` bleibt grün, kein Test abgeschwächt oder gelöscht.
+
+### B-044: Eiswelt: Feinschliff
+- Status: vorschlag
+- Teilweise erledigt (agent/eis-balancing): Punkte (1) und (2). Die Eiswelt war dem Spieler zu einfach und wurde auf "Glatteis" umgestellt (Gegner 1,18-fach, Kanone 0,95-fach), mit Balancing-Tests. Offen: (3) und (4).
+- Aufwand: S
+- Idee: Hinweise aus dem Review von B-029. (1) Playtest der Eiswelt (erledigt). (2) Kartenspezifische Balancing-Tests für die Eiswelt (erledigt). (3) Sichtprüfung des Farbschemas im Browser. (4) Eiswelt hat keine Hindernisse; eigene Eis-Deko (Schneehaufen, Eisfelsen) wäre ein eigener Eintrag.
+- Akzeptanzkriterien:
+  - `npm test` bleibt grün, kein Test abgeschwächt.
