@@ -147,7 +147,7 @@ Erledigte Einträge (`fertig`) liegen in `docs/archiv/BACKLOG-fertig.md`. Beim A
   - `npm test` und `npm run test:e2e` bleiben grün.
 
 ### B-027: Map-Auswahl (mehrere Karten)
-- Status: vorschlag
+- Status: offen
 - Aufwand: M
 - Idee: Fundament für alle Welten. `WAYPOINTS` wird zu einer Liste von Maps in `src/config.js` (Name, Wegpunkte, Farbschema, gesperrte Kacheln). Auswahlmenü vor dem Spielstart, Spielzustand und Render lesen die gewählte Map. Voraussetzung für B-028 bis B-031.
 - Akzeptanzkriterien:
