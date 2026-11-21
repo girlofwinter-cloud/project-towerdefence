@@ -929,3 +929,54 @@ test('Zweitkarte: Weg-Kacheln blockiert, Gegner erreichen das Ziel', () => {
   run(s, 120);
   assert.ok(s.lives < START_LIVES);
 });
+
+// ---------- Map Wald: Hindernisse (B-028) ----------
+test('Hindernisse: liegen im Feld, nie auf dem Weg; Wald hat genug Bauplaetze nahe am Weg', async () => {
+  const { MAPS, COLS, ROWS } = await import('../src/config.js');
+  for (const id of Object.keys(MAPS)) {
+    const s = createGame({ mapId: id });
+    assert.equal(s.obstacles.size, (MAPS[id].obstacles || []).length, 'keine Duplikate');
+    for (const k of s.obstacles) {
+      const [c, r] = k.split(',').map(Number);
+      assert.ok(c >= 0 && r >= 0 && c < COLS && r < ROWS, `${id} ${k} im Feld`);
+      assert.ok(!s.blocked.has(k), `${id} ${k} nicht auf dem Weg`);
+    }
+  }
+  const f = createGame({ mapId: 'forest' });
+  assert.ok(f.obstacles.size >= 30 && f.obstacles.size <= 45);
+  let near = 0;
+  for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
+    if (!canBuild(f, c, r).ok) continue;
+    let d = 99;
+    for (const k of f.blocked) { const [a, b] = k.split(',').map(Number); d = Math.min(d, Math.max(Math.abs(a - c), Math.abs(b - r))); }
+    if (d <= 2) near++;
+  }
+  assert.ok(near >= 25, `baubar nahe am Weg: ${near}`);
+});
+
+test('Hindernisse: canBuild lehnt ab, daneben normal; Karten ohne Hindernisse unveraendert', () => {
+  const f = createGame({ mapId: 'forest' });
+  const [c, r] = [...f.obstacles][0].split(',').map(Number);
+  const res = canBuild(f, c, r);
+  assert.equal(res.ok, false);
+  assert.match(res.reason, /Baum|Fels/);
+  const g0 = f.gold;
+  assert.equal(buildTower(f, 'arrow', c, r).ok, false);
+  assert.equal(f.gold, g0);
+  let free = null;
+  for (let rr = 0; rr < 14 && !free; rr++) for (let cc = 0; cc < 20; cc++) if (canBuild(f, cc, rr).ok) { free = [cc, rr]; break; }
+  assert.equal(buildTower(f, 'arrow', ...free).ok, true);
+  const m = createGame();
+  assert.equal(m.obstacles.size, 0);
+  assert.equal(createGame({ mapId: 'canyon' }).obstacles.size, 0);
+  assert.equal(canBuild(m, 0, 0).ok, true);
+  assert.equal(canBuild(f, 3, 6).reason, 'Auf dem Weg kann nicht gebaut werden');
+});
+
+test('Hindernisse: Goblin erreicht auf dem Wald das Ziel', () => {
+  const s = createGame({ mapId: 'forest' });
+  spawnEnemy(s, 'grunt', 1);
+  const lives = s.lives;
+  run(s, 60);
+  assert.ok(s.lives < lives);
+});

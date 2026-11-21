@@ -5,7 +5,7 @@ import { rect, tri, disc } from './draw-utils.js';
 import { recoilOffset } from './tower-fx.js';
 import { drawEnemy, drawHealAura } from './render-enemies.js';
 import { updateFx, shakeX, shakeY, drawProjectileFx, drawParticles } from './render-fx.js';
-import { tileHash, tileRand, decorFor, LARGE_DECOR_RADIUS } from './decor.js';
+import { tileHash, tileRand, decorFor, obstacleKind, LARGE_DECOR_RADIUS } from './decor.js';
 
 export function render(ctx, state, ui) {
   // Partikel aus dem Zustand ableiten (nur lesen), danach Shake-Versatz bestimmen.
@@ -137,7 +137,11 @@ function drawPath(ctx, state) {
 function drawDecor(ctx, state) {
   for (let r = 0; r < ROWS; r++) {
     for (let c = 0; c < COLS; c++) {
-      const d = decorFor(c, r, state.blocked);
+      if (state.obstacles && state.obstacles.has(`${c},${r}`)) {
+        drawObstacle(ctx, c, r);
+        continue;
+      }
+      const d = decorFor(c, r, state.blocked, state.obstacles);
       if (!d) continue;
       const x = c * TILE + d.ox * TILE;
       const y = r * TILE + d.oy * TILE;
@@ -148,6 +152,21 @@ function drawDecor(ctx, state) {
       else if (d.kind === 'tuft') drawTuft(ctx, x, y);
       else drawPebble(ctx, x, y);
     }
+  }
+}
+
+// Hindernis-Kachel: dunkler Grund, darauf Baum (dichter, zwei Kronen) oder Fels.
+function drawObstacle(ctx, c, r) {
+  const x0 = c * TILE;
+  const y0 = r * TILE;
+  ctx.fillStyle = 'rgba(10,40,15,0.35)';
+  ctx.fillRect(x0, y0, TILE, TILE);
+  const v = Math.floor(tileRand(c, r, 3) * 3);
+  if (obstacleKind(c, r) === 'rock') {
+    drawRock(ctx, x0 + TILE / 2, y0 + TILE / 2, v);
+  } else {
+    drawTree(ctx, x0 + TILE * 0.35, y0 + TILE * 0.6, v);
+    drawTree(ctx, x0 + TILE * 0.65, y0 + TILE * 0.4, 2 - v);
   }
 }
 

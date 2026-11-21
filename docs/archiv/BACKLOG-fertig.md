@@ -137,3 +137,12 @@ Agents lesen diese Datei nur bei konkretem Bedarf.
   - `game.js` und `path.js` bekommen die Map als Parameter, kein DOM.
   - Test: Jede Map hat einen gültigen Weg (zusammenhängend, Ein- und Ausgang außerhalb, keine Überschneidung mit gesperrten Kacheln).
   - Bestehende Tests laufen unverändert.
+
+### B-028: Welt Wald (blockierte Bauplätze)
+- Status: fertig
+- Aufwand: M
+- Idee: Zweite Map mit Bäumen und Felsen, die Kacheln blockieren. Wenige, dafür gute Bauplätze zwingen zu Entscheidungen. Hängt von B-027 ab.
+- Akzeptanzkriterien:
+  - Map `forest` mit `blocked`-Kacheln; `canBuild` lehnt sie ab.
+  - Test: Bauen auf blockierter Kachel scheitert, Weg ist trotzdem begehbar.
+  - Deko in `src/decor.js` passend zum Thema.
