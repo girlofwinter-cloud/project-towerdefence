@@ -387,3 +387,13 @@ Neue Einträge werden unten angehängt. Bestehende Einträge werden nie geänder
 - Tests: 178 Unit und 4 Browser-Tests bestanden
 - Entscheidungen: Die CI schlug fehl, weil `tests/e2e/smoke.test.mjs` genau 4 Turm-Buttons erwartete. Wie schon beim Render-Test liest der Browser-Test die Anzahl jetzt aus `TOWER_TYPES` (gleich scharf, wächst mit neuen Türmen). Browser-Tests laufen in der Pipeline nur in der CI und waren im Durchlauf nicht gelaufen; bei Änderungen an Shop, Türmen oder HUD vor dem PR zusätzlich `npm run test:e2e` lokal ausführen.
 - Offen: Nichts.
+
+## 2026-11-21 · B-038 · Fähigkeiten (Meteor, Kälteschock, Notfall-Reparatur)
+- Rolle(n): orchestrator, developer, tester, reviewer
+- Branch: agent/faehigkeiten
+- Runden: 1 von max. 2
+- Ergebnis: fertig
+- Tests: 188 Unit-Tests und 5 Browser-Tests bestanden, 0 fehlgeschlagen (10 Unit-Tests und 1 Browser-Test neu, keiner geändert oder abgeschwächt)
+- Review: APPROVE (keine Muss-Punkte; Hinweise als B-052)
+- Entscheidungen: `ABILITIES` in der Config: Meteor (Q, 50 s, 150 Schaden, Radius 1,8, Rüstung wie bei jedem Splash ignoriert), Kälteschock (W, 60 s, 70 % langsamer für 4 s, auch Bosse), Reparatur (E, 120 s, höchstens 2 Nutzungen, nie über START_LIVES, bei vollen Leben kein Verbrauch). Lange Abklingzeiten, damit das als "recht schwer, aber gut" empfundene Spiel nicht merklich leichter wird (Kälteschock ca. 7 % Uptime); Balancing-Tests nutzen keine Fähigkeiten und blieben unverändert. Zielmodus-Logik als reine Funktion `aimStep` in `input.js`. Vor dem PR wurden Unit- und Browser-Tests lokal ausgeführt (Lehre aus der roten CI bei B-034).
+- Offen: Spieltest der Zahlen; Feinschliff in B-052.

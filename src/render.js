@@ -1,5 +1,5 @@
 // Zeichnet den Spielzustand auf ein Canvas. Keine Spiel-Logik hier!
-import { TILE, COLS, ROWS, WIDTH, HEIGHT, TOWER_TYPES, MAPS } from './config.js';
+import { TILE, COLS, ROWS, WIDTH, HEIGHT, TOWER_TYPES, MAPS, ABILITIES } from './config.js';
 import { towerStats } from './game.js';
 import { rect, tri, disc } from './draw-utils.js';
 import { recoilOffset } from './tower-fx.js';
@@ -284,6 +284,7 @@ function drawHover(ctx, state, ui) {
   const selected = state.towers.find((t) => t.id === ui.selectedTowerId);
   if (selected) rangeCircle(ctx, selected.x, selected.y, towerStats(selected, state.modifiers).range * TILE, 'rgba(255,255,255,0.15)');
 
+  if (ui.aiming && ui.hoverPx) rangeCircle(ctx, ui.hoverPx.x, ui.hoverPx.y, ABILITIES.meteor.radius * TILE, 'rgba(255,90,40,0.25)');
   if (!ui.hover || !ui.buildType) return;
   const { col, row, ok } = ui.hover;
   const x = (col + 0.5) * TILE;
@@ -534,6 +535,9 @@ function drawEffect(ctx, fx) {
     ctx.beginPath();
     ctx.arc(fx.x, fx.y, fx.r * (1.2 - a * 0.5), 0, Math.PI * 2);
     ctx.fill();
+  } else if (fx.kind === 'chill') {
+    ctx.fillStyle = `rgba(120,200,255,${0.25 * a})`;
+    ctx.fillRect(0, 0, WIDTH, HEIGHT);
   } else if (fx.kind === 'bolt') {
     drawBolt(ctx, fx, a);
   } else if (fx.kind === 'coin') {

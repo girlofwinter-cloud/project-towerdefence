@@ -1596,3 +1596,135 @@ test('Blitzturm: Kette funktioniert auf der Karte fork; Stufen skalieren Schaden
   assert.equal(st3.chainRange, st1.chainRange);
   assert.equal(st3.chainFalloff, st1.chainFalloff);
 });
+
+// ---------- B-038: Fähigkeiten ----------
+import { useAbility, abilityCooldownLeft } from '../src/game.js';
+import { ABILITIES, WIDTH, HEIGHT } from '../src/config.js';
+
+const enemyAt = (s, type, x, y) => { const e = spawnEnemy(s, type); e.x = x; e.y = y; return e; };
+
+test('Fähigkeiten: Zustand startet bereit, neues Spiel setzt zurück', () => {
+  const s = createGame();
+  assert.deepEqual(Object.keys(s.abilities).sort(), Object.keys(ABILITIES).sort());
+  s.lives = 5;
+  assert.ok(useAbility(s, 'repair').ok);
+  assert.equal(createGame().abilities.repair.uses, 0);
+  assert.equal(abilityCooldownLeft(createGame(), 'repair'), 0);
+});
+
+test('Fähigkeiten: unbekannte Id, Pause und Spielende werden abgelehnt', () => {
+  const s = createGame();
+  assert.equal(useAbility(s, 'nix').ok, false);
+  s.paused = true;
+  assert.equal(useAbility(s, 'freeze').ok, false);
+  s.paused = false;
+  s.status = 'lost';
+  assert.equal(useAbility(s, 'freeze').ok, false);
+  assert.equal(s.abilities.freeze.uses, 0);
+});
+
+test('Meteor: Radius, Kills und Gold, Abklingzeit und Wiederverwendung', () => {
+  const s = createGame();
+  const r = ABILITIES.meteor.radius * TILE;
+  const near = enemyAt(s, 'runner', 300, 300);
+  const far = enemyAt(s, 'runner', 300 + r + 5, 300);
+  near.hp = 1;
+  const gold = s.gold;
+  assert.ok(useAbility(s, 'meteor', 300, 300).ok);
+  assert.equal(s.enemies.includes(near), false);
+  assert.equal(s.kills, 1);
+  assert.equal(s.gold, gold + near.reward);
+  assert.equal(far.hp, far.maxHp);
+  assert.ok(s.effects.some((f) => f.kind === 'explosion'));
+  assert.equal(useAbility(s, 'meteor', 300, 300).ok, false);
+  assert.equal(abilityCooldownLeft(s, 'meteor'), ABILITIES.meteor.cooldown);
+  s.time += ABILITIES.meteor.cooldown;
+  assert.equal(abilityCooldownLeft(s, 'meteor'), 0);
+  assert.ok(useAbility(s, 'meteor', 300, 300).ok);
+});
+
+test('Meteor: ungültige Koordinaten, Rüstung ignoriert, Fork-Karte', () => {
+  const s = createGame({ mapId: 'fork' });
+  assert.equal(useAbility(s, 'meteor').ok, false);
+  assert.equal(useAbility(s, 'meteor', -5, 10).ok, false);
+  assert.equal(useAbility(s, 'meteor', NaN, 10).ok, false);
+  assert.equal(s.abilities.meteor.uses, 0);
+  const e = enemyAt(s, 'shielded', 100, 100);
+  e.hp = 1000;
+  const hp = e.hp;
+  assert.ok(useAbility(s, 'meteor', 100, 100).ok);
+  assert.equal(e.hp, hp - ABILITIES.meteor.damage);
+});
+
+test('Kälteschock: verlangsamt alle (auch Boss), stärkeren Slow nicht überschreiben, läuft aus', () => {
+  const s = createGame();
+  const a = enemyAt(s, 'runner', 10, 10);
+  const boss = enemyAt(s, 'boss', 20, 20);
+  const strong = enemyAt(s, 'runner', 30, 30);
+  strong.slowUntil = s.time + 1;
+  strong.slowFactor = 0.1;
+  assert.ok(useAbility(s, 'freeze').ok);
+  const f = 1 - ABILITIES.freeze.slow;
+  for (const e of [a, boss]) { assert.ok(Math.abs(e.slowFactor - f) < 1e-9); assert.equal(e.slowUntil, s.time + ABILITIES.freeze.duration); }
+  assert.equal(strong.slowFactor, 0.1);
+  assert.equal(strong.slowUntil, s.time + ABILITIES.freeze.duration);
+  s.time += ABILITIES.freeze.duration + 0.1;
+  assert.equal(s.time < a.slowUntil, false);
+});
+
+test('Reparatur: nie über START_LIVES, bei vollen Leben kein Verbrauch, maxUses', () => {
+  const s = createGame();
+  const res = useAbility(s, 'repair');
+  assert.equal(res.ok, false);
+  assert.equal(s.abilities.repair.uses, 0);
+  s.lives = START_LIVES - 3;
+  assert.ok(useAbility(s, 'repair').ok);
+  assert.equal(s.lives, START_LIVES - 3 + ABILITIES.repair.heal);
+  s.time += ABILITIES.repair.cooldown;
+  assert.ok(useAbility(s, 'repair').ok);
+  s.time += ABILITIES.repair.cooldown;
+  s.lives = 1;
+  assert.equal(useAbility(s, 'repair').ok, false);
+  assert.match(useAbility(s, 'repair').reason, /aufgebraucht/);
+  s.lives = START_LIVES - 1;
+  s.abilities.repair.uses = 0;
+  useAbility(s, 'repair');
+  assert.equal(s.lives, START_LIVES);
+});
+
+test('Abklingzeit zählt nur mit laufender Spielzeit (Pause ohne Wirkung)', () => {
+  const s = createGame();
+  useAbility(s, 'freeze');
+  s.paused = true;
+  update(s, 10);
+  assert.equal(abilityCooldownLeft(s, 'freeze'), ABILITIES.freeze.cooldown);
+  s.paused = false;
+  update(s, 1);
+  assert.ok(Math.abs(abilityCooldownLeft(s, 'freeze') - (ABILITIES.freeze.cooldown - 1)) < 1e-9);
+  assert.equal(abilityCooldownLeft(s, 'nix'), 0);
+});
+
+test('Fähigkeiten: Config-Texte ohne undefined/NaN, Rendern ohne Fehler (Meteor-Zielmodus, Kälteeffekt)', async () => {
+  for (const d of Object.values(ABILITIES)) assert.ok(d.text && !/undefined|NaN/.test(d.text) && d.name && d.key);
+  const { render } = await import('../src/render.js');
+  const s = createGame();
+  s.lives = 5;
+  useAbility(s, 'freeze');
+  useAbility(s, 'meteor', 200, 200);
+  render(mockCtx().ctx, s, { aiming: true, hoverPx: { x: 100, y: 100 }, hover: null });
+  render(mockCtx().ctx, s, { aiming: false });
+});
+
+test('Faehigkeiten: Prototyp-Ids, ungueltige Meteor-Ziele, Spielende ohne Wiederbelebung', () => {
+  const s = createGame();
+  for (const id of ['__proto__', 'toString', 'constructor', undefined]) assert.equal(useAbility(s, id, 100, 100).ok, false);
+  for (const [x, y] of [[undefined, undefined], [Infinity, 5], [WIDTH + 1, 5], [5, HEIGHT + 1], [null, 5]]) {
+    assert.equal(useAbility(s, 'meteor', x, y).ok, false);
+  }
+  assert.equal(abilityCooldownLeft(s, 'meteor'), 0);
+  s.lives = 0; s.status = 'lost';
+  assert.equal(useAbility(s, 'repair').ok, false);
+  assert.equal(s.lives, 0);
+  s.status = 'won';
+  assert.equal(useAbility(s, 'freeze').ok, false);
+});

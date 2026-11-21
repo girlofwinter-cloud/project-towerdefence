@@ -198,15 +198,6 @@ Erledigte Einträge (`fertig`) liegen in `docs/archiv/BACKLOG-fertig.md`. Beim A
   - Neue Typen in `ENEMY_TYPES` mit `splitInto` bzw. `stealth`.
   - Test: Splitter erzeugt Kinder an gleicher Wegposition; Tarn-Gegner ist außerhalb des Radius nicht zielbar.
 
-### B-038: Fähigkeiten (Meteor, Einfrieren, Reparatur)
-- Status: vorschlag
-- Aufwand: L
-- Idee: Aktive Fähigkeiten mit Abklingzeit, per Taste oder Button: Meteor (Flächenschaden), Einfrieren (alle Gegner kurz verlangsamt), Notfall-Reparatur (+1 Leben, selten). Gibt dem Spieler auch mitten in der Welle etwas zu tun.
-- Akzeptanzkriterien:
-  - `ABILITIES` in `src/config.js` (Abklingzeit, Wirkung).
-  - Test: Fähigkeit wirkt, geht in Abklingzeit, ist nach Ablauf wieder nutzbar.
-  - Reparatur kann Leben nie über `START_LIVES` heben.
-
 ### B-039: Verzweigte Upgrades auf Stufe 3
 - Status: vorschlag
 - Aufwand: L
@@ -281,3 +272,10 @@ Erledigte Einträge (`fertig`) liegen in `docs/archiv/BACKLOG-fertig.md`. Beim A
 - Idee: Hinweise aus dem Review von B-034. (1) Nach einem Spieltest prüfen, ob die Flitzer jetzt zu leicht werden: `chainRange` 1,6 Kacheln ist eher großzügig und der Hauptregler; grobe Rechnung: Einzelziel ca. 12,7 DPS (Pfeil 20 DPS bei halbem Preis), ein voller Blitz auf 4 Gegner ca. 32 DPS Gesamtschaden. (2) `COIL_BLUE` und `BOLT_GLOW` in `src/render.js` stehen zwischen den Eis-Farben (ICE_LIGHT/ICE_DARK); sortieren. (3) Boss-Test prüft nur `frozenUntil`, nicht ausdrücklich "kein Boss-Rückstoß"; für den Blitzturm irrelevant. (4) Optional eigener Strategie-Test mit Blitzturm, falls er in Balancing-Läufe aufgenommen wird.
 - Akzeptanzkriterien:
   - Nur Zahlen in `src/config.js` und Render-Kosmetik; `npm test` bleibt grün, kein Test abgeschwächt.
+
+### B-052: Fähigkeiten: Feinschliff
+- Status: vorschlag
+- Aufwand: S
+- Idee: Hinweise aus Tester und Review von B-038. (1) `doAbility` in `src/main.js`: Q bei Status 'won'/'lost' schaltet `ui.aiming` an, die Fehlermeldung kommt erst beim Klick; früh abbrechen (`if (state.status !== 'playing') return;`). (2) Zielmodus bleibt bei Pause oder Ablauf der Abklingzeit aktiv (unkritisch, Meldung beim Klick); optional beenden. (3) Touch: Tippen löst sofort ohne Vorschau aus, weil `hoverPx` erst durch `pointermove` gesetzt wird; optional zweistufig wie beim Bauen. (4) Kälteschock verlängert das Ende eines stärkeren aktiven Slows auf die Schockdauer; ein späterer Frostturm-Treffer überschreibt den Faktor wie bisher. Beides nicht getestet, Verhalten entscheiden und per Test festhalten. (5) Spieltest: Sind die Zahlen (Meteor 150 Schaden/50 s, Kälteschock 70 %/4 s/60 s, Reparatur 2 Nutzungen/120 s) passend?
+- Akzeptanzkriterien:
+  - `npm test` und `npm run test:e2e` bleiben grün, kein Test abgeschwächt.

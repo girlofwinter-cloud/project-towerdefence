@@ -209,3 +209,14 @@ Agents lesen diese Datei nur bei konkretem Bedarf.
   - Render: Turm-Zeichnung für `lightning` (kein stilles Fallen in einen anderen Turm-Zweig, Rückstoß-/Farb-Tabellen ergänzen), Blitzlinie als kurzer Effekt (reine Darstellung, deterministisch). Shop-Button, Tastenkürzel 5 und Hilfetexte ("1–4" -> "1–5") angepasst.
   - Test: Kette trifft nur nahe Gegner, nie doppelt, Schaden sinkt je Sprung, Obergrenze `chainCount`, kein Sprung ohne weiteres Ziel, Tod der Ziele und Gold korrekt, Boss/Schildträger ohne Sonderbehandlung, `fork`-Karte funktioniert; Strategie-Balancing-Tests der Wiese, Eis, Wald, fork bleiben unverändert grün (Strategien nutzen den neuen Turm nicht).
   - Alle Zahlen nur in der Config.
+
+### B-038: Fähigkeiten (Meteor, Einfrieren, Reparatur)
+- Status: fertig
+- Aufwand: L
+- Idee: Drei aktive Fähigkeiten mit Abklingzeit, per Button und Taste, damit der Spieler auch mitten in der Welle etwas zu tun hat. Meteor (Taste Q): nach Klick auf das Spielfeld Flächenschaden an dieser Stelle. Kälteschock (Taste W): alle Gegner werden kurz stark verlangsamt (Boss nicht immun, Verlangsamung wie bei Frost über `slowUntil`/`slowFactor`). Notfall-Reparatur (Taste E): +1 Leben, selten (begrenzte Anzahl pro Spiel plus lange Abklingzeit). Das Spiel soll nicht leichter werden (Spieler: "recht schwer, aber gut"): lange Abklingzeiten, moderate Werte; die Strategie-Balancing-Tests nutzen keine Fähigkeiten und bleiben unverändert grün.
+- Akzeptanzkriterien:
+  - `ABILITIES` in `src/config.js` (je Fähigkeit: Name, Taste, Abklingzeit, Wirkungswerte, bei Reparatur `maxUses`), Texte deutsch, alle Zahlen nur dort.
+  - Logik in `src/game.js`, kein DOM: `useAbility(state, id, x, y)` prüft Spielstatus ('playing'), nicht pausiert, Abklingzeit (über `state.time`), Nutzungen; Rückgabe `{ ok, reason }` wie bei `buildTower`. `state.abilities` mit Zustand je Fähigkeit (`readyAt`, `uses`), Reparatur hebt Leben nie über `START_LIVES`, kein Effekt bei vollen Leben (Meldung statt Verbrauch).
+  - Meteor: Schaden im Radius um den Zielpunkt (Rüstung wie Splash), Effekt in `state.effects` (Explosion), getötete Gegner zählen Gold und Kills.
+  - UI: drei Buttons mit Restzeit (Abklingzeit-Anzeige, ausgegraut bei Abklingzeit/aufgebraucht) im Steuerbereich, Tastenkürzel Q/W/E (Meteor: Zielmodus, nächster Klick aufs Feld löst aus, Esc bricht ab); Hilfetext/Steuerung ergänzt; Touch: Meteor per Button dann Tippen.
+  - Tests: wirkt, geht in Abklingzeit, ist nach Ablauf wieder nutzbar; Reparatur-Obergrenze und `maxUses`; Meteor-Radius, Kills/Gold; Kälteschock verlangsamt alle Gegner und läuft aus; nichts in Pause oder nach Spielende; neues Spiel setzt Fähigkeiten zurück; Render/HUD ohne Fehler. Browser-Test (`npm run test:e2e`) vor dem PR lokal laufen lassen.

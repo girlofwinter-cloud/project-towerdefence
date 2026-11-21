@@ -161,6 +161,9 @@ button.primary {
 .controls { display: flex; flex-wrap: wrap; gap: 8px; }
 .controls .primary { flex: 1 1 100%; }
 .controls button:not(.primary) { flex: 1; }
+.abilities { display: flex; gap: 6px; margin-top: 8px; }
+.abilities button { flex: 1; padding: 6px 4px; font-size: .8rem; line-height: 1.2; }
+.abilities button.aiming { outline: 2px solid #ff8a3d; }
 .map-pick { flex: 1 1 100%; display: flex; align-items: center; gap: 8px; }
 .map-pick select { flex: 1; padding: 6px; }
 #wave-preview { margin: 10px 0 0; padding: 6px 8px; font-size: .85rem; color: var(--muted); background: rgba(0,0,0,.25); border-radius: 6px; }
@@ -211,6 +214,8 @@ footer { text-align: center; color: var(--muted); font-size: 0.8rem; padding: 16
   aside h3 { display: none; }
   .controls { order: 1; gap: 6px; }
   .controls button { padding: 7px 6px; font-size: .9rem; }
+  .abilities { order: 1; margin-top: 6px; }
+  .abilities button { padding: 5px 2px; font-size: .72rem; }
   #zoom { display: block; }
   #wave-preview { order: 2; margin-top: 6px; }
   #tower-info { order: 3; margin-top: 8px; }
