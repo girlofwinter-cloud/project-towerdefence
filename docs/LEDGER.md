@@ -434,3 +434,11 @@ Neue Einträge werden unten angehängt. Bestehende Einträge werden nie geänder
 - Tests: nicht nötig (nur Rollenbeschreibung, Skill und Doku, kein Code in `src/`)
 - Entscheidungen: Der Mensch wünschte einen Spieldesigner, der auf Anfrage Aussehen und Bedienung prüft und Vorschläge für neue Designs macht. Neue Rolle `.claude/agents/designer.md` ohne Schreibrechte auf das Projekt (Tools: Read, Grep, Glob, Bash; Bash nur lesend und für Screenshot-Skripte im Scratchpad außerhalb des Repos), damit er wie reviewer und ideator nur bewertet und vorschlägt; gebaut wird über die Pipeline. Er arbeitet mit echten Playwright-Screenshots auf Desktop und Handy statt mit Vermutungen (Anlass: der Blitzturm lag auf dem Desktop unter dem Fenster, das fiel erst dem Menschen auf). Prüfliste: Lesbarkeit, Platz/Scrollen, Hierarchie, Konsistenz, Erkennbarkeit, Game Feel, Touch, Barrierefreiheit, Stimmung der Welten. Regeln: keine Abhängigkeiten oder Fremd-Assets, Architektur (Zeichnen in `render*.js`, Layout in CSS) einhalten. Aufruf nur auf Anfrage über den Skill `/design` (trägt Muss-Befunde und Vorschläge als `vorschlag` ins Backlog ein); die Pipeline bleibt unverändert. `CLAUDE.md` und `docs/LERNEN.md` ergänzt.
 - Offen: Neue Subagents werden beim Sitzungsstart geladen; für den ersten Aufruf Claude Code einmal neu starten. Erster Probelauf von `/design` steht aus.
+
+## 2026-11-21 · Design-Prüfung · Erster Lauf von /design
+- Rolle(n): orchestrator, designer
+- Branch: agent/design-pruefung
+- Ergebnis: fertig (nur Doku, kein Code geändert)
+- Tests: nicht nötig
+- Entscheidungen: Prüfung ohne Schwerpunkt auf Desktop (1280x800, 1366x768) und Handy (390x844, 360x740), alle 4 Karten. Muss-Befunde: Turm-Panel am Handy außerhalb des Blickfelds und ohne Turmname, Panel am Desktop nur durch Scrollen erreichbar, Fähigkeitsknöpfe unter 44 px. Als `vorschlag` eingetragen: B-056 bis B-061 (Befunde 1 bis 5 gebündelt, Welten-Optik, Wellen-Vorschau, Lücken). Befunde "Nett" nur in B-061 gebündelt. Screenshots liegen im Scratchpad der Sitzung (`.../scratchpad/`, nicht im Repo).
+- Offen: Freigabe der Einträge durch den Menschen. Prüfung hatte Lücken (keine laufende Welle mit Effekten, kein Game-Over, kein Boss), siehe B-061.
