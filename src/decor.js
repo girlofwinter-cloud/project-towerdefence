@@ -34,9 +34,10 @@ export function isBorderTile(col, row) {
 
 // Entscheidet, welche Dekoration auf einer Kachel liegt.
 // Rueckgabe: null oder { kind, variant, ox, oy } (ox/oy = Versatz 0..1 innerhalb der Kachel).
-export function decorFor(col, row, blocked) {
+export function decorFor(col, row, blocked, obstacles) {
   if (col < 0 || row < 0 || col >= COLS || row >= ROWS) return null;
   if (isPathTile(blocked, col, row)) return null;
+  if (obstacles && obstacles.has(`${col},${row}`)) return null; // dort zeichnet render.js das Hindernis
   const border = isBorderTile(col, row);
   const chance = border ? BORDER_DECOR_CHANCE : INNER_DECOR_CHANCE;
   if (tileRand(col, row, 1) >= chance) return null;
@@ -60,3 +61,8 @@ export const LARGE_DECOR_KINDS = ['tree', 'bush', 'rock'];
 // Maximaler Radius in Pixeln je grosser Art (achsenparallel, inkl. Schatten).
 // render.js zeichnet die Formen mit genau diesen Massen.
 export const LARGE_DECOR_RADIUS = { tree: 11, bush: 10, rock: 10 };
+
+// Hindernis-Art je Kachel (deterministisch): ueberwiegend Baeume, manchmal Felsen.
+export function obstacleKind(col, row) {
+  return tileRand(col, row, 6) < 0.7 ? 'tree' : 'rock';
+}

@@ -146,15 +146,6 @@ Erledigte Einträge (`fertig`) liegen in `docs/archiv/BACKLOG-fertig.md`. Beim A
   - Je Punkt einzeln bewertbar, nur CSS/UI, keine Spiel-Logik.
   - `npm test` und `npm run test:e2e` bleiben grün.
 
-### B-028: Welt Wald (blockierte Bauplätze)
-- Status: vorschlag
-- Aufwand: M
-- Idee: Zweite Map mit Bäumen und Felsen, die Kacheln blockieren. Wenige, dafür gute Bauplätze zwingen zu Entscheidungen. Hängt von B-027 ab.
-- Akzeptanzkriterien:
-  - Map `forest` mit `blocked`-Kacheln; `canBuild` lehnt sie ab.
-  - Test: Bauen auf blockierter Kachel scheitert, Weg ist trotzdem begehbar.
-  - Deko in `src/decor.js` passend zum Thema.
-
 ### B-029: Welt Eis (Gegner-/Turm-Modifikatoren pro Map)
 - Status: vorschlag
 - Aufwand: M
@@ -273,3 +264,10 @@ Erledigte Einträge (`fertig`) liegen in `docs/archiv/BACKLOG-fertig.md`. Beim A
 - Idee: Hinweise aus dem Review von B-027. (1) `let mapId = undefined;` in `src/main.js` zu `let mapId;`. (2) Kartenwahl in `localStorage` merken (mit try/catch), damit sie nach dem Neuladen bleibt. (3) Im Schlucht-Test die Magic Number `7` und den Text "mindestens 5 Kurven" angleichen. (4) Test, dass die Weglänge jeder Karte höchstens ±40 % von der Wiese abweicht. (5) Alter Aufruf `createGame` mit `path`/`blocked`-Overrides hat keinen eigenen Test.
 - Akzeptanzkriterien:
   - `npm test` bleibt grün, kein Test abgeschwächt.
+
+### B-043: Welt Wald: Feinschliff
+- Status: vorschlag
+- Aufwand: S
+- Idee: Hinweise aus dem Review von B-028. (1) Baum-Anteil `0.7` aus `obstacleKind` in `src/decor.js` nach `src/config.js` (`OBSTACLE_TREE_SHARE`). (2) Schattenfarbe `rgba(10,40,15,0.35)` in `drawObstacle` (`src/render.js`) als benannte Konstante. (3) `tests/forest-edge.test.js` in `tests/game.test.js` und `tests/decor.test.js` einsortieren (Regel: Tests nach Modul). (4) Sichtprüfung der Waldkarte im Browser: Lesbarkeit der Hindernisse, Gefühl der knappen Bauplätze.
+- Akzeptanzkriterien:
+  - `npm test` bleibt grün, kein Test abgeschwächt oder gelöscht.

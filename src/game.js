@@ -29,6 +29,7 @@ export function createGame({ mapId, ...overrides } = {}) {
     healTick: 0, // Zähler der Heilimpulse (verhindert doppelte Heilung pro Impuls)
     path: buildPath(waypoints, TILE),
     blocked: pathTiles(waypoints),
+    obstacles: new Set((MAPS[id].obstacles || []).map(([c, r]) => `${c},${r}`)), // Bäume/Felsen (kein Weg)
     ...overrides,
   };
 }
@@ -62,6 +63,7 @@ export function towerAt(state, col, row) {
 export function canBuild(state, col, row) {
   if (col < 0 || row < 0 || col >= COLS || row >= ROWS) return { ok: false, reason: 'Außerhalb des Spielfelds' };
   if (state.blocked.has(`${col},${row}`)) return { ok: false, reason: 'Auf dem Weg kann nicht gebaut werden' };
+  if (state.obstacles && state.obstacles.has(`${col},${row}`)) return { ok: false, reason: 'Hier wächst ein Baum oder liegt ein Fels' };
   if (towerAt(state, col, row)) return { ok: false, reason: 'Hier steht schon ein Turm' };
   return { ok: true };
 }

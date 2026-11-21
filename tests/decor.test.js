@@ -160,3 +160,17 @@ test('Dekoration: Verteilung ohne Cluster, weder leer noch voll', () => {
   for (const c of [0, COLS - 1]) assert.ok(grid.some((row) => row[c]));
 });
 
+
+test('Hindernis-Art: deterministisch, nur tree/rock; Kleindeko nie auf Hindernis', async () => {
+  const { obstacleKind } = await import('../src/decor.js');
+  const s = createGame({ mapId: 'forest' });
+  const kinds = new Set();
+  for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
+    const k = obstacleKind(c, r);
+    assert.equal(k, obstacleKind(c, r));
+    assert.ok(k === 'tree' || k === 'rock');
+    kinds.add(k);
+    if (s.obstacles.has(`${c},${r}`)) assert.equal(decorFor(c, r, s.blocked, s.obstacles), null);
+  }
+  assert.equal(kinds.size, 2);
+});

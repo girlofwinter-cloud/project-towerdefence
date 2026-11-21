@@ -284,3 +284,13 @@ Neue Einträge werden unten angehängt. Bestehende Einträge werden nie geänder
 - Review: APPROVE (keine Muss-Punkte; Hinweise als B-042 im Backlog)
 - Entscheidungen: `MAPS` mit Wiese (unverändert) und einer zweiten Karte "Schlucht" (52 statt 40 Wegschritte), damit das Auswahlmenü sofort Sinn hat; `WAYPOINTS` bleibt als Alias, bestehende Tests unverändert. Kartenwechsel nur vor Welle 1 und startet das Spiel neu. Farbschema pro Map bewusst nicht Teil von B-027, kommt mit den Welten (B-028 ff.).
 - Offen: Sichtprüfung der Schlucht und der Auswahl im Browser durch einen Menschen; PR #21 muss vor diesem PR gemergt werden.
+
+## 2026-11-21 · B-028 · Welt Wald (blockierte Bauplätze)
+- Rolle(n): orchestrator, developer, tester, reviewer
+- Branch: agent/wald (aufgebaut auf agent/map-auswahl, PR #22)
+- Runden: 1 von max. 2
+- Ergebnis: fertig
+- Tests: 133 bestanden, 0 fehlgeschlagen (8 neu, keiner abgeschwächt)
+- Review: APPROVE (keine Muss-Punkte; Hinweise als B-043)
+- Entscheidungen: Hindernisse in eigenem Feld `state.obstacles` statt in `state.blocked`, damit "Weg" und "nicht bebaubar" getrennte Begriffe bleiben (sonst Kiesel auf Bäumen, Deko-Regeln vermischt). Karte `forest` mit eigenem Weg (44 Kacheln, 9 Kurven) und 39 Hindernissen, 125 baubare Kacheln im Abstand bis 2 zum Weg. Wellen-Balancing unverändert.
+- Offen: Sichtprüfung im Browser; Wald-Balancing nur über die Standardkarte abgesichert (Wellen sind pro Karte gleich); PR #21 und #22 müssen vorher gemergt werden.

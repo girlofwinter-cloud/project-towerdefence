@@ -434,3 +434,12 @@ test('Effekt-Render: Shake verschiebt nur die Zeichnung (translate <= 3 px), Hov
   assert.equal(calls.length, base, 'Shake endet');
 });
 
+
+test('Render: Karte Wald mit Hindernissen zeichnet ohne Fehler, auch nach Kartenwechsel', async () => {
+  const { render } = await import('../src/render.js');
+  const m = mockCtx();
+  render(m.ctx, createGame({ mapId: 'forest' }), {});
+  render(m.ctx, createGame(), {});
+  render(m.ctx, createGame({ mapId: 'forest' }), {});
+  assert.equal(m.depth, 0);
+});
