@@ -443,7 +443,7 @@ Reihenfolge ist Abhängigkeit: B-062 und B-063 zuerst, dann gemeinsame Sichtprü
   - Kein Aufruf im Frame-Pfad (render-Test).
 
 ### B-079: Wiese 4/7: Felsen, Büsche, Blumen, Pilze und Streu-Deko neu (Design-Overhaul)
-- Status: vorschlag
+- Status: offen
 - Aufwand: M
 - Idee: Felsgruppen mit Moos, Büsche, Blumen, Pilze im Flat-Pop-Stil mit Kontur; kleine Streu-Deko (Fass, Baumstämme, Zaunspitzen, Wegweiser) flach im Feld, unter Türmen verdeckt.
 - Akzeptanzkriterien:
@@ -451,7 +451,7 @@ Reihenfolge ist Abhängigkeit: B-062 und B-063 zuerst, dann gemeinsame Sichtprü
   - Keine Deko auf Weg-Kacheln (bestehende `decor`-Tests grün); neue Streu-Deko bleibt in Bereichen, die sie nicht unspielbar machen (bebaubar bleibt jede freie Kachel).
 
 ### B-080: Wiese 5/7: Akzente Burgmauer, Teich, Brunnen (Design-Overhaul)
-- Status: vorschlag
+- Status: offen
 - Aufwand: M
 - Idee: Steinmauer mit Tor am oberen Rand, Teich und Brunnen als Akzente, nur im Randring bzw. klein. Teich/Mauer als Hindernis im Feld wäre Logik und gehört nicht hierher. Andere Karten folgen mit B-072 bis B-074 nach der Palette aus `docs/STIL.md`.
 - Akzeptanzkriterien:
@@ -459,7 +459,7 @@ Reihenfolge ist Abhängigkeit: B-062 und B-063 zuerst, dann gemeinsame Sichtprü
   - Screenshot Wiese; Einstieg und Ausgang des Weges bleiben klar erkennbar.
 
 ### B-081: Wiese 6/7: Licht, Vignette und Baumschatten (Design-Overhaul)
-- Status: vorschlag
+- Status: offen
 - Aufwand: S
 - Idee: Lichtstreifen, sanfter Verlauf, Vignette und Baumschatten, nur im Cache (Gradient-Objekte nur dort, nie pro Frame).
 - Akzeptanzkriterien:
@@ -467,7 +467,7 @@ Reihenfolge ist Abhängigkeit: B-062 und B-063 zuerst, dann gemeinsame Sichtprü
   - Kein Gradient und kein `shadowBlur` im Frame-Pfad.
 
 ### B-082: Wiese 7/7: Bauplatz-Inseln unter Türmen und Hover-Vorschau (Design-Overhaul)
-- Status: vorschlag
+- Status: offen
 - Aufwand: S
 - Idee: Grüne Insel als Sprite unter jedem gebauten Turm und als Vorschau beim Hover. Kein Bauen auf neuen Kacheln, `canBuild` unverändert. Dazu: Reichweitenkreis nur als Ring plus ca. 8 % Füllfläche, damit er über der Deko nicht unruhig wirkt.
 - Akzeptanzkriterien:
