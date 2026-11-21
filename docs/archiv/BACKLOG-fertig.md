@@ -190,3 +190,11 @@ Agents lesen diese Datei nur bei konkretem Bedarf.
   - Fähigkeiten sind für den Spieler erkennbar (Rückstoß mindestens etwa eine halbe Kachel, Aufwärmen mindestens 25 %, Einfrieren mindestens etwa jeder 5. Treffer); Zahlen nur in `src/config.js`.
   - Der Test "Spätphase ... 55 %" und andere Balancing-Konstanten dürfen angepasst werden, wenn der Druck bewusst erhöht wird; jede geänderte Konstante wird im Ledger genannt und nichts wird nur zum Grünwerden abgeschwächt.
   - `npm test` grün.
+
+### B-049: Testlaufzeit senken und Balancing-Hinweise
+- Status: fertig
+- Aufwand: S
+- Idee: Hinweise aus dem Review von B-046. Der Testlauf stieg von etwa 10 s auf 48 s (der Test "robuste Strategien ... 4 dt" allein ca. 20 s). (1) Strategie-Cache (`iceCache`, `strategyRun`) in einer gemeinsamen Funktion mit Schlüssel `mapId:kind@dt` zusammenführen, damit derselbe Lauf nicht doppelt läuft. (2) Die 4-dt-Tests auf dt 1/30 und 1/60 reduzieren und 1/20 und 1/120 in einen eigenen Sammeltest auslagern (Prüfschärfe bleibt, nur seltener). (3) Kommentar bei `MAPS.forest.modifiers` ergänzen: 1.19 ist gemessen und ein schmaler stabiler Wert (stabil zwischen 1.17 und 1.20), `fork` ebenso. (4) Die Strategie a>c>c>f (Pfeilturm zuerst) endet auf allen Karten mit 10 Leben; prüfen, ob das gewollt ist oder ob mehr Gold-Senke nötig ist (Logikänderung in `game.js`). (5) `ENEMY_TYPES[target.type]` in der Sniper-Schwelle crasht bei Hand-Gegnern ohne `type`; Fallback nur falls ein Test das braucht.
+- Akzeptanzkriterien:
+  - Gesamtlaufzeit `npm test` deutlich unter 30 s, keine Prüfung abgeschwächt.
+- Hinweis: Punkte (4) und (5) sowie die Umbenennung von `iceRun` liegen jetzt in B-050. Die gemessene Laufzeit lag bei ca. 15 s (die 48 s waren eine Lastspitze durch parallel laufende Agenten).

@@ -292,29 +292,39 @@ test('Schwierigkeit: Boss-Wellen sind effektiv nicht schwächer als vor B-008 (H
 const MIX_CANNON = ['arrow', 'cannon', 'cannon', 'frost'];
 const MIX_ARROW = ['cannon', 'arrow', 'arrow', 'frost'];
 
-// Wie playDt (gleiche Entscheidungen), liefert zusätzlich pro Welle den größten Wegfortschritt
-// (dist / Weglänge, 0..1) eines Gegners und die verlorenen Leben. playDt selbst bleibt unverändert.
-function playTracked(mix, dt) {
-  const s = createGame();
-  const spots = rankedSpots(s, TOWER_TYPES.cannon.range);
+// Gemeinsamer Strategie-Lauf für alle Karten. mix ist eine Bau-Reihenfolge (mit Aufrüsten) oder 'arrowOnly'
+// (jede Runde so viele Pfeiltürme wie möglich, nie aufrüsten). Liefert zusätzlich pro Welle den größten
+// Wegfortschritt (dist / Weglänge, 0..1) eines Gegners und die verlorenen Leben.
+// Jeder Lauf (Schlüssel `mapId:mix@dt`) wird nur einmal simuliert, alle Tests lesen aus demselben Cache.
+function playTracked(mix, dt, mapId = 'meadow') {
+  const s = createGame({ mapId });
+  const arrowOnly = mix === 'arrowOnly';
+  const spots = rankedSpots(s, TOWER_TYPES[arrowOnly ? 'arrow' : 'cannon'].range);
   const progress = [];
   const lost = [];
   let i = 0;
   while (s.status === 'playing' && s.wave < MAX_WAVES) {
-    for (let again = true; again;) {
-      again = false;
-      const type = mix[s.towers.length % mix.length];
-      if (i < spots.length && s.gold >= TOWER_TYPES[type].cost) {
-        buildTower(s, type, spots[i].c, spots[i].r);
-        i++;
-        again = true;
-      } else {
-        let best = null;
-        for (const t of s.towers) {
-          const c = upgradeCost(t);
-          if (c !== null && (!best || c < best.c)) best = { id: t.id, c };
+    if (arrowOnly) {
+      for (const p of spots) {
+        if (s.gold < TOWER_TYPES.arrow.cost) break;
+        buildTower(s, 'arrow', p.c, p.r);
+      }
+    } else {
+      for (let again = true; again;) {
+        again = false;
+        const type = mix[s.towers.length % mix.length];
+        if (i < spots.length && s.gold >= TOWER_TYPES[type].cost) {
+          buildTower(s, type, spots[i].c, spots[i].r);
+          i++;
+          again = true;
+        } else {
+          let best = null;
+          for (const t of s.towers) {
+            const c = upgradeCost(t);
+            if (c !== null && (!best || c < best.c)) best = { id: t.id, c };
+          }
+          if (best && s.gold >= best.c) { upgradeTower(s, best.id); again = true; }
         }
-        if (best && s.gold >= best.c) { upgradeTower(s, best.id); again = true; }
       }
     }
     const livesBefore = s.lives;
@@ -331,29 +341,10 @@ function playTracked(mix, dt) {
 }
 
 const strategyCache = new Map();
-function strategyRun(mix, dt) {
-  const key = `${mix.join(',')}@${dt}`;
-  if (!strategyCache.has(key)) strategyCache.set(key, playTracked(mix, dt));
+function strategyRun(mix, dt, mapId = 'meadow') {
+  const key = `${mapId}:${mix === 'arrowOnly' ? mix : mix.join(',')}@${dt}`;
+  if (!strategyCache.has(key)) strategyCache.set(key, playTracked(mix, dt, mapId));
   return strategyCache.get(key);
-}
-
-// "Nur Pfeiltürme, nie aufrüsten": baut jede Runde so viele Pfeiltürme wie möglich.
-const arrowOnlyCache = new Map();
-function arrowOnlyRun(dt) {
-  if (!arrowOnlyCache.has(dt)) {
-    const s = createGame();
-    const spots = rankedSpots(s, TOWER_TYPES.arrow.range);
-    while (s.status === 'playing' && s.wave < MAX_WAVES) {
-      for (const p of spots) {
-        if (s.gold < TOWER_TYPES.arrow.cost) break;
-        buildTower(s, 'arrow', p.c, p.r);
-      }
-      startWave(s);
-      for (let i = 0; i < Math.round(600 / dt) && s.waveActive && s.status === 'playing'; i++) update(s, dt);
-    }
-    arrowOnlyCache.set(dt, s);
-  }
-  return arrowOnlyCache.get(dt);
 }
 
 test('Simulation: Fortschrittsmessung ändert den Spielverlauf nicht (gleiches Ergebnis wie playDt)', () => {
@@ -398,7 +389,7 @@ test('Schwierigkeit: die Reserve ist klein, mindestens eine robuste Strategie en
 
 test('Schwierigkeit: nur Pfeiltürme ohne Aufrüstung verlieren vor Welle 12 (dt 1/20, 1/30, 1/60, 1/120)', () => {
   for (const dt of [1 / 30, 1 / 60, 1 / 20, 1 / 120]) {
-    const s = arrowOnlyRun(dt);
+    const s = strategyRun('arrowOnly', dt).state;
     assert.equal(s.status, 'lost', `dt=${dt}`);
     assert.ok(s.wave < 12, `dt=${dt}: verloren erst in Welle ${s.wave}`);
   }
@@ -1103,44 +1094,8 @@ test('Eiswelt: Slowfaktor in (0,1), Upgrade-Stufen und Kanonen-Splash skalieren 
 });
 
 // B-044: Eiswelt etwas fordernder als die Wiese, aber klar schaffbar (eigene Läufe mit mapId, per Cache nur einmal je Strategie).
-const iceCache = new Map();
-function iceRun(kind, dt, mapId = 'ice') {
-  const key = `${mapId}:${kind}@${dt}`;
-  if (iceCache.has(key)) return iceCache.get(key);
-  const s = createGame({ mapId });
-  const mix = kind === 'cannon' ? MIX_CANNON : MIX_ARROW;
-  const spots = rankedSpots(s, TOWER_TYPES[kind === 'arrowOnly' ? 'arrow' : 'cannon'].range);
-  let i = 0;
-  while (s.status === 'playing' && s.wave < MAX_WAVES) {
-    if (kind === 'arrowOnly') {
-      for (const p of spots) {
-        if (s.gold < TOWER_TYPES.arrow.cost) break;
-        buildTower(s, 'arrow', p.c, p.r);
-      }
-    } else {
-      for (let again = true; again;) {
-        again = false;
-        const type = mix[s.towers.length % mix.length];
-        if (i < spots.length && s.gold >= TOWER_TYPES[type].cost) {
-          buildTower(s, type, spots[i].c, spots[i].r);
-          i++;
-          again = true;
-        } else {
-          let best = null;
-          for (const t of s.towers) {
-            const c = upgradeCost(t);
-            if (c !== null && (!best || c < best.c)) best = { id: t.id, c };
-          }
-          if (best && s.gold >= best.c) { upgradeTower(s, best.id); again = true; }
-        }
-      }
-    }
-    startWave(s);
-    for (let k = 0; k < Math.round(600 / dt) && s.waveActive && s.status === 'playing'; k++) update(s, dt);
-  }
-  iceCache.set(key, s);
-  return s;
-}
+const iceRun = (kind, dt, mapId = 'ice') =>
+  strategyRun(kind === 'cannon' ? MIX_CANNON : kind === 'arrow' ? MIX_ARROW : kind, dt, mapId).state;
 
 test('Eiswelt: robuste Strategien gewinnen Welle 20 mit mindestens 1 Leben (dt 1/30, 1/60)', () => {
   for (const kind of ['cannon', 'arrow']) {
