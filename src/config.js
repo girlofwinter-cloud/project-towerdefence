@@ -289,3 +289,23 @@ export function waveSummary(wave) {
   for (const { type } of waveFor(wave)) summary[type] = (summary[type] || 0) + 1;
   return summary;
 }
+
+// Stil Flat-Pop (docs/STIL.md, Abschnitte 2 und 3): Palette und Maße für src/draw-utils.js
+export const STYLE = {
+  shadowTone: '#2b1b3d',   // kühles Violett für Schatten und Bodenschatten
+  lightTone: '#fff3c9',    // warmes Creme für Licht
+  lightMix: 0.28,          // Anteil Lichtton auf der Lichtfläche
+  shadeMix: 0.4,           // Anteil Schattenton auf der Schattenfläche
+  band: 2,                 // Breite der Licht-/Schattenbänder in px bei 1x
+  outlineWidth: 1.3,       // Konturbreite in px bei 1x
+  outlineDarken: 0.55,     // Kontur = Eigenfarbe um diesen Anteil abgedunkelt
+  outlineMaxLight: 0.35,   // Kontur nie heller als diese Helligkeit (0..1)
+  groundShadowAlpha: 0.38, // Alpha des Bodenschattens
+  groundShadowWidth: 1.15, // Breite des Bodenschattens in Radien (1,0 bis 1,3)
+  groundShadowHeight: 0.33,// Höhe des Bodenschattens in Radien (30 bis 35 %)
+  groundShadowOffset: 0.12,// Versatz nach rechts unten in Radien
+  palette: {
+    gold: '#f4c542', goldDark: '#b07a14', red: '#d4503f', heart: '#e8455a', blue: '#4f7fc8',
+    ice: '#7fd8f4', iceLight: '#bff0ff', wood: '#c58f55', woodDark: '#8a5a34', stone: '#b3adaa',
+  },
+};

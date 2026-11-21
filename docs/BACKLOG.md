@@ -358,14 +358,6 @@ Erledigte Einträge (`fertig`) liegen in `docs/archiv/BACKLOG-fertig.md`. Beim A
 ## Design-Overhaul (Flat-Pop nach `docs/STIL.md`, Stil B gewählt)
 Reihenfolge ist Abhängigkeit: B-062 und B-063 zuerst, dann gemeinsame Sichtprüfung mit dem Menschen, erst danach B-064 bis B-075. Keine Logik- oder Balancing-Änderungen in dieser Reihe. Jeder Eintrag endet mit Screenshot-Prüfung (Desktop 1280x800, Handy 390x844) und grünem `npm test`.
 
-### B-062: Stil-Fundament (Design-Overhaul)
-- Status: offen
-- Aufwand: M
-- Idee: `src/draw-utils.js` bekommt die Helfer `part`, `poly`, `rr`, `ell`, `lit`, `shd`, `shadow` und die Palette-/Kontur-Konstanten aus `docs/STIL.md` (Zahlen in `src/config.js`).
-- Akzeptanzkriterien:
-  - Helfer mit Tests in `tests/render.test.js` (Farbmischung, Abdunkeln der Kontur).
-  - Bestehende Optik unverändert.
-
 ### B-063: Pfeilturm im neuen Stil als Referenz (Design-Overhaul)
 - Status: offen
 - Aufwand: S
@@ -466,3 +458,11 @@ Reihenfolge ist Abhängigkeit: B-062 und B-063 zuerst, dann gemeinsame Sichtprü
 - Idee: Sprite-Caches für Türme und Gegner, Weißblitz bei Treffer, Bau-Animation.
 - Akzeptanzkriterien:
   - Zeichenzeit pro Frame mit 40 Gegnern und 20 Türmen nicht höher als vor dem Overhaul (Messung per `performance.now`).
+
+### B-076: Stil-Helfer: Feinschliff (Hinweise aus dem Review von B-062)
+- Status: vorschlag
+- Aufwand: S
+- Idee: (1) `parseHex` in `src/draw-utils.js` kennt nur `#rrggbb`; Kurzformen (`#fff`) oder `rgb()` ergeben NaN. Kommentar oder Prüfung ergänzen. (2) In `part()` ist die Basisfläche um 0,3 * `band` gegenüber dem Licht versetzt, der Schattenstreifen ist dadurch nur ca. 1,4 px statt 2 px breit und nicht in `STYLE` einstellbar; `band` skaliert nicht mit der Teilgröße. Bei der Sichtprüfung von B-063 ansehen und ggf. in `STYLE` auslagern.
+- Akzeptanzkriterien:
+  - Ungültige Hexwerte werden abgefangen oder dokumentiert (Test).
+  - Schattenbreite ist in `STYLE` einstellbar, Screenshot-Vergleich bei 1x und 0,75x.
