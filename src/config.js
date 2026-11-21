@@ -74,7 +74,7 @@ export const MAPS = {
       [15, 9], [16, 3], [17, 3], [17, 5], [18, 5], [18, 9], [18, 12], [19, 7], [19, 12],
     ],
   },
-  // Eiswelt (B-029): Modifikatoren (enemySpeed, towerDamage je Typ, slowStrength) und eigenes Gelände.
+  // Eiswelt (B-029): Modifikatoren (enemySpeed, towerDamage je Typ, slowStrength) und kühles Farbschema (theme).
   ice: {
     name: 'Eiswelt',
     waypoints: [
