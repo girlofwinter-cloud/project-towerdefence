@@ -209,6 +209,17 @@ const SPECIAL_TEXTS = {
 };
 for (const [type, build] of Object.entries(SPECIAL_TEXTS)) TOWER_TYPES[type].special.text = build(TOWER_TYPES[type].special, TOWER_TYPES[type]);
 
+// Aktive Fähigkeiten (B-038): lange Abklingzeiten, damit das Spiel nicht leichter wird.
+// Zeiten in Sekunden Spielzeit, radius in Kacheln, slow = Anteil der Verlangsamung (0,7 = 70 % langsamer).
+export const ABILITIES = {
+  meteor: { name: 'Meteor', key: 'q', cooldown: 50, radius: 1.8, damage: 150 },
+  freeze: { name: 'Kälteschock', key: 'w', cooldown: 60, slow: 0.7, duration: 4 },
+  repair: { name: 'Notfall-Reparatur', key: 'e', cooldown: 120, maxUses: 2, heal: 1 },
+};
+ABILITIES.meteor.text = `Flächenschaden (${ABILITIES.meteor.damage}) im Umkreis von ${num(ABILITIES.meteor.radius)} Kacheln, Abklingzeit ${ABILITIES.meteor.cooldown} s.`;
+ABILITIES.freeze.text = `Alle Gegner ${pct(ABILITIES.freeze.slow)} langsamer für ${ABILITIES.freeze.duration} s, Abklingzeit ${ABILITIES.freeze.cooldown} s.`;
+ABILITIES.repair.text = `+${ABILITIES.repair.heal} Leben, höchstens ${ABILITIES.repair.maxUses}× pro Spiel, Abklingzeit ${ABILITIES.repair.cooldown} s.`;
+
 // speed in Kacheln/Sekunde, reward = Gold pro Kill, leak = verlorene Leben am Ziel
 // Healer: healRadius in Kacheln, healPerSec = Anteil der maxHp des Ziels pro Sekunde,
 //   healInterval = Sekunden (Spielzeit) zwischen zwei Heilimpulsen.

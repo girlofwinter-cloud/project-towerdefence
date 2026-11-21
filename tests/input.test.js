@@ -24,3 +24,13 @@ test('buildTapStep: Touch auf eine andere Kachel verschiebt nur die Vorschau (ba
   assert.equal(buildTapStep({ col: 3, row: 4 }, 3, 5, true).action, 'preview');
 });
 
+
+import { aimStep } from '../src/input.js';
+
+test('aimStep: Taste schaltet den Zielmodus, Klick löst aus, Abbruch beendet', () => {
+  assert.deepEqual(aimStep(false, 'key'), { aiming: true, fire: false });
+  assert.deepEqual(aimStep(true, 'key'), { aiming: false, fire: false });
+  assert.deepEqual(aimStep(true, 'click'), { aiming: false, fire: true });
+  assert.deepEqual(aimStep(false, 'click'), { aiming: false, fire: false });
+  assert.deepEqual(aimStep(true, 'cancel'), { aiming: false, fire: false });
+});

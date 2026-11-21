@@ -1,12 +1,12 @@
 // Verbindet Spiel-Logik, Rendering und Bedienung (DOM, Maus, Tastatur).
-import { TILE, WIDTH, HEIGHT, TOWER_TYPES, ENEMY_TYPES, MAX_WAVES, MAPS, SPEED_STEPS, TARGET_MODES, TARGET_MODE_NAMES, MAX_SUBSTEP, LOW_LIVES, waveSummary } from './config.js';
+import { TILE, WIDTH, HEIGHT, TOWER_TYPES, ENEMY_TYPES, MAX_WAVES, MAPS, SPEED_STEPS, TARGET_MODES, TARGET_MODE_NAMES, MAX_SUBSTEP, LOW_LIVES, ABILITIES, waveSummary } from './config.js';
 import {
   createGame, stepGame, togglePause, buildTower, upgradeTower, sellTower, setTargetMode, startWave,
-  canBuild, towerAt, towerStats, upgradeCost, sellValue,
+  useAbility, abilityCooldownLeft, canBuild, towerAt, towerStats, upgradeCost, sellValue,
 } from './game.js';
 import { render, drawTower } from './render.js';
 import { livesText } from './hud.js';
-import { buildTapStep } from './input.js';
+import { buildTapStep, aimStep } from './input.js';
 
 const canvas = document.getElementById('game');
 canvas.width = WIDTH;
@@ -14,7 +14,7 @@ canvas.height = HEIGHT;
 const ctx = canvas.getContext('2d');
 
 const $ = (id) => document.getElementById(id);
-const ui = { buildType: null, selectedTowerId: null, hover: null, pending: null, speed: SPEED_STEPS[0], message: '', messageKind: 'error', messageTtl: 0 };
+const ui = { buildType: null, selectedTowerId: null, hover: null, pending: null, aiming: false, hoverPx: null, speed: SPEED_STEPS[0], message: '', messageKind: 'error', messageTtl: 0 };
 let mapId = undefined;
 let state = createGame();
 
@@ -47,7 +47,30 @@ for (const [type, def] of Object.entries(TOWER_TYPES)) {
   shop.appendChild(btn);
 }
 
+// ---------- Fähigkeiten ----------
+const abilityBtns = {};
+for (const [id, def] of Object.entries(ABILITIES)) {
+  const btn = document.createElement('button');
+  btn.title = def.text;
+  btn.addEventListener('click', () => doAbility(id));
+  $('abilities').appendChild(btn);
+  abilityBtns[id] = btn;
+}
+
+// Meteor braucht ein Ziel (Zielmodus), die anderen lösen sofort aus.
+function doAbility(id) {
+  if (id === 'meteor') {
+    ui.aiming = aimStep(ui.aiming, 'key').aiming;
+    if (ui.aiming) { ui.buildType = null; ui.selectedTowerId = null; ui.pending = null; }
+  } else {
+    const res = useAbility(state, id);
+    if (!res.ok) flash(res.reason);
+  }
+  refreshUI();
+}
+
 function selectBuild(type) {
+  ui.aiming = false;
   ui.buildType = ui.buildType === type ? null : type;
   ui.selectedTowerId = null;
   ui.pending = null;
@@ -68,16 +91,31 @@ function tileFromEvent(ev) {
   return { col: Math.floor(x / TILE), row: Math.floor(y / TILE) };
 }
 
+function pointFromEvent(ev) {
+  const rect = canvas.getBoundingClientRect();
+  return { x: ((ev.clientX - rect.left) / rect.width) * WIDTH, y: ((ev.clientY - rect.top) / rect.height) * HEIGHT };
+}
+
 // Pointer-Events statt nur Maus: so gibt es auch auf Touch eine Vorschau der Kachel.
 let lastPointerType = 'mouse';
 canvas.addEventListener('pointerdown', (ev) => { lastPointerType = ev.pointerType; });
 canvas.addEventListener('pointermove', (ev) => {
   const { col, row } = tileFromEvent(ev);
+  ui.hoverPx = pointFromEvent(ev);
   ui.hover = { col, row, ok: canBuild(state, col, row).ok };
 });
 // Bei Touch feuert pointerleave direkt nach dem Loslassen: dort die Vorschau behalten.
 canvas.addEventListener('pointerleave', (ev) => { if (ev.pointerType === 'mouse') ui.hover = null; });
 canvas.addEventListener('click', (ev) => {
+  const aim = aimStep(ui.aiming, 'click');
+  if (aim.fire) {
+    ui.aiming = false;
+    const pt = pointFromEvent(ev);
+    const res = useAbility(state, 'meteor', pt.x, pt.y);
+    if (!res.ok) flash(res.reason);
+    refreshUI();
+    return;
+  }
   const { col, row } = tileFromEvent(ev);
   const existing = towerAt(state, col, row);
   if (existing) {
@@ -105,6 +143,7 @@ canvas.addEventListener('click', (ev) => {
 });
 canvas.addEventListener('contextmenu', (ev) => {
   ev.preventDefault();
+  ui.aiming = false;
   ui.buildType = null;
   ui.selectedTowerId = null;
   ui.pending = null;
@@ -178,16 +217,18 @@ function doSell() {
 }
 function restart() {
   state = createGame({ mapId });
-  Object.assign(ui, { buildType: null, selectedTowerId: null, pending: null, speed: SPEED_STEPS[0] });
+  Object.assign(ui, { buildType: null, selectedTowerId: null, pending: null, aiming: false, hoverPx: null, speed: SPEED_STEPS[0] });
   refreshUI();
 }
 
 window.addEventListener('keydown', (ev) => {
   const key = ev.key.toLowerCase();
   const type = Object.keys(TOWER_TYPES).find((t) => TOWER_TYPES[t].key === key);
+  const ability = Object.keys(ABILITIES).find((a) => ABILITIES[a].key === key);
   if (type) selectBuild(type);
+  else if (ability) doAbility(ability);
   else if (key === ' ') { ev.preventDefault(); doStartWave(); }
-  else if (key === 'escape') { ui.buildType = null; ui.selectedTowerId = null; ui.pending = null; refreshUI(); }
+  else if (key === 'escape') { ui.aiming = false; ui.buildType = null; ui.selectedTowerId = null; ui.pending = null; refreshUI(); }
   else if (key === 'u') doUpgrade();
   else if (key === 's') doSell();
   else if (key === 't') doCycleTarget();
@@ -219,6 +260,16 @@ function refreshUI() {
     const parts = Object.entries(waveSummary(state.wave + 1))
       .map(([type, n]) => `${n}× ${ENEMY_TYPES[type].name}`);
     $('wave-preview').textContent = `Kommt: ${parts.join(', ')}`;
+  }
+
+  for (const [id, def] of Object.entries(ABILITIES)) {
+    const a = state.abilities[id];
+    const left = abilityCooldownLeft(state, id);
+    const used = def.maxUses !== undefined && a.uses >= def.maxUses;
+    const status = used ? 'aufgebraucht' : left > 0 ? `${Math.ceil(left)} s` : def.maxUses !== undefined ? `bereit (${def.maxUses - a.uses}×)` : 'bereit';
+    abilityBtns[id].textContent = `${def.name} (${def.key.toUpperCase()}) ${status}`;
+    abilityBtns[id].disabled = used || left > 0 || state.status !== 'playing';
+    abilityBtns[id].classList.toggle('aiming', id === 'meteor' && ui.aiming);
   }
 
   for (const btn of shop.children) {

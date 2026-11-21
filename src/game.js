@@ -1,7 +1,7 @@
 // Spiel-Logik: kompletter Zustand + update(). Kein DOM, kein Canvas -> in Node testbar.
 import {
   TILE, COLS, ROWS, START_GOLD, START_LIVES, MAX_WAVES, SELL_RATIO, MAX_LEVEL, MAX_SUBSTEP, TARGET_MODES,
-  MAPS, DEFAULT_MAP_ID, TOWER_TYPES, ENEMY_TYPES, waveFor, waveBonus, hpScale,
+  MAPS, DEFAULT_MAP_ID, TOWER_TYPES, ABILITIES, WIDTH, HEIGHT, ENEMY_TYPES, waveFor, waveBonus, hpScale,
 } from './config.js';
 import { buildPath, pointAt, pathTiles } from './path.js';
 
@@ -32,6 +32,7 @@ export function createGame({ mapId, ...overrides } = {}) {
     paused: false, // Pause: update() ändert nichts, Bauen bleibt erlaubt
     kills: 0,
     time: 0,
+    abilities: Object.fromEntries(Object.keys(ABILITIES).map((id) => [id, { readyAt: 0, uses: 0 }])),
     nextId: 1,
     healAt: ENEMY_TYPES.healer.healInterval, // Zeitpunkt (state.time) des nächsten Heilimpulses
     healTick: 0, // Zähler der Heilimpulse (verhindert doppelte Heilung pro Impuls)
@@ -195,6 +196,45 @@ export function spawnEnemy(state, type, wave = state.wave) {
 export function togglePause(state) {
   if (state.status === 'playing') state.paused = !state.paused;
   return state.paused;
+}
+
+// ---------- Fähigkeiten (B-038) ----------
+
+// Restliche Abklingzeit in Sekunden Spielzeit (0 = bereit).
+export function abilityCooldownLeft(state, id) {
+  const a = state.abilities?.[id];
+  return a ? Math.max(0, a.readyAt - state.time) : 0;
+}
+
+export function useAbility(state, id, x, y) {
+  const def = Object.hasOwn(ABILITIES, id) ? ABILITIES[id] : null;
+  if (!def) return { ok: false, reason: 'Unbekannte Fähigkeit' };
+  if (state.status !== 'playing') return { ok: false, reason: 'Spiel ist vorbei' };
+  if (state.paused) return { ok: false, reason: 'Spiel ist pausiert' };
+  const a = state.abilities[id];
+  if (def.maxUses !== undefined && a.uses >= def.maxUses) return { ok: false, reason: `${def.name} ist aufgebraucht` };
+  if (state.time < a.readyAt) return { ok: false, reason: `${def.name} lädt noch (${Math.ceil(a.readyAt - state.time)} s)` };
+  if (id === 'meteor') {
+    if (!Number.isFinite(x) || !Number.isFinite(y) || x < 0 || y < 0 || x > WIDTH || y > HEIGHT) return { ok: false, reason: 'Ziel liegt außerhalb des Spielfelds' };
+    const r = def.radius * TILE;
+    for (const e of state.enemies) if (Math.hypot(e.x - x, e.y - y) <= r) damage(state, e, { damage: def.damage });
+    state.effects.push({ kind: 'explosion', x, y, r, ttl: 0.5, max: 0.5 });
+    removeDead(state);
+  } else if (id === 'freeze') {
+    const factor = 1 - def.slow;
+    for (const e of state.enemies) {
+      const active = state.time < (e.slowUntil || 0);
+      e.slowFactor = active ? Math.min(e.slowFactor, factor) : factor;
+      e.slowUntil = Math.max(e.slowUntil || 0, state.time + def.duration);
+    }
+    state.effects.push({ kind: 'chill', ttl: 0.4, max: 0.4 });
+  } else if (id === 'repair') {
+    if (state.lives >= START_LIVES) return { ok: false, reason: 'Leben sind bereits voll' };
+    state.lives = Math.min(START_LIVES, state.lives + def.heal);
+  }
+  a.uses += 1;
+  a.readyAt = state.time + def.cooldown;
+  return { ok: true };
 }
 
 // Simuliert dt*speed Sekunden in gleich großen Teilschritten von höchstens MAX_SUBSTEP.

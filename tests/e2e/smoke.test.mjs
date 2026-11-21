@@ -46,6 +46,16 @@ test('Turm bauen per Klick', async () => {
   assert.equal(s.gold, goldBefore - 50);
 });
 
+test('Fähigkeit Meteor: Q drücken, aufs Feld klicken löst aus', async () => {
+  await page.keyboard.press('q');
+  assert.equal(await page.evaluate(() => window.__ui.aiming), true);
+  const box = await page.locator('#game').boundingBox();
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  assert.equal(await page.evaluate(() => window.__ui.aiming), false);
+  assert.equal(await page.evaluate(() => window.__game().abilities.meteor.uses), 1);
+  assert.equal(await page.locator('#abilities button').count(), 3);
+});
+
 test('Welle starten bringt Gegner aufs Feld', async () => {
   await page.locator('#start-wave').click();
   await page.waitForFunction(() => window.__game().enemies.length > 0, null, { timeout: 5000 });
