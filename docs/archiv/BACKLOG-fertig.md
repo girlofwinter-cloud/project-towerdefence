@@ -180,3 +180,13 @@ Agents lesen diese Datei nur bei konkretem Bedarf.
   - Test je Fähigkeit (inkl. Grenzfälle: Zielwechsel, Obergrenze, Boss-Immunität/-Rückstoß, Rückstoß nie unter Weganfang, Frost-Zähler, Schildträger-Rüstung); bestehende Tests unverändert.
   - Turm-Info nennt die Fähigkeit in einem Satz (Beschreibung in der Config).
   - Strategie-Balancing-Tests der Wiese und Eiswelt bleiben grün; müssen Konstanten angepasst werden, Anpassung der Zahlen in `config.js` statt Tests, sonst im Ledger nennen.
+
+### B-046: Spiel insgesamt schwerer machen und Turm-Fähigkeiten spürbar machen
+- Status: fertig
+- Aufwand: L
+- Idee: Der Spieler findet das Spiel zu einfach (auch auf Wiese und Wald) und wollte die Waffen klarer unterscheiden. B-045 hat die Fähigkeiten eingebaut, aber bewusst schwach, weil der empfindliche Spätphasen-Test ("in mindestens 3 der Wellen 14-20 dringt ein Gegner über 55 % des Wegs vor") bei stärkeren Werten kippte. Plan: Erst die Gegnerseite verschärfen (Druck), dann die Fähigkeiten spürbarer machen. Hebel: Gold-Überschuss in der Spätphase abbauen (siehe B-020: Gold-Senke oder gedeckelte Belohnungen), weniger Startgold, mehr Gegner oder höheres Tempo in der Spätphase, stärkere Bosse. Danach Fähigkeiten stärker: Aufwärmen (max. 12 % ist kaum spürbar), Rückstoß (0,08 Kacheln sind wenige Pixel), Einfrieren (0,4 s bei jedem 12. Treffer ist selten). Außerdem Scharfschützen-Schwelle `bonusMinHp` auf die Basis-HP des Gegnertyps statt der skalierten `maxHp` (heute trifft sie ab Welle 14 fast alle Gegner). Config-Texte der Fähigkeiten aus den Werten bauen oder per Test absichern. Mit den Strategie-Tests messen, auf Wiese, Eiswelt und `fork` (B-047).
+- Akzeptanzkriterien:
+  - Gute Strategien gewinnen Welle 20 weiter, aber mit deutlich weniger Reserve (Wiese und Eiswelt, dt 1/30 und 1/60, mindestens 1 Leben).
+  - Fähigkeiten sind für den Spieler erkennbar (Rückstoß mindestens etwa eine halbe Kachel, Aufwärmen mindestens 25 %, Einfrieren mindestens etwa jeder 5. Treffer); Zahlen nur in `src/config.js`.
+  - Der Test "Spätphase ... 55 %" und andere Balancing-Konstanten dürfen angepasst werden, wenn der Druck bewusst erhöht wird; jede geänderte Konstante wird im Ledger genannt und nichts wird nur zum Grünwerden abgeschwächt.
+  - `npm test` grün.

@@ -381,6 +381,21 @@ test('Schwierigkeit: robuste Strategien gewinnen Welle 20 mit mindestens 2 Leben
   }
 });
 
+// B-046: Die schwächere Reihenfolge Pfeil > Pfeil > Kanone > Frost schafft Welle 20 nicht mehr (Druck bewusst erhöht).
+const MIX_WEAK = ['arrow', 'arrow', 'cannon', 'frost'];
+test('Schwierigkeit: die schwächere Strategie a>a>c>f verliert (dt 1/30, 1/60)', () => {
+  for (const dt of [1 / 30, 1 / 60]) {
+    const s = strategyRun(MIX_WEAK, dt).state;
+    assert.equal(s.status, 'lost', `dt=${dt}: Status ${s.status}, ${s.lives} Leben`);
+  }
+});
+
+test('Schwierigkeit: die Reserve ist klein, mindestens eine robuste Strategie endet mit höchstens 8 Leben (dt 1/30, 1/60)', () => {
+  for (const dt of [1 / 30, 1 / 60]) {
+    assert.ok(strategyRun(MIX_ARROW, dt).state.lives <= 8, `dt=${dt}`);
+  }
+});
+
 test('Schwierigkeit: nur Pfeiltürme ohne Aufrüstung verlieren vor Welle 12 (dt 1/20, 1/30, 1/60, 1/120)', () => {
   for (const dt of [1 / 30, 1 / 60, 1 / 20, 1 / 120]) {
     const s = arrowOnlyRun(dt);
@@ -404,7 +419,7 @@ test('Spätphase: in mindestens 3 der Wellen 14-20 dringt ein Gegner über 55 % 
 });
 
 // B-013: Schildträger zwingt zu gemischten Setups. Die Strategien ohne Kanonen sterben schon vor Welle 9
-// (siehe Test "nur Pfeiltürme"), also wird hier nur die Schildträger-Gruppe der Wellen 9-12 isoliert gegen zwei
+// (siehe Test "nur Pfeiltürme"), also wird hier nur die Schildträger-Gruppe der Wellen 11-14 isoliert (B-046: in 9-12 leckt mit den stärkeren Fähigkeiten keiner der beiden Aufbauten mehr) gegen zwei
 // Aufbauten mit gleich vielen Türmen (je 6, Stufe 2, gleiche Plätze) gespielt, die sich nur durch Kanonen unterscheiden.
 function shieldedTrial(types, wave, dt) {
   const s = createGame({ gold: 1e9, wave: wave - 1 });
@@ -426,13 +441,13 @@ function shieldedTrial(types, wave, dt) {
 
 // Mindestvorsprung ohne Kanonen (Kanonen-Reichweite 3,4: gemessen min. 0,03 in Welle 9; vorher 0,05).
 const SHIELD_MARGIN = 0.02;
-test('Schildträger: ohne Kanonen kommen sie in den Wellen 9-12 weiter und kosten mehr Leben als mit Kanonen', () => {
+test('Schildträger: ohne Kanonen kommen sie in den Wellen 11-14 weiter und kosten mehr Leben als mit Kanonen (Wellen 11-14)', () => {
   const noCannon = ['arrow', 'arrow', 'frost', 'arrow', 'arrow', 'frost'];
   const withCannon = ['arrow', 'cannon', 'frost', 'arrow', 'cannon', 'frost'];
   for (const dt of [1 / 30, 1 / 60]) {
     let lostNo = 0;
     let lostWith = 0;
-    for (const wave of [9, 10, 11, 12]) {
+    for (const wave of [11, 12, 13, 14]) {
       assert.ok(waveSummary(wave).shielded >= 1, `Welle ${wave} hat Schildträger`);
       const a = shieldedTrial(noCannon, wave, dt);
       const b = shieldedTrial(withCannon, wave, dt);
@@ -1003,7 +1018,7 @@ function shootAt(mapId, type) {
 }
 
 test('Modifikatoren: Karten ohne modifiers bleiben unverändert', () => {
-  for (const id of ['meadow', 'forest']) {
+  for (const id of ['meadow']) {
     const s = createGame({ mapId: id });
     assert.deepEqual(s.modifiers, { enemySpeed: 1, towerDamage: {}, slowStrength: 1 });
     spawnEnemy(s, 'grunt', 1);
@@ -1089,10 +1104,10 @@ test('Eiswelt: Slowfaktor in (0,1), Upgrade-Stufen und Kanonen-Splash skalieren 
 
 // B-044: Eiswelt etwas fordernder als die Wiese, aber klar schaffbar (eigene Läufe mit mapId, per Cache nur einmal je Strategie).
 const iceCache = new Map();
-function iceRun(kind, dt) {
-  const key = `${kind}@${dt}`;
+function iceRun(kind, dt, mapId = 'ice') {
+  const key = `${mapId}:${kind}@${dt}`;
   if (iceCache.has(key)) return iceCache.get(key);
-  const s = createGame({ mapId: 'ice' });
+  const s = createGame({ mapId });
   const mix = kind === 'cannon' ? MIX_CANNON : MIX_ARROW;
   const spots = rankedSpots(s, TOWER_TYPES[kind === 'arrowOnly' ? 'arrow' : 'cannon'].range);
   let i = 0;
@@ -1142,6 +1157,37 @@ test('Eiswelt: nur Pfeiltürme verlieren vor Welle 12 (dt 1/30, 1/60)', () => {
     const s = iceRun('arrowOnly', dt);
     assert.equal(s.status, 'lost', `dt=${dt}`);
     assert.ok(s.wave < 12, `dt=${dt}: verloren erst in Welle ${s.wave}`);
+  }
+});
+
+// B-046: Zangenangriff (fork): robuste Strategien schaffen Welle 20 mit mindestens 1 Leben.
+test('Zangenangriff: robuste Strategien gewinnen Welle 20 mit mindestens 1 Leben (dt 1/30)', () => {
+  for (const kind of ['cannon', 'arrow']) {
+    const s = iceRun(kind, 1 / 30, 'fork');
+    assert.equal(s.status, 'won', `${kind}: Status ${s.status} in Welle ${s.wave}`);
+    assert.ok(s.lives >= 1, `${kind}: ${s.lives} Leben`);
+  }
+});
+
+// B-046: Wald und fork haben eigene Modifikatoren, die Wiese bleibt ohne.
+test('Modifikatoren: Wiese hat keine, Wald und Zangenangriff schnellere Gegner', () => {
+  assert.equal(MAPS.meadow.modifiers, undefined);
+  assert.deepEqual(createGame({ mapId: 'meadow' }).modifiers, { enemySpeed: 1, towerDamage: {}, slowStrength: 1 });
+  for (const id of ['forest', 'fork']) {
+    assert.ok(MAPS[id].modifiers.enemySpeed > 1, id);
+    const s = createGame({ mapId: id });
+    spawnEnemy(s, 'grunt', 1);
+    assert.equal(s.enemies[0].speed, ENEMY_TYPES.grunt.speed * MAPS[id].modifiers.enemySpeed);
+  }
+});
+
+test('Wald und Zangenangriff: robuste Strategie (Kanone zuerst) gewinnt Welle 20 mit mindestens 1 Leben (dt 1/30, 1/60)', () => {
+  for (const mapId of ['forest', 'fork']) {
+    for (const dt of [1 / 30, 1 / 60]) {
+      const s = iceRun('arrow', dt, mapId);
+      assert.equal(s.status, 'won', `${mapId} dt=${dt}: Status ${s.status} in Welle ${s.wave}`);
+      assert.ok(s.lives >= 1 && s.lives < 10, `${mapId} dt=${dt}: ${s.lives} Leben`);
+    }
   }
 });
 
@@ -1441,21 +1487,46 @@ test('Spezial Frost: Boss ist immun, Zähler läuft trotzdem; Verkauf des Turms 
   assert.equal(s.projectiles.length, 0);
 });
 
-test('Spezial Sniper: Bonus nur ab bonusMinHp, Rüstung des Schildträgers wird dabei ignoriert', () => {
+test('Spezial Sniper: Bonus nach Basis-HP des Gegnertyps (nicht nach skalierter maxHp), Rüstung wird dabei ignoriert', () => {
   const sp = cfg('sniper');
   const base = TOWER_TYPES.sniper.damage;
-  const shot = (type, maxHp) => {
+  const shot = (type, wave) => {
     const { s, tower, e } = specialSetup('sniper', type);
-    e.maxHp = maxHp; e.hp = maxHp;
+    e.maxHp = Math.round(ENEMY_TYPES[type].hp * hpScale(wave)); e.hp = e.maxHp;
     fireAndLand(s, tower);
-    return maxHp - e.hp;
+    return e.maxHp - e.hp;
   };
-  assert.ok(Math.abs(shot('grunt', sp.bonusMinHp - 1) - base) < 1e-6, 'knapp unter Schwelle: kein Bonus');
-  assert.ok(Math.abs(shot('grunt', sp.bonusMinHp) - base * sp.bonusDamage) < 1e-6, 'auf der Schwelle: Bonus');
-  assert.ok(Math.abs(shot('tank', 5000) - base * sp.bonusDamage) < 1e-6);
-  // Schildträger: unter Schwelle Rüstung normal, ab Schwelle ignoriert
-  assert.ok(Math.abs(shot('shielded', 100) - base * (1 - ENEMY_TYPES.shielded.armor)) < 1e-6);
-  assert.ok(Math.abs(shot('shielded', 500) - base * sp.bonusDamage) < 1e-6);
+  const armor = (t) => 1 - (ENEMY_TYPES[t].armor || 0);
+  for (const wave of [1, 10, 20]) {
+    // Troll und Boss (Basis-HP >= Schwelle): Bonus in jeder Welle
+    assert.ok(ENEMY_TYPES.tank.hp >= sp.bonusMinHp && ENEMY_TYPES.boss.hp >= sp.bonusMinHp);
+    assert.ok(Math.abs(shot('tank', wave) - base * sp.bonusDamage) < 1e-6, `Troll Welle ${wave}`);
+    assert.ok(Math.abs(shot('boss', wave) - base * sp.bonusDamage) < 1e-6, `Boss Welle ${wave}`);
+    // Schildträger, Goblin, Flitzer, Schamane: nie Bonus, auch wenn die skalierte maxHp über der Schwelle liegt
+    assert.ok(Math.abs(shot('shielded', wave) - base * armor('shielded')) < 1e-6, `Schildträger Welle ${wave}: Rüstung normal, kein Bonus`);
+    for (const t of ['grunt', 'runner', 'healer']) assert.ok(Math.abs(shot(t, wave) - base) < 1e-6, `${t} Welle ${wave}`);
+  }
+  // Zur Einordnung: nach der alten Regel (skalierte maxHp) hätte der Schildträger in Welle 20 den Bonus bekommen
+  assert.ok(ENEMY_TYPES.shielded.hp < sp.bonusMinHp && ENEMY_TYPES.shielded.hp * hpScale(20) >= sp.bonusMinHp);
+});
+
+test('Spezial: Fähigkeiten sind spürbar (Rückstoß >= 0,5 Kacheln, Aufwärmen >= 25 %, Einfrieren höchstens jeder 5. Treffer, Dauer >= 0,5 s)', () => {
+  assert.ok(cfg('cannon').knockback >= 0.5);
+  assert.ok(cfg('arrow').warmupMax >= 0.25);
+  assert.ok(cfg('arrow').warmupStep * 10 >= cfg('arrow').warmupMax, 'Obergrenze nach höchstens 10 Folgeschüssen erreicht');
+  assert.ok(cfg('frost').freezeEvery <= 5);
+  assert.ok(cfg('frost').freezeDuration >= 0.5);
+  assert.ok(cfg('sniper').bonusDamage >= 1.5);
+});
+
+test('Spezial: special.text wird aus den Config-Werten gebaut (Zahlen im Text stimmen mit den Werten überein)', () => {
+  const pct = (x) => `${Math.round(x * 100)} %`;
+  assert.ok(cfg('arrow').text.includes(pct(cfg('arrow').warmupMax)));
+  assert.ok(cfg('cannon').text.includes(String(cfg('cannon').knockback).replace('.', ',')));
+  assert.ok(cfg('frost').text.includes(`${cfg('frost').freezeEvery}.`));
+  assert.ok(cfg('frost').text.includes(String(cfg('frost').freezeDuration).replace('.', ',')));
+  assert.ok(cfg('sniper').text.includes(pct(cfg('sniper').bonusDamage - 1)));
+  assert.ok(cfg('sniper').text.includes(String(cfg('sniper').bonusMinHp)));
 });
 
 test('Spezial: andere Türme bleiben unverändert (Pfeil ohne Rückstoß/Frost/Bonus, Kanone ohne Frost)', () => {
