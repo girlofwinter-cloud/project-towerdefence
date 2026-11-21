@@ -59,7 +59,7 @@ export const MAPS = {
       [15, 9], [16, 3], [17, 3], [17, 5], [18, 5], [18, 9], [18, 12], [19, 7], [19, 12],
     ],
   },
-  // Eiswelt (B-029): Modifikatoren (enemySpeed, towerDamage je Typ, slowStrength) und kühles Farbschema (theme).
+  // Eiswelt (B-029, Glatteis): Gegner rutschen schneller, Kanone und Frost sind schwächer. Modifikatoren (enemySpeed, towerDamage je Typ, slowStrength) und kühles Farbschema (theme).
   ice: {
     name: 'Eiswelt',
     waypoints: [
@@ -74,7 +74,7 @@ export const MAPS = {
       [17, 4],
       [20, 4],
     ],
-    modifiers: { enemySpeed: 0.85, towerDamage: { cannon: 1.25, frost: 0.7 }, slowStrength: 0.7 },
+    modifiers: { enemySpeed: 1.18, towerDamage: { cannon: 0.95, frost: 0.7 }, slowStrength: 0.7 },
     theme: { grass: ['#cfe6f2', '#d9edf6'], blade: '#9cc3d8' },
   },
 };

@@ -1016,15 +1016,15 @@ test('Modifikatoren: Karten ohne modifiers bleiben unverändert', () => {
   assert.equal(f.p.damage, TOWER_TYPES.frost.damage);
 });
 
-test('Modifikatoren: Eiswelt verlangsamt Gegner, stärkt Kanone, schwächt Frost', () => {
+test('Modifikatoren: Eiswelt (Glatteis) beschleunigt Gegner, schwächt Kanone und Frost', () => {
   const m = MAPS.ice.modifiers;
   assert.deepEqual(mapModifiers('ice'), { enemySpeed: m.enemySpeed, towerDamage: m.towerDamage, slowStrength: m.slowStrength });
   const s = createGame({ mapId: 'ice' });
   spawnEnemy(s, 'grunt', 1);
-  assert.ok(s.enemies[0].speed < ENEMY_TYPES.grunt.speed);
+  assert.ok(s.enemies[0].speed > ENEMY_TYPES.grunt.speed);
   assert.equal(s.enemies[0].speed, ENEMY_TYPES.grunt.speed * m.enemySpeed);
   const c = shootAt('ice', 'cannon');
-  assert.ok(c.p.damage > TOWER_TYPES.cannon.damage);
+  assert.ok(c.p.damage < TOWER_TYPES.cannon.damage);
   const f = shootAt('ice', 'frost');
   assert.ok(f.p.slow < TOWER_TYPES.frost.slow);
   assert.ok(f.p.damage < TOWER_TYPES.frost.damage);
@@ -1060,8 +1060,9 @@ test('mapModifiers: unbekannte Karte = Standard, Teil-Modifikatoren werden aufge
   try {
     assert.deepEqual(mapModifiers('__partial'), { enemySpeed: 0.5, towerDamage: {}, slowStrength: 1 });
   } finally { delete MAPS.__partial; }
+  const before = MAPS.ice.modifiers.towerDamage.cannon;
   mapModifiers('ice').towerDamage.cannon = 99; // Kopie, keine Mutation der Config
-  assert.equal(MAPS.ice.modifiers.towerDamage.cannon, 1.25);
+  assert.equal(MAPS.ice.modifiers.towerDamage.cannon, before);
 });
 
 test('Eiswelt: Slowfaktor in (0,1), Upgrade-Stufen und Kanonen-Splash skalieren mit', () => {
@@ -1070,7 +1071,7 @@ test('Eiswelt: Slowfaktor in (0,1), Upgrade-Stufen und Kanonen-Splash skalieren 
   assert.ok(1 - f.slow > 0 && 1 - f.slow < 1);
   const c1 = towerStats({ type: 'cannon', level: 1 }, mods);
   const c3 = towerStats({ type: 'cannon', level: 3 }, mods);
-  assert.ok(Math.abs(c3.damage - TOWER_TYPES.cannon.damage * 1.25 * 2.25) < 1e-9);
+  assert.ok(Math.abs(c3.damage - TOWER_TYPES.cannon.damage * MAPS.ice.modifiers.towerDamage.cannon * 2.25) < 1e-9);
   assert.ok(Math.abs(c3.damage / c1.damage - 2.25) < 1e-9);
   // Splash: Nachbar des Ziels verliert den skalierten Schaden
   const s = createGame({ mapId: 'ice' });
@@ -1083,5 +1084,63 @@ test('Eiswelt: Slowfaktor in (0,1), Upgrade-Stufen und Kanonen-Splash skalieren 
   s.gold = 1e6;
   run(s, 0.05);
   const lost = [a, b].map((e) => e.maxHp - e.hp).filter((v) => v > 0);
-  for (const v of lost) assert.ok(Math.abs(v - TOWER_TYPES.cannon.damage * 1.25) < 1e-6, 'Splash ' + v);
+  for (const v of lost) assert.ok(Math.abs(v - TOWER_TYPES.cannon.damage * MAPS.ice.modifiers.towerDamage.cannon) < 1e-6, 'Splash ' + v);
+});
+
+// B-044: Eiswelt etwas fordernder als die Wiese, aber klar schaffbar (eigene Läufe mit mapId, per Cache nur einmal je Strategie).
+const iceCache = new Map();
+function iceRun(kind, dt) {
+  const key = `${kind}@${dt}`;
+  if (iceCache.has(key)) return iceCache.get(key);
+  const s = createGame({ mapId: 'ice' });
+  const mix = kind === 'cannon' ? MIX_CANNON : MIX_ARROW;
+  const spots = rankedSpots(s, TOWER_TYPES[kind === 'arrowOnly' ? 'arrow' : 'cannon'].range);
+  let i = 0;
+  while (s.status === 'playing' && s.wave < MAX_WAVES) {
+    if (kind === 'arrowOnly') {
+      for (const p of spots) {
+        if (s.gold < TOWER_TYPES.arrow.cost) break;
+        buildTower(s, 'arrow', p.c, p.r);
+      }
+    } else {
+      for (let again = true; again;) {
+        again = false;
+        const type = mix[s.towers.length % mix.length];
+        if (i < spots.length && s.gold >= TOWER_TYPES[type].cost) {
+          buildTower(s, type, spots[i].c, spots[i].r);
+          i++;
+          again = true;
+        } else {
+          let best = null;
+          for (const t of s.towers) {
+            const c = upgradeCost(t);
+            if (c !== null && (!best || c < best.c)) best = { id: t.id, c };
+          }
+          if (best && s.gold >= best.c) { upgradeTower(s, best.id); again = true; }
+        }
+      }
+    }
+    startWave(s);
+    for (let k = 0; k < Math.round(600 / dt) && s.waveActive && s.status === 'playing'; k++) update(s, dt);
+  }
+  iceCache.set(key, s);
+  return s;
+}
+
+test('Eiswelt: robuste Strategien gewinnen Welle 20 mit mindestens 1 Leben (dt 1/30, 1/60)', () => {
+  for (const kind of ['cannon', 'arrow']) {
+    for (const dt of [1 / 30, 1 / 60]) {
+      const s = iceRun(kind, dt);
+      assert.equal(s.status, 'won', `${kind} dt=${dt}: Status ${s.status} in Welle ${s.wave}`);
+      assert.ok(s.lives >= 1, `${kind} dt=${dt}: ${s.lives} Leben`);
+    }
+  }
+});
+
+test('Eiswelt: nur Pfeiltürme verlieren vor Welle 12 (dt 1/30, 1/60)', () => {
+  for (const dt of [1 / 30, 1 / 60]) {
+    const s = iceRun('arrowOnly', dt);
+    assert.equal(s.status, 'lost', `dt=${dt}`);
+    assert.ok(s.wave < 12, `dt=${dt}: verloren erst in Welle ${s.wave}`);
+  }
 });

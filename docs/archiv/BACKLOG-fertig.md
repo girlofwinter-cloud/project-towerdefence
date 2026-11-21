@@ -146,3 +146,12 @@ Agents lesen diese Datei nur bei konkretem Bedarf.
   - Map `forest` mit `blocked`-Kacheln; `canBuild` lehnt sie ab.
   - Test: Bauen auf blockierter Kachel scheitert, Weg ist trotzdem begehbar.
   - Deko in `src/decor.js` passend zum Thema.
+
+### B-029: Welt Eis (Gegner-/Turm-Modifikatoren pro Map)
+- Status: fertig
+- Aufwand: M
+- Idee: Maps können Modifikatoren tragen: In der Eiswelt sind Gegner von Grund auf etwas langsamer, der Frostturm ist schwächer, Kanone stärker. Hängt von B-027 ab.
+- Akzeptanzkriterien:
+  - Map-Feld `modifiers` (Gegnertempo, Turmschaden je Typ) in `src/config.js`.
+  - Test: Modifikatoren wirken auf Tempo und Schaden, Standard-Map bleibt unverändert.
+  - Balancing-Zahlen nur in der Config.
