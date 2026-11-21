@@ -339,3 +339,13 @@ Neue Einträge werden unten angehängt. Bestehende Einträge werden nie geänder
 - Review: APPROVE (keine Muss-Punkte; Hinweise als B-047)
 - Entscheidungen: Neue Karte `fork` mit zwei Eingängen, die bei [10,7] zusammenlaufen. Map-Feld `extraPaths`, `state.paths`, `state.path` bleibt der Hauptweg (Rückwärtskompatibilität). Gegner haben `lane` (abwechselnd) und `len`; Zielwahl first/last vergleicht den Restweg (`len - dist`), auf Ein-Weg-Karten identisch zu vorher. Wellen (`waveFor`) unverändert, nur die Verteilung auf Wege ist neu. Auftrag des Menschen: Wege spannender, Gegner aus mehr als einem Eingang.
 - Offen: Balancing von `fork` nicht gemessen (B-047/B-046); Sichtprüfung im Browser.
+
+## 2026-11-21 · B-045 · Türme klarer unterscheiden (Spezialfähigkeiten)
+- Rolle(n): orchestrator, developer, tester, reviewer
+- Branch: agent/turm-spezial
+- Runden: 1 von max. 2
+- Ergebnis: fertig
+- Tests: 165 bestanden, 0 fehlgeschlagen (12 neu, keiner geändert oder abgeschwächt)
+- Review: APPROVE (keine Muss-Punkte; Hinweise als B-048 und in B-046)
+- Entscheidungen: Alle vier Fähigkeiten deterministisch über Zähler statt Zufall: Pfeilturm Aufwärmen, Kanone Rückstoß (nur direktes Ziel, Schutzzeit `knockbackCooldown`, Boss halb), Frostturm Einfrieren (jeder N-te Treffer, Boss immun), Scharfschütze Rüstungsbrecher. Die Werte sind bewusst schwach: Der Spätphasen-Test "über 55 % Wegfortschritt in mindestens 3 Wellen 14-20" und der Schildträger-Test kippten bei stärkeren Werten; es wurden nur Config-Zahlen angepasst, keine Tests. Dadurch sind außer dem Scharfschützen die Fähigkeiten noch kaum spürbar, der Anspruch "klar verschieden" ist erst teilweise eingelöst. Die Schwelle `bonusMinHp` hängt an der skalierten maxHp und trifft ab Welle ~14 fast alle Gegner.
+- Offen: B-046 verschärft zuerst die Gegnerseite und macht dann die Fähigkeiten spürbarer (Balancing-Konstanten dürfen dort bewusst angepasst werden, Nennung im Ledger).

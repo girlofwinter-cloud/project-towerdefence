@@ -41,7 +41,7 @@ for (const [type, def] of Object.entries(TOWER_TYPES)) {
   btn.innerHTML = `<canvas class="t-icon" width="${ICON_SIZE}" height="${ICON_SIZE}"></canvas>
     <span class="t-name">${def.name} <kbd>${def.key}</kbd></span>
     <span class="t-cost">${def.cost} 💰</span>
-    <span class="t-desc">${def.description}</span>`;
+    <span class="t-desc">${def.description}${def.special ? ' ' + def.special.text : ''}</span>`;
   drawTowerIcon(btn.querySelector('.t-icon'), type);
   btn.addEventListener('click', () => selectBuild(type));
   shop.appendChild(btn);

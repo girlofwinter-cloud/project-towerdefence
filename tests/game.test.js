@@ -1282,3 +1282,192 @@ test('Zangenangriff: Bauplätze nahe beiden Wegen, Wegkacheln/Ein-/Ausgang nicht
   }
   for (const [c, r] of [[-1, 2], [-1, 12], [20, 12]]) assert.equal(canBuild(s, c, r).ok, false);
 });
+
+// ---------- B-045: Turm-Spezialfähigkeiten ----------
+// Hilfen: Turm und Gegner dicht daneben platzieren (Gegner steht per speed 0 still, wenn nicht anders nötig).
+function specialSetup(towerType, enemyType = 'grunt', mapId, dist = 200) {
+  const s = createGame({ mapId, gold: 1e9 });
+  const [c, r] = freeTileNearPath(s);
+  const tower = buildTower(s, towerType, c, r).tower;
+  const e = spawnEnemy(s, enemyType, 1);
+  e.dist = dist;
+  const p = pointAt(enemyPath(s, e), e.dist);
+  // Position kommt in update() aus dist: also den Turm neben den Gegner setzen
+  e.x = p.x; e.y = p.y; e.speed = 0; e.hp = e.maxHp = 1e9;
+  tower.x = p.x + 20; tower.y = p.y;
+  return { s, tower, e };
+}
+const cfg = (t) => TOWER_TYPES[t].special;
+
+test('Spezial: jeder Turmtyp hat special.text (deutscher Satz) und Zahlen nur in der Config', () => {
+  for (const t of Object.keys(TOWER_TYPES)) assert.ok(cfg(t).text.length > 10, t);
+  assert.equal(towerStats({ type: 'arrow', level: 3 }, {}).special, cfg('arrow'));
+});
+
+test('Spezial Pfeil: Aufwärmen verkürzt den Schussabstand pro Folgeschuss bis zur Obergrenze', () => {
+  const { s, tower, e } = specialSetup('arrow');
+  const rate = TOWER_TYPES.arrow.rate;
+  const gaps = [];
+  for (let i = 0; i < 12; i++) {
+    tower.cooldown = 0;
+    update(s, 0.001);
+    gaps.push(tower.cooldown);
+    s.projectiles = [];
+  }
+  assert.ok(Math.abs(gaps[0] - rate) < 1e-9, 'erster Schuss ohne Bonus');
+  assert.ok(Math.abs(gaps[1] - rate * (1 - cfg('arrow').warmupStep)) < 1e-3);
+  assert.ok(gaps[2] < gaps[1]);
+  const floor = rate * (1 - cfg('arrow').warmupMax);
+  assert.ok(Math.abs(gaps[11] - floor) < 1e-3, 'Obergrenze erreicht');
+  assert.ok(gaps.every((g) => g >= floor - 1e-3));
+  assert.equal(tower.focusId, e.id);
+});
+
+test('Spezial Pfeil: Zielwechsel und fehlendes Ziel setzen Aufwärmen zurück', () => {
+  const { s, tower, e } = specialSetup('arrow');
+  for (let i = 0; i < 4; i++) { tower.cooldown = 0; update(s, 0.001); s.projectiles = []; }
+  assert.ok(tower.focusStacks >= 3);
+  const e2 = spawnEnemy(s, 'grunt', 1);
+  e2.dist = e.dist + 5; e2.speed = 0; e2.hp = e2.maxHp = 1e9;
+  Object.assign(e2, pointAt(enemyPath(s, e2), e2.dist));
+  e.hp = 0; s.enemies = [e2];
+  tower.cooldown = 0; update(s, 0.001);
+  assert.equal(tower.focusId, e2.id);
+  assert.equal(tower.focusStacks, 0);
+  assert.ok(Math.abs(tower.cooldown - TOWER_TYPES.arrow.rate) < 1e-3);
+  s.enemies = [];
+  tower.cooldown = 0; update(s, 0.001);
+  assert.equal(tower.focusId, null);
+  assert.equal(tower.focusStacks, 0);
+});
+
+test('Spezial Pfeil: Turm ohne Spezialfelder (alte Testobjekte) funktioniert weiter', () => {
+  const { s, tower } = specialSetup('arrow');
+  delete tower.focusId; delete tower.focusStacks; delete tower.hitCount;
+  tower.cooldown = 0;
+  update(s, 0.001);
+  assert.equal(s.projectiles.length, 1);
+});
+
+test('Spezial Pfeil: Upgrade behält den Aufwärm-Zustand, Spezialzahlen skalieren nicht', () => {
+  const { s, tower } = specialSetup('arrow');
+  for (let i = 0; i < 3; i++) { tower.cooldown = 0; update(s, 0.001); s.projectiles = []; }
+  const stacks = tower.focusStacks;
+  assert.ok(upgradeTower(s, tower.id).ok);
+  assert.equal(tower.focusStacks, stacks);
+  assert.equal(towerStats(tower, s.modifiers).special.warmupStep, cfg('arrow').warmupStep);
+});
+
+test('Spezial Kanone: Rückstoß wirft das Ziel zurück, Boss nur halb, nie unter Weganfang', () => {
+  const { s, tower, e } = specialSetup('cannon');
+  const kb = cfg('cannon').knockback * TILE;
+  const before = e.dist;
+  tower.cooldown = 0; update(s, 0.001);
+  for (let i = 0; i < 200 && s.projectiles.length; i++) update(s, 0.01);
+  assert.ok(Math.abs(before - e.dist - kb) < 1e-6, `Rückstoß ${before - e.dist}`);
+  const pt = pointAt(enemyPath(s, e), e.dist);
+  assert.ok(Math.abs(pt.x - e.x) < 1e-6 && Math.abs(pt.y - e.y) < 1e-6);
+  // Schutzzeit: kein zweiter Rückstoß direkt danach
+  const d2 = e.dist;
+  tower.cooldown = 0; update(s, 0.001);
+  for (let i = 0; i < 200 && s.projectiles.length; i++) update(s, 0.01);
+  assert.equal(e.dist, d2);
+
+  const b = specialSetup('cannon', 'boss');
+  const bBefore = b.e.dist;
+  b.tower.cooldown = 0; update(b.s, 0.001);
+  for (let i = 0; i < 200 && b.s.projectiles.length; i++) update(b.s, 0.01);
+  assert.ok(Math.abs(bBefore - b.e.dist - kb * cfg('cannon').bossKnockbackFactor) < 1e-6);
+
+  const z = specialSetup('cannon', 'grunt', undefined, 1);
+  z.tower.cooldown = 0; update(z.s, 0.001);
+  for (let i = 0; i < 200 && z.s.projectiles.length; i++) update(z.s, 0.01);
+  assert.equal(z.e.dist, 0);
+});
+
+test('Spezial Kanone: Rückstoß auf der Zwei-Wege-Karte nutzt den eigenen Weg', () => {
+  const { s, tower, e } = specialSetup('cannon', 'grunt', 'fork');
+  const e2 = spawnEnemy(s, 'grunt', 1);
+  assert.equal(e2.lane, 1);
+  e2.dist = 300; e2.speed = 0; e2.hp = e2.maxHp = 1e9;
+  const p2 = pointAt(enemyPath(s, e2), e2.dist);
+  e2.x = p2.x; e2.y = p2.y;
+  tower.x = p2.x - 20; tower.y = p2.y;
+  s.enemies = [e2];
+  const before = e2.dist;
+  tower.cooldown = 0; update(s, 0.001);
+  for (let i = 0; i < 200 && s.projectiles.length; i++) update(s, 0.01);
+  assert.ok(Math.abs(before - e2.dist - cfg('cannon').knockback * TILE) < 1e-6);
+  const pt = pointAt(s.paths[1], e2.dist);
+  assert.ok(Math.abs(pt.x - e2.x) < 1e-6 && Math.abs(pt.y - e2.y) < 1e-6);
+  void e;
+});
+
+function fireAndLand(s, tower) {
+  tower.cooldown = 0;
+  update(s, 0.001);
+  for (let i = 0; i < 300 && s.projectiles.length; i++) update(s, 0.01);
+}
+
+test('Spezial Frost: jeder N-te Treffer friert ein, eingefrorener Gegner steht und taut auf', () => {
+  const { s, tower, e } = specialSetup('frost');
+  const n = cfg('frost').freezeEvery;
+  e.speed = 1;
+  for (let i = 1; i < n; i++) fireAndLand(s, tower);
+  assert.equal(tower.hitCount, n - 1);
+  assert.ok(!(e.frozenUntil > s.time), 'noch nicht eingefroren');
+  fireAndLand(s, tower);
+  assert.equal(tower.hitCount, n);
+  assert.ok(e.frozenUntil > s.time, 'eingefroren');
+  const d = e.dist;
+  const x = e.x;
+  const rest = e.frozenUntil - s.time;
+  update(s, rest / 2);
+  assert.equal(e.dist, d);
+  assert.equal(e.x, x);
+  update(s, rest);
+  update(s, 0.1);
+  assert.ok(e.dist > d, 'taut auf');
+});
+
+test('Spezial Frost: Boss ist immun, Zähler läuft trotzdem; Verkauf des Turms mit fliegendem Schuss ist sicher', () => {
+  const { s, tower, e } = specialSetup('frost', 'boss');
+  for (let i = 0; i < cfg('frost').freezeEvery * 2; i++) fireAndLand(s, tower);
+  assert.equal(e.frozenUntil || 0, 0);
+  assert.equal(tower.hitCount, cfg('frost').freezeEvery * 2);
+  tower.cooldown = 0; update(s, 0.001);
+  sellTower(s, tower.id);
+  for (let i = 0; i < 100; i++) update(s, 0.01);
+  assert.equal(s.projectiles.length, 0);
+});
+
+test('Spezial Sniper: Bonus nur ab bonusMinHp, Rüstung des Schildträgers wird dabei ignoriert', () => {
+  const sp = cfg('sniper');
+  const base = TOWER_TYPES.sniper.damage;
+  const shot = (type, maxHp) => {
+    const { s, tower, e } = specialSetup('sniper', type);
+    e.maxHp = maxHp; e.hp = maxHp;
+    fireAndLand(s, tower);
+    return maxHp - e.hp;
+  };
+  assert.ok(Math.abs(shot('grunt', sp.bonusMinHp - 1) - base) < 1e-6, 'knapp unter Schwelle: kein Bonus');
+  assert.ok(Math.abs(shot('grunt', sp.bonusMinHp) - base * sp.bonusDamage) < 1e-6, 'auf der Schwelle: Bonus');
+  assert.ok(Math.abs(shot('tank', 5000) - base * sp.bonusDamage) < 1e-6);
+  // Schildträger: unter Schwelle Rüstung normal, ab Schwelle ignoriert
+  assert.ok(Math.abs(shot('shielded', 100) - base * (1 - ENEMY_TYPES.shielded.armor)) < 1e-6);
+  assert.ok(Math.abs(shot('shielded', 500) - base * sp.bonusDamage) < 1e-6);
+});
+
+test('Spezial: andere Türme bleiben unverändert (Pfeil ohne Rückstoß/Frost/Bonus, Kanone ohne Frost)', () => {
+  const { s, tower, e } = specialSetup('arrow', 'tank');
+  e.maxHp = e.hp = 5000;
+  const d = e.dist;
+  fireAndLand(s, tower);
+  assert.equal(5000 - e.hp, TOWER_TYPES.arrow.damage * (1 - 0));
+  assert.equal(e.dist, d);
+  assert.equal(tower.hitCount, 0);
+  const c = specialSetup('cannon');
+  fireAndLand(c.s, c.tower);
+  assert.equal(c.tower.hitCount, 0);
+  assert.equal(c.e.frozenUntil || 0, 0);
+});
