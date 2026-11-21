@@ -283,3 +283,11 @@ Agents lesen diese Datei nur bei konkretem Bedarf.
 - Akzeptanzkriterien:
   - Konturbreite 1,3 bis 2,3 px.
   - Keine Deko auf Weg-Kacheln (bestehende `decor`-Tests grün); neue Streu-Deko bleibt in Bereichen, die sie nicht unspielbar machen (bebaubar bleibt jede freie Kachel).
+
+### B-080: Wiese 5/7: Akzente Burgmauer, Teich, Brunnen (Design-Overhaul)
+- Status: fertig
+- Aufwand: M
+- Idee: Steinmauer mit Tor am oberen Rand, Teich und Brunnen als Akzente, nur im Randring bzw. klein. Teich/Mauer als Hindernis im Feld wäre Logik und gehört nicht hierher. Andere Karten folgen mit B-072 bis B-074 nach der Palette aus `docs/STIL.md`.
+- Akzeptanzkriterien:
+  - Akzente nur im Randring oder kleiner als eine Kachel im Feld.
+  - Screenshot Wiese; Einstieg und Ausgang des Weges bleiben klar erkennbar.

@@ -5,7 +5,7 @@
 //  - Grosse Dekoration (Baum, Busch, Fels) nur auf Randkacheln des Spielfelds.
 //  - Im Inneren nur kleine Dekoration (Blumen, Grasbuschel, Kiesel), die flach bleibt.
 //  - Die Dekoration wird in den Hintergrund gezeichnet; gebaute Tuerme liegen darueber.
-import { COLS, ROWS, TILE, WIDTH, HEIGHT, OBSTACLE_TREE_SHARE, MAPS, TREE_FRAME, GROUND_STYLE, DECOR_STYLE } from './config.js';
+import { COLS, ROWS, TILE, WIDTH, HEIGHT, OBSTACLE_TREE_SHARE, MAPS, TREE_FRAME, GROUND_STYLE, DECOR_STYLE, ACCENT_STYLE } from './config.js';
 import { buildPath } from './path.js';
 
 // Dichten (Wahrscheinlichkeit pro Kachel, 0..1)
@@ -87,6 +87,7 @@ export function treeFrame(mapId = 'meadow') {
   const T = TREE_FRAME;
   const points = buildPath(MAPS[mapId].waypoints, TILE).points;
   const out = [];
+  const blockers = accentsFor(mapId); // Mauer, Teich und Brunnen ersetzen Kronen in ihrem Bereich
   // Seiten: Start, Richtung entlang des Rands, Richtung nach innen
   const sides = [
     { x: 0, y: 0, ax: 1, ay: 0, nx: 0, ny: 1, len: WIDTH },
@@ -104,7 +105,7 @@ export function treeFrame(mapId = 'meadow') {
       const depth = Math.max(0, T.maxOverhang - r) * f;
       const x = sd.x + sd.ax * t + sd.nx * depth;
       const y = sd.y + sd.ay * t + sd.ny * depth;
-      if (distToWaypoints(points, x, y) >= r + T.pathMargin) {
+      if (distToWaypoints(points, x, y) >= r + T.pathMargin && !crownBlocked(blockers, x, y, r)) {
         const q = tileRand(si, i, 43);
         let acc = 0, k = 0;
         while (k < T.kindShare.length - 1 && q >= (acc += T.kindShare[k])) k++;
@@ -185,4 +186,35 @@ export function scatterFor(col, row, blocked, obstacles, mapId = 'meadow') {
   for (const [k, share] of D.scatterKinds) if (q < (acc += share)) { kind = k; break; }
   const [lo, hi] = D.scatterOffset;
   return { kind, ox: lo + tileRand(col, row, 92) * (hi - lo), oy: lo + tileRand(col, row, 93) * (hi - lo), angle: (tileRand(col, row, 94) - 0.5) * 0.6 };
+}
+
+// Beruehrt eine Krone eines der Akzent-Rechtecke (mit Luft crownGap)?
+function crownBlocked(rects, x, y, r) {
+  const g = ACCENT_STYLE.crownGap;
+  return rects.some((a) => {
+    const dx = Math.max(a.x - x, 0, x - (a.x + a.w)), dy = Math.max(a.y - y, 0, y - (a.y + a.h));
+    return Math.hypot(dx, dy) < r + g;
+  });
+}
+
+// Akzente der Wiese (B-080): Burgmauer (oben), Teich (unten), Brunnen (unten links), rein Optik.
+// Rueckgabe: [{ kind: 'wall'|'pond'|'well', x, y, w, h }] (Rechteck inkl. Schatten/Schilf), deterministisch.
+// Nur mit theme.accents; ein Akzent entfaellt, wenn sein Rechteck dem Weg naeher als pathMargin kommt.
+// Alle Nicht-Weg-Kacheln bleiben bebaubar; Tuerme verdecken die Akzente (Hintergrund-Cache).
+export function accentsFor(mapId = 'meadow') {
+  if (!MAPS[mapId]?.theme?.accents) return [];
+  const A = ACCENT_STYLE;
+  const { wall, pond, well } = A;
+  const list = [
+    { kind: 'wall', x: wall.cx - wall.w / 2, y: wall.base - wall.height, w: wall.w, h: wall.height },
+    { kind: 'pond', x: pond.cx - pond.rx - 4, y: pond.cy - pond.reedLift, w: 2 * (pond.rx + 4), h: pond.ry + pond.reedLift + 4 },
+    { kind: 'well', x: well.cx - well.w / 2, y: well.base - well.height, w: well.w, h: well.height },
+  ];
+  const points = buildPath(MAPS[mapId].waypoints, TILE).points;
+  return list.filter((a) => {
+    for (let i = 0; i <= 8; i++) for (let j = 0; j <= 4; j++) {
+      if (distToWaypoints(points, a.x + (a.w * i) / 8, a.y + (a.h * j) / 4) < A.pathMargin) return false;
+    }
+    return true;
+  });
 }

@@ -418,13 +418,6 @@ Reihenfolge ist Abhängigkeit: B-062 und B-063 zuerst, dann gemeinsame Sichtprü
 
 
 
-### B-080: Wiese 5/7: Akzente Burgmauer, Teich, Brunnen (Design-Overhaul)
-- Status: offen
-- Aufwand: M
-- Idee: Steinmauer mit Tor am oberen Rand, Teich und Brunnen als Akzente, nur im Randring bzw. klein. Teich/Mauer als Hindernis im Feld wäre Logik und gehört nicht hierher. Andere Karten folgen mit B-072 bis B-074 nach der Palette aus `docs/STIL.md`.
-- Akzeptanzkriterien:
-  - Akzente nur im Randring oder kleiner als eine Kachel im Feld.
-  - Screenshot Wiese; Einstieg und Ausgang des Weges bleiben klar erkennbar.
 
 ### B-081: Wiese 6/7: Licht, Vignette und Baumschatten (Design-Overhaul)
 - Status: offen
@@ -524,3 +517,11 @@ Reihenfolge ist Abhängigkeit: B-062 und B-063 zuerst, dann gemeinsame Sichtprü
 - Idee: (1) Fässer (12 px hoch) wirken wie Hindernisse, sind aber bebaubar; niedriger oder seltener machen (`scatterKinds` in `src/config.js`, `barrel` 0,1). (2) Der Tester hat den Grenztest für die Streu-Deko ergänzt, aber als eigene Datei `tests/scatter-bounds.test.js`; laut CLAUDE.md gehört er nach `tests/decor.test.js` bzw. `tests/render.test.js`. Verschieben. Außerdem: `scatterFor` mit undefined/unbekannter `mapId` ist nur im Code gelesen, nicht per Test belegt; in `drawTuft` ist eine überflüssige Zeile `ctx.strokeStyle = outlineOf(...)` mit falschem Kommentar. (3) Pilze und Wegweiser sind im Screenshot kaum sichtbar; Größe oder Häufigkeit prüfen. (4) Der Test "Einzel-Deko verlässt ihre Kachel nicht" erkennt Grasbüschel nur über die Halmfarbe `#5da654`; langfristig robuster machen.
 - Akzeptanzkriterien:
   - Fässer verwirren im Screenshot nicht als Hindernis (niedriger/seltener), Grenztest liegt in `tests/decor.test.js` oder `tests/render.test.js`, `npm test` grün.
+
+### B-089: Deko-Test robuster machen (Hinweise aus den Reviews von B-071 bis B-080)
+- Status: vorschlag
+- Aufwand: S
+- Idee: Der Test "Dekoration verlässt ihre Kachel nicht" (`tests/render.test.js`, ca. Zeilen 104 bis 140) zählt jedes `arc`/`ellipse` außerhalb von Wegkacheln als Kleindeko. Deshalb zeichnen Weg (B-071), Baumrahmen (B-077), Deko (B-079) und Akzente (B-080) ihre Kreise mit `roundRect` oder Bezier-Kurven und das Büschel mit einem Halm in `#5da654`. Die Reviews bewerteten das jeweils als vertretbar, aber es ist eine Umgehung mit Folgekosten. Besser: Den Test auf die Deko-Funktionen selbst (`decorFor`-Ergebnisse) beziehen oder die Bereiche der Hintergrund-Elemente (Kronen, Akzente, Plateaus, Weg) ausfiltern. Kleinigkeiten: Der Teich ragt ca. 36 px in die unterste Kachelreihe (nur optisch, Türme zeichnen darüber); Kommentar in `tests/render.test.js:122`; Mauer ist kleiner als im Zielbild (`ACCENT_STYLE.wall`).
+- Akzeptanzkriterien:
+  - Alle Hintergrund-Elemente dürfen wieder `arc`/`ellipse` nutzen, ohne dass der Test reißt; der Test prüft weiterhin die Kachelgrenzen der Kleindeko.
+  - Keine Abschwächung: dieselben Fälle (Kachelgrenzen, nie auf Weg) bleiben abgedeckt.
