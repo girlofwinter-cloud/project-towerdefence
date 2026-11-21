@@ -316,7 +316,7 @@ function towersStep(state, dt) {
       else { tower.focusId = target.id; tower.focusStacks = 0; }
       tower.cooldown = stats.rate * (1 - Math.min(tower.focusStacks * sp.warmupStep, sp.warmupMax));
     }
-    const breaker = sp.bonusMinHp !== undefined && target.maxHp >= sp.bonusMinHp;
+    const breaker = sp.bonusMinHp !== undefined && ENEMY_TYPES[target.type].hp >= sp.bonusMinHp;
     state.projectiles.push({
       id: state.nextId++,
       towerType: tower.type,

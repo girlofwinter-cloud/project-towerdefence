@@ -58,6 +58,8 @@ export const MAPS = {
       [11, 6], [13, 4], [13, 6], [13, 10], [13, 11], [13, 12], [14, 4], [14, 6], [15, 3], [15, 8],
       [15, 9], [16, 3], [17, 3], [17, 5], [18, 5], [18, 9], [18, 12], [19, 7], [19, 12],
     ],
+    // B-046: schnellere Gegner im Dickicht.
+    modifiers: { enemySpeed: 1.19 },
   },
   // Eiswelt (B-029, Glatteis): Gegner rutschen schneller, Kanone und Frost sind schwächer. Modifikatoren (enemySpeed, towerDamage je Typ, slowStrength) und kühles Farbschema (theme).
   ice: {
@@ -74,7 +76,7 @@ export const MAPS = {
       [17, 4],
       [20, 4],
     ],
-    modifiers: { enemySpeed: 1.18, towerDamage: { cannon: 0.95, frost: 0.7 }, slowStrength: 0.7 },
+    modifiers: { enemySpeed: 1.14, towerDamage: { cannon: 0.95, frost: 0.7 }, slowStrength: 0.85 },
     theme: { grass: ['#cfe6f2', '#d9edf6'], blade: '#9cc3d8' },
   },
   // Zangenangriff (B-033): zwei Eingänge links oben und links unten, beide Wege laufen bei [10, 7] zusammen.
@@ -93,6 +95,8 @@ export const MAPS = {
       [18, 12],
       [20, 12],
     ],
+    // B-046: etwas schnellere Gegner, schwächere Kanone und Pfeile.
+    modifiers: { enemySpeed: 1.03, towerDamage: { cannon: 0.92, arrow: 0.97 } },
     extraPaths: [
       [
         [-1, 12],
@@ -126,7 +130,7 @@ export const TOWER_TYPES = {
     color: '#c8a165',
     description: 'Günstig und schnell. Guter Allrounder.',
     // Aufwärmen: Schussabstand sinkt je Folgeschuss auf dasselbe Ziel um warmupStep (Anteil), höchstens um warmupMax.
-    special: { warmupStep: 0.03, warmupMax: 0.12, text: 'Aufwärmen: Schießt er dasselbe Ziel weiter an, feuert er bis zu 12 % schneller.' },
+    special: { warmupStep: 0.05, warmupMax: 0.25 },
   },
   cannon: {
     name: 'Kanone',
@@ -140,8 +144,8 @@ export const TOWER_TYPES = {
     color: '#5a5f6b',
     description: 'Flächenschaden gegen Gruppen.',
     // Rückstoß: das getroffene Ziel wird knockback Kacheln auf seinem Weg zurückgeworfen (Boss nur Faktor bossKnockbackFactor),
-    // danach knockbackCooldown Sekunden Schutzzeit. Bewusst schwach: die Spätphasen-Messung der Tests verträgt kaum mehr.
-    special: { knockback: 0.08, bossKnockbackFactor: 0.5, knockbackCooldown: 6, text: 'Rückstoß: Treffer wirft das Ziel ein Stück auf dem Weg zurück (Bosse nur halb).' },
+    // danach knockbackCooldown Sekunden Schutzzeit.
+    special: { knockback: 0.5, bossKnockbackFactor: 0.5, knockbackCooldown: 6 },
   },
   frost: {
     name: 'Frostturm',
@@ -156,7 +160,7 @@ export const TOWER_TYPES = {
     color: '#6ec6e8',
     description: 'Verlangsamt Gegner um 50 %.',
     // Einfrieren: jeder freezeEvery-te Treffer des Turms stoppt das Ziel für freezeDuration Sekunden (Boss immun).
-    special: { freezeEvery: 12, freezeDuration: 0.4, text: 'Einfrieren: Jeder 12. Treffer stoppt das Ziel kurz (Bosse sind immun).' },
+    special: { freezeEvery: 5, freezeDuration: 0.6 },
   },
   sniper: {
     name: 'Scharfschütze',
@@ -168,20 +172,31 @@ export const TOWER_TYPES = {
     projectileSpeed: 30,
     color: '#8e5bd1',
     description: 'Riesige Reichweite, hoher Einzelschaden.',
-    // Rüstungsbrecher: gegen Gegner mit maxHp >= bonusMinHp Faktor bonusDamage auf den Schaden; ignoriert dabei Rüstung.
-    special: { bonusMinHp: 300, bonusDamage: 1.5, ignoreArmor: true, text: 'Rüstungsbrecher: Gegen zähe Gegner 50 % mehr Schaden, Rüstung wird ignoriert.' },
+    // Rüstungsbrecher: gegen Gegner, deren Basis-HP (ENEMY_TYPES[type].hp, ohne Wellen-Skalierung) >= bonusMinHp ist, Faktor bonusDamage auf den Schaden; ignoriert dabei Rüstung.
+    special: { bonusMinHp: 300, bonusDamage: 1.5, ignoreArmor: true },
   },
 };
+
+// Fähigkeitstexte werden aus den Werten gebaut, damit Zahlen nur an einer Stelle stehen.
+const pct = (x) => `${Math.round(x * 100)} %`;
+const num = (x) => String(x).replace('.', ',');
+const SPECIAL_TEXTS = {
+  arrow: (s) => `Aufwärmen: Schießt er dasselbe Ziel weiter an, feuert er bis zu ${pct(s.warmupMax)} schneller.`,
+  cannon: (s) => `Rückstoß: Treffer wirft das Ziel ${num(s.knockback)} Kacheln auf dem Weg zurück (Bosse nur ${pct(s.bossKnockbackFactor)}).`,
+  frost: (s) => `Einfrieren: Jeder ${s.freezeEvery}. Treffer stoppt das Ziel für ${num(s.freezeDuration)} s (Bosse sind immun).`,
+  sniper: (s) => `Rüstungsbrecher: Gegen zähe Gegner (ab ${s.bonusMinHp} Basis-HP) ${pct(s.bonusDamage - 1)} mehr Schaden, Rüstung wird ignoriert.`,
+};
+for (const [type, build] of Object.entries(SPECIAL_TEXTS)) TOWER_TYPES[type].special.text = build(TOWER_TYPES[type].special);
 
 // speed in Kacheln/Sekunde, reward = Gold pro Kill, leak = verlorene Leben am Ziel
 // Healer: healRadius in Kacheln, healPerSec = Anteil der maxHp des Ziels pro Sekunde,
 //   healInterval = Sekunden (Spielzeit) zwischen zwei Heilimpulsen.
 // Schildträger: armor = Anteil des Schadens, den Treffer ohne Splash blockiert (0,5 = 50 %).
 export const ENEMY_TYPES = {
-  grunt: { name: 'Goblin', hp: 40, speed: 1.4, reward: 6, leak: 1, radius: 11, color: '#6fbf4a' },
-  runner: { name: 'Flitzer', hp: 25, speed: 2.6, reward: 5, leak: 1, radius: 9, color: '#f2c14e' },
-  tank: { name: 'Panzer-Troll', hp: 450, speed: 0.8, reward: 14, leak: 2, radius: 14, color: '#b5523b' },
-  boss: { name: 'Oger-König', hp: 850, speed: 0.6, reward: 80, leak: 6, radius: 18, color: '#7a2e8e' },
+  grunt: { name: 'Goblin', hp: 40, speed: 1.4, reward: 4, leak: 1, radius: 11, color: '#6fbf4a' },
+  runner: { name: 'Flitzer', hp: 25, speed: 2.6, reward: 3, leak: 1, radius: 9, color: '#f2c14e' },
+  tank: { name: 'Panzer-Troll', hp: 450, speed: 0.8, reward: 12, leak: 2, radius: 14, color: '#b5523b' },
+  boss: { name: 'Oger-König', hp: 1100, speed: 0.6, reward: 65, leak: 6, radius: 18, color: '#7a2e8e' },
   healer: { name: 'Schamane', hp: 40, speed: 1.1, reward: 9, leak: 1, radius: 11, color: '#3fbf8f', healRadius: 1.5, healPerSec: 0.02, healInterval: 1 },
   shielded: { name: 'Schildträger', hp: 90, speed: 1.0, reward: 12, leak: 2, radius: 13, color: '#6f86a8', armor: 0.5 },
 };

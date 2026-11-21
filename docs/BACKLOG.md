@@ -263,16 +263,6 @@ Erledigte Einträge (`fertig`) liegen in `docs/archiv/BACKLOG-fertig.md`. Beim A
 - Akzeptanzkriterien:
   - `npm test` bleibt grün, kein Test abgeschwächt.
 
-### B-046: Spiel insgesamt schwerer machen und Turm-Fähigkeiten spürbar machen
-- Status: offen
-- Aufwand: L
-- Idee: Der Spieler findet das Spiel zu einfach (auch auf Wiese und Wald) und wollte die Waffen klarer unterscheiden. B-045 hat die Fähigkeiten eingebaut, aber bewusst schwach, weil der empfindliche Spätphasen-Test ("in mindestens 3 der Wellen 14-20 dringt ein Gegner über 55 % des Wegs vor") bei stärkeren Werten kippte. Plan: Erst die Gegnerseite verschärfen (Druck), dann die Fähigkeiten spürbarer machen. Hebel: Gold-Überschuss in der Spätphase abbauen (siehe B-020: Gold-Senke oder gedeckelte Belohnungen), weniger Startgold, mehr Gegner oder höheres Tempo in der Spätphase, stärkere Bosse. Danach Fähigkeiten stärker: Aufwärmen (max. 12 % ist kaum spürbar), Rückstoß (0,08 Kacheln sind wenige Pixel), Einfrieren (0,4 s bei jedem 12. Treffer ist selten). Außerdem Scharfschützen-Schwelle `bonusMinHp` auf die Basis-HP des Gegnertyps statt der skalierten `maxHp` (heute trifft sie ab Welle 14 fast alle Gegner). Config-Texte der Fähigkeiten aus den Werten bauen oder per Test absichern. Mit den Strategie-Tests messen, auf Wiese, Eiswelt und `fork` (B-047).
-- Akzeptanzkriterien:
-  - Gute Strategien gewinnen Welle 20 weiter, aber mit deutlich weniger Reserve (Wiese und Eiswelt, dt 1/30 und 1/60, mindestens 1 Leben).
-  - Fähigkeiten sind für den Spieler erkennbar (Rückstoß mindestens etwa eine halbe Kachel, Aufwärmen mindestens 25 %, Einfrieren mindestens etwa jeder 5. Treffer); Zahlen nur in `src/config.js`.
-  - Der Test "Spätphase ... 55 %" und andere Balancing-Konstanten dürfen angepasst werden, wenn der Druck bewusst erhöht wird; jede geänderte Konstante wird im Ledger genannt und nichts wird nur zum Grünwerden abgeschwächt.
-  - `npm test` grün.
-
 ### B-047: Zwei Eingänge: Feinschliff und Balancing
 - Status: vorschlag
 - Aufwand: S
@@ -286,3 +276,10 @@ Erledigte Einträge (`fertig`) liegen in `docs/archiv/BACKLOG-fertig.md`. Beim A
 - Idee: Hinweise aus dem Review von B-045. (1) Config-Texte (`special.text`) enthalten feste Zahlen wie "12 %" und "50 %"; aus den Werten bauen oder per Test absichern. (2) `knockBack` wird in der Splash-Schleife mit `e === target` aufgerufen; klarer nach der Schleife. Das Projektil trägt sieben Spezialfelder, ein `p.special`-Verweis wäre kompakter. (3) Kein Test, dass Slow und Heilung bei eingefrorenen Gegnern weiterlaufen. (4) Optional bläulicher Effekt für eingefrorene Gegner im Render.
 - Akzeptanzkriterien:
   - `npm test` bleibt grün, kein Test abgeschwächt.
+
+### B-049: Testlaufzeit senken und Balancing-Hinweise
+- Status: vorschlag
+- Aufwand: S
+- Idee: Hinweise aus dem Review von B-046. Der Testlauf stieg von etwa 10 s auf 48 s (der Test "robuste Strategien ... 4 dt" allein ca. 20 s). (1) Strategie-Cache (`iceCache`, `strategyRun`) in einer gemeinsamen Funktion mit Schlüssel `mapId:kind@dt` zusammenführen, damit derselbe Lauf nicht doppelt läuft. (2) Die 4-dt-Tests auf dt 1/30 und 1/60 reduzieren und 1/20 und 1/120 in einen eigenen Sammeltest auslagern (Prüfschärfe bleibt, nur seltener). (3) Kommentar bei `MAPS.forest.modifiers` ergänzen: 1.19 ist gemessen und ein schmaler stabiler Wert (stabil zwischen 1.17 und 1.20), `fork` ebenso. (4) Die Strategie a>c>c>f (Pfeilturm zuerst) endet auf allen Karten mit 10 Leben; prüfen, ob das gewollt ist oder ob mehr Gold-Senke nötig ist (Logikänderung in `game.js`). (5) `ENEMY_TYPES[target.type]` in der Sniper-Schwelle crasht bei Hand-Gegnern ohne `type`; Fallback nur falls ein Test das braucht.
+- Akzeptanzkriterien:
+  - Gesamtlaufzeit `npm test` deutlich unter 30 s, keine Prüfung abgeschwächt.
