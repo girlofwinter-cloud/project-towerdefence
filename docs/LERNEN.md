@@ -36,7 +36,7 @@ Schau dir die fünf Dateien in `.claude/agents/` an und achte auf die Zeile `too
 |---|---|---|
 | `developer` | ja (`src/`, Tests) | Er baut. |
 | `tester` | nur `tests/` | Wer prüft, soll den Code nicht „passend machen“. |
-| `reviewer` | **nein** | Wer bewertet, darf nicht gleichzeitig reparieren. |
+| `reviewer` | **nein** (Dateien); im PR-Modus darf er per `gh` abnehmen und mergen | Wer bewertet, darf nicht gleichzeitig reparieren. Das Mergen ist an feste Bedingungen gebunden (CI grün, keine Änderung an `.claude/`, `.github/`, Abhängigkeiten) und nur nach Delegation durch den Menschen. |
 | `ideator` | **nein** | Er liefert Vorschläge, ein Mensch entscheidet. |
 | `designer` | **nein** (nur Screenshots außerhalb des Repos) | Er prüft Optik und Bedienung mit echten Screenshots und schlägt Designs vor; gebaut wird über die Pipeline. |
 

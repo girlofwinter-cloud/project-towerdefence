@@ -460,3 +460,11 @@ Neue Einträge werden unten angehängt. Bestehende Einträge werden nie geänder
 - Review: APPROVE (keine Muss-Punkte; Hinweise als B-076)
 - Entscheidungen: `src/draw-utils.js` hat jetzt die Stil-Helfer `lit`, `shd`, `brightness`, `outlineOf`, `part`, `poly`, `rr`, `ell`, `shadow` (Flat-Pop nach `docs/STIL.md`: drei Flächentöne per Clip und versetzter Füllung, keine Verläufe, kein shadowBlur). Alle Zahlen und die gemeinsame Palette stehen im neuen Block `STYLE` in `src/config.js`; Welt-, UI- und Gegnerfarben sind noch nicht darin (kommen mit den jeweiligen Einträgen). Die Helfer sind noch nirgends eingebunden, die Optik ist unverändert.
 - Offen: Sichtprüfung der Helfer mit B-063; Breite des Schattenstreifens (ca. 1,4 px statt 2 px) und Hex-Kurzformen siehe B-076.
+
+## 2026-11-21 · Prozess · Reviewer darf PRs abnehmen und mergen (Vertretung)
+- Rolle(n): Mensch + Claude (interaktiv)
+- Branch: agent/reviewer-merge
+- Ergebnis: fertig (Rollenbeschreibung, Skill, Doku; kein Code in `src/`)
+- Tests: nicht nötig
+- Entscheidungen: Der Mensch wünschte, dass der `reviewer` mehr Aufgaben übernimmt und PRs abnehmen und mergen darf, wenn der Mensch nicht da ist. Neuer "PR-Modus" in `.claude/agents/reviewer.md`: Merge per `gh pr merge --merge` nur, wenn der PR offen und mergebar ist, die CI grün ist, `.claude/`, `.github/` und Abhängigkeiten unberührt sind, keine Tests abgeschwächt wurden, das Review APPROVE ohne Muss-Punkte ergibt, ein Ledger-Eintrag existiert und nur ein Feature enthalten ist. Sonst bleibt der PR offen und der Mensch entscheidet. Auslöser nur auf Delegation (`/pipeline abnahme`, neuer Schritt 10 im Skill), nicht automatisch. Dateien bleiben für den reviewer schreibgeschützt. Rollen, Skills, Hooks und Workflows (also auch dieser PR) mergt weiterhin nur ein Mensch.
+- Offen: `.claude/settings.json` ist für Agents geschützt: Damit `gh pr merge` ohne Rückfrage läuft, muss der Mensch die Berechtigung `Bash(/opt/homebrew/bin/gh pr merge:*)` (und `gh pr view/diff/checks`) dort eintragen. Neue Subagent-Definitionen werden beim Sitzungsstart geladen.
