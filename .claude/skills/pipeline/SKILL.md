@@ -27,6 +27,15 @@ Du bist der **Orchestrator**. Du schreibst selbst keinen Spielcode, du koordinie
 9. **Abschluss.** `npm test` ein letztes Mal selbst ausführen, committen, `git push -u origin agent/<kurzname>`. Pull Request nur auf ausdrücklichen Wunsch.
 10. **Abnahme durch den reviewer (nur wenn der Mensch sie delegiert hat, z. B. `/pipeline abnahme` oder "der reviewer soll mergen").** Dann legst du den PR an (Beschreibung wie üblich, mit Hinweis auf Backlog-Eintrag und Ledger) und rufst den `reviewer` im **PR-Modus** mit der PR-Nummer auf. Er mergt nur, wenn alle Bedingungen in seiner Rollenbeschreibung gelten (CI grün, keine Änderungen an `.claude/`, `.github/`, Abhängigkeiten usw.). Sonst bleibt der PR offen, und du meldest dem Menschen den Grund. Ohne diese Delegation mergt immer der Mensch.
 
+## Sammelmodus (nur auf Wunsch des Menschen, z. B. `/pipeline sammel` oder "im Sammelmodus")
+Für Serien reiner Optik-Einträge (Zeichnen in `render*.js`/`decor.js`/Hintergrund-Cache, kein Eingriff in `src/game.js` oder `src/path.js`). Spart Zeit, weil pro Eintrag Tester, Reviewer, PR, CI und Merge entfallen:
+1. **Block bilden:** 3 bis 4 zusammengehörige Einträge mit Status `offen`, ein Branch `agent/<kurzname>` von `main` für den ganzen Block.
+2. **Pro Eintrag nur der `developer`.** Er prüft `npm test` und seine Screenshots, committet wird auf dem gemeinsamen Branch (ein Commit pro Eintrag). Kein tester, kein reviewer, kein eigener PR. BACKLOG und LEDGER fasst der Developer nicht an.
+3. **Am Ende des Blocks einmal prüfen:** `tester` und `reviewer` laufen gemeinsam über den gesamten Diff (`git diff main`), einmal, Berichte wie üblich begrenzt. Der Reviewer bekommt die Liste der Einträge und die Abweichungen der Developer (z. B. angepasste Tests) mit. Muss-Punkte: eine Nachbesserungsrunde durch den `developer`, die der Orchestrator selbst prüft (`npm test`, `git diff`).
+4. **Abschluss:** Pro Eintrag ein Ledger-Eintrag und Backlog nach `docs/archiv/BACKLOG-fertig.md` verschieben (ein gemeinsamer Commit), Hinweise aus dem Review als Backlog-Einträge mit Status `vorschlag`, `npm test` selbst ausführen, ein Pull Request für den Block (nur auf Wunsch, sonst nur pushen), CI abwarten, dann Merge durch den Menschen oder durch den `reviewer` im PR-Modus (Schritt 10).
+5. **Nicht im Sammelmodus:** Einträge, die Spiel-Logik, Balancing, Eingabe oder Layout/Bedienung (`index.html`, `style.css`, `src/main.js`, `src/hud.js`, `src/input.js`) berühren. Diese laufen im normalen Ablauf, einer pro Durchlauf.
+6. **Grenzen:** Höchstens ca. 600 geänderte Zeilen pro Block (sonst teilen), Regel "ein Feature pro Durchlauf" gilt je Eintrag weiter. Tests werden auch im Sammelmodus nie gelöscht oder abgeschwächt; angepasste Tests nennt der Developer im Bericht und der Reviewer bewertet sie.
+
 ## Regeln
 - Immer nur ein Feature pro Durchlauf.
 - Subagents bekommen den vollständigen Auftrag im Prompt. Sie sehen dieses Gespräch nicht.
