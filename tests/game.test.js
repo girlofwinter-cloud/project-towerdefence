@@ -911,10 +911,10 @@ test('Jede Karte hat einen gültigen, überschneidungsfreien Weg', () => {
 test('createGame wählt Karte per mapId, unbekannte fällt auf Standard zurück', () => {
   const def = createGame();
   assert.equal(def.mapId, DEFAULT_MAP_ID);
-  const c = createGame({ mapId: 'canyon' });
-  assert.equal(c.mapId, 'canyon');
+  const c = createGame({ mapId: 'forest' });
+  assert.equal(c.mapId, 'forest');
   assert.notDeepEqual(c.path.points, def.path.points);
-  assert.deepEqual(c.path.points, buildPath(MAPS.canyon.waypoints, TILE).points);
+  assert.deepEqual(c.path.points, buildPath(MAPS.forest.waypoints, TILE).points);
   const u = createGame({ mapId: 'gibt-es-nicht' });
   assert.equal(u.mapId, DEFAULT_MAP_ID);
   assert.deepEqual(u.path.points, def.path.points);
@@ -922,9 +922,12 @@ test('createGame wählt Karte per mapId, unbekannte fällt auf Standard zurück'
 });
 
 test('Zweitkarte: Weg-Kacheln blockiert, Gegner erreichen das Ziel', () => {
-  const s = createGame({ mapId: 'canyon' });
-  assert.equal(canBuild(s, 3, 5).ok, false);
-  assert.equal(canBuild(s, 5, 5).ok, true);
+  const s = createGame({ mapId: 'ice' });
+  const [pc, pr] = [...s.blocked].map((k) => k.split(',').map(Number)).find(([c, r]) => c >= 0 && r >= 0 && c < 20 && r < 14);
+  assert.equal(canBuild(s, pc, pr).ok, false);
+  let free = false;
+  for (let r = 0; r < 14 && !free; r++) for (let c = 0; c < 20; c++) if (canBuild(s, c, r).ok) { free = true; break; }
+  assert.ok(free);
   spawnEnemy(s, 'grunt', 1);
   run(s, 120);
   assert.ok(s.lives < START_LIVES);
@@ -968,7 +971,7 @@ test('Hindernisse: canBuild lehnt ab, daneben normal; Karten ohne Hindernisse un
   assert.equal(buildTower(f, 'arrow', ...free).ok, true);
   const m = createGame();
   assert.equal(m.obstacles.size, 0);
-  assert.equal(createGame({ mapId: 'canyon' }).obstacles.size, 0);
+  assert.equal(createGame({ mapId: 'ice' }).obstacles.size, 0);
   assert.equal(canBuild(m, 0, 0).ok, true);
   assert.equal(canBuild(f, 3, 6).reason, 'Auf dem Weg kann nicht gebaut werden');
 });
@@ -1000,7 +1003,7 @@ function shootAt(mapId, type) {
 }
 
 test('Modifikatoren: Karten ohne modifiers bleiben unverändert', () => {
-  for (const id of ['meadow', 'canyon', 'forest']) {
+  for (const id of ['meadow', 'forest']) {
     const s = createGame({ mapId: id });
     assert.deepEqual(s.modifiers, { enemySpeed: 1, towerDamage: {}, slowStrength: 1 });
     spawnEnemy(s, 'grunt', 1);
