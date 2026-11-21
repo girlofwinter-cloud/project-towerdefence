@@ -40,7 +40,7 @@ export const MAPS = {
       [20, 11],
     ],
     // B-071: Wegpalette der Wiese (STIL.md); Wald, Eis und Fork nutzen vorerst PATH_STYLE.colors.
-    theme: { path: { main: '#e2c88f', edge: '#8f6a3b', outline: '#4a3418', mid: '#ecd5a0', fringe: '#6fbf4e' } },
+    theme: { treeFrame: true, path: { main: '#e2c88f', edge: '#8f6a3b', outline: '#4a3418', mid: '#ecd5a0', fringe: '#6fbf4e' } },
   },
   forest: {
     name: 'Wald',
@@ -366,4 +366,30 @@ export const PATH_STYLE = {
   pebbleColors: ['#c9ad74', '#f3e2b4'],
   // Standardfarben (heutiger Look), solange eine Karte kein theme.path liefert.
   colors: { main: '#dcc189', edge: '#8f7140', outline: '#8f7140', mid: '#dcc189', fringe: null },
+};
+
+// Baumrahmen der Wiese (B-077): runde Kronen im Randring, rein Hintergrundoptik. Maße in px bei 1x.
+// Eine Krone liegt innerhalb ihres Begrenzungskreises (Radius r, inkl. Kontur).
+export const TREE_FRAME = {
+  // Reihen von hinten (außen, dunkler) nach vorn (innen, heller): Radius, Tiefenanteil der Mitte (0 = am Rand,
+  // 1 = so weit innen wie maxOverhang erlaubt), Abstand entlang des Rands, Abdunklung
+  rows: [
+    { radius: [14, 18], depth: [0, 0.3], spacing: 30, shade: 0.28 },
+    { radius: [16, 20], depth: [0.7, 1], spacing: 34, shade: 0 },
+  ],
+  spacingJitter: 8,       // zufällige Streuung des Abstands (0..jitter)
+  maxOverhang: 36,        // so weit darf eine Krone (Rand) ins Spielfeld ragen
+  pathMargin: 24,         // Abstand Kronenrand zur Wegachse, mindestens (>= Rand des Wegs, siehe pathReach)
+  // Anteile der Arten in der Reihenfolge leaf, apple, blossom, fir (Summe 1)
+  kindShare: [0.5, 0.2, 0.2, 0.1],
+  greens: ['#3f9a45', '#3a9250', '#58a83e', '#47a04a'],
+  apple: '#4aa04a',
+  appleFruit: '#d4503f',
+  appleGlint: '#ffd9c9',
+  blossom: '#f08fb4',
+  blossomFlower: '#fff3f6',
+  fir: ['#2f7f4a', '#2a7442'],
+  outlineWidth: 2,        // Dicke der dunklen Kontur
+  coverMargin: 6,         // alte Einzelbäume näher als r + coverMargin an einer Krone entfallen
+  lobeScale: 0.6,         // Hauptlappen = r * lobeScale
 };

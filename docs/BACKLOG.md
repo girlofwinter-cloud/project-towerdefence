@@ -415,14 +415,6 @@ Reihenfolge ist Abhängigkeit: B-062 und B-063 zuerst, dann gemeinsame Sichtprü
   - Kontrast Text/Hintergrund mindestens 4,5:1.
 
 
-### B-077: Wiese 2/7: Baumrahmen am Rand (Design-Overhaul)
-- Status: offen
-- Aufwand: M
-- Idee: Dichter, mehrfarbiger Rahmen aus runden Baumkronen (Laub, Apfel, Blüte, einzelne Tannen) mit dicker dunkler Kontur, nur im Randring. `decor.js` liefert die Positionen deterministisch. Ziel ca. 60 Kronen statt heute ca. 16 Bäume.
-- Akzeptanzkriterien:
-  - Unit-Test: keine Krone schneidet den Weg; Überhang ins Feld höchstens 16 px.
-  - Mindestens 40 Bäume im Randring; Positionen deterministisch (gleicher Seed, gleiches Ergebnis).
-  - Alles im Hintergrund-Cache; Handy-Screenshot: Gegner und Türme bleiben lesbar.
 
 ### B-078: Wiese 3/7: Boden mit Flecken und Plateaus statt Schachbrett (Design-Overhaul)
 - Status: offen
@@ -525,3 +517,10 @@ Reihenfolge ist Abhängigkeit: B-062 und B-063 zuerst, dann gemeinsame Sichtprü
 - Idee: Gegner-Körperfarben erreichen auf der hellen Wegmitte der Wiese (`#ecd5a0`, Helligkeit 0,84) nicht die geforderten 25 % Abstand: Flitzer 0,07, Goblin 0,19, Schamane 0,21 (Schildträger 0,32, Troll 0,44, Oger 0,57). B-071 prüft stattdessen die dunkle Gegner-Kontur (`outlineOf`, Abstand mindestens 0,49). Am schwächsten ist der gelbe Flitzer. Mit den Gegner-Einträgen (B-065/B-066) dunklerer Körperton oder stärkere Kontur für Flitzer und Goblin. Außerdem: Der Dekor-Test zählt `arc`/`ellipse` als Dekoration, der Weg zeichnet Kreise deshalb mit `ctx.roundRect`; langfristig den Dekor-Test auf den Frame-Pfad eingrenzen. Der Saum ist nur Kreise, die Grasbüschel des Entwurfs fehlen (optional, B-079).
 - Akzeptanzkriterien:
   - Flitzer und Goblin sind auf der Wegmitte der Wiese im Screenshot klar lesbar; Körperfarbe oder Kontur so, dass der Abstand mindestens 0,25 (Helligkeit) beträgt, `ENEMY_TYPES`-Farben und HP-Anzeige bleiben konsistent.
+
+### B-086: Baumrahmen: Feinschliff (Hinweise aus dem Review von B-077)
+- Status: vorschlag
+- Aufwand: S
+- Idee: (1) Der Test "Dekoration verlässt ihre Kachel nicht" läuft seit B-077 auf `fork`; der Tester hat einen zusätzlichen Wiesen-Test ergänzt (Busch, Fels, Blume, Tuft, Kiesel). Ungeprüft bleiben nur nicht verdeckte Einzelbäume der Wiese (Eck-Tannen). (2) Die Ecken des Rahmens sind leicht unruhig (links oben abgeschnittene Tannen). (3) Kronen sind etwas kleiner und gleichförmiger als im Zielbild; mehr Größenvarianz und Stämme/Schatten zur Mitte hin sind optional. (4) Rahmen für Wald und Eis über `theme.treeFrame: true` folgt mit B-072/B-073.
+- Akzeptanzkriterien:
+  - Ecken im Screenshot ohne abgeschnittene Einzelbäume.
