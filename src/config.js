@@ -177,6 +177,24 @@ export const TOWER_TYPES = {
     // Rüstungsbrecher: gegen Gegner, deren Basis-HP (ENEMY_TYPES[type].hp, ohne Wellen-Skalierung) >= bonusMinHp ist, Faktor bonusDamage auf den Schaden; ignoriert dabei Rüstung.
     special: { bonusMinHp: 300, bonusDamage: 1.5, ignoreArmor: true },
   },
+  lightning: {
+    name: 'Blitzturm',
+    key: '5',
+    cost: 110,
+    range: 3,
+    damage: 14,
+    rate: 1.1,
+    projectileSpeed: 0, // Blitz trifft sofort, kein Projektil
+    // Kettenblitz: springt auf bis zu chainCount weitere Gegner im Umkreis chainRange (Kacheln);
+    // jeder Sprung macht nur chainFalloff (Anteil) des Schadens des vorigen Treffers. Skaliert nicht mit der Stufe.
+    chainCount: 3,
+    chainRange: 1.6,
+    chainFalloff: 0.7,
+    boltDuration: 0.25, // Sekunden, die die Blitzlinie sichtbar bleibt
+    color: '#e8c93a',
+    description: 'Kettenblitz springt auf nahe Gegner. Konter gegen Schwärme.',
+    special: {},
+  },
 };
 
 // Fähigkeitstexte werden aus den Werten gebaut, damit Zahlen nur an einer Stelle stehen.
@@ -186,9 +204,10 @@ const SPECIAL_TEXTS = {
   arrow: (s) => `Aufwärmen: Schießt er dasselbe Ziel weiter an, feuert er bis zu ${pct(s.warmupMax)} schneller.`,
   cannon: (s) => `Rückstoß: Treffer wirft das Ziel ${num(s.knockback)} Kacheln auf dem Weg zurück (Bosse nur ${pct(s.bossKnockbackFactor)}).`,
   frost: (s) => `Einfrieren: Jeder ${s.freezeEvery}. Treffer stoppt das Ziel für ${num(s.freezeDuration)} s (Bosse sind immun).`,
+  lightning: (s, d) => `Kettenblitz: Springt auf bis zu ${d.chainCount} weitere Gegner im Umkreis von ${num(d.chainRange)} Kacheln, jeder Sprung mit ${pct(d.chainFalloff)} des vorigen Schadens.`,
   sniper: (s) => `Rüstungsbrecher: Gegen zähe Gegner (ab ${s.bonusMinHp} Basis-HP) ${pct(s.bonusDamage - 1)} mehr Schaden, Rüstung wird ignoriert.`,
 };
-for (const [type, build] of Object.entries(SPECIAL_TEXTS)) TOWER_TYPES[type].special.text = build(TOWER_TYPES[type].special);
+for (const [type, build] of Object.entries(SPECIAL_TEXTS)) TOWER_TYPES[type].special.text = build(TOWER_TYPES[type].special, TOWER_TYPES[type]);
 
 // speed in Kacheln/Sekunde, reward = Gold pro Kill, leak = verlorene Leben am Ziel
 // Healer: healRadius in Kacheln, healPerSec = Anteil der maxHp des Ziels pro Sekunde,

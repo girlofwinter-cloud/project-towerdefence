@@ -173,15 +173,6 @@ Erledigte Einträge (`fertig`) liegen in `docs/archiv/BACKLOG-fertig.md`. Beim A
   - Test: Gegner verteilen sich gemäß Regel auf beide Zweige, beide erreichen das Ziel.
   - Zielwahl der Türme (`first`/`last`) bleibt sinnvoll definiert.
 
-### B-034: Blitzturm mit Kettenblitz
-- Status: vorschlag
-- Aufwand: M
-- Idee: Neuer Turm, dessen Treffer auf bis zu N nahe Gegner überspringt (abnehmender Schaden). Konter gegen Flitzerschwärme.
-- Akzeptanzkriterien:
-  - `TOWER_TYPES.lightning` mit `chainCount`, `chainRange`, `chainFalloff`, Taste 5.
-  - Test: Treffer springt auf nahe Gegner, nie zweimal auf denselben, Schaden sinkt je Sprung.
-  - Render und Effekt passend zu den anderen Türmen.
-
 ### B-035: Unterstützungsturm (Banner)
 - Status: vorschlag
 - Aufwand: M
@@ -283,3 +274,10 @@ Erledigte Einträge (`fertig`) liegen in `docs/archiv/BACKLOG-fertig.md`. Beim A
 - Idee: (1) Die Strategie a>c>c>f (Pfeilturm zuerst) endet auf allen Karten mit 10 Leben; prüfen, ob das gewollt ist oder ob mehr Gold-Senke nötig ist (Logikänderung in `game.js`). (2) `ENEMY_TYPES[target.type]` in der Sniper-Schwelle crasht bei Hand-Gegnern ohne `type`; Fallback nur, falls ein Test das braucht. (3) Der Test-Helfer `iceRun` in `tests/game.test.js` bedient jetzt alle Karten; umbenennen in `mapRun`.
 - Akzeptanzkriterien:
   - `npm test` bleibt grün, kein Test abgeschwächt.
+
+### B-051: Blitzturm: Spieltest und Feinschliff
+- Status: vorschlag
+- Aufwand: S
+- Idee: Hinweise aus dem Review von B-034. (1) Nach einem Spieltest prüfen, ob die Flitzer jetzt zu leicht werden: `chainRange` 1,6 Kacheln ist eher großzügig und der Hauptregler; grobe Rechnung: Einzelziel ca. 12,7 DPS (Pfeil 20 DPS bei halbem Preis), ein voller Blitz auf 4 Gegner ca. 32 DPS Gesamtschaden. (2) `COIL_BLUE` und `BOLT_GLOW` in `src/render.js` stehen zwischen den Eis-Farben (ICE_LIGHT/ICE_DARK); sortieren. (3) Boss-Test prüft nur `frozenUntil`, nicht ausdrücklich "kein Boss-Rückstoß"; für den Blitzturm irrelevant. (4) Optional eigener Strategie-Test mit Blitzturm, falls er in Balancing-Läufe aufgenommen wird.
+- Akzeptanzkriterien:
+  - Nur Zahlen in `src/config.js` und Render-Kosmetik; `npm test` bleibt grün, kein Test abgeschwächt.

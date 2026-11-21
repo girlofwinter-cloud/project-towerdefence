@@ -191,7 +191,7 @@ test('Turm-Zeichnung: Typen und Stufen unterscheiden sich, Auswahlrahmen bleibt'
       seen.set(print, `${type} L${level}`);
     }
   }
-  assert.equal(seen.size, 12);
+  assert.equal(seen.size, Object.keys(TOWER_TYPES).length * 3);
   const plain = await recordTower('arrow', 1, 0, 0, false);
   const sel = await recordTower('arrow', 1, 0, 0, true);
   assert.ok(!plain.calls.some((c) => c.startsWith('strokeRect')));
@@ -321,13 +321,16 @@ test('Render: Tuerme aller Typen zeichnen, Cache ungestoert, Alpha und save/rest
 function fxRenderState() {
   const s = createGame();
   s.time = 5;
-  for (const t of ['arrow', 'cannon', 'frost', 'sniper', 'zzz', '__proto__', undefined]) {
+  for (const t of ['arrow', 'cannon', 'frost', 'sniper', 'lightning', 'zzz', '__proto__', undefined]) {
     s.projectiles.push({ x: 100, y: 100, tx: 300, ty: 100, towerType: t });
   }
   s.projectiles.push({ x: 1, y: 1, towerType: 'cannon' }, { x: NaN, y: 5, tx: Infinity, towerType: 'arrow' });
   s.effects.push(
     { kind: 'explosion', x: 200, y: 200, r: 44, ttl: 0.2, max: 0.3 },
     { kind: 'coin', x: 220, y: 200, text: '+5', ttl: 0.5, max: 0.8 },
+    { kind: 'bolt', points: [{ x: 10, y: 10 }, { x: 60, y: 40 }, { x: 90, y: 80 }], ttl: 0.1, max: 0.25 },
+    { kind: 'bolt', points: [], ttl: 0.1, max: 0.25 },
+    { kind: 'bolt', ttl: 0.1, max: 0.25 },
     { kind: 'unbekannt', x: 1, y: 1, ttl: 1, max: 1 },
   );
   return s;

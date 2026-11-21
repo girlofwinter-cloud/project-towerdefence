@@ -8,7 +8,7 @@ npm start   # → http://localhost:8080
 ```
 Nach dem Aktivieren von GitHub Pages (siehe `docs/LERNEN.md`) auch online.
 
-**Steuerung:** `1`–`4` Turm wählen und aufs Feld klicken · Turm anklicken zum Verbessern/Verkaufen · `Leertaste` nächste Welle · `F` Tempo
+**Steuerung:** `1`–`5` Turm wählen und aufs Feld klicken · Turm anklicken zum Verbessern/Verkaufen · `Leertaste` nächste Welle · `F` Tempo
 
 ## Tests
 ```bash

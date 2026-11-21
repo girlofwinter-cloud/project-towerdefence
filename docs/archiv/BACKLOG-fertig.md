@@ -198,3 +198,14 @@ Agents lesen diese Datei nur bei konkretem Bedarf.
 - Akzeptanzkriterien:
   - Gesamtlaufzeit `npm test` deutlich unter 30 s, keine Prüfung abgeschwächt.
 - Hinweis: Punkte (4) und (5) sowie die Umbenennung von `iceRun` liegen jetzt in B-050. Die gemessene Laufzeit lag bei ca. 15 s (die 48 s waren eine Lastspitze durch parallel laufende Agenten).
+
+### B-034: Blitzturm mit Kettenblitz
+- Status: fertig
+- Aufwand: M
+- Idee: Fünfter Turm "Blitzturm" (Taste 5). Sein Treffer springt als Kettenblitz auf bis zu N weitere Gegner in der Nähe (jeder Sprung mit abnehmendem Schaden, nie zweimal derselbe Gegner). Konter gegen Flitzerschwärme, schwach gegen einzelne zähe Gegner. Der Blitz trifft sofort (kein langsames Projektil) oder mit sehr schneller Geschwindigkeit; eine Blitzlinie zwischen den getroffenen Gegnern wird kurz gezeichnet. Preis und Werte so wählen, dass das Spiel nicht leichter wird (der Spieler findet es aktuell "recht schwer, aber gut"): Blitzturm ist ein gleichwertiger Bauplatz-Kompromiss, keine Dominanzstrategie.
+- Akzeptanzkriterien:
+  - `TOWER_TYPES.lightning` in `src/config.js` mit `chainCount`, `chainRange`, `chainFalloff` (Anteil Schaden pro Sprung), Kosten, Reichweite, Schaden, Rate; `key: '5'`; `special.text` aus den Werten gebaut wie bei den anderen Türmen.
+  - Logik in `src/game.js`, kein DOM; Treffer springt auf nahe Gegner (Radius `chainRange` Kacheln, auch über Wegabschnitte/Wege der Karte `fork`), nie zweimal denselben, höchstens `chainCount` Sprünge, Schaden sinkt je Sprung; Schildträger-Rüstung und Boss-Regeln wie bei normalem Direkttreffer; getötete Gegner zählen Gold und Kills korrekt.
+  - Render: Turm-Zeichnung für `lightning` (kein stilles Fallen in einen anderen Turm-Zweig, Rückstoß-/Farb-Tabellen ergänzen), Blitzlinie als kurzer Effekt (reine Darstellung, deterministisch). Shop-Button, Tastenkürzel 5 und Hilfetexte ("1–4" -> "1–5") angepasst.
+  - Test: Kette trifft nur nahe Gegner, nie doppelt, Schaden sinkt je Sprung, Obergrenze `chainCount`, kein Sprung ohne weiteres Ziel, Tod der Ziele und Gold korrekt, Boss/Schildträger ohne Sonderbehandlung, `fork`-Karte funktioniert; Strategie-Balancing-Tests der Wiese, Eis, Wald, fork bleiben unverändert grün (Strategien nutzen den neuen Turm nicht).
+  - Alle Zahlen nur in der Config.
