@@ -338,7 +338,7 @@ Reihenfolge ist Abhängigkeit: B-062 und B-063 zuerst, dann gemeinsame Sichtprü
 
 
 ### B-064: Restliche Türme im neuen Stil (Design-Overhaul)
-- Status: vorschlag
+- Status: offen
 - Aufwand: M
 - Idee: Kanone, Frost, Scharfschütze, Blitz mit je eigener Silhouette, Stufen sichtbar in der Form.
 - Akzeptanzkriterien:
@@ -346,7 +346,7 @@ Reihenfolge ist Abhängigkeit: B-062 und B-063 zuerst, dann gemeinsame Sichtprü
   - Reichweitenkreis und Auswahlrahmen bleiben sichtbar.
 
 ### B-065: Gegner Teil 1: Goblin, Flitzer, Troll (Design-Overhaul)
-- Status: vorschlag
+- Status: offen
 - Aufwand: M
 - Idee: `render-enemies.js`: Lauf-Phasen, Kontur, Bodenschatten.
 - Akzeptanzkriterien:
@@ -354,7 +354,7 @@ Reihenfolge ist Abhängigkeit: B-062 und B-063 zuerst, dann gemeinsame Sichtprü
   - Drei Typen auf Handy-Screenshot unterscheidbar; mindestens 25 % Helligkeitsabstand zum Weg.
 
 ### B-066: Gegner Teil 2: Schamane, Schildträger, weitere (Design-Overhaul)
-- Status: vorschlag
+- Status: offen
 - Aufwand: M
 - Idee: Übrige Gegnertypen (inkl. Fliegende, Splitter/Tarn, sofern vorhanden). Zustände Schild, Heilung, Eingefroren zusätzlich über Form/Symbol.
 - Akzeptanzkriterien:
