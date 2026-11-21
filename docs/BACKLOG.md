@@ -354,3 +354,115 @@ Erledigte Einträge (`fertig`) liegen in `docs/archiv/BACKLOG-fertig.md`. Beim A
 - Akzeptanzkriterien:
   - Screenshots von Welle mit Effekten, Boss, Game Over liegen vor und sind bewertet.
   - Befunde sind als Einträge oder Hinweise im Backlog.
+
+## Design-Overhaul (Flat-Pop nach `docs/STIL.md`, Stil B gewählt)
+Reihenfolge ist Abhängigkeit: B-062 und B-063 zuerst, dann gemeinsame Sichtprüfung mit dem Menschen, erst danach B-064 bis B-075. Keine Logik- oder Balancing-Änderungen in dieser Reihe. Jeder Eintrag endet mit Screenshot-Prüfung (Desktop 1280x800, Handy 390x844) und grünem `npm test`.
+
+### B-062: Stil-Fundament (Design-Overhaul)
+- Status: vorschlag
+- Aufwand: M
+- Idee: `src/draw-utils.js` bekommt die Helfer `part`, `poly`, `rr`, `ell`, `lit`, `shd`, `shadow` und die Palette-/Kontur-Konstanten aus `docs/STIL.md` (Zahlen in `src/config.js`).
+- Akzeptanzkriterien:
+  - Helfer mit Tests in `tests/render.test.js` (Farbmischung, Abdunkeln der Kontur).
+  - Bestehende Optik unverändert.
+
+### B-063: Pfeilturm im neuen Stil als Referenz (Design-Overhaul)
+- Status: vorschlag
+- Aufwand: S
+- Idee: Pfeilturm Stufe 1 bis 3 mit eigener Form im Flat-Pop-Stil.
+- Akzeptanzkriterien:
+  - Bei 1x und 0,75x erkennbar vom Boden getrennt (Screenshot, auch auf Eis).
+  - Drehung zum Ziel und Rückstoß unverändert.
+  - Zeichenzeit mit 20 Türmen nicht merklich höher (Messung).
+
+### B-064: Restliche Türme im neuen Stil (Design-Overhaul)
+- Status: vorschlag
+- Aufwand: M
+- Idee: Kanone, Frost, Scharfschütze, Blitz mit je eigener Silhouette, Stufen sichtbar in der Form.
+- Akzeptanzkriterien:
+  - Alle 5 Typen auf einem Screenshot an der Silhouette unterscheidbar.
+  - Reichweitenkreis und Auswahlrahmen bleiben sichtbar.
+
+### B-065: Gegner Teil 1: Goblin, Flitzer, Troll (Design-Overhaul)
+- Status: vorschlag
+- Aufwand: M
+- Idee: `render-enemies.js`: Lauf-Phasen, Kontur, Bodenschatten.
+- Akzeptanzkriterien:
+  - Frost-Overlay, Heil-Aura und HP-Balken unverändert.
+  - Drei Typen auf Handy-Screenshot unterscheidbar; mindestens 25 % Helligkeitsabstand zum Weg.
+
+### B-066: Gegner Teil 2: Schamane, Schildträger, weitere (Design-Overhaul)
+- Status: vorschlag
+- Aufwand: M
+- Idee: Übrige Gegnertypen (inkl. Fliegende, Splitter/Tarn, sofern vorhanden). Zustände Schild, Heilung, Eingefroren zusätzlich über Form/Symbol.
+- Akzeptanzkriterien:
+  - Je Typ ein Screenshot-Beleg, keine reine Farbunterscheidung.
+
+### B-067: Boss Oger-König (Design-Overhaul)
+- Status: vorschlag
+- Aufwand: M
+- Idee: 1,6x Größe, Krone, Keule, Aura, Auftritts-Effekt (Bodenschlag, Wackeln unter 3 px).
+- Akzeptanzkriterien:
+  - Boss auf dem Handy sofort erkennbar.
+  - `prefers-reduced-motion` schaltet das Wackeln aus.
+
+### B-068: Projektile und Effekte (Design-Overhaul)
+- Status: vorschlag
+- Aufwand: M
+- Idee: Pfeile, Kanonenkugel, Frostsplitter, Blitz, Explosion, Treffer-Funken, Münzen-Hopser beim Tod.
+- Akzeptanzkriterien:
+  - Maximale Partikelzahl wie vorher.
+  - Effekte verdecken Gegner nicht (Screenshot einer Welle mit vielen Gegnern).
+  - Reduzierte Bewegung wird respektiert.
+
+### B-069: HUD-Icons (Design-Overhaul)
+- Status: vorschlag
+- Aufwand: S
+- Idee: Gold, Herz, Welle und Fähigkeiten aus dem Icon-Set per Canvas zeichnen und in HUD/Knöpfen statt Emoji einsetzen. Verknüpft mit B-058.
+- Akzeptanzkriterien:
+  - Bei 16 und 32 px lesbar, Tippziele mindestens 44 px, keine Emoji-Mischung.
+
+### B-070: Shop-Karten (Design-Overhaul)
+- Status: vorschlag
+- Aufwand: S
+- Idee: Mini-Turm-Vorschau aus den neuen Sprites, Preis mit Münz-Icon. Verknüpft mit B-056/B-057.
+- Akzeptanzkriterien:
+  - Kartenhöhe nicht größer als jetzt, alle Karten ohne Scrollen erreichbar.
+  - Kontrast Text/Hintergrund mindestens 4,5:1.
+
+### B-071: Welt Wiese: Boden, Weg, Deko (Design-Overhaul)
+- Status: vorschlag
+- Aufwand: M
+- Idee: Neue Palette, Wegkanten mit Steinen, Büsche, Blumen; `decor.js`-Regeln bleiben.
+- Akzeptanzkriterien:
+  - Gegner auf dem Weg mit mindestens 25 % Helligkeitsabstand.
+  - Keine Deko auf Weg-Kacheln (bestehender Test grün).
+
+### B-072: Welten Wald und Zangenangriff (Design-Overhaul)
+- Status: vorschlag
+- Aufwand: M
+- Idee: Wald mit Tannen, Pilzen, Moos; Zangenangriff mit Herbstlaub. Überschneidet sich mit B-043 und B-059, bei Umsetzung zusammenlegen.
+- Akzeptanzkriterien:
+  - Eigene Palette, auf Screenshot klar von der Wiese unterscheidbar.
+
+### B-073: Welt Eis (Design-Overhaul)
+- Status: vorschlag
+- Aufwand: M
+- Idee: Schnee, Eiskristalle, Tannen mit Schneekappe, dunklerer Weg. Überschneidet sich mit B-044 und B-059.
+- Akzeptanzkriterien:
+  - Weg vom Boden unterscheidbar, Gegner mit Kontrastregel aus `docs/STIL.md` lesbar.
+  - Tests der Hindernisse grün.
+
+### B-074: Vulkan und Wüste (Design-Overhaul)
+- Status: vorschlag
+- Aufwand: L
+- Idee: Erst wenn die Welten existieren (B-030/B-031): Lava-Risse, Dünen, Kakteen.
+- Akzeptanzkriterien:
+  - Eigene Palette gemäß `docs/STIL.md`, Spielbarkeit unverändert.
+
+### B-075: Politur und Performance (Design-Overhaul)
+- Status: vorschlag
+- Aufwand: S
+- Idee: Sprite-Caches für Türme und Gegner, Weißblitz bei Treffer, Bau-Animation.
+- Akzeptanzkriterien:
+  - Zeichenzeit pro Frame mit 40 Gegnern und 20 Türmen nicht höher als vor dem Overhaul (Messung per `performance.now`).
