@@ -40,7 +40,7 @@ export const MAPS = {
       [20, 11],
     ],
     // B-071: Wegpalette der Wiese (STIL.md); Wald, Eis und Fork nutzen vorerst PATH_STYLE.colors.
-    theme: { treeFrame: true, ground: true, path: { main: '#e2c88f', edge: '#8f6a3b', outline: '#4a3418', mid: '#ecd5a0', fringe: '#6fbf4e' } },
+    theme: { treeFrame: true, ground: true, decorStyle: 'flatpop', path: { main: '#e2c88f', edge: '#8f6a3b', outline: '#4a3418', mid: '#ecd5a0', fringe: '#6fbf4e' } },
   },
   forest: {
     name: 'Wald',
@@ -424,4 +424,33 @@ export const GROUND_STYLE = {
   tufts: 420,
   tuftPathMargin: 28,    // Büschel nie auf dem Weg
   tuftScale: [0.9, 1.4],
+};
+
+// Deko der Wiese im Flat-Pop-Stil (B-079): Felsen, Büsche, Blumen, Pilze, Streu-Deko. Nur Optik, Maße in px bei 1x.
+// Aktiv nur mit MAPS.<id>.theme.decorStyle === 'flatpop'; andere Karten behalten die alte Deko.
+export const DECOR_STYLE = {
+  outlineWidth: 1.3,      // Konturbreite aller Teile (entspricht STYLE.outlineWidth, erlaubt 1,3 bis 2,3)
+  detailWidth: 0.9,       // Innendetails (Risse, Halme)
+  bush: '#3d9a45',
+  berry: '#d4503f',
+  rock: '#9b9ba5',
+  moss: '#8fd14f',
+  flowers: ['#f6d64a', '#ff8fb1', '#f4f1e6'], // gelb, rosa, weiss (je Variante)
+  flowerCore: '#f0a21c',
+  stem: '#3f8a35',
+  tuft: '#46893a',
+  tuftLight: '#5da654',   // Lichthalm
+  pebble: '#b3adaa',
+  mushroomCap: '#d9453a',
+  mushroomStem: '#f4e7c8',
+  mushroomSpot: '#ffffff',
+  wood: '#c58f55',
+  woodDark: '#8a5a34',
+  hoop: '#5a4a52',        // Fassreifen
+  logEnd: '#e2b87a',
+  // Streu-Deko: wenige flache Stücke auf freien Kacheln, die kein anderes Dekor tragen.
+  scatterChance: 0.07,    // Wahrscheinlichkeit je freier Kachel
+  scatterEndMargin: 1,    // Abstand (Kacheln, Chebyshev) zu Tor und Ziel
+  scatterOffset: [0.3, 0.7], // Lage innerhalb der Kachel
+  scatterKinds: [['mushroom', 0.3], ['stakes', 0.2], ['log', 0.15], ['barrel', 0.1], ['sign', 0.1], ['pebbles', 0.15]],
 };

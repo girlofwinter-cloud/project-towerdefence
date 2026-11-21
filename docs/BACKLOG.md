@@ -417,13 +417,6 @@ Reihenfolge ist Abhängigkeit: B-062 und B-063 zuerst, dann gemeinsame Sichtprü
 
 
 
-### B-079: Wiese 4/7: Felsen, Büsche, Blumen, Pilze und Streu-Deko neu (Design-Overhaul)
-- Status: offen
-- Aufwand: M
-- Idee: Felsgruppen mit Moos, Büsche, Blumen, Pilze im Flat-Pop-Stil mit Kontur; kleine Streu-Deko (Fass, Baumstämme, Zaunspitzen, Wegweiser) flach im Feld, unter Türmen verdeckt.
-- Akzeptanzkriterien:
-  - Konturbreite 1,3 bis 2,3 px.
-  - Keine Deko auf Weg-Kacheln (bestehende `decor`-Tests grün); neue Streu-Deko bleibt in Bereichen, die sie nicht unspielbar machen (bebaubar bleibt jede freie Kachel).
 
 ### B-080: Wiese 5/7: Akzente Burgmauer, Teich, Brunnen (Design-Overhaul)
 - Status: offen
@@ -524,3 +517,10 @@ Reihenfolge ist Abhängigkeit: B-062 und B-063 zuerst, dann gemeinsame Sichtprü
 - Akzeptanzkriterien:
   - Plateaus überlappen höchstens leicht; Test mit Mindestabstand.
   - Keine Magic Numbers mehr in `decor.js` und `render-ground.js` für diese Funktionen.
+
+### B-088: Wiesen-Deko: Feinschliff (Hinweise aus dem Review von B-079)
+- Status: vorschlag
+- Aufwand: S
+- Idee: (1) Fässer (12 px hoch) wirken wie Hindernisse, sind aber bebaubar; niedriger oder seltener machen (`scatterKinds` in `src/config.js`, `barrel` 0,1). (2) Der Tester hat den Grenztest für die Streu-Deko ergänzt, aber als eigene Datei `tests/scatter-bounds.test.js`; laut CLAUDE.md gehört er nach `tests/decor.test.js` bzw. `tests/render.test.js`. Verschieben. Außerdem: `scatterFor` mit undefined/unbekannter `mapId` ist nur im Code gelesen, nicht per Test belegt; in `drawTuft` ist eine überflüssige Zeile `ctx.strokeStyle = outlineOf(...)` mit falschem Kommentar. (3) Pilze und Wegweiser sind im Screenshot kaum sichtbar; Größe oder Häufigkeit prüfen. (4) Der Test "Einzel-Deko verlässt ihre Kachel nicht" erkennt Grasbüschel nur über die Halmfarbe `#5da654`; langfristig robuster machen.
+- Akzeptanzkriterien:
+  - Fässer verwirren im Screenshot nicht als Hindernis (niedriger/seltener), Grenztest liegt in `tests/decor.test.js` oder `tests/render.test.js`, `npm test` grün.

@@ -841,3 +841,24 @@ test('Wald/Eis/Fork zeichnen weiter das Schachbrett, Wiese nicht', async () => {
   } finally { delete globalThis.document; }
   for (const id of Object.keys(MAPS)) if (id !== 'meadow') assert.ok(rects[id] > rects.meadow, `${id}: Schachbrett (${rects[id]} vs ${rects.meadow})`);
 });
+
+test('Wiesen-Deko (flatpop): nur im Cache, Aufbau schnell', async () => {
+  const { render } = await import('../src/render.js?flatdeko');
+  const offscreen = [];
+  globalThis.document = { createElement() { const m = mockCtx(); const c = { width: 0, height: 0, getContext: () => m.ctx, m }; offscreen.push(c); return c; } };
+  try {
+    const main = mockCtx();
+    const s = createGame();
+    const t0 = performance.now();
+    render(main.ctx, s, {});
+    const ms = performance.now() - t0;
+    console.log(`B-079 Aufbau bgCanvas Wiese: ${ms.toFixed(1)} ms`);
+    const off = offscreen[offscreen.length - 1];
+    const b = off.m.counts.bezierCurveTo;
+    assert.ok(b > 0, 'Streu-Deko im Cache');
+    render(main.ctx, s, {});
+    assert.equal(off.m.counts.bezierCurveTo, b, 'zweiter Frame zeichnet die Deko nicht neu');
+    assert.equal(main.counts.bezierCurveTo || 0, 0, 'Frame-Pfad zeichnet keine Deko');
+    assert.ok(ms < 60, `Aufbau ${ms.toFixed(1)} ms`);
+  } finally { delete globalThis.document; }
+});
