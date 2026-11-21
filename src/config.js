@@ -24,6 +24,13 @@ export const MAX_SUBSTEP = 0.05;
 // Anteil Bäume bei Hindernissen (Rest sind Felsen), 0..1.
 export const OBSTACLE_TREE_SHARE = 0.7;
 
+// Stil-Parameter einer Karte (B-072): Ist theme.<key> ein Objekt, überschreibt es einzelne Werte des Basisblocks
+// (z. B. Palette von Wald oder Zangenangriff); bei true/fehlend gilt der Basisblock der Wiese unverändert.
+export function themed(mapId, key, base) {
+  const v = MAPS[mapId]?.theme?.[key];
+  return v && typeof v === 'object' ? { ...base, ...v } : base;
+}
+
 // Karten: Wegpunkte in Kachel-Koordinaten [spalte, zeile].
 // Erster und letzter Punkt liegen außerhalb des Spielfelds (Ein-/Ausgang).
 export const MAPS = {
@@ -39,7 +46,7 @@ export const MAPS = {
       [16, 11],
       [20, 11],
     ],
-    // B-071: Wegpalette der Wiese (STIL.md); Wald, Eis und Fork nutzen vorerst PATH_STYLE.colors.
+    // B-071: Wegpalette der Wiese (STIL.md); Eis nutzt vorerst PATH_STYLE.colors; Wald und Zangenangriff haben eigene Wegfarben (B-072).
     theme: { treeFrame: true, ground: true, accents: true, light: true, islands: true, decorStyle: 'flatpop', path: { main: '#e2c88f', edge: '#8f6a3b', outline: '#4a3418', mid: '#ecd5a0', fringe: '#6fbf4e' } },
   },
   forest: {
@@ -66,6 +73,46 @@ export const MAPS = {
     // B-046: schnellere Gegner im Dickicht. ACHTUNG: gemessen und nur in einem schmalen Bereich stabil
     // (enemySpeed 1,19 trägt zwischen etwa 1,17 und 1,20), nicht ahnungslos ändern; Strategie-Tests prüfen das.
     modifiers: { enemySpeed: 1.19 },
+    // B-072: Wald im Flat-Pop-Stil (STIL.md): dichter dunkler Tannenrahmen, Moos-Weg, Pilze und Moos als Streu-Deko.
+    theme: {
+      treeFrame: {
+        rows: [
+          { radius: [15, 19], depth: [0, 0.3], spacing: 24, shade: 0.4 },
+          { radius: [16, 20], depth: [0.4, 0.7], spacing: 28, shade: 0.22 },
+          { radius: [17, 21], depth: [0.75, 1], spacing: 34, shade: 0.06 },
+        ],
+        spacingJitter: 6,
+        kindShare: [0.2, 0, 0, 0.8], // Laubbaum, Apfel, Blüte, Tanne: überwiegend Tannen
+        greens: ['#2f8a3c', '#2a7a3a', '#3a9442', '#2c7438'],
+        fir: ['#2a6b3a', '#235c33'],
+        firLift: 0.42,               // Tannen nach unten rücken, damit die Spitze nicht tief ins Feld ragt
+      },
+      ground: {
+        base: '#4b9448',
+        light: 'rgba(110,186,84,0.16)',
+        dark: 'rgba(30,92,48,0.2)',
+        blade: ['#2f6e33', '#3a8038', '#8fd14f'],
+        plateaus: 6,
+        plateauTop: '#438a42',
+        plateauWall: 'rgba(30,80,42,0.88)',
+        plateauRim: 'rgba(20,55,28,0.4)',
+        plateauLight: 'rgba(150,215,100,0.16)',
+      },
+      light: { tint: '214,236,170', gradientAlpha: 0.05, beamAlpha: 0.03, vignetteAlpha: 0.24, vignetteInner: 0.5, treeShadowAlpha: 0.22 },
+      decorStyle: 'flatpop',
+      decor: {
+        flatTrees: true,
+        firShare: 0.8,
+        treeColors: ['#2f8a3c', '#2a7a3a', '#3a9442'],
+        fir: ['#2a6b3a', '#235c33'],
+        bush: '#2d7d3b', berry: '#d9453a', rock: '#8c8f98', moss: '#8fd14f',
+        flowers: ['#f4f1e6', '#c9a0e8', '#f6d64a'], stem: '#2f6e33', tuft: '#2f6e33', tuftLight: '#8fd14f',
+        mushroomCap: '#d9453a', wood: '#a9763f', woodDark: '#6e4d2a',
+        scatterChance: 0.12,
+        scatterKinds: [['mushroom', 0.26], ['mushrooms', 0.18], ['moss', 0.2], ['stump', 0.12], ['log', 0.14], ['pebbles', 0.1]],
+      },
+      path: { main: '#c9a56a', edge: '#6e4d2a', outline: '#3b2813', mid: '#d4b277', fringe: '#8fd14f' },
+    },
   },
   // Eiswelt (B-029, Glatteis): Gegner rutschen schneller, Kanone und Frost sind schwächer. Modifikatoren (enemySpeed, towerDamage je Typ, slowStrength) und kühles Farbschema (theme).
   ice: {
@@ -104,6 +151,43 @@ export const MAPS = {
     // B-046: etwas schnellere Gegner, schwächere Kanone und Pfeile. ACHTUNG: die Werte sind kombiniert gemessen
     // und nur in einem schmalen Bereich stabil (wie bei forest), nicht ahnungslos ändern.
     modifiers: { enemySpeed: 1.03, towerDamage: { cannon: 0.92, arrow: 0.97 } },
+    // B-072: Zangenangriff im Flat-Pop-Stil (STIL.md Hochland/Herbst): Herbstbäume, Felsgruppen, Laubhaufen.
+    theme: {
+      treeFrame: {
+        kindShare: [0.5, 0.18, 0.17, 0.15],
+        greens: ['#e0803a', '#d0642c', '#e8a93a', '#c4502f'],
+        apple: '#c9482f',
+        appleFruit: '#f2c14e',
+        appleGlint: '#fff3c9',
+        blossom: '#e8b23a',
+        blossomFlower: '#f6e08a',
+        fir: ['#5f7a3a', '#546e33'],
+      },
+      ground: {
+        base: '#b3b45a',
+        light: 'rgba(214,208,120,0.2)',
+        dark: 'rgba(134,136,56,0.22)',
+        blade: ['#868838', '#999a44', '#dcd883'],
+        plateauTop: '#a8a950',
+        plateauWall: 'rgba(112,100,46,0.88)',
+        plateauRim: 'rgba(74,56,24,0.38)',
+        plateauLight: 'rgba(240,228,150,0.2)',
+      },
+      light: { tint: '255,214,150', gradientAlpha: 0.08, beamAlpha: 0.04, vignetteAlpha: 0.15, treeShadowAlpha: 0.18 },
+      decorStyle: 'flatpop',
+      decor: {
+        flatTrees: true,
+        firShare: 0.2,
+        treeColors: ['#e0803a', '#d0642c', '#e8a93a'],
+        fir: ['#5f7a3a', '#546e33'],
+        bush: '#a39a3a', berry: '#e0803a', rock: '#8b8c94', moss: '#c9a13f',
+        flowers: ['#e0803a', '#d9503a', '#f0d070'], flowerCore: '#6e4d2a', stem: '#868838', tuft: '#868838', tuftLight: '#dcd883',
+        pebble: '#a39f98', mushroomCap: '#c0652f', wood: '#a9763f', woodDark: '#6e4d2a',
+        scatterChance: 0.09,
+        scatterKinds: [['leafpile', 0.3], ['rockgroup', 0.2], ['log', 0.14], ['stump', 0.14], ['sign', 0.1], ['mushroom', 0.12]],
+      },
+      path: { main: '#d6ab70', edge: '#7d5632', outline: '#4a3018', mid: '#e8c88e', fringe: '#e0803a' },
+    },
     extraPaths: [
       [
         [-1, 12],
@@ -392,6 +476,7 @@ export const TREE_FRAME = {
   outlineWidth: 2,        // Dicke der dunklen Kontur
   coverMargin: 6,         // alte Einzelbäume näher als r + coverMargin an einer Krone entfallen
   lobeScale: 0.6,         // Hauptlappen = r * lobeScale
+  firLift: 0,             // Tannen um diesen Anteil von r nach unten rücken (0 = wie bisher)
 };
 
 // Boden der Wiese (B-078): weiche Flecken, Plateaus mit dunkler Kante, Grasbüschel. Nur Optik, Maße in px bei 1x.
@@ -448,6 +533,14 @@ export const DECOR_STYLE = {
   woodDark: '#8a5a34',
   hoop: '#5a4a52',        // Fassreifen
   logEnd: '#e2b87a',
+  // B-072 (Wald, Zangenangriff): Bäume, Hindernisse und Laubhaufen im Flat-Pop-Stil; die Wiese nutzt davon nichts.
+  flatTrees: false,       // Einzelbäume am Rand im neuen Stil (sonst alter Baum)
+  firShare: 0,            // Anteil Tannen unter Hindernis-Bäumen und Einzelbäumen (Rest: Laubbaum)
+  obstacleGround: 'rgba(20,48,26,0.3)', // dunkler Fleck unter Hindernissen (zeigt: nicht bebaubar)
+  fir: ['#2a6b3a', '#235c33'],
+  trunk: '#6e4d2a',
+  treeColors: ['#3f9a45', '#3a9250', '#58a83e'], // Laubbaum je Variante
+  leaves: ['#e0803a', '#c9562f', '#e3b23c'], // Laubhaufen
   // Streu-Deko: wenige flache Stücke auf freien Kacheln, die kein anderes Dekor tragen.
   scatterChance: 0.07,    // Wahrscheinlichkeit je freier Kachel
   scatterEndMargin: 1,    // Abstand (Kacheln, Chebyshev) zu Tor und Ziel

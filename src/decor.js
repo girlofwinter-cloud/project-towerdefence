@@ -5,7 +5,7 @@
 //  - Grosse Dekoration (Baum, Busch, Fels) nur auf Randkacheln des Spielfelds.
 //  - Im Inneren nur kleine Dekoration (Blumen, Grasbuschel, Kiesel), die flach bleibt.
 //  - Die Dekoration wird in den Hintergrund gezeichnet; gebaute Tuerme liegen darueber.
-import { COLS, ROWS, TILE, WIDTH, HEIGHT, OBSTACLE_TREE_SHARE, MAPS, TREE_FRAME, GROUND_STYLE, DECOR_STYLE, ACCENT_STYLE } from './config.js';
+import { COLS, ROWS, TILE, WIDTH, HEIGHT, OBSTACLE_TREE_SHARE, MAPS, TREE_FRAME, GROUND_STYLE, DECOR_STYLE, ACCENT_STYLE, themed } from './config.js';
 import { buildPath } from './path.js';
 
 // Dichten (Wahrscheinlichkeit pro Kachel, 0..1)
@@ -84,7 +84,7 @@ function distToWaypoints(points, x, y) {
 // Keine Krone beruehrt den Weg (Abstand >= r + pathMargin); sie ragt hoechstens maxOverhang ins Feld.
 // Spiellogik bleibt unberuehrt: jede Nicht-Weg-Kachel ist weiter bebaubar.
 export function treeFrame(mapId = 'meadow') {
-  const T = TREE_FRAME;
+  const T = themed(mapId, 'treeFrame', TREE_FRAME); // Wald und Zangenangriff überschreiben Palette und Reihen
   const points = buildPath(MAPS[mapId].waypoints, TILE).points;
   const out = [];
   const blockers = accentsFor(mapId); // Mauer, Teich und Brunnen ersetzen Kronen in ihrem Bereich
@@ -137,7 +137,7 @@ export function blobPoints(cx, cy, rx, ry, seed, n) {
 // Plateaus liegen nie auf dem Weg: Kante samt Wand haelt Abstand zur Wegachse. Alle Nicht-Weg-Kacheln bleiben bebaubar.
 // Karten ohne theme.ground liefern leere Listen (dort bleibt das Schachbrett).
 export function groundPatches(mapId = 'meadow') {
-  const G = GROUND_STYLE;
+  const G = themed(mapId, 'ground', GROUND_STYLE);
   const out = { patches: [], plateaus: [], tufts: [] };
   if (!MAPS[mapId]?.theme?.ground) return out;
   const points = buildPath(MAPS[mapId].waypoints, TILE).points;
@@ -174,7 +174,7 @@ export function scatterFor(col, row, blocked, obstacles, mapId = 'meadow') {
   if (isPathTile(blocked, col, row)) return null;
   if (obstacles && obstacles.has(`${col},${row}`)) return null;
   if (decorFor(col, row, blocked, obstacles)) return null;
-  const D = DECOR_STYLE;
+  const D = themed(mapId, 'decor', DECOR_STYLE);
   const wp = map.waypoints;
   for (const [wc, wr] of [wp[0], wp[wp.length - 1]]) {
     const ec = Math.min(Math.max(wc, 0), COLS - 1), er = Math.min(Math.max(wr, 0), ROWS - 1);

@@ -1,7 +1,7 @@
 // Baumrahmen der Wiese (B-077): runde Kronen mit dicker dunkler Kontur im Flat-Pop-Stil.
 // Nur Zeichnen (Positionen und Arten kommen aus decor.js). Wird ausschließlich in den
 // Hintergrund-Cache (bgCanvas) gemalt, nie pro Frame. Kreise per roundRect (wie render-path.js).
-import { TREE_FRAME as T, STYLE } from './config.js';
+import { TREE_FRAME, STYLE } from './config.js';
 import { lit, shd, outlineOf } from './draw-utils.js';
 
 function circlePath(ctx, x, y, r) {
@@ -19,7 +19,7 @@ function disc(ctx, x, y, r, color) {
 // Lappen der Krone: [dx, dy, Radius] relativ zum Hauptlappen-Radius R
 const LOBES = [[0, 0, 1], [-0.62, 0.28, 0.62], [0.62, 0.26, 0.64], [-0.3, -0.55, 0.62], [0.36, -0.5, 0.56], [0, 0.42, 0.6], [-0.88, -0.05, 0.46], [0.9, 0.02, 0.48]];
 
-function baseColor(c) {
+function baseColor(c, T) {
   const b = c.kind === 'apple' ? T.apple : c.kind === 'blossom' ? T.blossom : T.greens[c.seed % T.greens.length];
   return c.shade ? shd(b, c.shade) : b; // hintere Reihe dunkler
 }
@@ -31,8 +31,9 @@ function drawShadow(ctx, c) {
   ctx.fill();
 }
 
-function drawFir(ctx, c) {
-  const { x, y, r } = c;
+function drawFir(ctx, c, T) {
+  const { x, r } = c;
+  const y = c.y + r * T.firLift; // Wald: Tannen tiefer, damit die Spitze nicht weit ins Feld ragt
   const firCol = c.shade ? T.fir.map((f) => shd(f, c.shade)) : T.fir;
   const w0 = r * 0.82;
   const tiers = [[y + r * 0.55, w0, r * 0.7], [y + r * 0.05, w0 * 0.8, r * 0.7], [y - r * 0.45, w0 * 0.6, r * 0.7]];
@@ -50,8 +51,8 @@ function drawFir(ctx, c) {
   });
 }
 
-function drawCrown(ctx, c) {
-  const col = baseColor(c);
+function drawCrown(ctx, c, T) {
+  const col = baseColor(c, T);
   const R = c.r * T.lobeScale;
   const lobes = LOBES.map(([a, b, s]) => [c.x + a * R, c.y + b * R, s * R]);
   const ol = shd(outlineOf(col), 0.3);
@@ -72,15 +73,15 @@ function drawCrown(ctx, c) {
   }
 }
 
-// crowns: Liste aus treeFrame() (hinten zuerst sortiert)
-export function drawTreeFrame(ctx, crowns) {
+// crowns: Liste aus treeFrame() (hinten zuerst sortiert); T: Stilblock der Karte (Standard: Wiese)
+export function drawTreeFrame(ctx, crowns, T = TREE_FRAME) {
   ctx.save();
   // Reihe fuer Reihe (hinten zuerst), damit die vordere Reihe die hintere ueberdeckt
   const rows = [...new Set(crowns.map((c) => c.row))];
   for (const ri of rows) {
     const list = crowns.filter((c) => c.row === ri);
     for (const c of list) drawShadow(ctx, c);
-    for (const c of list) { if (c.kind === 'fir') drawFir(ctx, c); else drawCrown(ctx, c); }
+    for (const c of list) { if (c.kind === 'fir') drawFir(ctx, c, T); else drawCrown(ctx, c, T); }
   }
   ctx.restore();
 }
