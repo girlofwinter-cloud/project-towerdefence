@@ -292,6 +292,25 @@ export function pickTarget(enemies, tower, range, mode = 'first') {
   return best;
 }
 
+// Reine Kettenauswahl: Liste [first, Sprung 1, ...]. Jeder Sprung geht zum nächsten noch nicht
+// getroffenen, lebenden Gegner im Umkreis chainRange (Pixel) des vorigen Treffers; höchstens chainCount Sprünge.
+export function chainTargets(enemies, first, chainCount, chainRange) {
+  const chain = [first];
+  for (let i = 0; i < chainCount; i++) {
+    const from = chain[chain.length - 1];
+    let best = null;
+    let bestD = Infinity;
+    for (const e of enemies) {
+      if (e.hp <= 0 || chain.includes(e)) continue;
+      const d = Math.hypot(e.x - from.x, e.y - from.y);
+      if (d <= chainRange && d < bestD) { best = e; bestD = d; }
+    }
+    if (!best) break;
+    chain.push(best);
+  }
+  return chain;
+}
+
 function findTarget(state, tower, range) {
   return pickTarget(state.enemies, tower, range, tower.targetMode);
 }
@@ -316,6 +335,10 @@ function towersStep(state, dt) {
       else { tower.focusId = target.id; tower.focusStacks = 0; }
       tower.cooldown = stats.rate * (1 - Math.min(tower.focusStacks * sp.warmupStep, sp.warmupMax));
     }
+    if (stats.chainCount) {
+      lightningStrike(state, tower, stats, target);
+      continue;
+    }
     const breaker = sp.bonusMinHp !== undefined && ENEMY_TYPES[target.type].hp >= sp.bonusMinHp;
     state.projectiles.push({
       id: state.nextId++,
@@ -339,6 +362,17 @@ function towersStep(state, dt) {
       slowDuration: stats.slowDuration || 0,
     });
   }
+}
+
+// Blitzturm: trifft sofort; Schaden sinkt je Sprung um chainFalloff, Rüstung wie bei Direkttreffern.
+function lightningStrike(state, tower, stats, target) {
+  const chain = chainTargets(state.enemies, target, stats.chainCount, stats.chainRange * TILE);
+  const points = [{ x: tower.x, y: tower.y }];
+  chain.forEach((e, i) => {
+    points.push({ x: e.x, y: e.y });
+    damage(state, e, { damage: stats.damage * Math.pow(stats.chainFalloff, i) }, true);
+  });
+  state.effects.push({ kind: 'bolt', points, ttl: stats.boltDuration, max: stats.boltDuration });
 }
 
 function projectilesStep(state, dt) {

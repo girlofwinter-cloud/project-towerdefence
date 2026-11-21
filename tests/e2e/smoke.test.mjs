@@ -4,6 +4,7 @@ import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 import { createServer } from '../../scripts/serve.mjs';
+import { TOWER_TYPES } from '../../src/config.js';
 
 const require = createRequire(import.meta.url);
 const { chromium } = require('playwright');
@@ -29,7 +30,7 @@ after(async () => {
 
 test('Seite lädt ohne Fehler', async () => {
   assert.equal(await page.title(), 'Project TowerDefence');
-  assert.equal(await page.locator('#shop .tower-btn').count(), 4);
+  assert.equal(await page.locator('#shop .tower-btn').count(), Object.keys(TOWER_TYPES).length);
   assert.deepEqual(errors, []);
 });
 

@@ -317,13 +317,15 @@ const GOLD = '#ffd54a';
 const GOLD_DARK = '#c9a227';
 const BANNER_RED = '#c0392b';
 const ICE_LIGHT = '#e3f6fc';
+const COIL_BLUE = '#3f6fb5';
+const BOLT_GLOW = 'rgba(255,240,120,0.35)';
 const ICE_DARK = '#4a8fb0';
 const FROST_GLOW = 'rgba(110,198,232,0.35)';
 const BASE_HALF = 13; // halbe Sockelbreite auf Stufe 1
 const BASE_GROW = 1.5; // Sockel wird pro Stufe breiter
 const BASE_TOP = 6; // Oberkante des Sockels relativ zur Turmmitte
 const BASE_HEIGHT = 9;
-const RECOIL_PX = { arrow: 3, cannon: 4, frost: 3, sniper: 3 }; // maximaler Rückstoß in Pixeln
+const RECOIL_PX = { arrow: 3, cannon: 4, frost: 3, sniper: 3, lightning: 2 }; // maximaler Rückstoß in Pixeln
 const BOW_Y = 7.13; // Bogenenden (Radius 8, Öffnungswinkel 1.1 rad)
 const BOW_X = 0.63;
 
@@ -368,7 +370,13 @@ function drawTowerBody(ctx, type, x, y, accent) {
     rect(ctx, STONE_LIGHT, x - 6, y + 3, 12, 3);
     tri(ctx, ICE_LIGHT, x - 9, y + 6, x - 5, y + 6, x - 7, y + 1);
     tri(ctx, ICE_LIGHT, x + 5, y + 6, x + 9, y + 6, x + 7, y + 1);
-  } else {
+  } else if (type === 'lightning') {
+    // Steinsockel mit blauer Spule und Metallringen
+    rect(ctx, STONE_DARK, x - 7, y - 2, 14, 8);
+    rect(ctx, COIL_BLUE, x - 4, y - 8, 8, 8);
+    rect(ctx, METAL, x - 5, y - 5, 10, 1.5);
+    rect(ctx, METAL, x - 5, y - 1, 10, 1.5);
+  } else if (type === 'sniper') {
     // schlanker, hoher Turm mit Plattform
     rect(ctx, WOOD_DARK, x - 5, y - 7, 10, 13);
     rect(ctx, accent, x - 5, y - 2, 10, 2);
@@ -404,6 +412,7 @@ function drawTowerHead(ctx, type, x, y, angle, rec, accent) {
   if (type === 'arrow') ctx.translate(x, y - 9);
   else if (type === 'cannon') ctx.translate(x, y - 3);
   else if (type === 'frost') ctx.translate(x, y - 9);
+  else if (type === 'lightning') ctx.translate(x, y - 11);
   else ctx.translate(x, y - 8);
   ctx.rotate(angle);
   ctx.translate(-rec, 0);
@@ -437,7 +446,19 @@ function drawTowerHead(ctx, type, x, y, angle, rec, accent) {
     ctx.closePath();
     ctx.fill();
     tri(ctx, ICE_LIGHT, 0, -5, 9, 0, 2, 0);
-  } else {
+  } else if (type === 'lightning') {
+    // Kristall mit Leuchten
+    disc(ctx, BOLT_GLOW, 0, 0, 7);
+    ctx.fillStyle = accent;
+    ctx.beginPath();
+    ctx.moveTo(-4, 0);
+    ctx.lineTo(0, -5);
+    ctx.lineTo(8, 0);
+    ctx.lineTo(0, 5);
+    ctx.closePath();
+    ctx.fill();
+    tri(ctx, '#fff7a8', 0, -5, 8, 0, 1, 0);
+  } else if (type === 'sniper') {
     rect(ctx, WOOD, -5, -2, 5, 4);
     rect(ctx, METAL, 0, -1.5, 15, 3);
     rect(ctx, STONE_DARK, 3, -4.5, 7, 2.5);
@@ -471,7 +492,7 @@ export function drawTower(ctx, t, selected) {
   }
 }
 
-const PROJECTILE_COLORS = { arrow: '#f5e6c8', cannon: '#222', frost: '#bdf0ff', sniper: '#e6d1ff' };
+const PROJECTILE_COLORS = { arrow: '#f5e6c8', cannon: '#222', frost: '#bdf0ff', sniper: '#e6d1ff', lightning: '#fff7a8' };
 
 function drawProjectile(ctx, p) {
   ctx.fillStyle = (Object.hasOwn(PROJECTILE_COLORS, p.towerType) && PROJECTILE_COLORS[p.towerType]) || '#fff';
@@ -481,6 +502,31 @@ function drawProjectile(ctx, p) {
   drawProjectileFx(ctx, p); // Schweif/Strahl/Leuchten je Typ (unbekannte Typen bleiben ein weisser Kreis)
 }
 
+// Blitzlinie: Turm -> Ziel 1 -> Ziel 2 ..., dünn und hell, blendet aus (deterministisch, ohne Zufall).
+function drawBolt(ctx, fx, a) {
+  const pts = fx.points;
+  if (!Array.isArray(pts) || pts.length < 2) return;
+  ctx.save();
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  const path = () => {
+    ctx.beginPath();
+    ctx.moveTo(pts[0].x, pts[0].y);
+    for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+    ctx.stroke();
+  };
+  ctx.globalAlpha = 0.5 * a;
+  ctx.strokeStyle = '#6aa8ff';
+  ctx.lineWidth = 5;
+  path();
+  ctx.globalAlpha = a;
+  ctx.strokeStyle = '#fffbd0';
+  ctx.lineWidth = 1.5;
+  path();
+  ctx.globalAlpha = 1;
+  ctx.restore();
+}
+
 function drawEffect(ctx, fx) {
   const a = fx.ttl / fx.max;
   if (fx.kind === 'explosion') {
@@ -488,6 +534,8 @@ function drawEffect(ctx, fx) {
     ctx.beginPath();
     ctx.arc(fx.x, fx.y, fx.r * (1.2 - a * 0.5), 0, Math.PI * 2);
     ctx.fill();
+  } else if (fx.kind === 'bolt') {
+    drawBolt(ctx, fx, a);
   } else if (fx.kind === 'coin') {
     ctx.fillStyle = `rgba(255,213,74,${a})`;
     ctx.font = 'bold 13px system-ui, sans-serif';

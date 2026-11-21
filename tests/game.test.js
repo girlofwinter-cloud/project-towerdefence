@@ -1,7 +1,7 @@
 // Unit-Tests der Spiel-Logik (game.js, path.js, config.js). Ausführen: npm test
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createGame, mapModifiers, update, buildTower, upgradeTower, sellTower, startWave, spawnEnemy, canBuild, towerStats, upgradeCost, togglePause, stepGame, setTargetMode, pickTarget, enemyPath } from '../src/game.js';
+import { createGame, mapModifiers, update, buildTower, upgradeTower, sellTower, startWave, spawnEnemy, canBuild, towerStats, upgradeCost, togglePause, stepGame, setTargetMode, pickTarget, enemyPath, chainTargets } from '../src/game.js';
 
 import { livesText } from '../src/hud.js';
 
@@ -865,10 +865,16 @@ test('Zielmodus Edge: hp<=0, Gleichstand, Reichweitenrand, fehlender Modus, Modu
     const pp = pointAt(s.path, 300); t.x = pp.x; t.y = pp.y;
     near.dist = 302; far.dist = 340;
     t.cooldown = 0; update(s, 0.001);
-    assert.equal(s.projectiles.at(-1)?.targetId, far.id, `${type} ohne Feld = first`);
+    // Blitzturm hat kein Projektil: erstes Ziel ist der erste Punkt nach dem Turm im Blitz-Effekt
+    const picked = () => {
+      if (type !== 'lightning') return s.projectiles.at(-1)?.targetId;
+      const p1 = s.effects.filter((f) => f.kind === 'bolt').at(-1).points[1];
+      return [near, far].find((e) => e.x === p1.x && e.y === p1.y).id;
+    };
+    assert.equal(picked(), far.id, `${type} ohne Feld = first`);
     setTargetMode(s, t.id, 'close');
     t.cooldown = 0; update(s, 0.001);
-    assert.equal(s.projectiles.at(-1).targetId, near.id, `${type} close`);
+    assert.equal(picked(), near.id, `${type} close`);
   }
 });
 
@@ -1496,4 +1502,97 @@ test('Spezial: andere Türme bleiben unverändert (Pfeil ohne Rückstoß/Frost/B
   fireAndLand(c.s, c.tower);
   assert.equal(c.tower.hitCount, 0);
   assert.equal(c.e.frozenUntil || 0, 0);
+});
+
+// ---------- B-034: Blitzturm (Kettenblitz) ----------
+const LT = TOWER_TYPES.lightning;
+const mkE = (id, x, y, hp = 100) => ({ id, x, y, hp, maxHp: hp });
+
+test('chainTargets: nur nahe Gegner, nie doppelt, Obergrenze, kein Sprung ohne Ziel, Tote ignoriert', () => {
+  const a = mkE(1, 0, 0);
+  const b = mkE(2, 50, 0);
+  const c = mkE(3, 100, 0);
+  const d = mkE(4, 150, 0);
+  const far = mkE(5, 400, 0);
+  const dead = mkE(6, 25, 0, 0);
+  assert.deepEqual(chainTargets([a, b, c, d, far, dead], a, 3, 60), [a, b, c, d]);
+  assert.deepEqual(chainTargets([a, b, c, d], a, 2, 60), [a, b, c], 'Obergrenze');
+  assert.deepEqual(chainTargets([a, far], a, 3, 60), [a], 'kein Sprung ohne Ziel');
+  assert.deepEqual(chainTargets([a, b], a, 3, 60), [a, b], 'nie doppelt (b nicht zweimal)');
+  assert.deepEqual(chainTargets([a, b, c], a, 0, 60), [a]);
+});
+
+function lightningSetup(types, mapId, spacing = 20) {
+  const { s, tower, e } = specialSetup('lightning', types[0], mapId, 200);
+  const list = [e];
+  for (let i = 1; i < types.length; i++) {
+    const o = spawnEnemy(s, types[i], 1);
+    o.lane = e.lane; o.len = e.len; o.speed = 0; o.hp = o.maxHp = 1000; o.dist = e.dist - i * spacing;
+    const p = pointAt(enemyPath(s, o), o.dist);
+    o.x = p.x; o.y = p.y;
+    list.push(o);
+  }
+  list.forEach((x) => { x.hp = x.maxHp = 1000; });
+  tower.cooldown = 0;
+  return { s, tower, list };
+}
+
+test('Blitzturm: Config, Taste 5, Text aus Werten, trifft sofort ohne Projektil', () => {
+  assert.equal(LT.key, '5');
+  assert.ok(LT.chainCount >= 1 && LT.chainRange > 0 && LT.chainFalloff > 0 && LT.chainFalloff < 1);
+  assert.ok(LT.special.text.includes(String(LT.chainCount)) && LT.special.text.includes(`${Math.round(LT.chainFalloff * 100)} %`));
+  const { s, list } = lightningSetup(['grunt', 'grunt']);
+  update(s, 0.001);
+  assert.equal(s.projectiles.length, 0);
+  assert.ok(list[0].hp < 1000 && list[1].hp < 1000);
+});
+
+test('Blitzturm: Schaden sinkt je Sprung, höchstens chainCount Sprünge, Effekt hat Punktliste', () => {
+  const n = LT.chainCount + 3;
+  const { s, tower, list } = lightningSetup(Array(n).fill('grunt'));
+  update(s, 0.001);
+  const dealt = list.map((e) => 1000 - e.hp);
+  const hits = dealt.filter((x) => x > 0);
+  assert.equal(hits.length, LT.chainCount + 1);
+  for (let i = 0; i < hits.length; i++) assert.ok(Math.abs(hits[i] - LT.damage * Math.pow(LT.chainFalloff, i)) < 1e-9, `Treffer ${i}`);
+  const bolt = s.effects.find((f) => f.kind === 'bolt');
+  assert.equal(bolt.points.length, LT.chainCount + 2);
+  assert.deepEqual(bolt.points[0], { x: tower.x, y: tower.y });
+  assert.ok(bolt.ttl > 0 && bolt.max === LT.boltDuration);
+});
+
+test('Blitzturm: Gegner außerhalb chainRange bleiben unberührt', () => {
+  const { s, list } = lightningSetup(['grunt', 'grunt'], undefined, LT.chainRange * TILE + 15);
+  update(s, 0.001);
+  assert.ok(list[0].hp < 1000);
+  assert.equal(list[1].hp, 1000);
+  assert.equal(s.effects.find((f) => f.kind === 'bolt').points.length, 2);
+});
+
+test('Blitzturm: Tod, Gold und Kills korrekt (auch Kettenopfer), Rüstung wie Direkttreffer, Boss ohne Sonderlogik', () => {
+  const { s, list } = lightningSetup(['grunt', 'grunt', 'grunt']);
+  list.forEach((e) => { e.hp = 1; });
+  const gold = s.gold;
+  update(s, 0.001);
+  assert.equal(s.enemies.length, 0);
+  assert.equal(s.kills, 3);
+  assert.equal(s.gold, gold + 3 * ENEMY_TYPES.grunt.reward);
+
+  const sh = lightningSetup(['shielded', 'boss']);
+  update(sh.s, 0.001);
+  assert.ok(Math.abs(1000 - sh.list[0].hp - LT.damage * (1 - ENEMY_TYPES.shielded.armor)) < 1e-9);
+  assert.ok(Math.abs(1000 - sh.list[1].hp - LT.damage * LT.chainFalloff) < 1e-9);
+  assert.equal(sh.list[1].frozenUntil, undefined);
+});
+
+test('Blitzturm: Kette funktioniert auf der Karte fork; Stufen skalieren Schaden, Kettenwerte nicht', () => {
+  const { s, list } = lightningSetup(['grunt', 'grunt'], 'fork');
+  update(s, 0.001);
+  assert.ok(list[0].hp < 1000 && list[1].hp < 1000);
+  const st1 = towerStats({ type: 'lightning', level: 1 }, {});
+  const st3 = towerStats({ type: 'lightning', level: 3 }, {});
+  assert.ok(st3.damage > st1.damage && st3.range > st1.range && st3.rate < st1.rate);
+  assert.equal(st3.chainCount, st1.chainCount);
+  assert.equal(st3.chainRange, st1.chainRange);
+  assert.equal(st3.chainFalloff, st1.chainFalloff);
 });
