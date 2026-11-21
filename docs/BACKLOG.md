@@ -430,14 +430,14 @@ Reihenfolge ist Abhängigkeit: B-062 und B-063 zuerst, dann gemeinsame Sichtprü
   - Alle Strategie-Läufe (Welle 20) auf allen Karten weiter gewinnbar; Zahlen im Ledger.
   - Test: Bauen außerhalb der Plätze scheitert; Hover zeigt freie/belegte Plätze.
 ### B-072: Welten Wald und Zangenangriff (Design-Overhaul)
-- Status: vorschlag
+- Status: offen
 - Aufwand: M
 - Idee: Wald mit Tannen, Pilzen, Moos; Zangenangriff mit Herbstlaub. Überschneidet sich mit B-043 und B-059, bei Umsetzung zusammenlegen.
 - Akzeptanzkriterien:
   - Eigene Palette, auf Screenshot klar von der Wiese unterscheidbar.
 
 ### B-073: Welt Eis (Design-Overhaul)
-- Status: vorschlag
+- Status: offen
 - Aufwand: M
 - Idee: Schnee, Eiskristalle, Tannen mit Schneekappe, dunklerer Weg. Überschneidet sich mit B-044 und B-059.
 - Akzeptanzkriterien:
