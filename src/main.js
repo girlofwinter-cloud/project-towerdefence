@@ -1,5 +1,5 @@
 // Verbindet Spiel-Logik, Rendering und Bedienung (DOM, Maus, Tastatur).
-import { TILE, WIDTH, HEIGHT, TOWER_TYPES, ENEMY_TYPES, MAX_WAVES, MAPS, SPEED_STEPS, TARGET_MODES, TARGET_MODE_NAMES, MAX_SUBSTEP, LOW_LIVES, ABILITIES, waveSummary } from './config.js';
+import { TILE, WIDTH, HEIGHT, ARROW_TOWER, TOWER_TYPES, ENEMY_TYPES, MAX_WAVES, MAPS, SPEED_STEPS, TARGET_MODES, TARGET_MODE_NAMES, MAX_SUBSTEP, LOW_LIVES, ABILITIES, waveSummary } from './config.js';
 import {
   createGame, stepGame, togglePause, buildTower, upgradeTower, sellTower, setTargetMode, startWave,
   useAbility, abilityCooldownLeft, canBuild, towerAt, towerStats, upgradeCost, sellValue,
@@ -28,8 +28,11 @@ const ICON_SIZE = 48;
 const ICON_SCALE = 1.25;
 function drawTowerIcon(cv, type) {
   const c = cv.getContext('2d');
-  c.translate(ICON_SIZE / 2, ICON_SIZE / 2 + 2);
-  c.scale(ICON_SCALE, ICON_SCALE);
+  // Der hohe Pfeilturm wird verkleinert und nach unten gerückt, damit er nicht abgeschnitten wird
+  const arrow = type === 'arrow';
+  const k = arrow ? ARROW_TOWER.iconScale : ICON_SCALE;
+  c.translate(ICON_SIZE / 2, ICON_SIZE / 2 + 2 + (arrow ? ARROW_TOWER.iconDy : 0));
+  c.scale(k, k);
   c.translate(-TILE / 2, -TILE / 2);
   drawTower(c, { type, x: TILE / 2, y: TILE / 2, level: 1, cooldown: 0, angle: -Math.PI / 4 }, false);
 }

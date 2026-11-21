@@ -358,14 +358,6 @@ Erledigte Einträge (`fertig`) liegen in `docs/archiv/BACKLOG-fertig.md`. Beim A
 ## Design-Overhaul (Flat-Pop nach `docs/STIL.md`, Stil B gewählt)
 Reihenfolge ist Abhängigkeit: B-062 und B-063 zuerst, dann gemeinsame Sichtprüfung mit dem Menschen, erst danach B-064 bis B-075. Keine Logik- oder Balancing-Änderungen in dieser Reihe. Jeder Eintrag endet mit Screenshot-Prüfung (Desktop 1280x800, Handy 390x844) und grünem `npm test`.
 
-### B-063: Pfeilturm im neuen Stil als Referenz (Design-Overhaul)
-- Status: offen
-- Aufwand: S
-- Idee: Pfeilturm Stufe 1 bis 3 mit eigener Form im Flat-Pop-Stil.
-- Akzeptanzkriterien:
-  - Bei 1x und 0,75x erkennbar vom Boden getrennt (Screenshot, auch auf Eis).
-  - Drehung zum Ziel und Rückstoß unverändert.
-  - Zeichenzeit mit 20 Türmen nicht merklich höher (Messung).
 
 ### B-064: Restliche Türme im neuen Stil (Design-Overhaul)
 - Status: vorschlag
@@ -451,7 +443,7 @@ Reihenfolge ist Abhängigkeit: B-062 und B-063 zuerst, dann gemeinsame Sichtprü
   - Kein Aufruf im Frame-Pfad (render-Test).
 
 ### B-079: Wiese 4/7: Felsen, Büsche, Blumen, Pilze und Streu-Deko neu (Design-Overhaul)
-- Status: vorschlag
+- Status: offen
 - Aufwand: M
 - Idee: Felsgruppen mit Moos, Büsche, Blumen, Pilze im Flat-Pop-Stil mit Kontur; kleine Streu-Deko (Fass, Baumstämme, Zaunspitzen, Wegweiser) flach im Feld, unter Türmen verdeckt.
 - Akzeptanzkriterien:
@@ -459,7 +451,7 @@ Reihenfolge ist Abhängigkeit: B-062 und B-063 zuerst, dann gemeinsame Sichtprü
   - Keine Deko auf Weg-Kacheln (bestehende `decor`-Tests grün); neue Streu-Deko bleibt in Bereichen, die sie nicht unspielbar machen (bebaubar bleibt jede freie Kachel).
 
 ### B-080: Wiese 5/7: Akzente Burgmauer, Teich, Brunnen (Design-Overhaul)
-- Status: vorschlag
+- Status: offen
 - Aufwand: M
 - Idee: Steinmauer mit Tor am oberen Rand, Teich und Brunnen als Akzente, nur im Randring bzw. klein. Teich/Mauer als Hindernis im Feld wäre Logik und gehört nicht hierher. Andere Karten folgen mit B-072 bis B-074 nach der Palette aus `docs/STIL.md`.
 - Akzeptanzkriterien:
@@ -467,7 +459,7 @@ Reihenfolge ist Abhängigkeit: B-062 und B-063 zuerst, dann gemeinsame Sichtprü
   - Screenshot Wiese; Einstieg und Ausgang des Weges bleiben klar erkennbar.
 
 ### B-081: Wiese 6/7: Licht, Vignette und Baumschatten (Design-Overhaul)
-- Status: vorschlag
+- Status: offen
 - Aufwand: S
 - Idee: Lichtstreifen, sanfter Verlauf, Vignette und Baumschatten, nur im Cache (Gradient-Objekte nur dort, nie pro Frame).
 - Akzeptanzkriterien:
@@ -475,7 +467,7 @@ Reihenfolge ist Abhängigkeit: B-062 und B-063 zuerst, dann gemeinsame Sichtprü
   - Kein Gradient und kein `shadowBlur` im Frame-Pfad.
 
 ### B-082: Wiese 7/7: Bauplatz-Inseln unter Türmen und Hover-Vorschau (Design-Overhaul)
-- Status: vorschlag
+- Status: offen
 - Aufwand: S
 - Idee: Grüne Insel als Sprite unter jedem gebauten Turm und als Vorschau beim Hover. Kein Bauen auf neuen Kacheln, `canBuild` unverändert. Dazu: Reichweitenkreis nur als Ring plus ca. 8 % Füllfläche, damit er über der Deko nicht unruhig wirkt.
 - Akzeptanzkriterien:
@@ -527,3 +519,11 @@ Reihenfolge ist Abhängigkeit: B-062 und B-063 zuerst, dann gemeinsame Sichtprü
 - Akzeptanzkriterien:
   - Ungültige Hexwerte werden abgefangen oder dokumentiert (Test).
   - Schattenbreite ist in `STYLE` einstellbar, Screenshot-Vergleich bei 1x und 0,75x.
+
+### B-084: Pfeilturm: Aufräumen (Hinweise aus dem Review von B-063)
+- Status: vorschlag
+- Aufwand: S
+- Idee: (1) Tote alte `arrow`-Zweige in `drawTowerBody` und `drawTowerHead` (`src/render.js`) entfernen; der Early-Return in `drawTower` umgeht sie. `RECOIL_PX.arrow` bleibt. (2) Titel des Grenz-Tests in `tests/render.test.js` ("oben max. 3,5 px Ueberstand") nennt für den Pfeil `ARROW_TOP`; `ARROW_TOP = 28` hat nur ca. 2 px Luft. (3) Viele Geometriezahlen (Sockel, Fugen, Banner, Wimpel) stehen direkt in `src/render-arrow.js`, nur Eckwerte in `ARROW_TOWER`; streng gelesen gegen "alle Zahlen in config.js". Bei der Umstellung der anderen Türme (B-064) einheitlich entscheiden. (4) Stufe NaN, undefined oder 1.5 ergibt NaN-Koordinaten ohne Absturz (echte Türme haben Stufe 1 bis 3); mit `Math.round` oder `|| 1` abfangen. (5) Zeichenzeit Faktor ca. 24 (ca. 20 µs je Turm); Sprite-Cache siehe B-075.
+- Akzeptanzkriterien:
+  - Tote Zweige entfernt, `npm test` grün.
+  - Testtitel stimmt mit der Prüfung überein.
