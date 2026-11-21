@@ -463,6 +463,38 @@ export const ARROW_TOWER = {
   arrowLength: 11,          // Länge des aufgelegten Pfeils
 };
 
+// Kanone, Frostturm, Scharfschütze und Blitzturm im Flat-Pop-Stil (B-064). Maße in px, Ursprung = Bodenmitte,
+// y nach oben negativ. Arrays haben je einen Wert für Stufe 1 bis 3. iconScale/iconDy: Shop-Vorschau (48x48).
+export const TOWER_STYLE = {
+  cannon: {
+    scale: 0.9, groundDy: 13, shadowR: 15, iconScale: 1.1, iconDy: 4,
+    halfWidth: [15, 16.5, 18],    // halbe Breite des Steinbunkers
+    height: [12, 14, 16],         // Höhe des Bunkers bis zur Zinne
+    merlons: [3, 4, 5],           // Anzahl der Zinnen
+    barrelLength: [16, 17.5, 19], // Rohrlänge ab Drehpunkt
+    barrelThick: [1, 1.1, 1.2],   // Rohrdicke (Faktor)
+  },
+  frost: {
+    scale: 0.9, groundDy: 13, shadowR: 14, iconScale: 0.9, iconDy: 7,
+    pivotY: -35,                  // Drehpunkt des Eissplitters
+    shardLength: [11, 13, 15],    // Länge des Eissplitters
+    icicleLength: [5, 7, 9],      // Länge der Eiszapfen am Kragen
+    crystals: [0, 1, 2],          // Paare seitlicher Eiskristalle am Schaft
+  },
+  sniper: {
+    scale: 0.8, groundDy: 13, shadowR: 13, iconScale: 0.85, iconDy: 8,
+    shaftHeight: [30, 33, 36],    // Höhe des Schafts
+    barrelLength: [17, 19, 21],   // Länge des Zielrohrs
+  },
+  lightning: {
+    scale: 0.9, groundDy: 13, shadowR: 14, iconScale: 0.9, iconDy: 7,
+    pivotY: -37,                 // Drehpunkt des Kristalls
+    rings: [2, 3, 4],             // Metallringe an der Spule
+    crystalSize: [1, 1.15, 1.3],  // Größe des Kristalls (Faktor)
+    arms: [0, 1, 2],              // Paare von Fangarmen mit Leuchtkugel
+  },
+};
+
 // Weg im Flat-Pop-Stil (B-071). Maße in px bei 1x. Gesamtbreite in Kachelmitte = TILE, der wellige
 // Rand ragt höchstens `overhangMax` darüber hinaus (Test in tests/render.test.js).
 export const PATH_STYLE = {
@@ -658,4 +690,42 @@ export const RANGE_STYLE = {
   ringAlpha: 0.75,
   ringWidth: 2,
   maxFillAlpha: 0.1,      // Obergrenze (Test)
+};
+
+// B-065: Gegner im Flat-Pop-Stil (Goblin, Flitzer, Troll). Maße in Design-Pixeln bei Radius `ref`
+// (die Figur wird mit radius/ref skaliert). `main` = Flächenanteil der Hauptfarben (Summe 1) für den Kontrasttest.
+export const ENEMY_STYLE = {
+  legSwing: 2.6,     // Beinschwung vor/zurück in px
+  bob: 1.1,          // Wippen in px
+  legLift: 1.2,      // Fuß hebt sich im Vorschwung
+  outlineWidth: 1.8, // kräftigere Kontur als STYLE.outlineWidth (Lesbarkeit auf hellem Weg, B-085)
+  eyeRim: '#ffffff',
+  eyeDark: '#1a1a1a',
+  browColor: '#2a1d1a',
+  grunt: {
+    ref: 12,
+    skin: '#6fbf4a', tunic: '#764324', belt: '#4a2a18',
+    main: { skin: 0.4, tunic: 0.6 },
+  },
+  runner: {
+    ref: 10.5,
+    skin: '#f2c14e', suit: '#a8500f', cap: '#7a3a14', streak: 'rgba(122,58,20,0.55)',
+    main: { skin: 0.35, suit: 0.5, cap: 0.15 },
+  },
+  tank: {
+    ref: 14,
+    skin: '#b5523b', plate: '#9aa3a8', plateDark: '#6d767b', tusk: '#f1e8d2',
+    main: { skin: 0.5, plate: 0.2, plateDark: 0.3 },
+  },
+  healer: {
+    ref: 11,
+    skin: '#3fbf8f', robe: '#1f6e50', robeDark: '#154c37', face: '#bfe8cf', staff: '#6b4a2b', orb: '#b8ffd8', cross: '#1f6e50',
+    orbRadius: 2.6, orbPulse: 0.3, orbSpeed: 4, // Leuchtkugel: Grundradius, Pulsausschlag (px), Tempo (rad/s)
+    main: { skin: 0.3, robe: 0.7 },
+  },
+  shielded: {
+    ref: 13,
+    skin: '#6f86a8', body: '#4f607c', helm: '#9aa7ba', shield: '#7a5530', rim: '#c9ccd2', emblem: '#e8d27a',
+    main: { skin: 0.3, body: 0.3, shield: 0.4 },
+  },
 };

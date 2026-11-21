@@ -572,3 +572,12 @@ Neue Einträge werden unten angehängt. Bestehende Einträge werden nie geänder
 - Review: APPROVE (keine Muss-Punkte; Hinweise als B-091)
 - Entscheidungen: Wald (dunkler Tannenrahmen, Pilze, Moos, Hindernisse neu gezeichnet), Zangenangriff (Herbstlaub, orange Saum) und Eis (Schneeboden, Tannen mit Schneekappe, Eisweg dunkler als Schnee, Kristalle, kühles Licht) im Flat-Pop-Stil mit eigener Palette je Karte. Neuer Helfer `themed(mapId, key, base)` und Theme-Overrides in `src/config.js`, neuer Theme-Schlüssel `pathStyle`. Wiese, Wald und Fork haben vor und nach B-073 identische Canvas-Hashes, Wald ist mit 87 % der Helligkeit knapp über der Grenze 85 %. Hindernisse, Wegverläufe, `modifiers` (Wald `enemySpeed` 1,19) und `canBuild` unverändert. **Angepasste bestehende Tests** (nur der Geltungsbereich, von "nur Wiese" zu tabellengetriebenen Prüfungen je Karte; Reviewer: keine Abschwächung): `scatterFor …`, `DECOR_STYLE: Konturbreite…`, `themed …`, `Render: Kartenwechsel ice -> meadow…` (strenger), `groundPatches …`, `Boden der Wiese …`, `Wald/Eis/Fork zeichnen weiter das Schachbrett…`, `Wiesen-Licht …`, `Render: gezeichnete Dekoration verlaesst ihre Kachel nicht…`.
 - Offen: B-091 (Schachbrett-Zweig ungetestet, Fork-Test räumt nicht bei Fehlern auf, toter Wert `path.edge`, laute Saumfarbe auf Fork, Inseln/Akzente für Wald, Fork und Eis).
+
+## 2026-11-21 · B-064 bis B-066 · Türme und Gegner im Flat-Pop-Stil (Design-Overhaul, Block)
+- Rolle(n): orchestrator, developer (je Eintrag), danach einmal tester und reviewer über den Block
+- Branch: agent/tuerme-gegner-block
+- Runden: 1 von max. 2
+- Ergebnis: fertig (Kanone, Frost, Scharfschütze, Blitz; Goblin, Flitzer, Troll; Schamane, Schildträger; Boss bleibt B-067)
+- Tests: 252 Unit-Tests und 6 Browser-Tests bestanden. Tester: keine Fehler. Reviewer: nur Ledger-Eintrag als Muss, Rest als B-092
+- Entscheidungen: Neue Dateien `src/render-towers.js` und `src/render-enemies-flat.js`, Paletten in `ENEMY_STYLE`/`TOWER_STYLE` (`src/config.js`). **Angepasste Tests:** `TOP_ALLOWED` je Turmtyp im Grenztest (`tests/render.test.js`, links/rechts/unten weiter streng; Werte als B-092 zu belegen) und in `tests/fx.test.js` entfiel auf ausdrückliche Freigabe des Menschen der Vergleich "Boss-Zeichenspur länger als Schamane" (gilt erst wieder mit B-067; dort vermerkt).
+- Offen: B-092, B-067 (Boss).

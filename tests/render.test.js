@@ -243,13 +243,13 @@ async function recordTower(type, level, cooldown = 0, angle = 0, selected = fals
   return { t, calls, depth, props, bounds, print: calls.join('\n') };
 }
 
-// Pfeilturm: hoher Turm, darf bis ca. 58 px ueber dem Boden (= ca. 26 px ueber der Kachel) ragen
-const ARROW_TOP = 28;
+// Hohe Tuerme duerfen ueber den oberen Kachelrand ragen (typspezifisch, B-063/B-064). Pfeil: Dach ca. 26 px,
+// Scharfschuetze: Zielrohr senkrecht nach oben. Links/rechts/unten bleibt bei allen Typen streng in der Kachel.
+const TOP_ALLOWED = { arrow: 28, cannon: 4, frost: 14, sniper: 20, lightning: 16 };
 
 test('Turm-Zeichnung: alle Typen/Stufen ohne Fehler, ausgewogen, innerhalb der Kachel', async () => {
-  const TOL_UP = 4; // bewegliche Teile duerfen beim Zielen max. 4 px ueber den oberen Kachelrand ragen
   for (const type of Object.keys(TOWER_TYPES)) {
-    const tolUp = type === 'arrow' ? ARROW_TOP : TOL_UP; // Pfeilturm (B-063) ragt als hoher Turm ueber die Kachel
+    const tolUp = TOP_ALLOWED[type]; // hohe Tuerme ragen ueber die Kachel
     for (let level = 1; level <= 3; level++) {
       for (const cooldown of [0, 0.5, TOWER_TYPES[type].rate]) {
         const rec = await recordTower(type, level, cooldown, 0.7);
@@ -354,10 +354,10 @@ async function worldExtent(type, level, cooldown, angle) {
   return { B, x0: t.col * TILE, y0: t.row * TILE };
 }
 
-test('Turm: echte Weltkoordinaten bleiben links/rechts/unten in der Kachel, oben max. 3,5 px Ueberstand (nur Pfeil/Scharfschuetze)', async () => {
+test('Turm: echte Weltkoordinaten bleiben links/rechts/unten in der Kachel, oben max. TOP_ALLOWED je Typ', async () => {
   const angles = [0, Math.PI / 4, Math.PI / 2, Math.PI, -Math.PI / 2, 3 * Math.PI / 2, 5.5];
   for (const type of Object.keys(TOWER_TYPES)) {
-    const maxTop = type === 'sniper' ? 3.5 : type === 'arrow' ? ARROW_TOP : 0;
+    const maxTop = TOP_ALLOWED[type];
     for (let level = 1; level <= 3; level++) {
       for (const angle of angles) {
         for (const frac of [0, 0.5, 1]) {
@@ -630,6 +630,34 @@ test('Render: Pfeilturm Stufe 1-3 im neuen Stil, Stufen unterscheiden sich, ande
   for (const type of ['cannon', 'frost', 'sniper', 'lightning']) {
     assert.ok(draw(type, 1).total > 0 && draw(type, 3).total > draw(type, 1).total);
   }
+});
+
+test('Render: Kanone, Frost, Scharfschuetze, Blitz im neuen Stil (Stufen, Typen, ungueltige Werte, Drehung, Rueckstoss)', async () => {
+  const { drawTower } = await import('../src/render.js');
+  const run = (type, over = {}) => {
+    const counts = {};
+    const m = mockCtx(counts);
+    const log = [];
+    const ctx = new Proxy(m.ctx, {
+      get: (t, k) => (typeof t[k] === 'function' ? (...a) => { log.push(k + ':' + a.join(',')); return t[k](...a); } : t[k]),
+      set: (t, k, v) => { t[k] = v; return true; },
+    });
+    drawTower(ctx, { type, x: 100, y: 100, level: 1, cooldown: 0.3, angle: 0.7, ...over }, false);
+    assert.equal(m.depth, 0, `${type}: save/restore ausgewogen`);
+    return { total: Object.values(counts).reduce((a, b) => a + b, 0), log };
+  };
+  const totals = new Set();
+  for (const type of ['cannon', 'frost', 'sniper', 'lightning']) {
+    const t = [1, 2, 3].map((level) => run(type, { level }).total);
+    assert.ok(t[1] > t[0] && t[2] > t[1], `${type}: mehr Zeichenoperationen je Stufe`);
+    totals.add(t[0]);
+    for (const level of [NaN, undefined, 0, 7, 1.5, Infinity]) run(type, { level });
+    for (const bad of [{ angle: NaN }, { cooldown: NaN }, { cooldown: -3 }, { cooldown: 1e9 }, { angle: 1e9 }]) run(type, bad);
+    const rot = run(type, { angle: 0.7 }).log.filter((c) => c.startsWith('rotate:'));
+    assert.ok(rot.some((c) => c === 'rotate:0.7'), `${type}: dreht zum Ziel`);
+    assert.notDeepEqual(run(type, { cooldown: 0 }).log, run(type, { cooldown: TOWER_TYPES[type].rate }).log, `${type}: Rueckstoss aktiv`);
+  }
+  assert.equal(totals.size, 4, 'Typen unterscheiden sich in der Zeichnung');
 });
 
 // ---------- Weg im Flat-Pop-Stil (B-071) ----------

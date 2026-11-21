@@ -1,5 +1,5 @@
 // Verbindet Spiel-Logik, Rendering und Bedienung (DOM, Maus, Tastatur).
-import { TILE, WIDTH, HEIGHT, ARROW_TOWER, TOWER_TYPES, ENEMY_TYPES, MAX_WAVES, MAPS, SPEED_STEPS, TARGET_MODES, TARGET_MODE_NAMES, MAX_SUBSTEP, LOW_LIVES, ABILITIES, waveSummary } from './config.js';
+import { TILE, WIDTH, HEIGHT, ARROW_TOWER, TOWER_STYLE, TOWER_TYPES, ENEMY_TYPES, MAX_WAVES, MAPS, SPEED_STEPS, TARGET_MODES, TARGET_MODE_NAMES, MAX_SUBSTEP, LOW_LIVES, ABILITIES, waveSummary } from './config.js';
 import {
   createGame, stepGame, togglePause, buildTower, upgradeTower, sellTower, setTargetMode, startWave,
   useAbility, abilityCooldownLeft, canBuild, towerAt, towerStats, upgradeCost, sellValue,
@@ -25,13 +25,12 @@ window.__ui = ui;
 // ---------- Turm-Leiste ----------
 // Mini-Turm als Kartenbild: nutzt dieselbe Zeichenfunktion wie das Spielfeld (kein extra Grafik-Aufwand).
 const ICON_SIZE = 48;
-const ICON_SCALE = 1.25;
 function drawTowerIcon(cv, type) {
   const c = cv.getContext('2d');
-  // Der hohe Pfeilturm wird verkleinert und nach unten gerückt, damit er nicht abgeschnitten wird
-  const arrow = type === 'arrow';
-  const k = arrow ? ARROW_TOWER.iconScale : ICON_SCALE;
-  c.translate(ICON_SIZE / 2, ICON_SIZE / 2 + 2 + (arrow ? ARROW_TOWER.iconDy : 0));
+  // Die Türme sind unterschiedlich hoch: jeder Typ hat eigene Skalierung und Verschiebung nach unten
+  const st = type === 'arrow' ? ARROW_TOWER : TOWER_STYLE[type];
+  const k = st.iconScale;
+  c.translate(ICON_SIZE / 2, ICON_SIZE / 2 + 2 + st.iconDy);
   c.scale(k, k);
   c.translate(-TILE / 2, -TILE / 2);
   drawTower(c, { type, x: TILE / 2, y: TILE / 2, level: 1, cooldown: 0, angle: -Math.PI / 4 }, false);

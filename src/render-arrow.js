@@ -1,21 +1,9 @@
 // Pfeilturm im Flat-Pop-Stil (docs/STIL.md): nur Darstellung, keine Spiel-Logik.
 import { STYLE, ARROW_TOWER as A } from './config.js';
-import { part, poly, rr, ell, shadow, shd, outlineOf } from './draw-utils.js';
+import { part, poly, rr, ell, line, shadow, shd, outlineOf } from './draw-utils.js';
 
 const P = STYLE.palette;
 const FUGE_WIDTH = 0.8;
-
-function line(ctx, pts, color, w) {
-  ctx.save();
-  ctx.strokeStyle = color;
-  ctx.lineWidth = w;
-  ctx.lineCap = 'round';
-  ctx.beginPath();
-  ctx.moveTo(pts[0][0], pts[0][1]);
-  for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1]);
-  ctx.stroke();
-  ctx.restore();
-}
 
 // Zeichnet den Turm mit Mittelpunkt (x, y); angle = Zielrichtung, rec = Rückstoß in Pixeln, accent = Bogenfarbe.
 export function drawArrowTower(ctx, x, y, level, angle, rec, accent) {

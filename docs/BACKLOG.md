@@ -338,7 +338,7 @@ Reihenfolge ist Abhängigkeit: B-062 und B-063 zuerst, dann gemeinsame Sichtprü
 
 
 ### B-064: Restliche Türme im neuen Stil (Design-Overhaul)
-- Status: vorschlag
+- Status: erledigt
 - Aufwand: M
 - Idee: Kanone, Frost, Scharfschütze, Blitz mit je eigener Silhouette, Stufen sichtbar in der Form.
 - Akzeptanzkriterien:
@@ -346,7 +346,7 @@ Reihenfolge ist Abhängigkeit: B-062 und B-063 zuerst, dann gemeinsame Sichtprü
   - Reichweitenkreis und Auswahlrahmen bleiben sichtbar.
 
 ### B-065: Gegner Teil 1: Goblin, Flitzer, Troll (Design-Overhaul)
-- Status: vorschlag
+- Status: erledigt
 - Aufwand: M
 - Idee: `render-enemies.js`: Lauf-Phasen, Kontur, Bodenschatten.
 - Akzeptanzkriterien:
@@ -354,13 +354,14 @@ Reihenfolge ist Abhängigkeit: B-062 und B-063 zuerst, dann gemeinsame Sichtprü
   - Drei Typen auf Handy-Screenshot unterscheidbar; mindestens 25 % Helligkeitsabstand zum Weg.
 
 ### B-066: Gegner Teil 2: Schamane, Schildträger, weitere (Design-Overhaul)
-- Status: vorschlag
+- Status: erledigt
 - Aufwand: M
 - Idee: Übrige Gegnertypen (inkl. Fliegende, Splitter/Tarn, sofern vorhanden). Zustände Schild, Heilung, Eingefroren zusätzlich über Form/Symbol.
 - Akzeptanzkriterien:
   - Je Typ ein Screenshot-Beleg, keine reine Farbunterscheidung.
 
 ### B-067: Boss Oger-König (Design-Overhaul)
+- Hinweis: In `tests/fx.test.js` ("Boss ist am groessten") entfiel der Zeichenspur-Vergleich Boss > Schamane (mit B-066 auf Wunsch des Menschen entfernt); mit dem neuen Boss einen Vergleich wieder ergänzen.
 - Status: vorschlag
 - Aufwand: M
 - Idee: 1,6x Größe, Krone, Keule, Aura, Auftritts-Effekt (Bodenschlag, Wackeln unter 3 px).
@@ -490,3 +491,10 @@ Reihenfolge ist Abhängigkeit: B-062 und B-063 zuerst, dann gemeinsame Sichtprü
 - Idee: (1) Test mit synthetischer Karte ohne `theme.ground`, damit der Schachbrett-Zweig (alte Zeichnung) nicht ungetestet bleibt: Alle vier Karten haben jetzt `theme.ground`. (2) Der Fork-Test in `tests/render.test.js` ("Dekoration verlässt ihre Kachel nicht") entfernt `MAPS.fork.theme` per `delete` und `createGame` vor dem `try`; beides in den `try`-Block verschieben, damit das Theme bei einem Fehler zurückgesetzt wird. (3) `path.edge` in `config.js` ist ein toter Wert (nur im Test geprüft, nicht gezeichnet); entfernen oder nutzen. (4) Der orange Saum auf Fork (`#e0803a`) ist laut, Deckkraft als Parameter. (5) Das Eis-Theme enthält noch die alten Felder `grass` und `blade`. (6) Der Fork-Test löscht `MAPS.fork.theme` und prüft damit den Pfad ohne Theme, nicht mehr die echte Fork-Deko (Tester: "leichte Schwächung", die echte Deko deckt `tests/scatter-bounds.test.js`); eine Prüfung der echten Fork-Deko gegen die Kachelgrenzen ergänzen. Test-Titel nennen noch "Wiese", obwohl sie alle Karten prüfen. (7) Wald und Fork haben noch keine `islands` und `accents` (Mauer, Teich, Brunnen), Eis auch nicht.
 - Akzeptanzkriterien:
   - Schachbrett-Zweig getestet, Fork-Test räumt auch bei Fehlern auf, toter Wert entfernt, `npm test` grün.
+
+### B-092: Türme und Gegner: Feinschliff (Hinweise aus dem Block-Review B-064 bis B-066)
+- Status: vorschlag
+- Aufwand: S
+- Idee: (1) `TOP_ALLOWED` in `tests/render.test.js` auf den gemessenen Maximalüberstand plus kleine Reserve setzen und im Kommentar nennen; Scharfschütze (3,5 auf 20 px) ist am großzügigsten, Kanone im Weltkoordinaten-Test (vorher 0, jetzt 4) prüfen. (2) Zeichen-Geometriezahlen in `src/render-towers.js` und `src/render-enemies-flat.js` schrittweise in die Style-Tabellen in `config.js` ziehen. (3) Mit B-067 den Vergleich Boss gegen andere Typen in `tests/fx.test.js` wieder ergänzen.
+- Akzeptanzkriterien:
+  - Grenzen belegt, Zahlen in `config.js`, `npm test` grün.

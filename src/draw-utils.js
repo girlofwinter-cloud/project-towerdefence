@@ -76,7 +76,7 @@ export function outlineOf(hex) {
 
 // Teil mit drei Flächentönen (Licht oben links, Basis, Schatten rechts unten) und runder Kontur.
 // trace(ctx) fügt nur Pfadbefehle hinzu (kein beginPath/fill). Keine Verläufe.
-export function part(ctx, trace, color) {
+export function part(ctx, trace, color, width = STYLE.outlineWidth) {
   const band = STYLE.band;
   const fillShifted = (c, dx, dy) => {
     ctx.save();
@@ -97,7 +97,7 @@ export function part(ctx, trace, color) {
   ctx.restore();
   ctx.save();
   ctx.lineJoin = 'round';
-  ctx.lineWidth = STYLE.outlineWidth;
+  ctx.lineWidth = width;
   ctx.strokeStyle = outlineOf(color);
   ctx.beginPath();
   trace(ctx);
@@ -106,16 +106,16 @@ export function part(ctx, trace, color) {
 }
 
 // Polygon aus Punktliste [[x, y], ...]
-export function poly(ctx, pts, color) {
+export function poly(ctx, pts, color, width) {
   part(ctx, (c) => {
     c.moveTo(pts[0][0], pts[0][1]);
     for (let i = 1; i < pts.length; i++) c.lineTo(pts[i][0], pts[i][1]);
     c.closePath();
-  }, color);
+  }, color, width);
 }
 
 // Abgerundetes Rechteck (x, y = linke obere Ecke, r = Eckenradius)
-export function rr(ctx, x, y, w, h, r, color) {
+export function rr(ctx, x, y, w, h, r, color, width) {
   const rad = Math.min(r, w / 2, h / 2);
   part(ctx, (c) => {
     c.moveTo(x + rad, y);
@@ -124,27 +124,45 @@ export function rr(ctx, x, y, w, h, r, color) {
     c.arcTo(x, y + h, x, y, rad);
     c.arcTo(x, y, x + w, y, rad);
     c.closePath();
-  }, color);
+  }, color, width);
 }
 
 // Ellipse um den Mittelpunkt (x, y) mit Radien rx, ry
-export function ell(ctx, x, y, rx, ry, color) {
+export function ell(ctx, x, y, rx, ry, color, width) {
   part(ctx, (c) => {
     c.moveTo(x + rx, y);
     c.ellipse(x, y, rx, ry, 0, 0, TWO_PI);
     c.closePath();
-  }, color);
+  }, color, width);
+}
+
+// Linie durch eine Punktliste [[x, y], ...] mit runden Enden
+export function line(ctx, pts, color, w) {
+  ctx.save();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = w;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(pts[0][0], pts[0][1]);
+  for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1]);
+  ctx.stroke();
+  ctx.restore();
 }
 
 // Bodenschatten unter einem Objekt mit Radius r (Mittelpunkt x, y), leicht nach rechts unten versetzt
 export function shadow(ctx, x, y, r) {
   ctx.save();
+  groundShadow(ctx, x, y, r);
+  ctx.restore();
+}
+
+// Wie shadow, aber ohne save/restore: setzt fillStyle (für Aufrufer, die ihren Zustand selbst verwalten)
+export function groundShadow(ctx, x, y, r) {
   ctx.fillStyle = hexToRgba(STYLE.shadowTone, STYLE.groundShadowAlpha);
   ctx.beginPath();
   ctx.ellipse(x + r * STYLE.groundShadowOffset, y + r * STYLE.groundShadowOffset,
     r * STYLE.groundShadowWidth, r * STYLE.groundShadowHeight, 0, 0, TWO_PI);
   ctx.fill();
-  ctx.restore();
 }
 
 function hexToRgba(hex, a) {
