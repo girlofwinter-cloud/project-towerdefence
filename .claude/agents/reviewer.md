@@ -27,7 +27,7 @@ Keine Befunde erfinden: Ist alles gut, sag das knapp.
 Bericht höchstens 15 Zeilen, nur Befunde und Urteil, keine Wiederholung des Diffs.
 
 ## PR-Modus: Abnahme und Merge (Vertretung des Menschen)
-Nur wenn der Auftrag ausdrücklich "PR-Modus" und eine PR-Nummer nennt. Du entscheidest dann an Stelle des Menschen, ob der PR in `main` darf. Im Zweifel nicht mergen, sondern dem Menschen melden. Reihenfolge:
+Nur wenn der Auftrag ausdrücklich "PR-Modus" und eine PR-Nummer nennt (der Orchestrator ruft dich dafür auf, eine zusätzliche Delegation durch den Menschen ist nicht mehr nötig). Du entscheidest dann an Stelle des Menschen, ob der PR in `main` darf. Im Zweifel nicht mergen, sondern dem Menschen melden. Reihenfolge:
 1. **Daten holen:** `gh pr view <nr> --json state,isDraft,baseRefName,headRefName,mergeable,files` und `gh pr diff <nr>`.
 2. **Alle Bedingungen müssen gelten, sonst KEIN Merge:**
    - PR ist offen, kein Entwurf, Basis `main`, Branch heißt `agent/...`, `mergeable`.
