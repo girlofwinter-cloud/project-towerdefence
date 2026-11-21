@@ -147,7 +147,7 @@ Erledigte Einträge (`fertig`) liegen in `docs/archiv/BACKLOG-fertig.md`. Beim A
   - `npm test` und `npm run test:e2e` bleiben grün.
 
 ### B-029: Welt Eis (Gegner-/Turm-Modifikatoren pro Map)
-- Status: vorschlag
+- Status: offen
 - Aufwand: M
 - Idee: Maps können Modifikatoren tragen: In der Eiswelt sind Gegner von Grund auf etwas langsamer, der Frostturm ist schwächer, Kanone stärker. Hängt von B-027 ab.
 - Akzeptanzkriterien:

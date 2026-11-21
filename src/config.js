@@ -74,6 +74,24 @@ export const MAPS = {
       [15, 9], [16, 3], [17, 3], [17, 5], [18, 5], [18, 9], [18, 12], [19, 7], [19, 12],
     ],
   },
+  // Eiswelt (B-029): Modifikatoren (enemySpeed, towerDamage je Typ, slowStrength) und kühles Farbschema (theme).
+  ice: {
+    name: 'Eiswelt',
+    waypoints: [
+      [-1, 12],
+      [4, 12],
+      [4, 7],
+      [9, 7],
+      [9, 1],
+      [14, 1],
+      [14, 9],
+      [17, 9],
+      [17, 4],
+      [20, 4],
+    ],
+    modifiers: { enemySpeed: 0.85, towerDamage: { cannon: 1.25, frost: 0.7 }, slowStrength: 0.7 },
+    theme: { grass: ['#cfe6f2', '#d9edf6'], blade: '#9cc3d8' },
+  },
 };
 export const DEFAULT_MAP_ID = 'meadow';
 // Alias für die Standardkarte (bestehender Code und Tests)

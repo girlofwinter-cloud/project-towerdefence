@@ -1,7 +1,7 @@
 // Unit-Tests der Spiel-Logik (game.js, path.js, config.js). Ausführen: npm test
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createGame, update, buildTower, upgradeTower, sellTower, startWave, spawnEnemy, canBuild, towerStats, upgradeCost, togglePause, stepGame, setTargetMode, pickTarget } from '../src/game.js';
+import { createGame, mapModifiers, update, buildTower, upgradeTower, sellTower, startWave, spawnEnemy, canBuild, towerStats, upgradeCost, togglePause, stepGame, setTargetMode, pickTarget } from '../src/game.js';
 
 import { livesText } from '../src/hud.js';
 
@@ -979,4 +979,106 @@ test('Hindernisse: Goblin erreicht auf dem Wald das Ziel', () => {
   const lives = s.lives;
   run(s, 60);
   assert.ok(s.lives < lives);
+});
+
+// ---------- Map Eiswelt: Modifikatoren (B-029) ----------
+function shootAt(mapId, type) {
+  const s = createGame({ mapId });
+  const [c, r] = freeTileNearPath(s);
+  s.gold = 1000;
+  buildTower(s, type, c, r);
+  const t = s.towers[0];
+  const e = spawnEnemy(s, 'tank', 1) || s.enemies[0];
+  let best = 0;
+  for (let d = 0; d < s.path.length; d += 5) {
+    const a = pointAt(s.path, d), b = pointAt(s.path, best);
+    if (Math.hypot(a.x - t.x, a.y - t.y) < Math.hypot(b.x - t.x, b.y - t.y)) best = d;
+  }
+  e.dist = best;
+  update(s, 0.01);
+  return { s, t, e, p: s.projectiles[0] };
+}
+
+test('Modifikatoren: Karten ohne modifiers bleiben unverändert', () => {
+  for (const id of ['meadow', 'canyon', 'forest']) {
+    const s = createGame({ mapId: id });
+    assert.deepEqual(s.modifiers, { enemySpeed: 1, towerDamage: {}, slowStrength: 1 });
+    spawnEnemy(s, 'grunt', 1);
+    assert.equal(s.enemies[0].speed, ENEMY_TYPES.grunt.speed);
+  }
+  const { p } = shootAt('meadow', 'cannon');
+  assert.equal(p.damage, TOWER_TYPES.cannon.damage);
+  const f = shootAt('meadow', 'frost');
+  assert.equal(f.p.slow, TOWER_TYPES.frost.slow);
+  assert.equal(f.p.damage, TOWER_TYPES.frost.damage);
+});
+
+test('Modifikatoren: Eiswelt verlangsamt Gegner, stärkt Kanone, schwächt Frost', () => {
+  const m = MAPS.ice.modifiers;
+  assert.deepEqual(mapModifiers('ice'), { enemySpeed: m.enemySpeed, towerDamage: m.towerDamage, slowStrength: m.slowStrength });
+  const s = createGame({ mapId: 'ice' });
+  spawnEnemy(s, 'grunt', 1);
+  assert.ok(s.enemies[0].speed < ENEMY_TYPES.grunt.speed);
+  assert.equal(s.enemies[0].speed, ENEMY_TYPES.grunt.speed * m.enemySpeed);
+  const c = shootAt('ice', 'cannon');
+  assert.ok(c.p.damage > TOWER_TYPES.cannon.damage);
+  const f = shootAt('ice', 'frost');
+  assert.ok(f.p.slow < TOWER_TYPES.frost.slow);
+  assert.ok(f.p.damage < TOWER_TYPES.frost.damage);
+  run(f.s, 1);
+  assert.ok(f.e.slowFactor > 1 - TOWER_TYPES.frost.slow, 'Verlangsamung auf Eis schwächer');
+  assert.ok(f.e.slowFactor < 1);
+});
+
+test('towerStats: ohne 2. Parameter unverändert, mit Modifikatoren skaliert', () => {
+  const t = { type: 'frost', level: 2 };
+  const base = towerStats(t);
+  assert.equal(base.damage, TOWER_TYPES.frost.damage * 1.5);
+  assert.equal(base.slow, TOWER_TYPES.frost.slow);
+  assert.deepEqual(towerStats(t, mapModifiers('meadow')), base);
+  const ice = towerStats(t, mapModifiers('ice'));
+  assert.ok(ice.damage < base.damage && ice.slow < base.slow);
+  assert.equal(towerStats({ type: 'arrow', level: 1 }, mapModifiers('ice')).damage, TOWER_TYPES.arrow.damage);
+});
+
+test('Eiswelt: Goblin erreicht das Ziel', () => {
+  const s = createGame({ mapId: 'ice' });
+  assert.equal(canBuild(s, 4, 9).ok, false);
+  spawnEnemy(s, 'grunt', 1);
+  const lives = s.lives;
+  run(s, 90);
+  assert.ok(s.lives < lives);
+});
+
+test('mapModifiers: unbekannte Karte = Standard, Teil-Modifikatoren werden aufgefüllt', () => {
+  const def = { enemySpeed: 1, towerDamage: {}, slowStrength: 1 };
+  for (const id of ['nope', undefined, null, '__proto__', 'constructor']) assert.deepEqual(mapModifiers(id), def);
+  MAPS.__partial = { name: 'T', waypoints: MAPS.meadow.waypoints, modifiers: { enemySpeed: 0.5 } };
+  try {
+    assert.deepEqual(mapModifiers('__partial'), { enemySpeed: 0.5, towerDamage: {}, slowStrength: 1 });
+  } finally { delete MAPS.__partial; }
+  mapModifiers('ice').towerDamage.cannon = 99; // Kopie, keine Mutation der Config
+  assert.equal(MAPS.ice.modifiers.towerDamage.cannon, 1.25);
+});
+
+test('Eiswelt: Slowfaktor in (0,1), Upgrade-Stufen und Kanonen-Splash skalieren mit', () => {
+  const mods = mapModifiers('ice');
+  const f = towerStats({ type: 'frost', level: 1 }, mods);
+  assert.ok(1 - f.slow > 0 && 1 - f.slow < 1);
+  const c1 = towerStats({ type: 'cannon', level: 1 }, mods);
+  const c3 = towerStats({ type: 'cannon', level: 3 }, mods);
+  assert.ok(Math.abs(c3.damage - TOWER_TYPES.cannon.damage * 1.25 * 2.25) < 1e-9);
+  assert.ok(Math.abs(c3.damage / c1.damage - 2.25) < 1e-9);
+  // Splash: Nachbar des Ziels verliert den skalierten Schaden
+  const s = createGame({ mapId: 'ice' });
+  spawnEnemy(s, 'grunt', 1); spawnEnemy(s, 'grunt', 1);
+  const [a, b] = s.enemies;
+  a.hp = a.maxHp = b.hp = b.maxHp = 1000;
+  b.dist = a.dist + 1; b.x = a.x; b.y = a.y;
+  const t = freeTileNearPath(s);
+  assert.ok(buildTower(s, 'cannon', t.col, t.row).ok !== false);
+  s.gold = 1e6;
+  run(s, 0.05);
+  const lost = [a, b].map((e) => e.maxHp - e.hp).filter((v) => v > 0);
+  for (const v of lost) assert.ok(Math.abs(v - TOWER_TYPES.cannon.damage * 1.25) < 1e-6, 'Splash ' + v);
 });
