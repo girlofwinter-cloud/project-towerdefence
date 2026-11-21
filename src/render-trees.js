@@ -2,7 +2,7 @@
 // Nur Zeichnen (Positionen und Arten kommen aus decor.js). Wird ausschließlich in den
 // Hintergrund-Cache (bgCanvas) gemalt, nie pro Frame. Kreise per roundRect (wie render-path.js).
 import { TREE_FRAME, STYLE } from './config.js';
-import { lit, shd, outlineOf } from './draw-utils.js';
+import { lit, shd, outlineOf, snowCap } from './draw-utils.js';
 
 function circlePath(ctx, x, y, r) {
   if (typeof ctx.roundRect === 'function') ctx.roundRect(x - r, y - r, 2 * r, 2 * r, r);
@@ -48,6 +48,7 @@ function drawFir(ctx, c, T) {
     tri(yb, w, h); ctx.fill();
     ctx.fillStyle = firCol[i % 2];
     ctx.beginPath(); ctx.moveTo(x - w, yb); ctx.lineTo(x, yb - h * 1.5); ctx.lineTo(x - w * 0.1, yb); ctx.closePath(); ctx.fill();
+    if (T.snow) snowCap(ctx, x, yb - h * 1.5, w, h * 1.5, c.shade ? shd(T.snow, c.shade * 0.5) : T.snow, T.snowShade);
   });
 }
 

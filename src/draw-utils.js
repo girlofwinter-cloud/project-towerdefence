@@ -151,3 +151,27 @@ function hexToRgba(hex, a) {
   const [r, g, b] = parseHex(hex);
   return `rgba(${r},${g},${b},${a})`;
 }
+
+// Schneekappe einer Tannenstufe (B-073): Spitze (x, apexY), Stufenbreite w (halbe Basis), Stufenhöhe H.
+// Zackiger Saum bei 58 % der Höhe, rechte Hälfte im Schattenton. Nur Füllung, keine Kontur.
+export function snowCap(ctx, x, apexY, w, H, color, shade) {
+  const f = 0.58, y1 = apexY + H * f, y2 = apexY + H * (f - 0.1), y3 = apexY + H * (f + 0.06);
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.moveTo(x, apexY);
+  ctx.lineTo(x + w * f, y1);
+  ctx.lineTo(x + w * 0.3, y2);
+  ctx.lineTo(x, y3);
+  ctx.lineTo(x - w * 0.3, y2);
+  ctx.lineTo(x - w * f, y1);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = shade;
+  ctx.beginPath();
+  ctx.moveTo(x, apexY);
+  ctx.lineTo(x + w * f, y1);
+  ctx.lineTo(x + w * 0.3, y2);
+  ctx.lineTo(x, y3);
+  ctx.closePath();
+  ctx.fill();
+}

@@ -130,7 +130,55 @@ export const MAPS = {
       [20, 4],
     ],
     modifiers: { enemySpeed: 1.14, towerDamage: { cannon: 0.95, frost: 0.7 }, slowStrength: 0.85 },
-    theme: { grass: ['#cfe6f2', '#d9edf6'], blade: '#9cc3d8' },
+    // B-073: Eiswelt im Flat-Pop-Stil (STIL.md): Schneeboden mit Verwehungen, Tannen mit Schneekappe, glatter blaugrauer Weg
+    // (dunkler als der Schnee), Eiskristalle und Eisfelsen als Streu-Deko, kühles Licht. Keine Hindernisse.
+    theme: {
+      grass: ['#cfe6f2', '#d9edf6'], blade: '#9cc3d8',
+      treeFrame: {
+        rows: [
+          { radius: [15, 19], depth: [0, 0.3], spacing: 26, shade: 0.3 },
+          { radius: [16, 20], depth: [0.45, 0.8], spacing: 32, shade: 0.1 },
+        ],
+        spacingJitter: 6,
+        kindShare: [0, 0, 0, 1], // nur Tannen
+        fir: ['#2f6f5f', '#285f52'],
+        firLift: 0.42,
+        snow: '#ffffff',
+        snowShade: '#c6dcec',
+      },
+      ground: {
+        base: '#e3f1fa',
+        light: 'rgba(255,255,255,0.38)',
+        dark: 'rgba(160,196,220,0.22)',
+        blade: ['#8fb6cc', '#9cc3d8', '#c9e4f2'],
+        tufts: 260,
+        plateaus: 7,
+        plateauTop: '#f6fbff',
+        plateauWall: 'rgba(150,186,210,0.9)',
+        plateauRim: 'rgba(70,100,130,0.32)',
+        plateauLight: 'rgba(255,255,255,0.55)',
+      },
+      light: { tint: '214,236,255', shadow: '38,64,108', gradientAlpha: 0.08, beamAlpha: 0.07, vignetteAlpha: 0.14, treeShadowAlpha: 0.14 },
+      decorStyle: 'flatpop',
+      decor: {
+        flatTrees: true,
+        firShare: 1,
+        fir: ['#2f6f5f', '#285f52'],
+        snow: '#ffffff', snowShade: '#c6dcec',
+        bush: '#eef7fd', berry: '#7fe0ff', rock: '#8aa6bd', moss: '#ffffff',
+        flowers: ['#ffffff', '#bff0ff', '#7fe0ff'], flowerCore: '#4aa8d0', stem: '#8fb6cc', tuft: '#8fb6cc', tuftLight: '#c9e4f2',
+        pebble: '#9db3c9', wood: '#b9c7d6', woodDark: '#6a7f96', crystal: '#7fe0ff',
+        scatterChance: 0.1,
+        scatterKinds: [['crystal', 0.28], ['snowpile', 0.3], ['rockgroup', 0.16], ['pebbles', 0.12], ['stakes', 0.08], ['sign', 0.06]],
+      },
+      path: { main: '#9db3c9', edge: '#4f6682', outline: '#2f4560', mid: '#b4c7d9', fringe: '#ffffff' },
+      // Glatter Eisweg: wenige Steine, weißer Glanz statt brauner Spurrillen, kühle Flecken
+      pathStyle: {
+        stoneChance: 0.14, rutColor: 'rgba(255,255,255,0.5)', rutWidth: 2.2,
+        stoneColors: ['#7f94ab', '#c9d8e6'], pebbleColors: ['#8aa0b8', '#c9d8e6'], stoneShadow: 'rgba(38,64,108,0.4)',
+        patchDark: 'rgba(79,102,130,0.16)', patchLight: 'rgba(255,255,255,0.3)',
+      },
+    },
   },
   // Zangenangriff (B-033): zwei Eingänge links oben und links unten, beide Wege laufen bei [10, 7] zusammen.
   // extraPaths: weitere Wegpunkt-Listen; Gegner verteilen sich abwechselnd auf alle Wege.
@@ -448,6 +496,9 @@ export const PATH_STYLE = {
   patchChance: 0.4,        // Wahrscheinlichkeit eines Flecks pro Schritt
   stoneColors: ['#b8b0a2', '#dcd6c6'], // Stein: Basis, Glanz
   pebbleColors: ['#c9ad74', '#f3e2b4'],
+  stoneShadow: 'rgba(110,76,42,0.45)', // Schatten der Randsteine
+  patchDark: 'rgba(143,106,59,0.14)',  // dunkle Bodenflecken auf dem Weg
+  patchLight: 'rgba(255,248,214,0.22)', // helle Bodenflecken auf dem Weg
   // Standardfarben (heutiger Look), solange eine Karte kein theme.path liefert.
   colors: { main: '#dcc189', edge: '#8f7140', outline: '#8f7140', mid: '#dcc189', fringe: null },
 };
@@ -477,6 +528,8 @@ export const TREE_FRAME = {
   coverMargin: 6,         // alte Einzelbäume näher als r + coverMargin an einer Krone entfallen
   lobeScale: 0.6,         // Hauptlappen = r * lobeScale
   firLift: 0,             // Tannen um diesen Anteil von r nach unten rücken (0 = wie bisher)
+  snow: null,             // B-073: Farbe der Schneekappen auf Tannen (null = keine)
+  snowShade: '#c6dcec',   // Schattenseite der Schneekappe
 };
 
 // Boden der Wiese (B-078): weiche Flecken, Plateaus mit dunkler Kante, Grasbüschel. Nur Optik, Maße in px bei 1x.
@@ -541,6 +594,10 @@ export const DECOR_STYLE = {
   trunk: '#6e4d2a',
   treeColors: ['#3f9a45', '#3a9250', '#58a83e'], // Laubbaum je Variante
   leaves: ['#e0803a', '#c9562f', '#e3b23c'], // Laubhaufen
+  // B-073 (Eis): Schneekappen auf Tannen und Felsen (Moos-Farbe), Eiskristalle; nur Eis setzt snow.
+  snow: null,
+  snowShade: '#c6dcec',
+  crystal: '#7fe0ff',
   // Streu-Deko: wenige flache Stücke auf freien Kacheln, die kein anderes Dekor tragen.
   scatterChance: 0.07,    // Wahrscheinlichkeit je freier Kachel
   scatterEndMargin: 1,    // Abstand (Kacheln, Chebyshev) zu Tor und Ziel

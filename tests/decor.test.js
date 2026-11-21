@@ -218,7 +218,7 @@ test('treeFrame: keine Krone schneidet den Weg (inkl. Wegrand), Ein- und Ausgang
 });
 
 // ---------- Streu-Deko (B-079) ----------
-test('scatterFor: deterministisch, nie auf Weg, Hindernis, Tor/Ziel oder fremdem Dekor, nur auf der Wiese', async () => {
+test('scatterFor: deterministisch, nie auf Weg, Hindernis, Tor/Ziel oder fremdem Dekor, nur mit decorStyle flatpop', async () => {
   const { scatterFor, decorFor } = await import('../src/decor.js');
   const { DECOR_STYLE: D } = await import('../src/config.js');
   const s = createGame({ mapId: 'meadow' });
@@ -244,9 +244,12 @@ test('scatterFor: deterministisch, nie auf Weg, Hindernis, Tor/Ziel oder fremdem
   }
   assert.ok(n >= 5 && n <= 35, `ruhig: ${n} Stuecke`);
   assert.ok(kinds.size >= 4, `Vielfalt: ${[...kinds]}`);
-  for (const id of ['ice']) {
-    const g = createGame({ mapId: id });
-    for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) assert.equal(scatterFor(c, r, g.blocked, null, id), null, `${id} ohne Streu-Deko`);
+  // Seit B-073 haben alle Karten decorStyle 'flatpop': Streu-Deko gibt es genau dort, wo der Schalter steht (Karten-Tabelle)
+  for (const id of [...Object.keys(MAPS), 'gibtsnicht']) {
+    const g = createGame({ mapId: MAPS[id] ? id : 'meadow' });
+    let any = false;
+    for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) if (scatterFor(c, r, g.blocked, null, id)) any = true;
+    assert.equal(any, MAPS[id]?.theme?.decorStyle === 'flatpop', `${id}: Streu-Deko nur mit decorStyle flatpop`);
   }
   assert.equal(scatterFor(-1, 0, s.blocked, null, 'meadow'), null);
   assert.equal(scatterFor(0, ROWS, s.blocked, null, 'meadow'), null);
@@ -258,8 +261,12 @@ test('DECOR_STYLE: Konturbreite 1,3 bis 2,3 px, Anteile der Streu-Deko ergeben 1
   assert.equal(D.outlineWidth, STYLE.outlineWidth, 'part() zeichnet mit STYLE.outlineWidth');
   assert.ok(Math.abs(D.scatterKinds.reduce((a, k) => a + k[1], 0) - 1) < 1e-9);
   assert.equal(MAPS.meadow.theme.decorStyle, 'flatpop');
-  assert.equal(MAPS.ice.theme?.decorStyle, undefined); // Eis folgt mit B-073
-  for (const id of ['forest', 'fork']) assert.equal(MAPS[id].theme.decorStyle, 'flatpop'); // B-072
+  for (const id of ['forest', 'ice', 'fork']) assert.equal(MAPS[id].theme.decorStyle, 'flatpop'); // B-072, B-073
+  const { themed, DECOR_STYLE } = await import('../src/config.js');
+  for (const id of Object.keys(MAPS)) {
+    const st = themed(id, 'decor', DECOR_STYLE);
+    assert.ok(Math.abs(st.scatterKinds.reduce((a, k) => a + k[1], 0) - 1) < 1e-9, `${id}: Anteile ergeben 1`);
+  }
 });
 
 // ---------- Akzente (B-080) ----------
@@ -328,7 +335,8 @@ test('accentsFor (Randfaelle): undefined = Wiese, unbekannte Id ohne Akzente, en
 test('themed: true/fehlend liefert den Basisblock, ein Objekt ueberschreibt nur einzelne Werte', async () => {
   const { themed, TREE_FRAME, GROUND_STYLE, DECOR_STYLE } = await import('../src/config.js');
   assert.equal(themed('meadow', 'treeFrame', TREE_FRAME), TREE_FRAME, 'Wiese: true -> Basis (dasselbe Objekt)');
-  assert.equal(themed('ice', 'ground', GROUND_STYLE), GROUND_STYLE, 'Eis ohne Eintrag -> Basis');
+  assert.equal(themed('ice', 'ground', GROUND_STYLE).base, '#e3f1fa', 'Eis (B-073) ueberschreibt den Boden');
+  assert.equal(themed('ice', 'ground', GROUND_STYLE).blobPoints, GROUND_STYLE.blobPoints, 'nicht genannte Werte bleiben');
   assert.equal(themed(undefined, 'decor', DECOR_STYLE), DECOR_STYLE);
   assert.equal(themed('gibtsnicht', 'decor', DECOR_STYLE), DECOR_STYLE);
   const g = themed('forest', 'ground', GROUND_STYLE);
@@ -420,4 +428,82 @@ test('Wald: Hindernisse unveraendert (Anzahl, Lage, nicht bebaubar), Bodenflecke
       assert.ok(m >= 28, `${id}: Buesche nicht auf dem Weg (${m.toFixed(1)} px)`);
     }
   }
+});
+
+// ---------- Eiswelt (B-073) ----------
+test('Eis: Palette aus config (Boden, Weg dunkler als Schnee, Tanne, Kristall), klar verschieden von den anderen Welten', async () => {
+  const { themed, GROUND_STYLE, TREE_FRAME, DECOR_STYLE } = await import('../src/config.js');
+  const { brightness } = await import('../src/draw-utils.js');
+  const gb = (id) => themed(id, 'ground', GROUND_STYLE).base;
+  assert.equal(gb('ice'), '#e3f1fa');
+  assert.equal(new Set(['meadow', 'forest', 'fork', 'ice'].map(gb)).size, 4);
+  const path = MAPS.ice.theme.path;
+  assert.equal(path.main, '#9db3c9');
+  assert.equal(path.edge, '#4f6682');
+  assert.ok(brightness(path.main) <= brightness(gb('ice')) - 0.15, 'Weg deutlich dunkler als der Schnee');
+  assert.ok(brightness(path.edge) < brightness(path.main), 'Rand dunkler als der Weg');
+  assert.deepEqual(themed('ice', 'treeFrame', TREE_FRAME).fir[0], '#2f6f5f');
+  assert.equal(themed('ice', 'treeFrame', TREE_FRAME).snow, '#ffffff');
+  assert.equal(themed('ice', 'decor', DECOR_STYLE).crystal, '#7fe0ff');
+  assert.equal(themed('meadow', 'decor', DECOR_STYLE).snow, null, 'Wiese ohne Schnee');
+  assert.equal(themed('forest', 'treeFrame', TREE_FRAME).snow, null);
+});
+
+test('Eis: Balancing und Logik unveraendert (Modifikatoren, keine Hindernisse, alles bebaubar ausser Weg)', async () => {
+  const { canBuild } = await import('../src/game.js');
+  assert.deepEqual(MAPS.ice.modifiers, { enemySpeed: 1.14, towerDamage: { cannon: 0.95, frost: 0.7 }, slowStrength: 0.85 });
+  assert.equal(MAPS.ice.obstacles, undefined);
+  const g = createGame({ mapId: 'ice' });
+  assert.equal(g.obstacles.size, 0);
+  for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) assert.equal(canBuild(g, c, r).ok, !g.blocked.has(`${c},${r}`), `${c},${r}`);
+});
+
+test('treeFrame Eis: nur Tannen, deterministisch, in zwei Reihen, Kronen nie auf dem Weg', async () => {
+  const { treeFrame } = await import('../src/decor.js');
+  const ice = treeFrame('ice');
+  assert.deepEqual(ice, treeFrame('ice'));
+  assert.ok(ice.length >= 60);
+  assert.ok(ice.every((c) => c.kind === 'fir'), 'nur Tannen im Rahmen');
+  assert.ok(new Set(ice.map((c) => c.row)).size >= 2);
+});
+
+test('Eis: Streu-Deko mit Kristallen, Schneehaufen und Eisfelsen, deterministisch, nie auf Weg/Tor, ohne Wald-/Herbst-Arten', async () => {
+  const { scatterFor } = await import('../src/decor.js');
+  const g = createGame({ mapId: 'ice' });
+  const kinds = new Set();
+  let n = 0;
+  for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
+    const a = scatterFor(c, r, g.blocked, g.obstacles, 'ice');
+    assert.deepEqual(a, scatterFor(c, r, g.blocked, g.obstacles, 'ice'));
+    if (!a) continue;
+    n++;
+    kinds.add(a.kind);
+    assert.ok(!g.blocked.has(`${c},${r}`), `Deko auf Weg ${c},${r}`);
+    assert.equal(decorFor(c, r, g.blocked, g.obstacles), null);
+  }
+  assert.ok(n >= 8, `${n} Stuecke`);
+  for (const k of ['crystal', 'snowpile', 'rockgroup']) assert.ok(kinds.has(k), `Eis: ${k}`);
+  for (const k of ['mushroom', 'mushrooms', 'moss', 'stump', 'leafpile', 'log', 'barrel']) assert.ok(!kinds.has(k), `Eis ohne ${k}`);
+});
+
+test('Eis: Boden mit Schneeverwehungen, deterministisch, Plateaus und Buesche nie auf dem Weg', async () => {
+  const { groundPatches } = await import('../src/decor.js');
+  const { themed, GROUND_STYLE: G } = await import('../src/config.js');
+  const a = groundPatches('ice');
+  assert.deepEqual(a, groundPatches('ice'));
+  const gs = themed('ice', 'ground', G);
+  assert.ok(a.plateaus.length > 0 && a.plateaus.length <= gs.plateaus);
+  assert.ok(a.patches.length > 0 && a.tufts.length > 0);
+  const pts = createGame({ mapId: 'ice' }).path.points;
+  const dist = (x, y) => {
+    let m = Infinity;
+    for (let i = 0; i < pts.length - 1; i++) {
+      const p = pts[i], q = pts[i + 1], dx = q.x - p.x, dy = q.y - p.y;
+      const u = Math.max(0, Math.min(1, ((x - p.x) * dx + (y - p.y) * dy) / (dx * dx + dy * dy || 1)));
+      m = Math.min(m, Math.hypot(x - p.x - u * dx, y - p.y - u * dy));
+    }
+    return m;
+  };
+  for (const t of a.tufts) assert.ok(dist(t.x, t.y) >= gs.tuftPathMargin, 'Busch nicht auf dem Weg');
+  for (const p of a.plateaus) assert.ok(dist(p.x, p.y) >= gs.plateauCenterMargin, 'Verwehung nicht auf dem Weg');
 });

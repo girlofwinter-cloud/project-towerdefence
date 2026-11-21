@@ -3,7 +3,7 @@
 // Hintergrund-Cache gemalt, nie pro Frame. Alles bleibt flach (höchstens ca. eine halbe Kachel hoch).
 // Die Streu-Deko nutzt keine arc/ellipse-Aufrufe (Bezier-Schatten), damit sie vom Kachel-Test der Kleindeko getrennt bleibt.
 import { DECOR_STYLE, STYLE, TILE as TILE_PX } from './config.js';
-import { part, poly, rr, ell, shadow, lit, shd, outlineOf } from './draw-utils.js';
+import { part, poly, rr, ell, shadow, lit, shd, outlineOf, snowCap } from './draw-utils.js';
 
 const TWO_PI = Math.PI * 2;
 
@@ -166,6 +166,25 @@ function rockgroup(ctx, x, y) {
   rockShape(ctx, x - 1, y, 6, 6.4, D.rock, D.moss);
 }
 
+// Eiskristall (B-073): drei spitze Kristalle mit heller Kante und dunklerer Seite
+function crystal(ctx, x, y) {
+  flatShadow(ctx, x, y + 1, 9, 2.6);
+  for (const [dx, w, h, k] of [[-5, 3.2, 9, 0], [5, 2.8, 7, 0.1], [0, 4.2, 14, 0.2]]) {
+    const cx = x + dx, base = y + 1;
+    poly(ctx, [[cx - w, base], [cx - w * 0.8, base - h * 0.7], [cx, base - h], [cx + w * 0.8, base - h * 0.7], [cx + w, base]], lit(D.crystal, k));
+    poly(ctx, [[cx, base], [cx, base - h], [cx + w * 0.8, base - h * 0.7], [cx + w, base]], shd(D.crystal, 0.3));
+    stroke(ctx, [[cx - w * 0.45, base - h * 0.2], [cx - w * 0.4, base - h * 0.62]], '#ffffff', D.detailWidth);
+  }
+}
+
+// Schneehaufen (B-073): flacher Hügel mit Schattenseite
+function snowpile(ctx, x, y) {
+  flatShadow(ctx, x, y + 1, 11, 3);
+  blob(ctx, x, y, 11, 5, D.snowShade);
+  blob(ctx, x - 1.4, y - 1.6, 9, 4, D.snow, 0.3);
+  blob(ctx, x + 5, y - 2.6, 4.4, 2.4, D.snow, 0.1);
+}
+
 function barrel(ctx, x, y) {
   flatShadow(ctx, x, y, 8, 3);
   rr(ctx, x - 6, y - 12, 12, 14, 4, D.wood);
@@ -214,6 +233,8 @@ export function drawScatter(ctx, s, x, y) {
   else if (s.kind === 'moss') moss(ctx, x, y);
   else if (s.kind === 'stump') stump(ctx, x, y);
   else if (s.kind === 'leafpile') leafpile(ctx, x, y);
+  else if (s.kind === 'crystal') crystal(ctx, x, y);
+  else if (s.kind === 'snowpile') snowpile(ctx, x, y);
   else if (s.kind === 'rockgroup') rockgroup(ctx, x, y);
   else if (s.kind === 'barrel') barrel(ctx, x, y);
   else if (s.kind === 'log') log(ctx, x, y, s.angle);
@@ -231,6 +252,7 @@ export function drawTree(ctx, x, y, v, fir, scale = 1) {
     rr(ctx, x - 1.8 * s, y + 3 * s, 3.6 * s, 6 * s, 1, D.trunk);
     [[4, 8.2, 0], [-1, 6.6, 1], [-6, 4.8, 0]].forEach(([dy, w, i]) => {
       poly(ctx, [[x - w * s, y + (dy + 4) * s], [x + w * s, y + (dy + 4) * s], [x, y + (dy - 5.5) * s]], D.fir[i]);
+      if (D.snow) snowCap(ctx, x, y + (dy - 5.5) * s, w * s, 9.5 * s, D.snow, D.snowShade); // Eis: Schneekappe
     });
     return;
   }
