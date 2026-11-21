@@ -40,7 +40,7 @@ export const MAPS = {
       [20, 11],
     ],
     // B-071: Wegpalette der Wiese (STIL.md); Wald, Eis und Fork nutzen vorerst PATH_STYLE.colors.
-    theme: { treeFrame: true, path: { main: '#e2c88f', edge: '#8f6a3b', outline: '#4a3418', mid: '#ecd5a0', fringe: '#6fbf4e' } },
+    theme: { treeFrame: true, ground: true, path: { main: '#e2c88f', edge: '#8f6a3b', outline: '#4a3418', mid: '#ecd5a0', fringe: '#6fbf4e' } },
   },
   forest: {
     name: 'Wald',
@@ -392,4 +392,36 @@ export const TREE_FRAME = {
   outlineWidth: 2,        // Dicke der dunklen Kontur
   coverMargin: 6,         // alte Einzelbäume näher als r + coverMargin an einer Krone entfallen
   lobeScale: 0.6,         // Hauptlappen = r * lobeScale
+};
+
+// Boden der Wiese (B-078): weiche Flecken, Plateaus mit dunkler Kante, Grasbüschel. Nur Optik, Maße in px bei 1x.
+// Aktiv nur mit MAPS.<id>.theme.ground; andere Karten behalten das Schachbrett.
+export const GROUND_STYLE = {
+  base: '#5fae48',
+  light: 'rgba(125,199,87,0.15)', // helle Flecken (#7dc757, Deckkraft je Lage)
+  dark: 'rgba(79,154,59,0.15)',   // dunkle Flecken (#4f9a3b, Deckkraft je Lage)
+  blade: ['#46893a', '#4e9b3e', '#86d062'], // Halme: dunkel, mittel, hell
+  patchLayers: 4,        // Lagen je Fleck (weiche Kante ohne Blur)
+  patchLayerShrink: 0.16, // jede Lage um diesen Anteil kleiner
+  lightPatches: 12,
+  darkPatches: 9,
+  patchRadiusX: [50, 120],
+  patchRadiusY: [28, 64],
+  blobPoints: 10,        // Stützpunkte der Fleckenform
+  plateaus: 8,           // höchstens so viele Plateaus
+  plateauTries: 400,
+  plateauRadiusX: [34, 62],
+  plateauRadiusY: [18, 30],
+  plateauPoints: 9,
+  plateauInset: [60, 70],  // Mindestabstand der Mitte zum Rand (x, y)
+  plateauCenterMargin: 40, // Mindestabstand der Mitte zur Wegachse
+  plateauEdgeMargin: 34,   // Mindestabstand der Plateaukante (samt Wand) zur Wegachse
+  plateauDrop: 6,          // Höhenversatz der Wand nach unten
+  plateauTop: '#66b84d',
+  plateauWall: 'rgba(63,133,54,0.85)',
+  plateauRim: 'rgba(30,70,30,0.3)', // dezente Kante, schwächer als die Gegnerkontur
+  plateauLight: 'rgba(190,240,140,0.16)',
+  tufts: 420,
+  tuftPathMargin: 28,    // Büschel nie auf dem Weg
+  tuftScale: [0.9, 1.4],
 };

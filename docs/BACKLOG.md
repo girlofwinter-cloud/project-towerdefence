@@ -416,14 +416,6 @@ Reihenfolge ist Abhängigkeit: B-062 und B-063 zuerst, dann gemeinsame Sichtprü
 
 
 
-### B-078: Wiese 3/7: Boden mit Flecken und Plateaus statt Schachbrett (Design-Overhaul)
-- Status: offen
-- Aufwand: M
-- Idee: Boden aus gestapelten Flecken (je 4 Lagen für weiche Kanten, kein `shadowBlur`), in B zusätzlich Plateaus mit dunkler Kante (Höhenversatz) und Gras-Cluster.
-- Akzeptanzkriterien:
-  - Screenshot ohne Schachbrettraster.
-  - Aufbauzeit von `bgCanvas` unter 60 ms (Test misst, Node mit Mock genügt).
-  - Kein Aufruf im Frame-Pfad (render-Test).
 
 ### B-079: Wiese 4/7: Felsen, Büsche, Blumen, Pilze und Streu-Deko neu (Design-Overhaul)
 - Status: offen
@@ -524,3 +516,11 @@ Reihenfolge ist Abhängigkeit: B-062 und B-063 zuerst, dann gemeinsame Sichtprü
 - Idee: (1) Der Test "Dekoration verlässt ihre Kachel nicht" läuft seit B-077 auf `fork`; der Tester hat einen zusätzlichen Wiesen-Test ergänzt (Busch, Fels, Blume, Tuft, Kiesel). Ungeprüft bleiben nur nicht verdeckte Einzelbäume der Wiese (Eck-Tannen). (2) Die Ecken des Rahmens sind leicht unruhig (links oben abgeschnittene Tannen). (3) Kronen sind etwas kleiner und gleichförmiger als im Zielbild; mehr Größenvarianz und Stämme/Schatten zur Mitte hin sind optional. (4) Rahmen für Wald und Eis über `theme.treeFrame: true` folgt mit B-072/B-073.
 - Akzeptanzkriterien:
   - Ecken im Screenshot ohne abgeschnittene Einzelbäume.
+
+### B-087: Wiesen-Boden: Feinschliff (Hinweise aus dem Review von B-078)
+- Status: vorschlag
+- Aufwand: S
+- Idee: (1) Plateaus werden nicht gegeneinander geprüft und überlappen teils (links unten, Mitte unten); Mindestabstand `plateauGap` in `GROUND_STYLE`. (2) Gegenüber dem Zielbild sind die Plateaus flacher und gleichförmiger; es fehlen Kiesel-/Blumengruppen und gelbe Variation (passt zu B-079). (3) Magic Numbers in `src/decor.js` (`groundPatches`/`blobShape`: 0.3, 0.76, 0.42) und `src/render-ground.js` (lineWidth 1.2, Skalen 1.02/0.92) nach `config.js` ziehen.
+- Akzeptanzkriterien:
+  - Plateaus überlappen höchstens leicht; Test mit Mindestabstand.
+  - Keine Magic Numbers mehr in `decor.js` und `render-ground.js` für diese Funktionen.

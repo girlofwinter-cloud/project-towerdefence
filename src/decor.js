@@ -5,7 +5,7 @@
 //  - Grosse Dekoration (Baum, Busch, Fels) nur auf Randkacheln des Spielfelds.
 //  - Im Inneren nur kleine Dekoration (Blumen, Grasbuschel, Kiesel), die flach bleibt.
 //  - Die Dekoration wird in den Hintergrund gezeichnet; gebaute Tuerme liegen darueber.
-import { COLS, ROWS, TILE, WIDTH, HEIGHT, OBSTACLE_TREE_SHARE, MAPS, TREE_FRAME } from './config.js';
+import { COLS, ROWS, TILE, WIDTH, HEIGHT, OBSTACLE_TREE_SHARE, MAPS, TREE_FRAME, GROUND_STYLE } from './config.js';
 import { buildPath } from './path.js';
 
 // Dichten (Wahrscheinlichkeit pro Kachel, 0..1)
@@ -119,4 +119,46 @@ export function treeFrame(mapId = 'meadow') {
 // Liegt ein Punkt im Bereich einer Krone des Rahmens? Dann entfaellt dort der alte Einzelbaum (kein Doppel).
 export function coveredByCrown(crowns, x, y) {
   return crowns.some((c) => Math.hypot(c.x - x, c.y - y) < c.r + TREE_FRAME.coverMargin);
+}
+
+// Fleckenform (B-078): Phase und Radiusfaktoren je Stuetzpunkt, deterministisch aus seed.
+export function blobShape(seed, n) {
+  return { phase: tileRand(seed, 0, 50) * Math.PI * 2, ks: Array.from({ length: n }, (_, i) => 0.76 + tileRand(seed, i + 1, 51) * 0.42) };
+}
+
+// Stuetzpunkte der Form (Mitte, Radien, Stuetzpunkte); dieselbe Formel nutzt render-ground.js.
+export function blobPoints(cx, cy, rx, ry, seed, n) {
+  const { phase, ks } = blobShape(seed, n);
+  return ks.map((k, i) => { const a = phase + (i / n) * Math.PI * 2; return [cx + Math.cos(a) * rx * k, cy + Math.sin(a) * ry * k]; });
+}
+
+// Boden der Wiese (B-078): Flecken, Plateaus (nur Optik) und Grasbueschel, rein deterministisch.
+// Plateaus liegen nie auf dem Weg: Kante samt Wand haelt Abstand zur Wegachse. Alle Nicht-Weg-Kacheln bleiben bebaubar.
+// Karten ohne theme.ground liefern leere Listen (dort bleibt das Schachbrett).
+export function groundPatches(mapId = 'meadow') {
+  const G = GROUND_STYLE;
+  const out = { patches: [], plateaus: [], tufts: [] };
+  if (!MAPS[mapId]?.theme?.ground) return out;
+  const points = buildPath(MAPS[mapId].waypoints, TILE).points;
+  const lerp = (r, u) => r[0] + u * (r[1] - r[0]);
+  const total = G.lightPatches + G.darkPatches;
+  for (let i = 0; i < total; i++) {
+    out.patches.push({ x: tileRand(i, 0, 60) * WIDTH, y: tileRand(i, 0, 61) * HEIGHT, rx: lerp(G.patchRadiusX, tileRand(i, 0, 62)), ry: lerp(G.patchRadiusY, tileRand(i, 0, 63)), tone: i < G.lightPatches ? 'light' : 'dark', seed: tileHash(i, 0, 64) });
+  }
+  for (let t = 0; t < G.plateauTries && out.plateaus.length < G.plateaus; t++) {
+    const x = lerp([G.plateauInset[0], WIDTH - G.plateauInset[0]], tileRand(t, 0, 70));
+    const y = lerp([G.plateauInset[1], HEIGHT - G.plateauInset[1]], tileRand(t, 0, 71));
+    const rx = lerp(G.plateauRadiusX, tileRand(t, 0, 72)), ry = lerp(G.plateauRadiusY, tileRand(t, 0, 73));
+    const seed = tileHash(t, 0, 74);
+    if (distToWaypoints(points, x, y) < G.plateauCenterMargin) continue;
+    const edge = blobPoints(x, y, rx, ry, seed, G.plateauPoints).map((p) => [p[0] + (p[0] - x) * 0.3, p[1] + (p[1] - y) * 0.3 + G.plateauDrop]);
+    if (edge.some((p) => distToWaypoints(points, p[0], p[1]) < G.plateauEdgeMargin)) continue;
+    out.plateaus.push({ x, y, rx, ry, seed });
+  }
+  for (let i = 0; i < G.tufts; i++) {
+    const x = 4 + tileRand(i, 0, 80) * (WIDTH - 8), y = 6 + tileRand(i, 0, 81) * (HEIGHT - 8);
+    if (distToWaypoints(points, x, y) < G.tuftPathMargin) continue;
+    out.tufts.push({ x, y, s: lerp(G.tuftScale, tileRand(i, 0, 82)), dark: i % 3 === 0, seed: tileHash(i, 0, 83) });
+  }
+  return out;
 }

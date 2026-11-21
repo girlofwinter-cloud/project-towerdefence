@@ -8,7 +8,8 @@ import { recoilOffset } from './tower-fx.js';
 import { drawEnemy, drawHealAura } from './render-enemies.js';
 import { updateFx, shakeX, shakeY, drawProjectileFx, drawParticles } from './render-fx.js';
 import { drawTreeFrame } from './render-trees.js';
-import { tileHash, tileRand, decorFor, obstacleKind, treeFrame, coveredByCrown, LARGE_DECOR_RADIUS } from './decor.js';
+import { drawGround as drawGroundFill, drawGroundTufts } from './render-ground.js';
+import { tileHash, tileRand, decorFor, obstacleKind, treeFrame, groundPatches, coveredByCrown, LARGE_DECOR_RADIUS } from './decor.js';
 
 export function render(ctx, state, ui) {
   // Partikel aus dem Zustand ableiten (nur lesen), danach Shake-Versatz bestimmen.
@@ -73,8 +74,12 @@ function drawGround(ctx, state) {
 
 function paintBackground(ctx, state) {
   ctx.save();
-  drawGrass(ctx, MAPS[state.mapId]?.theme);
+  // Wiese (theme.ground): Flecken und Plateaus statt Schachbrett; Büschel nach dem Weg (nie auf Wegkacheln)
+  const ground = MAPS[state.mapId]?.theme?.ground ? groundPatches(state.mapId) : null;
+  if (ground) drawGroundFill(ctx, ground);
+  else drawGrass(ctx, MAPS[state.mapId]?.theme);
   drawPath(ctx, state);
+  if (ground) drawGroundTufts(ctx, ground);
   const crowns = MAPS[state.mapId]?.theme?.treeFrame ? treeFrame(state.mapId) : null;
   drawDecor(ctx, state, crowns);
   if (crowns) drawTreeFrame(ctx, crowns);

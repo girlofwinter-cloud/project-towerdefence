@@ -730,3 +730,114 @@ test('Baumrahmen: nur im Hintergrund-Cache, Frame-Pfad zeichnet keine Kronen, Au
     assert.ok(ms < 60, `Aufbau ${ms.toFixed(1)} ms`);
   } finally { delete globalThis.document; }
 });
+
+// ---------- Boden der Wiese (B-078) ----------
+test('groundPatches: deterministisch, Plateaus nie auf dem Weg, nur Wiese hat Flecken', async () => {
+  const { groundPatches } = await import('../src/decor.js');
+  const { buildPath } = await import('../src/path.js');
+  const { MAPS, GROUND_STYLE } = await import('../src/config.js');
+  const a = groundPatches('meadow');
+  assert.deepEqual(a, groundPatches('meadow'), 'deterministisch');
+  assert.ok(a.patches.length > 0 && a.plateaus.length > 0 && a.tufts.length > 0);
+  assert.ok(a.plateaus.length <= GROUND_STYLE.plateaus);
+  const pts = buildPath(MAPS.meadow.waypoints, TILE).points;
+  const dist = (x, y) => {
+    let m = Infinity;
+    for (let i = 0; i < pts.length - 1; i++) {
+      const p = pts[i], q = pts[i + 1], dx = q.x - p.x, dy = q.y - p.y;
+      const t = Math.max(0, Math.min(1, ((x - p.x) * dx + (y - p.y) * dy) / (dx * dx + dy * dy || 1)));
+      m = Math.min(m, Math.hypot(x - p.x - t * dx, y - p.y - t * dy));
+    }
+    return m;
+  };
+  for (const p of a.plateaus) assert.ok(dist(p.x, p.y) >= GROUND_STYLE.plateauCenterMargin, 'Plateau-Mitte nicht auf dem Weg');
+  for (const t of a.tufts) assert.ok(dist(t.x, t.y) >= GROUND_STYLE.tuftPathMargin, 'Büschel nicht auf dem Weg');
+  for (const id of Object.keys(MAPS)) {
+    const g = groundPatches(id);
+    const on = !!MAPS[id].theme?.ground;
+    assert.equal(g.patches.length > 0, on, `${id}: Flecken nur mit theme.ground`);
+  }
+  assert.equal(groundPatches('fork').plateaus.length, 0);
+});
+
+test('Boden der Wiese: nur im Cache, Kartenwechsel baut neu, Aufbau schnell', async () => {
+  const { render } = await import('../src/render.js?boden');
+  const offscreen = [];
+  globalThis.document = { createElement() { const m = mockCtx(); const c = { width: 0, height: 0, getContext: () => m.ctx, m }; offscreen.push(c); return c; } };
+  try {
+    const s = createGame();
+    const main = mockCtx();
+    const t0 = performance.now();
+    render(main.ctx, s, {});
+    const ms = performance.now() - t0;
+    console.log(`B-078 Aufbau bgCanvas Wiese: ${ms.toFixed(1)} ms`);
+    const off = offscreen[offscreen.length - 1];
+    const q = off.m.counts.quadraticCurveTo;
+    assert.ok(q > 21 * 4 * 10, `Flecken im Cache (${q} Kurven)`);
+    render(main.ctx, s, {});
+    assert.equal(off.m.counts.quadraticCurveTo, q, 'zweiter Frame zeichnet den Boden nicht neu');
+    assert.equal(main.counts.quadraticCurveTo || 0, 0, 'Frame-Pfad zeichnet keine Flecken');
+    assert.ok(ms < 60, `Aufbau ${ms.toFixed(1)} ms`);
+    const f = createGame({ mapId: 'fork' });
+    render(main.ctx, f, {});
+    assert.equal(off.m.counts.quadraticCurveTo, q, 'Fork (ohne theme.ground) zeichnet keine Flecken');
+    render(main.ctx, createGame(), {});
+    assert.ok(off.m.counts.quadraticCurveTo > q, 'Wechsel zurueck zur Wiese baut den Boden neu');
+  } finally { delete globalThis.document; }
+});
+
+test('groundPatches (Randfälle): alle Karten, undefined, unbekannt, endlich, nie auf Wegkacheln, Tore frei', async () => {
+  const { groundPatches, blobPoints } = await import('../src/decor.js');
+  const { pathTiles } = await import('../src/path.js');
+  const { MAPS, GROUND_STYLE: G, WIDTH, HEIGHT } = await import('../src/config.js');
+  const empty = { patches: [], plateaus: [], tufts: [] };
+  assert.deepEqual(groundPatches('gibts-nicht'), empty);
+  assert.doesNotThrow(() => groundPatches(undefined));
+  assert.deepEqual(groundPatches(undefined), groundPatches('meadow'), 'undefined = Standardkarte');
+  for (const id of Object.keys(MAPS)) assert.doesNotThrow(() => groundPatches(id), id);
+  const g = groundPatches('meadow');
+  const tile = (x, y) => `${Math.floor(x / TILE)},${Math.floor(y / TILE)}`;
+  const wp = MAPS.meadow.waypoints;
+  const onPath = pathTiles(wp);
+  // Wegrandkacheln: Wegkacheln samt 8 Nachbarn
+  for (const t of g.tufts) {
+    assert.ok(Number.isFinite(t.x) && Number.isFinite(t.y) && Number.isFinite(t.s));
+    assert.ok(!onPath.has(tile(t.x, t.y)), 'Büschel nicht auf Wegkachel');
+  }
+  const nearAxis = (x, y) => wp.slice(0, -1).some((a, i) => {
+    const b = wp[i + 1], ax = (a[0] + 0.5) * TILE, ay = (a[1] + 0.5) * TILE, bx = (b[0] + 0.5) * TILE, by = (b[1] + 0.5) * TILE;
+    const cx = Math.max(Math.min(ax, bx), Math.min(Math.max(ax, bx), x)), cy = Math.max(Math.min(ay, by), Math.min(Math.max(ay, by), y));
+    return Math.hypot(x - cx, y - cy) < 30;
+  });
+  const start = wp[0], goal = wp[wp.length - 1];
+  for (const p of g.plateaus) {
+    for (const v of [p.x, p.y, p.rx, p.ry]) assert.ok(Number.isFinite(v));
+    const pts = blobPoints(p.x, p.y, p.rx, p.ry, p.seed, G.plateauPoints);
+    for (const [x, y] of pts) {
+      assert.ok(Number.isFinite(x) && Number.isFinite(y));
+      assert.ok(!onPath.has(tile(x, y)), 'Plateaukante nicht auf Wegkachel');
+      assert.ok(!nearAxis(x, y), 'Plateaukante nicht im Wegsaum (<30 px zur Achse)');
+      assert.ok(x >= 0 && x <= WIDTH && y >= 0 && y <= HEIGHT, 'Plateau im Spielfeld');
+    }
+    for (const [c, r] of [start, goal]) {
+      assert.ok(Math.hypot(p.x - (c + 0.5) * TILE, p.y - (r + 0.5) * TILE) > p.rx, 'Plateau deckt Start/Ziel nicht');
+    }
+  }
+  for (const p of g.patches) for (const v of [p.x, p.y, p.rx, p.ry]) assert.ok(Number.isFinite(v));
+});
+
+test('Wald/Eis/Fork zeichnen weiter das Schachbrett, Wiese nicht', async () => {
+  const { render } = await import('../src/render.js?schach');
+  const { MAPS } = await import('../src/config.js');
+  const made = [];
+  globalThis.document = { createElement() { const m = mockCtx(); const c = { width: 0, height: 0, getContext: () => m.ctx, m }; made.push(c); return c; } };
+  const rects = {};
+  try {
+    for (const id of Object.keys(MAPS)) {
+      const before = made.map((c) => c.m.counts.fillRect || 0);
+      render(mockCtx().ctx, createGame({ mapId: id }), {});
+      rects[id] = Math.max(...made.map((c, i) => (c.m.counts.fillRect || 0) - (before[i] || 0)));
+    }
+  } finally { delete globalThis.document; }
+  for (const id of Object.keys(MAPS)) if (id !== 'meadow') assert.ok(rects[id] > rects.meadow, `${id}: Schachbrett (${rects[id]} vs ${rects.meadow})`);
+});

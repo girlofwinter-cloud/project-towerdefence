@@ -506,3 +506,13 @@ Neue Einträge werden unten angehängt. Bestehende Einträge werden nie geänder
 - Review: APPROVE (keine Muss-Punkte; Hinweise als B-086)
 - Entscheidungen: `src/decor.js` liefert Position, Art, Reihe und Schattierung der Kronen (`treeFrame`, deterministisch), `src/render-trees.js` zeichnet sie nur im Hintergrund-Cache, Zahlen in `TREE_FRAME` (`src/config.js`), aktiviert über `MAPS.meadow.theme.treeFrame`. Zwei Reihen (hinten dunkler/kleiner, vorn heller/größer), mindestens 60 Kronen, Arten Laub, Apfel, Blüte, Tanne; Aufbauzeit im Mock 7 bis 10 ms. **Runde 2 auf Anweisung des Orchestrators:** Runde 1 hielt sich an "Überhang höchstens 16 px" und wirkte viel dünner als das Zielbild. Der Wert stammte aus einer falschen Angabe des Designers (sein Entwurf reicht 25 bis 40 px tief); er wurde auf 36 px angehoben (`TREE_FRAME.maxOverhang`), das Backlog entsprechend geändert. Der Wegabstand-Test (Abstand mindestens Radius plus `pathReach()`) blieb unverändert streng, der Kronenzahl-Test wurde auf 60 verschärft. **Angepasster Test:** "Dekoration verlässt ihre Kachel nicht" läuft auf `fork` statt `meadow`, weil der Rahmen auf der Wiese die alten Randbäume verdeckt (`coveredByCrown`); die geprüften Zeichenfunktionen sind dieselben. Reviewer: vertretbar; der Tester schloss die Lücke mit einem zusätzlichen Wiesen-Test (ohne Bäume, die der Rahmen ersetzt), Rest in B-086. Tests: 207 bestanden. Kronen per `roundRect` wie beim Weg (B-071).
 - Offen: B-086, Kronen für Wald/Eis mit B-072/B-073.
+
+## 2026-11-21 · B-078 · Wiese 3/7: Boden statt Schachbrett (Design-Overhaul)
+- Rolle(n): orchestrator, developer, tester, reviewer
+- Branch: agent/wiese-boden
+- Runden: 1 von max. 2
+- Ergebnis: fertig
+- Tests: 211 Unit-Tests bestanden (neue Tests in `tests/render.test.js` inkl. Randfall-Tests des Testers, keiner geändert oder abgeschwächt); Browser-Tests in der CI
+- Review: APPROVE (keine Muss-Punkte; Hinweise als B-087)
+- Entscheidungen: Neue Datei `src/render-ground.js` (Grund, Flecken mit 4 Lagen, Plateaus mit Wand und dezenter Kante, Gras-Büschel), `groundPatches` in `src/decor.js` (deterministisch, Abstand zur Wegachse), Zahlen in `GROUND_STYLE` (`src/config.js`), aktiviert über `MAPS.meadow.theme.ground`. Alles im Hintergrund-Cache (Aufbau Wiese im Mock 19,1 ms inkl. Weg, Deko und Baumrahmen). Wald, Eis und Fork behalten ihr Schachbrett (folgen mit B-072/B-073). `rgba`-Farben statt `globalAlpha`, weil ein bestehender Test `globalAlpha` im Cache verbietet. Plateaus sind nur Optik, jede freie Kachel bleibt bebaubar.
+- Offen: B-087 (überlappende Plateaus, Magic Numbers, Kiesel-/Blumengruppen).
