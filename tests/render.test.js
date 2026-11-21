@@ -6,7 +6,7 @@ import { decorFor } from '../src/decor.js';
 
 import { recoilOffset } from '../src/tower-fx.js';
 
-import { TOWER_TYPES, TILE, COLS, ROWS } from '../src/config.js';
+import { TOWER_TYPES, TILE, COLS, ROWS, MAPS } from '../src/config.js';
 
 import { liveParticles, SHAKE_MAX } from '../src/fx-system.js';
 import { mockCtx, withoutRandom } from './helpers.js';
@@ -79,8 +79,11 @@ test('Render: gezeichnete Dekoration verlaesst ihre Kachel nicht und ragt nie au
     // frische Modulinstanz, damit kein Cache aus anderen Tests verwendet wird
     const { render } = await import('../src/render.js?geometrie');
     // Karte ohne Baumrahmen: hier gilt die alte Einzel-Deko (auf der Wiese ersetzt der Rahmen die Randbaeume)
+    // (seit B-072 hat fork selbst einen Rahmen: dessen theme wird fuer diesen Test kurz entfernt)
+    const forkTheme = MAPS.fork.theme;
+    delete MAPS.fork.theme;
     const s = createGame({ mapId: 'fork' });
-    render({ drawImage() {} }, s, {});
+    try { render({ drawImage() {} }, s, {}); } finally { MAPS.fork.theme = forkTheme; }
     const eps = 1e-9;
     const kinds = {};
     let checked = 0;
@@ -538,10 +541,10 @@ test('Render: Kartenwechsel ice -> meadow ohne Theme-Reste', async () => {
   };
   const a = styles();
   render(a.ctx, createGame({ mapId: 'ice' }), {});
-  assert.ok(a.seen.has('#cfe6f2'), 'Eis-Theme sichtbar');
+  assert.ok(a.seen.has('#e3f1fa'), 'Eis-Theme sichtbar (Boden aus theme.ground seit B-073)');
   const b = styles();
   render(b.ctx, createGame(), {});
-  assert.ok(!b.seen.has('#cfe6f2') && !b.seen.has('#9cc3d8') && !b.seen.has('#d9edf6'));
+  assert.ok(!b.seen.has('#cfe6f2') && !b.seen.has('#9cc3d8') && !b.seen.has('#d9edf6') && !b.seen.has('#e3f1fa') && !b.seen.has('#9db3c9'));
 });
 
 test('Render: Karte Zangenangriff zeichnet beide Wege ohne Fehler', async () => {
@@ -737,7 +740,7 @@ test('Baumrahmen: nur im Hintergrund-Cache, Frame-Pfad zeichnet keine Kronen, Au
 });
 
 // ---------- Boden der Wiese (B-078) ----------
-test('groundPatches: deterministisch, Plateaus nie auf dem Weg, nur Wiese hat Flecken', async () => {
+test('groundPatches: deterministisch, Plateaus nie auf dem Weg, nur Karten mit theme.ground haben Flecken', async () => {
   const { groundPatches } = await import('../src/decor.js');
   const { buildPath } = await import('../src/path.js');
   const { MAPS, GROUND_STYLE } = await import('../src/config.js');
@@ -762,7 +765,9 @@ test('groundPatches: deterministisch, Plateaus nie auf dem Weg, nur Wiese hat Fl
     const on = !!MAPS[id].theme?.ground;
     assert.equal(g.patches.length > 0, on, `${id}: Flecken nur mit theme.ground`);
   }
-  assert.equal(groundPatches('fork').plateaus.length, 0);
+  // Plateaus (bei Eis: Schneeverwehungen) gibt es genau bei Karten mit Boden-Theme
+  for (const id of Object.keys(MAPS)) assert.equal(groundPatches(id).plateaus.length > 0, !!MAPS[id].theme?.ground, `${id}: Plateaus nur mit theme.ground`);
+  assert.equal(groundPatches('gibtsnicht').plateaus.length, 0);
 });
 
 test('Boden der Wiese: nur im Cache, Kartenwechsel baut neu, Aufbau schnell', async () => {
@@ -783,11 +788,15 @@ test('Boden der Wiese: nur im Cache, Kartenwechsel baut neu, Aufbau schnell', as
     assert.equal(off.m.counts.quadraticCurveTo, q, 'zweiter Frame zeichnet den Boden nicht neu');
     assert.equal(main.counts.quadraticCurveTo || 0, 0, 'Frame-Pfad zeichnet keine Flecken');
     assert.ok(ms < 60, `Aufbau ${ms.toFixed(1)} ms`);
-    const f = createGame({ mapId: 'fork' });
+    // Seit B-073 hat jede Karte theme.ground (Eis: Schneeverwehungen): der Flag je Karte steht in der Karten-Tabelle
+    for (const id of Object.keys(MAPS)) assert.ok(MAPS[id].theme?.ground, `${id}: Boden-Theme`);
+    const f = createGame({ mapId: 'ice' });
     render(main.ctx, f, {});
-    assert.equal(off.m.counts.quadraticCurveTo, q, 'Fork (ohne theme.ground) zeichnet keine Flecken');
+    assert.ok(off.m.counts.quadraticCurveTo > q, 'Eis zeichnet Flecken (Schneeverwehungen) im Cache');
+    assert.equal(main.counts.quadraticCurveTo || 0, 0, 'Frame-Pfad zeichnet auch auf Eis keine Flecken');
+    const q2 = off.m.counts.quadraticCurveTo;
     render(main.ctx, createGame(), {});
-    assert.ok(off.m.counts.quadraticCurveTo > q, 'Wechsel zurueck zur Wiese baut den Boden neu');
+    assert.ok(off.m.counts.quadraticCurveTo > q2, 'Wechsel zurueck zur Wiese baut den Boden neu');
   } finally { delete globalThis.document; }
 });
 
@@ -831,7 +840,7 @@ test('groundPatches (Randfälle): alle Karten, undefined, unbekannt, endlich, ni
   for (const p of g.patches) for (const v of [p.x, p.y, p.rx, p.ry]) assert.ok(Number.isFinite(v));
 });
 
-test('Wald/Eis/Fork zeichnen weiter das Schachbrett, Wiese nicht', async () => {
+test('Karten mit theme.ground zeichnen kein Schachbrett, Karten ohne es schon (alle Karten haben es seit B-073)', async () => {
   const { render } = await import('../src/render.js?schach');
   const { MAPS } = await import('../src/config.js');
   const made = [];
@@ -844,7 +853,11 @@ test('Wald/Eis/Fork zeichnen weiter das Schachbrett, Wiese nicht', async () => {
       rects[id] = Math.max(...made.map((c, i) => (c.m.counts.fillRect || 0) - (before[i] || 0)));
     }
   } finally { delete globalThis.document; }
-  for (const id of Object.keys(MAPS)) if (id !== 'meadow') assert.ok(rects[id] > rects.meadow, `${id}: Schachbrett (${rects[id]} vs ${rects.meadow})`);
+  for (const id of Object.keys(MAPS)) {
+    if (MAPS[id].theme?.ground) assert.ok(rects[id] < COLS * ROWS, `${id}: kein Schachbrett (${rects[id]} fillRect)`);
+    else assert.ok(rects[id] > rects.meadow, `${id}: Schachbrett (${rects[id]} vs ${rects.meadow})`);
+  }
+  assert.ok(rects.ice < rects.forest * 3, 'Eis zeichnet kein Schachbrett mehr');
 });
 
 test('Wiesen-Deko (flatpop): nur im Cache, Aufbau schnell', async () => {
@@ -896,7 +909,13 @@ test('Wiesen-Licht: Abdunklung begrenzt, nur Wiese, Gradienten nur im Cache, Auf
   const lighten = L.gradientAlpha + L.beamAlpha * L.beams.length;
   assert.ok(lighten <= 0.3, 'Aufhellung bleibt dezent');
   assert.equal(MAPS.meadow.theme.light, true);
-  for (const id of Object.keys(MAPS)) if (id !== 'meadow') assert.ok(!MAPS[id].theme?.light, `${id} ohne Licht`);
+  for (const id of ['forest', 'ice', 'fork']) {
+    const l = MAPS[id].theme.light;
+    assert.ok(l.vignetteAlpha <= 0.3, `${id}: Vignette begrenzt`);
+    assert.ok((l.gradientAlpha ?? L.gradientAlpha) + (l.beamAlpha ?? L.beamAlpha) * L.beams.length <= 0.3, `${id}: Aufhellung dezent`);
+  }
+  const [sr, , sb] = MAPS.ice.theme.light.shadow.split(',').map(Number);
+  assert.ok(sb > sr, 'Eis: Vignette bläulich (Blauanteil > Rotanteil)');
   const { render } = await import('../src/render.js?licht');
   const offscreen = [];
   globalThis.document = { createElement() { const m = mockCtx(); const c = { width: 0, height: 0, getContext: () => m.ctx, m }; offscreen.push(c); return c; } };
@@ -995,4 +1014,201 @@ test('Tester B-082: Rand-Turm, Hover null/Rand, Meteor-Zielkreis und Kartenwechs
     assert.ok(withT - without < 20, `${id}: keine Insel-Ellipsen (Insel hätte 7 je Turm)`);
   }
   assert.ok(wiese > 0 && wald);
+});
+
+// ---------- Welten Wald und Zangenangriff (B-072) ----------
+test('B-072: Wald und Fork zeichnen ihre Paletten aus config, die Wiese nicht (Boden, Weg, Tanne, Laub)', async () => {
+  const { render } = await import('../src/render.js?welten-farben');
+  const seen = (id) => {
+    const set = new Set();
+    const m = new Proxy({}, { get: (_, k) => (k === 'createLinearGradient' || k === 'createRadialGradient' ? () => ({ addColorStop() {} }) : () => {}), set(_, k, v) { if (k === 'fillStyle' || k === 'strokeStyle') set.add(v); return true; } });
+    render(m, createGame({ mapId: id }), {});
+    return set;
+  };
+  const w = seen('forest'), f = seen('fork'), m = seen('meadow');
+  for (const c of ['#4b9448', '#c9a56a', '#3b2813', '#8fd14f']) assert.ok(w.has(c), `Wald: ${c}`);
+  for (const c of ['#b3b45a', '#d6ab70', '#4a3018', '#e0803a']) assert.ok(f.has(c), `Fork: ${c}`);
+  for (const c of ['#4b9448', '#c9a56a', '#b3b45a', '#d6ab70', '#e0803a']) assert.ok(!m.has(c), `Wiese ohne ${c}`);
+  assert.ok(!w.has('#b3b45a') && !f.has('#4b9448'), 'keine Farben der anderen Welt');
+  assert.ok(m.has('#5fae48') && !w.has('#5fae48') && !f.has('#5fae48'), 'Wiesen-Boden nur auf der Wiese');
+});
+
+test('B-072: Wegmitte hebt sich vom Boden ab (>= 10 % Helligkeit), Gegner-Konturen >= 25 % von der Wegmitte, alle Karten mit eigenem Weg', async () => {
+  const { MAPS, ENEMY_TYPES, GROUND_STYLE, themed } = await import('../src/config.js');
+  const { brightness, outlineOf } = await import('../src/draw-utils.js');
+  for (const id of ['forest', 'fork']) {
+    const path = MAPS[id].theme.path;
+    const ground = themed(id, 'ground', GROUND_STYLE).base;
+    // Die Wegmitte (hellste Wegflaeche) hebt sich ab; der Rand (dunkle Kontur) trennt zusaetzlich
+    assert.ok(Math.abs(brightness(path.mid) - brightness(ground)) >= 0.1, `${id}: Wegmitte zu nah am Boden`);
+    assert.ok(brightness(path.outline) < 0.3 && path.main !== ground, `${id}: dunkle Kontur`);
+    for (const [k, def] of Object.entries(ENEMY_TYPES)) {
+      const d = Math.abs(brightness(path.mid) - brightness(outlineOf(def.color)));
+      assert.ok(d >= 0.25, `${id} ${k}: Abstand ${d.toFixed(2)}`);
+    }
+  }
+});
+
+test('B-072: Wald und Fork nur im Hintergrund-Cache, kein Neuzeichnen, Gradienten nur im Cache, Aufbau unter 60 ms, Kartenwechsel baut neu', async () => {
+  const { render } = await import('../src/render.js?welten-cache');
+  const offscreen = [];
+  globalThis.document = { createElement() { const m = mockCtx(); const c = { width: 0, height: 0, getContext: () => m.ctx, m }; offscreen.push(c); return c; } };
+  try {
+    const main = mockCtx();
+    for (const id of ['forest', 'fork']) {
+      const s = createGame({ mapId: id });
+      const before = { ...(offscreen[offscreen.length - 1]?.m.counts || {}) }; // der Cache-Canvas wird pro Karte neu bemalt
+      const t0 = performance.now();
+      render(main.ctx, s, {});
+      const ms = performance.now() - t0;
+      console.log(`B-072 Aufbau bgCanvas ${id}: ${ms.toFixed(1)} ms`);
+      const off = offscreen[offscreen.length - 1];
+      const d = (k) => (off.m.counts[k] || 0) - (before[k] || 0);
+      assert.ok(d('quadraticCurveTo') > 100, `${id}: Boden im Cache`);
+      assert.ok(d('createLinearGradient') === 1 && d('createRadialGradient') === 1, `${id}: Licht im Cache`);
+      assert.equal(off.m.props.shadowBlur, undefined);
+      assert.equal(off.m.props.globalAlpha, undefined);
+      const calls = { ...off.m.counts };
+      const built = offscreen.length;
+      render(main.ctx, s, {});
+      assert.equal(offscreen.length, built, `${id}: Cache wird wiederverwendet`);
+      assert.deepEqual(off.m.counts, calls, `${id}: zweiter Frame zeichnet den Hintergrund nicht neu`);
+      for (const k of ['createLinearGradient', 'createRadialGradient', 'quadraticCurveTo', 'bezierCurveTo']) assert.equal(main.counts[k] || 0, 0, `${id}: Frame-Pfad zeichnet kein ${k}`);
+      assert.ok(ms < 60, `${id}: Aufbau ${ms.toFixed(1)} ms`);
+    }
+    // Kartenwechsel zurueck zur Wiese baut den Hintergrund neu und zeichnet ihre Palette
+    const built = offscreen.length;
+    render(main.ctx, createGame({ mapId: 'meadow' }), {});
+    const back = offscreen[offscreen.length - 1];
+    assert.ok(back.m.counts.fillRect >= 1 && back.m.counts.quadraticCurveTo > 100, 'Wiese nach Fork neu gezeichnet');
+    assert.equal(offscreen.length, built, 'derselbe Cache wird neu bemalt');
+  } finally { delete globalThis.document; }
+});
+
+test('B-072: Hindernisse des Walds im neuen Stil (Kontur), Lage und Zahl unveraendert; Wiese/Eis behalten ihre Zeichnung', async () => {
+  const { drawObstacleFlat, drawTree, useDecorStyle } = await import('../src/render-decor.js');
+  const { themed, DECOR_STYLE } = await import('../src/config.js');
+  const strokes = (fn) => { const m = mockCtx(); fn(m.ctx); return m.counts; };
+  useDecorStyle(themed('forest', 'decor', DECOR_STYLE));
+  try {
+    for (const [kind, fir] of [['tree', true], ['tree', false], ['rock', false]]) {
+      for (let v = 0; v < 3; v++) {
+        const c = strokes((ctx) => drawObstacleFlat(ctx, 4, 6, kind, fir, v));
+        assert.ok(c.stroke > 0 && c.fill > 0, `${kind}/${fir}/${v}: Flaeche mit Kontur`);
+      }
+    }
+    assert.ok(strokes((ctx) => drawTree(ctx, 100, 100, 0, true)).stroke > 0);
+  } finally { useDecorStyle(); }
+  // Frame: nur der Hintergrund-Cache zeichnet Hindernisse
+  const { render } = await import('../src/render.js?welten-hindernis');
+  const offscreen = [];
+  globalThis.document = { createElement() { const m = mockCtx(); const c = { width: 0, height: 0, getContext: () => m.ctx, m }; offscreen.push(c); return c; } };
+  try {
+    const main = mockCtx();
+    const s = createGame({ mapId: 'forest' });
+    render(main.ctx, s, {});
+    const n = offscreen[offscreen.length - 1].m.counts.arcTo;
+    assert.ok(n >= 39 * 4, `je Hindernis ein Bodenfleck (${n})`);
+    assert.equal(s.obstacles.size, 39);
+    render(main.ctx, s, {});
+    assert.equal(main.counts.arcTo || 0, 0, 'Frame-Pfad zeichnet keine Hindernisse');
+  } finally { delete globalThis.document; }
+});
+
+// ---------- Eiswelt (B-073) ----------
+test('B-073: Eis zeichnet seine Palette aus config (Schnee, Weg, Kristall), nicht die der anderen Welten', async () => {
+  const { render } = await import('../src/render.js?eis-farben');
+  const seen = (id) => {
+    const set = new Set();
+    const m = new Proxy({}, { get: (_, k) => (k === 'createLinearGradient' || k === 'createRadialGradient' ? () => ({ addColorStop() {} }) : () => {}), set(_, k, v) { if (k === 'fillStyle' || k === 'strokeStyle') set.add(v); return true; } });
+    render(m, createGame({ mapId: id }), {});
+    return set;
+  };
+  const i = seen('ice');
+  for (const c of ['#e3f1fa', '#9db3c9', '#2f4560', '#7fe0ff', '#ffffff']) assert.ok(i.has(c), `Eis: ${c}`);
+  for (const id of ['meadow', 'forest', 'fork']) {
+    const o = seen(id);
+    for (const c of ['#e3f1fa', '#9db3c9', '#2f4560', '#7fe0ff']) assert.ok(!o.has(c), `${id} ohne Eis-Farbe ${c}`);
+  }
+});
+
+test('B-073: Eisweg dunkler als der Schnee (>= 15 %), Gegner-Konturen >= 25 % von der Wegmitte, Rand und Kontur dunkel', async () => {
+  const { ENEMY_TYPES, GROUND_STYLE, themed } = await import('../src/config.js');
+  const { brightness, outlineOf } = await import('../src/draw-utils.js');
+  const path = MAPS.ice.theme.path;
+  const ground = themed('ice', 'ground', GROUND_STYLE);
+  for (const f of [ground.base, ground.plateauTop]) assert.ok(brightness(path.main) <= brightness(f) - 0.15, `Weg zu hell gegen ${f}`);
+  assert.ok(brightness(path.mid) < brightness(ground.base) - 0.1, 'Wegmitte hebt sich vom Boden ab');
+  assert.ok(brightness(path.outline) < 0.3 && brightness(path.edge) < brightness(path.main));
+  for (const [k, def] of Object.entries(ENEMY_TYPES)) {
+    const d = Math.abs(brightness(path.mid) - brightness(outlineOf(def.color)));
+    assert.ok(d >= 0.25, `${k}: Abstand ${d.toFixed(2)}`);
+  }
+});
+
+test('B-073: Schneekappen auf Tannen nur mit theme-Schnee (Eis), Kristall und Schneehaufen im Cache ohne arc/ellipse-Streu', async () => {
+  const { snowCap } = await import('../src/draw-utils.js');
+  const { drawTreeFrame } = await import('../src/render-trees.js');
+  const { drawScatter, useDecorStyle } = await import('../src/render-decor.js');
+  const { TREE_FRAME, DECOR_STYLE, themed } = await import('../src/config.js');
+  const c1 = mockCtx(); snowCap(c1.ctx, 50, 20, 10, 15, '#ffffff', '#c6dcec');
+  assert.equal(c1.counts.fill, 2);
+  const crowns = [{ x: 100, y: 100, r: 16, kind: 'fir', row: 0, shade: 0, seed: 1 }];
+  const ice = mockCtx(); drawTreeFrame(ice.ctx, crowns, themed('ice', 'treeFrame', TREE_FRAME));
+  const plain = mockCtx(); drawTreeFrame(plain.ctx, crowns, themed('forest', 'treeFrame', TREE_FRAME));
+  assert.equal(ice.counts.fill - plain.counts.fill, 6, 'je Stufe zwei Flaechen Schnee (3 Stufen)');
+  useDecorStyle(themed('ice', 'decor', DECOR_STYLE));
+  try {
+    for (const kind of ['crystal', 'snowpile']) {
+      const m = mockCtx(); drawScatter(m.ctx, { kind }, 60, 60);
+      assert.ok(m.counts.fill > 0, kind);
+      assert.equal((m.counts.arc || 0) + (m.counts.ellipse || 0), 0, `${kind}: Streu-Deko ohne arc/ellipse`);
+    }
+  } finally { useDecorStyle(); }
+});
+
+test('B-073: Eis nur im Hintergrund-Cache, kein Neuzeichnen, Licht bläulich, Aufbau unter 60 ms, Kartenwechsel baut neu', async () => {
+  const { render } = await import('../src/render.js?eis-cache');
+  const offscreen = [];
+  globalThis.document = { createElement() { const m = mockCtx(); const c = { width: 0, height: 0, getContext: () => m.ctx, m }; offscreen.push(c); return c; } };
+  try {
+    const main = mockCtx();
+    const s = createGame({ mapId: 'ice' });
+    const t0 = performance.now();
+    render(main.ctx, s, {});
+    const ms = performance.now() - t0;
+    console.log(`B-073 Aufbau bgCanvas Eis: ${ms.toFixed(1)} ms`);
+    const off = offscreen[offscreen.length - 1];
+    assert.ok(off.m.counts.quadraticCurveTo > 100, 'Schneeboden im Cache');
+    assert.equal(off.m.counts.createLinearGradient, 1);
+    assert.equal(off.m.counts.createRadialGradient, 1);
+    assert.equal(off.m.props.shadowBlur, undefined);
+    assert.equal(off.m.props.globalAlpha, undefined);
+    const calls = { ...off.m.counts };
+    const built = offscreen.length;
+    render(main.ctx, s, {});
+    assert.equal(offscreen.length, built, 'Cache wiederverwendet');
+    assert.deepEqual(off.m.counts, calls, 'zweiter Frame zeichnet den Hintergrund nicht neu');
+    for (const k of ['createLinearGradient', 'createRadialGradient', 'quadraticCurveTo', 'bezierCurveTo']) assert.equal(main.counts[k] || 0, 0, `Frame-Pfad: kein ${k}`);
+    assert.ok(ms < 60, `Aufbau ${ms.toFixed(1)} ms`);
+    render(main.ctx, createGame(), {});
+    assert.notDeepEqual(off.m.counts, calls, 'Wechsel zur Wiese baut neu');
+  } finally { delete globalThis.document; }
+});
+
+test('Tester Welten-Block: Kartenwechsel durch alle 4 Karten ist reproduzierbar (kein Cache-Rest), unbekannte Id/undefined werfen nicht', async () => {
+  const { render } = await import('../src/render.js?welten4');
+  const { themed, MAPS: M, PATH_STYLE } = await import('../src/config.js');
+  const sig = (id) => {
+    const seen = new Set();
+    const ctx = new Proxy({}, { get: (_, k) => (k === 'createLinearGradient' || k === 'createRadialGradient' ? () => ({ addColorStop() {} }) : () => {}), set(_, k, v) { if (k === 'fillStyle' || k === 'strokeStyle') seen.add(String(v)); return true; } });
+    render(ctx, createGame({ mapId: id }), {});
+    return [...seen].sort().join('|');
+  };
+  const ids = Object.keys(M);
+  const first = {};
+  for (const id of ids) first[id] = sig(id);
+  for (const id of [...ids].reverse().concat(ids)) assert.equal(sig(id), first[id], `${id}: gleiche Farben nach Kartenwechsel`);
+  assert.equal(new Set(Object.values(first)).size, ids.length, 'jede Karte sieht anders aus');
+  for (const a of [undefined, null, 'gibtsnicht']) for (const k of ['path', 'pathStyle', 'decor', 'ground', 'light']) assert.doesNotThrow(() => themed(a, k, PATH_STYLE), `themed(${a},${k})`);
 });

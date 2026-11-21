@@ -48,3 +48,26 @@ test('Streu-Deko: gezeichnete Punkte erreichen nie eine Wegkachel und bleiben im
   assert.ok(n >= 5);
   console.log(`Streu-Deko: ${n} Stuecke, ${outTile} Punkte ausserhalb der eigenen Kachel`);
 });
+
+// B-072: Wald und Zangenangriff haben eigene Streu-Deko; auch sie erreicht nie eine Wegkachel.
+test('Streu-Deko Wald/Zangenangriff: gezeichnete Punkte erreichen nie eine Wegkachel und bleiben im Spielfeld', () => {
+  for (const id of ['forest', 'fork']) {
+    const s = createGame({ mapId: id });
+    const kinds = new Set();
+    for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
+      const a = scatterFor(c, r, s.blocked, s.obstacles, id);
+      if (!a) continue;
+      kinds.add(a.kind);
+      const { ctx, pts } = recorder();
+      drawScatter(ctx, a, c * TILE + a.ox * TILE, r * TILE + a.oy * TILE);
+      assert.ok(pts.length > 0, `${id}: ${a.kind} zeichnet nichts`);
+      for (const [x, y] of pts) {
+        assert.ok(Number.isFinite(x) && Number.isFinite(y));
+        const pc = Math.floor(x / TILE), pr = Math.floor(y / TILE);
+        assert.ok(!s.blocked.has(`${pc},${pr}`), `${id}: ${a.kind} auf ${c},${r} ragt auf Wegkachel ${pc},${pr}`);
+        assert.ok(pc >= 0 && pr >= 0 && pc < COLS && pr < ROWS, `${id}: ${a.kind} auf ${c},${r} ausserhalb`);
+      }
+    }
+    assert.ok(kinds.size >= 4, `${id}: Vielfalt ${[...kinds]}`);
+  }
+});

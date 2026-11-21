@@ -1,6 +1,6 @@
 // Weg im Flat-Pop-Stil (B-071): welliger Rand aus Kreisen, Kontur, Saum, Rillen, Steine, helle Mitte.
 // Nur Zeichnen. Wird ausschließlich in den Hintergrund-Cache (bgCanvas) gemalt, nie pro Frame.
-import { TILE, PATH_STYLE as P } from './config.js';
+import { TILE, PATH_STYLE } from './config.js';
 import { tileRand } from './decor.js';
 import { shd } from './draw-utils.js';
 
@@ -43,10 +43,11 @@ function distToPaths(paths, x, y) {
 
 // Größte Ausdehnung des Rands von der Achse (für den Test: Weg-Geometrie aus config.js).
 export function pathReach() {
-  return P.edgeOffset + P.waveAmp * (1 + P.waveHarmonic) + P.edgeRadius;
+  return PATH_STYLE.edgeOffset + PATH_STYLE.waveAmp * (1 + PATH_STYLE.waveHarmonic) + PATH_STYLE.edgeRadius;
 }
 
 export function drawPathStyled(ctx, paths, theme) {
+  const P = { ...PATH_STYLE, ...(theme?.pathStyle || {}) }; // B-073: Eis überschreibt Steine, Glanz und Flecken
   const col = { ...P.colors, ...(theme?.path || {}) };
   const band = shd(col.main, P.bandShade);
   const lists = paths.map((p) => p.points);
@@ -119,7 +120,7 @@ export function drawPathStyled(ctx, paths, theme) {
   if (col.mid !== col.main) strokeAll(ctx, lists, P.midWidth, col.mid);
   // Flecken
   for (const [x, y, rx, ry, dark] of patches) {
-    ctx.fillStyle = dark ? 'rgba(143,106,59,0.14)' : 'rgba(255,248,214,0.22)';
+    ctx.fillStyle = dark ? P.patchDark : P.patchLight;
     ctx.beginPath();
     ctx.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2);
     ctx.fill();
@@ -140,7 +141,7 @@ export function drawPathStyled(ctx, paths, theme) {
     for (const [x, y, r, k] of pebbles) if (k === c) { ctx.moveTo(x + r, y); ctx.ellipse(x, y, r, r * 0.7, 0, 0, Math.PI * 2); }
     ctx.fill();
   }
-  ctx.fillStyle = 'rgba(110,76,42,0.45)';
+  ctx.fillStyle = P.stoneShadow;
   ctx.beginPath();
   for (const [x, y, r] of stones) { ctx.moveTo(x + 0.8 + r + 0.5, y + 1.5); ctx.ellipse(x + 0.8, y + 1.5, r + 0.5, r * 0.6, 0, 0, Math.PI * 2); }
   ctx.fill();

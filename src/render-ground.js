@@ -1,7 +1,7 @@
 // Boden der Wiese (B-078): weiche Flecken, Plateaus mit dunkler Kante, Grasbüschel.
 // Nur Zeichnen (Positionen kommen aus decor.js, Zahlen aus config.js). Wird ausschließlich in den
 // Hintergrund-Cache (bgCanvas) gemalt, nie pro Frame; kein shadowBlur, keine Verlaufsobjekte.
-import { GROUND_STYLE as G, WIDTH, HEIGHT } from './config.js';
+import { GROUND_STYLE, WIDTH, HEIGHT } from './config.js';
 import { blobPoints, tileRand } from './decor.js';
 
 // Glatte geschlossene Kurve durch Mittelpunkte der Kanten (quadratisch), skaliert um (cx, cy), versetzt um (dx, dy).
@@ -19,7 +19,7 @@ function smooth(ctx, pts, cx, cy, sc = 1, dx = 0, dy = 0) {
   ctx.closePath();
 }
 
-function drawTuft(ctx, t) {
+function drawTuft(ctx, t, G) {
   const cols = t.dark ? [G.blade[0], G.blade[1]] : [G.blade[1], G.blade[2]];
   for (let k = -1; k <= 1; k++) {
     const h = (4 + tileRand(t.seed, k + 2, 90) * 3.2) * t.s;
@@ -35,7 +35,8 @@ function drawTuft(ctx, t) {
 }
 
 // Reihenfolge: Grundfläche, Flecken, Plateaus. Büschel kommen separat (drawGroundTufts), damit der Weg dazwischen liegt.
-export function drawGround(ctx, ground) {
+// G: Stilblock der Karte (Standard: Wiese)
+export function drawGround(ctx, ground, G = GROUND_STYLE) {
   ctx.fillStyle = G.base;
   ctx.fillRect(0, 0, WIDTH, HEIGHT);
   for (const p of ground.patches) {
@@ -68,6 +69,6 @@ export function drawGround(ctx, ground) {
 }
 
 // Grasbüschel (nach dem Weg, vor der Deko; nie auf Wegkacheln, siehe groundPatches)
-export function drawGroundTufts(ctx, ground) {
-  for (const t of ground.tufts) drawTuft(ctx, t);
+export function drawGroundTufts(ctx, ground, G = GROUND_STYLE) {
+  for (const t of ground.tufts) drawTuft(ctx, t, G);
 }

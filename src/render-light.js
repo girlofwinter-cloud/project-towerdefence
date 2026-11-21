@@ -1,10 +1,10 @@
 // Licht der Wiese (B-081): Baumschatten, Lichtstreifen von oben links, sanfter Verlauf und Vignette.
 // Nur Zeichnen, ausschließlich im Hintergrund-Cache (bgCanvas): Gradient-Objekte entstehen nur dort,
 // nie pro Frame. Alle Farben als rgba, kein globalAlpha, kein shadowBlur.
-import { LIGHT_STYLE as L, WIDTH, HEIGHT } from './config.js';
+import { LIGHT_STYLE, WIDTH, HEIGHT } from './config.js';
 
 // Weiche Baumschatten, nach rechts unten versetzt; VOR den Kronen zeichnen.
-export function drawTreeShadows(ctx, crowns) {
+export function drawTreeShadows(ctx, crowns, L = LIGHT_STYLE) {
   ctx.fillStyle = `rgba(${L.shadow},${L.treeShadowAlpha})`;
   for (const c of crowns) {
     ctx.beginPath();
@@ -17,7 +17,7 @@ export function drawTreeShadows(ctx, crowns) {
 }
 
 // Lichtstreifen, Helligkeitsverlauf und Vignette als letzte Hintergrund-Schicht.
-export function drawLight(ctx) {
+export function drawLight(ctx, L = LIGHT_STYLE) {
   const diag = Math.hypot(WIDTH, HEIGHT);
   const g = ctx.createLinearGradient(0, 0, diag * L.gradientReach * 0.8, diag * L.gradientReach * 0.6);
   g.addColorStop(0, `rgba(${L.tint},${L.gradientAlpha})`);

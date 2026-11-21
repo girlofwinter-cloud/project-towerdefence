@@ -231,21 +231,7 @@ Erledigte Einträge (`fertig`) liegen in `docs/archiv/BACKLOG-fertig.md`. Beim A
 - Akzeptanzkriterien:
   - `npm test` bleibt grün, kein Test abgeschwächt.
 
-### B-043: Welt Wald: Feinschliff
-- Status: vorschlag
-- Teilweise erledigt (agent/aufraeumen-2): Punkte (1), (2) und (3). Offen: (4) Sichtprüfung der Waldkarte im Browser.
-- Aufwand: S
-- Idee: Hinweise aus dem Review von B-028. (1) Baum-Anteil `0.7` aus `obstacleKind` in `src/decor.js` nach `src/config.js` (`OBSTACLE_TREE_SHARE`). (2) Schattenfarbe `rgba(10,40,15,0.35)` in `drawObstacle` (`src/render.js`) als benannte Konstante. (3) `tests/forest-edge.test.js` in `tests/game.test.js` und `tests/decor.test.js` einsortieren (Regel: Tests nach Modul). (4) Sichtprüfung der Waldkarte im Browser: Lesbarkeit der Hindernisse, Gefühl der knappen Bauplätze.
-- Akzeptanzkriterien:
-  - `npm test` bleibt grün, kein Test abgeschwächt oder gelöscht.
 
-### B-044: Eiswelt: Feinschliff
-- Status: vorschlag
-- Teilweise erledigt (agent/eis-balancing): Punkte (1) und (2). Die Eiswelt war dem Spieler zu einfach und wurde auf "Glatteis" umgestellt (Gegner 1,18-fach, Kanone 0,95-fach), mit Balancing-Tests. Offen: (3) und (4).
-- Aufwand: S
-- Idee: Hinweise aus dem Review von B-029. (1) Playtest der Eiswelt (erledigt). (2) Kartenspezifische Balancing-Tests für die Eiswelt (erledigt). (3) Sichtprüfung des Farbschemas im Browser. (4) Eiswelt hat keine Hindernisse; eigene Eis-Deko (Schneehaufen, Eisfelsen) wäre ein eigener Eintrag.
-- Akzeptanzkriterien:
-  - `npm test` bleibt grün, kein Test abgeschwächt.
 
 ### B-047: Zwei Eingänge: Feinschliff und Balancing
 - Status: vorschlag
@@ -329,14 +315,6 @@ Erledigte Einträge (`fertig`) liegen in `docs/archiv/BACKLOG-fertig.md`. Beim A
   - Tastenkürzel-Hinweise sind auf dem Handy ausgeblendet (auch bei Pause und Tempo).
   - Unit-/Browser-Test prüft die Mindesthöhe.
 
-### B-059: Welten optisch unterscheidbar: Eis und Wald (Sollte, Design-Prüfung)
-- Status: vorschlag
-- Aufwand: M
-- Idee: Der Weg ist auf Wiese, Wald und Eis fast gleich (braun), Deko auf Eis ist wie auf der Wiese, der Zangenangriff sieht aus wie die Wiese. Eis: bläulicher glatter Weg, Schnee statt Gras, Kristalle, Flocken. Wald: dunkler Moos-Weg. Wegstil über `theme` in `src/config.js`, Deko einmalig in Off-Screen-Canvas. Überschneidet sich mit B-043 und B-044, bei Umsetzung zusammenlegen. Risiko: Gegner auf hellem Grund schlecht lesbar. Screenshots: map-ice.png, map-forest.png, map-fork.png.
-- Akzeptanzkriterien:
-  - Wegfarbe der Eiskarte ist nicht braun und deutlich verschieden von der Wiese; Deko-Sets unterscheiden sich je Welt.
-  - Zahlen nur in `src/config.js`; Frame-Zeit bleibt unter 16 ms.
-  - Tests in `tests/decor` und `tests/render` laufen weiter, neue Test für Deko-Set je Welt.
 
 ### B-060: Wellen-Vorschau mit Symbolen und Fortschritt am Start-Knopf (Sollte, Design-Prüfung)
 - Status: vorschlag
@@ -429,20 +407,7 @@ Reihenfolge ist Abhängigkeit: B-062 und B-063 zuerst, dann gemeinsame Sichtprü
   - Pro Karte `buildSpots` in `src/config.js`; `canBuild` erlaubt nur dort.
   - Alle Strategie-Läufe (Welle 20) auf allen Karten weiter gewinnbar; Zahlen im Ledger.
   - Test: Bauen außerhalb der Plätze scheitert; Hover zeigt freie/belegte Plätze.
-### B-072: Welten Wald und Zangenangriff (Design-Overhaul)
-- Status: vorschlag
-- Aufwand: M
-- Idee: Wald mit Tannen, Pilzen, Moos; Zangenangriff mit Herbstlaub. Überschneidet sich mit B-043 und B-059, bei Umsetzung zusammenlegen.
-- Akzeptanzkriterien:
-  - Eigene Palette, auf Screenshot klar von der Wiese unterscheidbar.
 
-### B-073: Welt Eis (Design-Overhaul)
-- Status: vorschlag
-- Aufwand: M
-- Idee: Schnee, Eiskristalle, Tannen mit Schneekappe, dunklerer Weg. Überschneidet sich mit B-044 und B-059.
-- Akzeptanzkriterien:
-  - Weg vom Boden unterscheidbar, Gegner mit Kontrastregel aus `docs/STIL.md` lesbar.
-  - Tests der Hindernisse grün.
 
 ### B-074: Vulkan und Wüste (Design-Overhaul)
 - Status: vorschlag
@@ -518,3 +483,10 @@ Reihenfolge ist Abhängigkeit: B-062 und B-063 zuerst, dann gemeinsame Sichtprü
 - Akzeptanzkriterien:
   - Lichtstreifen im Screenshot sichtbar, mittlere Helligkeit des Feldes mindestens 85 % von heute.
   - Reichweitenkreis auf Eis, Wald und Fork im Screenshot lesbar.
+
+### B-091: Welten: Feinschliff (Hinweise aus dem Block-Review B-072/B-073)
+- Status: vorschlag
+- Aufwand: S
+- Idee: (1) Test mit synthetischer Karte ohne `theme.ground`, damit der Schachbrett-Zweig (alte Zeichnung) nicht ungetestet bleibt: Alle vier Karten haben jetzt `theme.ground`. (2) Der Fork-Test in `tests/render.test.js` ("Dekoration verlässt ihre Kachel nicht") entfernt `MAPS.fork.theme` per `delete` und `createGame` vor dem `try`; beides in den `try`-Block verschieben, damit das Theme bei einem Fehler zurückgesetzt wird. (3) `path.edge` in `config.js` ist ein toter Wert (nur im Test geprüft, nicht gezeichnet); entfernen oder nutzen. (4) Der orange Saum auf Fork (`#e0803a`) ist laut, Deckkraft als Parameter. (5) Das Eis-Theme enthält noch die alten Felder `grass` und `blade`. (6) Der Fork-Test löscht `MAPS.fork.theme` und prüft damit den Pfad ohne Theme, nicht mehr die echte Fork-Deko (Tester: "leichte Schwächung", die echte Deko deckt `tests/scatter-bounds.test.js`); eine Prüfung der echten Fork-Deko gegen die Kachelgrenzen ergänzen. Test-Titel nennen noch "Wiese", obwohl sie alle Karten prüfen. (7) Wald und Fork haben noch keine `islands` und `accents` (Mauer, Teich, Brunnen), Eis auch nicht.
+- Akzeptanzkriterien:
+  - Schachbrett-Zweig getestet, Fork-Test räumt auch bei Fehlern auf, toter Wert entfernt, `npm test` grün.

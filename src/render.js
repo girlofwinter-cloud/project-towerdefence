@@ -1,5 +1,5 @@
 // Zeichnet den Spielzustand auf ein Canvas. Keine Spiel-Logik hier!
-import { TILE, COLS, ROWS, WIDTH, HEIGHT, TOWER_TYPES, MAPS, ABILITIES, RANGE_STYLE } from './config.js';
+import { TILE, COLS, ROWS, WIDTH, HEIGHT, TOWER_TYPES, MAPS, ABILITIES, RANGE_STYLE, TREE_FRAME, GROUND_STYLE, LIGHT_STYLE, DECOR_STYLE, themed } from './config.js';
 import { towerStats, enemyPath } from './game.js';
 import { rect, tri, disc } from './draw-utils.js';
 import { drawPathStyled } from './render-path.js';
@@ -81,18 +81,23 @@ function drawGround(ctx, state) {
 function paintBackground(ctx, state) {
   ctx.save();
   // Wiese (theme.ground): Flecken und Plateaus statt Schachbrett; Büschel nach dem Weg (nie auf Wegkacheln)
-  const ground = MAPS[state.mapId]?.theme?.ground ? groundPatches(state.mapId) : null;
-  if (ground) drawGroundFill(ctx, ground);
-  else drawGrass(ctx, MAPS[state.mapId]?.theme);
+  // Wald und Zangenangriff (B-072) überschreiben Paletten über themed(); die Wiese nutzt die Basisblöcke
+  const id = state.mapId;
+  const groundStyle = themed(id, 'ground', GROUND_STYLE);
+  const lightStyle = themed(id, 'light', LIGHT_STYLE);
+  const ground = MAPS[id]?.theme?.ground ? groundPatches(id) : null;
+  flat.useDecorStyle(themed(id, 'decor', DECOR_STYLE));
+  if (ground) drawGroundFill(ctx, ground, groundStyle);
+  else drawGrass(ctx, MAPS[id]?.theme);
   drawPath(ctx, state);
-  if (ground) drawGroundTufts(ctx, ground);
-  const crowns = MAPS[state.mapId]?.theme?.treeFrame ? treeFrame(state.mapId) : null;
+  if (ground) drawGroundTufts(ctx, ground, groundStyle);
+  const crowns = MAPS[id]?.theme?.treeFrame ? treeFrame(id) : null;
   drawDecor(ctx, state, crowns);
-  const light = MAPS[state.mapId]?.theme?.light;
-  if (crowns && light) drawTreeShadows(ctx, crowns); // vor den Kronen
-  if (crowns) drawTreeFrame(ctx, crowns);
+  const light = MAPS[id]?.theme?.light;
+  if (crowns && light) drawTreeShadows(ctx, crowns, lightStyle); // vor den Kronen
+  if (crowns) drawTreeFrame(ctx, crowns, themed(id, 'treeFrame', TREE_FRAME));
   if (MAPS[state.mapId]?.theme?.accents) drawAccents(ctx, accentsFor(state.mapId));
-  if (light) drawLight(ctx); // Licht und Vignette vor den Toren, damit Start/Ziel lesbar bleiben
+  if (light) drawLight(ctx, lightStyle); // Licht und Vignette vor den Toren, damit Start/Ziel lesbar bleiben
   for (const path of state.paths || [state.path]) {
     const pts = path.points;
     drawGate(ctx, pts[0], pts[1]);
@@ -134,11 +139,15 @@ function drawPath(ctx, state) {
 // Dekoration: Regeln stehen in decor.js (gross nur am Rand, innen nur klein, nie auf dem Weg).
 // crowns: Der Baumrahmen ersetzt die einzelnen Rand-Baeume, soweit eine Krone sie verdeckt (kein Doppel).
 function drawDecor(ctx, state, crowns) {
-  const flatpop = MAPS[state.mapId]?.theme?.decorStyle === 'flatpop'; // B-079: neue Deko nur auf der Wiese
+  const flatpop = MAPS[state.mapId]?.theme?.decorStyle === 'flatpop'; // B-079: neue Deko (Wiese, Wald, Zangenangriff)
+  const style = themed(state.mapId, 'decor', DECOR_STYLE);
+  const flatTrees = flatpop && style.flatTrees; // B-072: Bäume und Hindernisse im neuen Stil
+  const firShare = style.firShare;
   for (let r = 0; r < ROWS; r++) {
     for (let c = 0; c < COLS; c++) {
       if (state.obstacles && state.obstacles.has(`${c},${r}`)) {
-        drawObstacle(ctx, c, r);
+        if (flatTrees) flat.drawObstacleFlat(ctx, c, r, obstacleKind(c, r), tileRand(c, r, 8) < firShare, Math.floor(tileRand(c, r, 3) * 3));
+        else drawObstacle(ctx, c, r);
         continue;
       }
       const d = decorFor(c, r, state.blocked, state.obstacles);
@@ -150,6 +159,10 @@ function drawDecor(ctx, state, crowns) {
       const x = c * TILE + d.ox * TILE;
       const y = r * TILE + d.oy * TILE;
       if (crowns && d.kind === 'tree' && coveredByCrown(crowns, x, y)) continue;
+      if (flatTrees && d.kind === 'tree') {
+        flat.drawTree(ctx, x, y, d.variant, tileRand(c, r, 8) < firShare, 0.9);
+        continue;
+      }
       if (flatpop && d.kind !== 'tree') {
         if (d.kind === 'bush') flat.drawBush(ctx, x, y, d.variant);
         else if (d.kind === 'rock') flat.drawRock(ctx, x, y, d.variant);
