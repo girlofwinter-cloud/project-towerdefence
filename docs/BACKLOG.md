@@ -173,14 +173,6 @@ Erledigte Einträge (`fertig`) liegen in `docs/archiv/BACKLOG-fertig.md`. Beim A
   - Test: Gegner verteilen sich gemäß Regel auf beide Zweige, beide erreichen das Ziel.
   - Zielwahl der Türme (`first`/`last`) bleibt sinnvoll definiert.
 
-### B-033: Mehrere Eingänge (zwei Spawn-Punkte)
-- Status: vorschlag
-- Aufwand: M
-- Idee: Zwei Eingänge, deren Wege später zusammenlaufen. Spawn-Einträge bekommen einen `lane`-Wert. Hängt von B-027 ab, verwandt mit B-032.
-- Akzeptanzkriterien:
-  - `waveFor` oder Map-Konfiguration verteilt Gegner auf Eingänge.
-  - Test: Gegner starten an beiden Eingängen, Gesamtanzahl pro Welle unverändert.
-
 ### B-034: Blitzturm mit Kettenblitz
 - Status: vorschlag
 - Aufwand: M
@@ -268,5 +260,29 @@ Erledigte Einträge (`fertig`) liegen in `docs/archiv/BACKLOG-fertig.md`. Beim A
 - Teilweise erledigt (agent/eis-balancing): Punkte (1) und (2). Die Eiswelt war dem Spieler zu einfach und wurde auf "Glatteis" umgestellt (Gegner 1,18-fach, Kanone 0,95-fach), mit Balancing-Tests. Offen: (3) und (4).
 - Aufwand: S
 - Idee: Hinweise aus dem Review von B-029. (1) Playtest der Eiswelt (erledigt). (2) Kartenspezifische Balancing-Tests für die Eiswelt (erledigt). (3) Sichtprüfung des Farbschemas im Browser. (4) Eiswelt hat keine Hindernisse; eigene Eis-Deko (Schneehaufen, Eisfelsen) wäre ein eigener Eintrag.
+- Akzeptanzkriterien:
+  - `npm test` bleibt grün, kein Test abgeschwächt.
+
+### B-045: Türme klarer unterscheiden (Spezialfähigkeiten)
+- Status: vorschlag
+- Aufwand: L
+- Idee: Der Spieler findet, dass sich die Waffen zu ähnlich anfühlen. Jeder Turm bekommt eine eigene Mechanik statt nur anderer Zahlen: Pfeilturm schießt schneller, je länger er dasselbe Ziel beschießt (Aufwärmen). Kanone macht Flächenschaden und stößt Gegner ein Stück zurück. Frostturm friert mit kleiner Chance kurz komplett ein. Scharfschütze macht Zusatzschaden gegen Gegner mit viel Leben (Bosse, Trolle) und durchschlägt Schilde. Dazu passen B-034 (Blitzturm) und B-039 (verzweigte Upgrades). Vor dem Umsetzen ein Mensch wählt, welche Mechaniken gewünscht sind; Balancing danach mit B-046 abgleichen.
+- Akzeptanzkriterien:
+  - Pro Turm ein Konfig-Block mit den Zahlen der Spezialfähigkeit in `src/config.js`, Logik in `src/game.js`.
+  - Test je Fähigkeit; bestehende Tests unverändert.
+  - Turm-Info nennt die Fähigkeit in einem Satz.
+
+### B-046: Spiel insgesamt schwerer machen
+- Status: vorschlag
+- Aufwand: M
+- Idee: Der Spieler findet das Spiel zu einfach (auch auf Wiese und Wald). Mögliche Hebel: Gold-Überschuss in der Spätphase abbauen (siehe B-020), weniger Startgold, mehr Gegner oder Tempo, stärkere Bosse, optional Schwierigkeitswahl (Leicht/Normal/Schwer) im Menü. Vorher mit den Strategie-Tests messen; erst nach B-033 und B-045 angehen, weil beides die Schwierigkeit verschiebt.
+- Akzeptanzkriterien:
+  - Gute Strategien gewinnen Welle 20 weiter, aber mit deutlich weniger Reserve (Zielwert im Eintrag festlegen).
+  - Nur Zahlen in `src/config.js` bzw. Schwierigkeits-Konfig; kein Test abgeschwächt (Reserve-Konstanten in Tests ausdrücklich im Ledger nennen).
+
+### B-047: Zwei Eingänge: Feinschliff und Balancing
+- Status: vorschlag
+- Aufwand: S
+- Idee: Hinweise aus dem Review von B-033. (1) `render.js` dupliziert die Logik von `enemyPath` (`state.paths[e.lane||0] || state.path`); `drawEnemy` bekommt den Weg schon aufgelöst oder `enemyPath` wird genutzt. (2) Im Test der Karte "Zangenangriff" ist die Schleife zum Kurvenzählen unnötig kompliziert. (3) Balancing der Karte `fork` ist nicht gemessen: Strategie-Test wie bei der Eiswelt (robuste Strategien gewinnen Welle 20, nur Pfeile verlieren früh); beide Ströme treffen gleichzeitig im Zusammenlauf ein. Zusammen mit B-046 angehen. (4) Ausgang wird auf `fork` doppelt an derselben Stelle gezeichnet (harmlos).
 - Akzeptanzkriterien:
   - `npm test` bleibt grün, kein Test abgeschwächt.

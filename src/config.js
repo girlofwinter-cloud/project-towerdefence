@@ -77,6 +77,37 @@ export const MAPS = {
     modifiers: { enemySpeed: 1.18, towerDamage: { cannon: 0.95, frost: 0.7 }, slowStrength: 0.7 },
     theme: { grass: ['#cfe6f2', '#d9edf6'], blade: '#9cc3d8' },
   },
+  // Zangenangriff (B-033): zwei Eingänge links oben und links unten, beide Wege laufen bei [10, 7] zusammen.
+  // extraPaths: weitere Wegpunkt-Listen; Gegner verteilen sich abwechselnd auf alle Wege.
+  fork: {
+    name: 'Zangenangriff',
+    waypoints: [
+      [-1, 2],
+      [5, 2],
+      [5, 5],
+      [10, 5],
+      [10, 7],
+      [15, 7],
+      [15, 2],
+      [18, 2],
+      [18, 12],
+      [20, 12],
+    ],
+    extraPaths: [
+      [
+        [-1, 12],
+        [3, 12],
+        [3, 9],
+        [10, 9],
+        [10, 7],
+        [15, 7],
+        [15, 2],
+        [18, 2],
+        [18, 12],
+        [20, 12],
+      ],
+    ],
+  },
 };
 export const DEFAULT_MAP_ID = 'meadow';
 // Alias für die Standardkarte (bestehender Code und Tests)

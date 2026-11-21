@@ -25,7 +25,7 @@ export function render(ctx, state, ui) {
   drawHover(ctx, state, ui);
   for (const t of state.towers) drawTower(ctx, t, ui.selectedTowerId === t.id);
   for (const e of state.enemies) drawHealAura(ctx, e, state.time);
-  for (const e of state.enemies) drawEnemy(ctx, e, state.time, state.path);
+  for (const e of state.enemies) drawEnemy(ctx, e, state.time, (state.paths && state.paths[e.lane || 0]) || state.path);
   for (const p of state.projectiles) drawProjectile(ctx, p);
   drawParticles(ctx);
   for (const fx of state.effects) drawEffect(ctx, fx);
@@ -77,9 +77,11 @@ function paintBackground(ctx, state) {
   drawGrass(ctx, MAPS[state.mapId]?.theme);
   drawPath(ctx, state);
   drawDecor(ctx, state);
-  const pts = state.path.points;
-  drawGate(ctx, pts[0], pts[1]);
-  drawExit(ctx, pts[pts.length - 1], pts[pts.length - 2]);
+  for (const path of state.paths || [state.path]) {
+    const pts = path.points;
+    drawGate(ctx, pts[0], pts[1]);
+    drawExit(ctx, pts[pts.length - 1], pts[pts.length - 2]);
+  }
   ctx.restore();
 }
 
@@ -110,16 +112,16 @@ function drawGrass(ctx, theme) {
 }
 
 function drawPath(ctx, state) {
-  const pts = state.path.points;
+  const all = state.paths || [state.path];
   ctx.lineCap = 'butt';
   ctx.lineJoin = 'miter';
-  // dunkler Rand, darueber der erdige Weg
+  // dunkler Rand aller Wege, darueber der erdige Weg (so verschmelzen Kreuzungen)
   ctx.strokeStyle = PATH_EDGE;
   ctx.lineWidth = TILE;
-  strokePath(ctx, pts);
+  for (const p of all) strokePath(ctx, p.points);
   ctx.strokeStyle = PATH_MAIN;
   ctx.lineWidth = TILE - PATH_EDGE_WIDTH * 2;
-  strokePath(ctx, pts);
+  for (const p of all) strokePath(ctx, p.points);
   // Kiesel auf Weg-Kacheln (deterministisch)
   for (const key of state.blocked) {
     const [c, r] = key.split(',').map(Number);

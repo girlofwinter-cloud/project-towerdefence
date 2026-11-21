@@ -1,7 +1,7 @@
 // Unit-Tests der Spiel-Logik (game.js, path.js, config.js). Ausführen: npm test
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createGame, mapModifiers, update, buildTower, upgradeTower, sellTower, startWave, spawnEnemy, canBuild, towerStats, upgradeCost, togglePause, stepGame, setTargetMode, pickTarget } from '../src/game.js';
+import { createGame, mapModifiers, update, buildTower, upgradeTower, sellTower, startWave, spawnEnemy, canBuild, towerStats, upgradeCost, togglePause, stepGame, setTargetMode, pickTarget, enemyPath } from '../src/game.js';
 
 import { livesText } from '../src/hud.js';
 
@@ -1143,4 +1143,142 @@ test('Eiswelt: nur Pfeiltürme verlieren vor Welle 12 (dt 1/30, 1/60)', () => {
     assert.equal(s.status, 'lost', `dt=${dt}`);
     assert.ok(s.wave < 12, `dt=${dt}: verloren erst in Welle ${s.wave}`);
   }
+});
+
+// ---------- Zwei Eingänge (B-033) ----------
+
+test('Zwei Eingänge: Karten ohne extraPaths haben genau einen Weg', () => {
+  for (const id of ['meadow', 'forest', 'ice']) {
+    const s = createGame({ mapId: id });
+    assert.equal(s.paths.length, 1);
+    assert.equal(s.paths[0], s.path);
+    assert.equal(enemyPath(s, spawnEnemy(s, 'grunt')), s.path);
+  }
+});
+
+test('Zwei Eingänge: Gegner starten abwechselnd an beiden Eingängen, Wellenanzahl unverändert', () => {
+  const s = createGame({ mapId: 'fork' });
+  assert.equal(s.paths.length, 2);
+  assert.equal(s.path, s.paths[0]);
+  const a = spawnEnemy(s, 'grunt');
+  const b = spawnEnemy(s, 'grunt');
+  const c = spawnEnemy(s, 'grunt');
+  assert.deepEqual([a.lane, b.lane, c.lane], [0, 1, 0]);
+  assert.deepEqual({ x: a.x, y: a.y }, s.paths[0].points[0]);
+  assert.deepEqual({ x: b.x, y: b.y }, s.paths[1].points[0]);
+  assert.notDeepEqual({ x: a.x, y: a.y }, { x: b.x, y: b.y });
+  const w = createGame({ mapId: 'fork', gold: 1e9 });
+  startWave(w);
+  const total = w.spawnQueue.length;
+  assert.equal(total, waveFor(1).length);
+  run(w, 60);
+  assert.equal(w.enemies.length + (START_LIVES - w.lives), total);
+});
+
+test('Zwei Eingänge: Gegner beider Wege erreichen das Ziel und kosten Leben', () => {
+  const s = createGame({ mapId: 'fork' });
+  spawnEnemy(s, 'grunt');
+  spawnEnemy(s, 'grunt');
+  run(s, 60);
+  assert.equal(s.enemies.length, 0);
+  assert.equal(s.lives, START_LIVES - 2);
+});
+
+test('Zwei Eingänge: pickTarget "first" wählt den Gegner mit weniger Restweg', () => {
+  const tower = { x: 0, y: 0 };
+  const lang = { hp: 10, x: 0, y: 0, dist: 300, len: 1000 }; // Restweg 700
+  const kurz = { hp: 10, x: 0, y: 0, dist: 200, len: 400 }; // Restweg 200
+  assert.equal(pickTarget([lang, kurz], tower, 10, 'first'), kurz);
+  assert.equal(pickTarget([lang, kurz], tower, 10, 'last'), lang);
+});
+
+test('Karte Zangenangriff: Wege gültig, achsenparallel, nur Endstück gemeinsam', () => {
+  const m = MAPS.fork;
+  const all = [m.waypoints, ...m.extraPaths];
+  const inside = ([c, r]) => c >= 0 && c < COLS && r >= 0 && r < ROWS;
+  for (const w of all) {
+    assert.ok(!inside(w[0]) && !inside(w[w.length - 1]));
+    for (const p of w.slice(1, -1)) assert.ok(inside(p));
+    let turns = 0;
+    for (let i = 0; i < w.length - 1; i++) assert.ok(w[i][0] === w[i + 1][0] || w[i][1] === w[i + 1][1]);
+    for (let i = 1; i < w.length - 1; i++) turns++;
+    assert.ok(turns >= 3);
+    const len = buildPath(w, 1).length;
+    assert.ok(len >= 40 && len <= 55, `Länge ${len}`);
+  }
+  assert.notDeepEqual(all[0][0], all[1][0]);
+  assert.deepEqual(all[0][all[0].length - 1], all[1][all[1].length - 1]);
+  const a = pathTiles(all[0]);
+  const b = pathTiles(all[1]);
+  const shared = [...a].filter((k) => b.has(k));
+  // gemeinsame Kacheln = Endstück ab der Zusammenführung [10,7]
+  const tail = pathTiles(all[0].slice(4));
+  assert.deepEqual(shared.sort(), [...tail].sort());
+});
+
+test('Karte Zangenangriff: canBuild blockt Kacheln beider Wege', () => {
+  const s = createGame({ mapId: 'fork' });
+  assert.equal(canBuild(s, 3, 2).ok, false); // nur Weg 1
+  assert.equal(canBuild(s, 2, 12).ok, false); // nur Weg 2
+  assert.equal(canBuild(s, 12, 7).ok, false); // gemeinsam
+  assert.equal(canBuild(s, 0, 7).ok, true);
+});
+
+// ---- Tester-Ergänzungen B-033 ----
+test('Zwei Eingänge: alter Aufruf mit path-Override gibt paths = [path]', () => {
+  const p = buildPath([[0, 0], [5, 0]], 10);
+  const s = createGame({ mapId: 'fork', path: p });
+  assert.equal(s.paths.length, 1);
+  assert.equal(s.paths[0], p);
+});
+
+test('Zwei Eingänge: Gegner ohne lane/len crashen nicht, pickTarget wie früher', () => {
+  const s = createGame();
+  const mk = (id, dist, hp) => ({ id, type: 'grunt', hp, maxHp: hp, speed: 1, leak: 1, radius: 10, dist, x: 100 + dist, y: 100, slowUntil: 0, slowFactor: 1 });
+  s.enemies = [mk(1, 50, 10), mk(2, 90, 5), mk(3, 20, 99)];
+  const t = { x: 100, y: 100 };
+  assert.equal(pickTarget(s.enemies, t, 500, 'first').id, 2);
+  assert.equal(pickTarget(s.enemies, t, 500, 'last').id, 3);
+  assert.equal(pickTarget(s.enemies, t, 500, 'strong').id, 3);
+  assert.equal(pickTarget(s.enemies, t, 500, 'close').id, 3);
+  update(s, 0.1);
+  assert.ok(s.enemies.every((e) => Number.isFinite(e.x)));
+});
+
+test('Zangenangriff: jeder Gegner leakt genau einmal, Leben exakt, nichts bleibt hängen', () => {
+  const s = createGame({ mapId: 'fork' });
+  for (let i = 0; i < 6; i++) spawnEnemy(s, 'grunt');
+  assert.deepEqual(s.enemies.map((e) => e.lane), [0, 1, 0, 1, 0, 1]);
+  const before = s.lives;
+  run(s, 120);
+  assert.equal(s.enemies.length, 0);
+  assert.equal(s.lives, before - 6 * ENEMY_TYPES.grunt.leak);
+});
+
+test('Zangenangriff: Frost-Slow und Heiler funktionieren mit lane', () => {
+  const s = createGame({ mapId: 'fork' });
+  spawnEnemy(s, 'grunt'); spawnEnemy(s, 'grunt');
+  const [a, b] = s.enemies;
+  a.slowUntil = 999; a.slowFactor = 0.5;
+  update(s, 1);
+  assert.ok(a.dist < b.dist && a.dist > 0);
+  spawnEnemy(s, 'healer'); spawnEnemy(s, 'healer');
+  run(s, 10);
+  assert.ok(s.enemies.every((e) => e.hp <= e.maxHp));
+});
+
+test('Zangenangriff: Bauplätze nahe beiden Wegen, Wegkacheln/Ein-/Ausgang nicht bebaubar', () => {
+  const s = createGame({ mapId: 'fork' });
+  const m = MAPS.fork;
+  for (const wps of [m.waypoints, ...m.extraPaths]) {
+    const tiles = [...pathTiles(wps)].map((k) => k.split(',').map(Number));
+    for (const [c, r] of tiles) assert.equal(canBuild(s, c, r).ok, false, `${c},${r}`);
+    let near = 0;
+    for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
+      if (!canBuild(s, c, r).ok) continue;
+      if (tiles.some(([pc, pr]) => Math.max(Math.abs(pc - c), Math.abs(pr - r)) <= 2)) near++;
+    }
+    assert.ok(near >= 25, `nur ${near} Bauplätze`);
+  }
+  for (const [c, r] of [[-1, 2], [-1, 12], [20, 12]]) assert.equal(canBuild(s, c, r).ok, false);
 });

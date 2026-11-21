@@ -14,7 +14,8 @@ export function mapModifiers(mapId) {
 export function createGame({ mapId, ...overrides } = {}) {
   const id = Object.hasOwn(MAPS, mapId) ? mapId : DEFAULT_MAP_ID;
   const waypoints = MAPS[id].waypoints;
-  return {
+  const extraPaths = MAPS[id].extraPaths || [];
+  const state = {
     mapId: id,
     modifiers: mapModifiers(id),
     gold: START_GOLD,
@@ -35,10 +36,19 @@ export function createGame({ mapId, ...overrides } = {}) {
     healAt: ENEMY_TYPES.healer.healInterval, // Zeitpunkt (state.time) des nächsten Heilimpulses
     healTick: 0, // Zähler der Heilimpulse (verhindert doppelte Heilung pro Impuls)
     path: buildPath(waypoints, TILE),
-    blocked: pathTiles(waypoints),
+    blocked: new Set([waypoints, ...extraPaths].flatMap((w) => [...pathTiles(w)])), // alle Wege
+    nextLane: 0, // Zähler für die abwechselnde Wegwahl neuer Gegner
     obstacles: new Set((MAPS[id].obstacles || []).map(([c, r]) => `${c},${r}`)), // Bäume/Felsen (kein Weg)
     ...overrides,
   };
+  // Alle Wege: Hauptweg (state.path, auch per override) plus extraPaths; ohne extraPaths genau ein Weg.
+  if (!overrides.paths) state.paths = [state.path, ...(overrides.path ? [] : extraPaths.map((w) => buildPath(w, TILE)))];
+  return state;
+}
+
+// Weg, auf dem der Gegner läuft (Fallback: Hauptweg).
+export function enemyPath(state, e) {
+  return (state.paths && state.paths[e.lane || 0]) || state.path;
 }
 
 // ---------- Türme ----------
@@ -148,7 +158,11 @@ export function startWave(state) {
 export function spawnEnemy(state, type, wave = state.wave) {
   const def = ENEMY_TYPES[type];
   const hp = Math.round(def.hp * hpScale(Math.max(1, wave)));
-  const pos = pointAt(state.path, 0);
+  const paths = state.paths || [state.path];
+  const lane = (state.nextLane || 0) % paths.length;
+  state.nextLane = lane + 1;
+  const path = paths[lane];
+  const pos = pointAt(path, 0);
   const enemy = {
     id: state.nextId++,
     type,
@@ -159,6 +173,8 @@ export function spawnEnemy(state, type, wave = state.wave) {
     leak: def.leak,
     radius: def.radius,
     dist: 0,
+    lane,
+    len: path.length, // Länge des eigenen Wegs (für Restweg-Zielwahl)
     x: pos.x,
     y: pos.y,
     slowUntil: 0,
@@ -213,13 +229,14 @@ function moveEnemies(state, dt) {
   for (const e of state.enemies) {
     const slowed = state.time < e.slowUntil ? e.slowFactor : 1;
     e.dist += e.speed * TILE * slowed * dt;
-    const p = pointAt(state.path, e.dist);
+    const p = pointAt(enemyPath(state, e), e.dist);
     e.x = p.x;
     e.y = p.y;
   }
-  const leaked = state.enemies.filter((e) => e.dist >= state.path.length);
+  const done = (e) => e.dist >= enemyPath(state, e).length;
+  const leaked = state.enemies.filter(done);
   if (!leaked.length) return;
-  state.enemies = state.enemies.filter((e) => e.dist < state.path.length);
+  state.enemies = state.enemies.filter((e) => !done(e));
   for (const e of leaked) state.lives -= e.leak;
   if (state.lives <= 0) {
     state.lives = 0;
@@ -261,10 +278,11 @@ export function pickTarget(enemies, tower, range, mode = 'first') {
     const d = Math.hypot(e.x - tower.x, e.y - tower.y);
     if (d > range) continue;
     let score;
-    if (mode === 'last') score = -e.dist;
+    const rest = (e.len || 0) - e.dist; // Restweg auf dem eigenen Weg
+    if (mode === 'last') score = rest;
     else if (mode === 'strong') score = e.hp;
     else if (mode === 'close') score = -d;
-    else score = e.dist; // "Erster": am weitesten gelaufen
+    else score = -rest; // "Erster": geringster Restweg
     if (score > bestScore) { best = e; bestScore = score; }
   }
   return best;

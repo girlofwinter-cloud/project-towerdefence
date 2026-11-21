@@ -329,3 +329,13 @@ Neue Einträge werden unten angehängt. Bestehende Einträge werden nie geänder
 - Ergebnis: fertig
 - Entscheidungen: Beim Abschluss von B-029 war ein Befehl fehlgeschlagen und hatte das Verschieben nach `docs/archiv/BACKLOG-fertig.md` sowie das Anlegen von B-044 übersprungen (der Ledger-Eintrag zu B-029 verweist trotzdem auf B-044). Beides jetzt nachgeholt. Ledger bleibt append-only, der frühere Eintrag wird nicht geändert.
 - Offen: Nichts.
+
+## 2026-11-21 · B-033 · Mehrere Eingänge (Karte Zangenangriff)
+- Rolle(n): orchestrator, developer, tester, reviewer
+- Branch: agent/zwei-eingaenge
+- Runden: 1 von max. 2
+- Ergebnis: fertig
+- Tests: 154 bestanden, 0 fehlgeschlagen (12 neu, keiner abgeschwächt)
+- Review: APPROVE (keine Muss-Punkte; Hinweise als B-047)
+- Entscheidungen: Neue Karte `fork` mit zwei Eingängen, die bei [10,7] zusammenlaufen. Map-Feld `extraPaths`, `state.paths`, `state.path` bleibt der Hauptweg (Rückwärtskompatibilität). Gegner haben `lane` (abwechselnd) und `len`; Zielwahl first/last vergleicht den Restweg (`len - dist`), auf Ein-Weg-Karten identisch zu vorher. Wellen (`waveFor`) unverändert, nur die Verteilung auf Wege ist neu. Auftrag des Menschen: Wege spannender, Gegner aus mehr als einem Eingang.
+- Offen: Balancing von `fork` nicht gemessen (B-047/B-046); Sichtprüfung im Browser.
