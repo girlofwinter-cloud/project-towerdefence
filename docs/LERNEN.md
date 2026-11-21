@@ -30,7 +30,7 @@ Claude startet jede Sitzung ohne Erinnerung. `CLAUDE.md` wird automatisch gelade
 
 Ein Subagent ist ein Spezialist mit **eigenem Kontext** (er sieht dein Gespräch nicht), **eigenem Prompt** und **eigenen Werkzeugen**.
 
-Schau dir die vier Dateien in `.claude/agents/` an und achte auf die Zeile `tools:`
+Schau dir die fünf Dateien in `.claude/agents/` an und achte auf die Zeile `tools:`
 
 | Agent | Darf schreiben? | Warum |
 |---|---|---|
@@ -38,6 +38,7 @@ Schau dir die vier Dateien in `.claude/agents/` an und achte auf die Zeile `tool
 | `tester` | nur `tests/` | Wer prüft, soll den Code nicht „passend machen“. |
 | `reviewer` | **nein** | Wer bewertet, darf nicht gleichzeitig reparieren. |
 | `ideator` | **nein** | Er liefert Vorschläge, ein Mensch entscheidet. |
+| `designer` | **nein** (nur Screenshots außerhalb des Repos) | Er prüft Optik und Bedienung mit echten Screenshots und schlägt Designs vor; gebaut wird über die Pipeline. |
 
 **Warum mehrere Agents statt einem?**
 1. **Frischer Kontext:** Ein Reviewer, der den Code nicht geschrieben hat, findet mehr Fehler.
