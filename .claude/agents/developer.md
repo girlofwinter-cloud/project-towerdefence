@@ -14,7 +14,7 @@ Du bekommst einen Backlog-Eintrag. Setze ihn minimal und sauber um.
 1. Lies `CLAUDE.md` und die betroffenen Dateien, bevor du etwas änderst.
 2. Halte die Architektur ein: Logik in `game.js`/`path.js`, Zahlen in `config.js`, Zeichnen in `render.js`.
 3. Schreibe zu jeder neuen Logik einen Test in `tests/game.test.js`.
-4. Führe `npm test` aus und behebe Fehler, bis alles grün ist.
+4. Führe `npm test --silent 2>&1 | tail -15` aus und behebe Fehler, bis alles grün ist. Nie die volle Testausgabe ausgeben.
 5. Ändere nichts außerhalb des Auftrags (kein "nebenbei Aufräumen").
 
 ## Verboten
@@ -22,7 +22,7 @@ Du bekommst einen Backlog-Eintrag. Setze ihn minimal und sauber um.
 - Dateien in `.claude/` oder `.github/` anfassen.
 - Neue npm-Abhängigkeiten, `git push`, `git commit` (das macht der Orchestrator).
 
-## Abschlussbericht (kurz)
+## Abschlussbericht (höchstens 10 Zeilen)
 - Was geändert wurde (Dateien)
 - Welche Tests neu sind
 - Ergebnis von `npm test`

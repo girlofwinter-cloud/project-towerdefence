@@ -250,3 +250,11 @@ Neue Einträge werden unten angehängt. Bestehende Einträge werden nie geänder
 - Tests: siehe voriger Eintrag (gemeinsamer Durchlauf); der E2E-Test prüft, dass der Zoom das Feld mindestens 1,8-fach so breit macht
 - Entscheidungen: Im Hochformat begrenzt die Bildschirmbreite die Kachelgröße (19 px bei 390 px). Neu: Button "Zoom" (nur mobil, <= 700 px). Er setzt die Klasse `zoomed` am Spielfeld: Canvas 200 % breit in einem scrollbaren Rahmen (`.scroller`, max. 60 vh hoch), Kacheln ca. 38 px. Overlay, Meldung und Pause-Banner liegen außerhalb des Rahmens und scrollen nicht mit. Klick-Umrechnung über `getBoundingClientRect` funktioniert unverändert. Standard bleibt der ungezoomte Ansichtsmodus.
 - Offen: Im Zoom muss man das Feld verschieben, um Gegner am anderen Ende zu sehen; kein automatisches Mitscrollen.
+
+## 2026-11-21 · Prozess · Token-Optimierung
+- Rolle(n): Mensch + Claude (interaktiv)
+- Branch: agent/token-optimierung
+- Ergebnis: fertig
+- Tests: alle Unit-Tests bestanden (kein Code in `src/` geändert)
+- Entscheidungen: Reviewer von Opus auf Sonnet (Änderungen sind klein, Prüfliste konkret). Erledigte Backlog-Einträge nach `docs/archiv/BACKLOG-fertig.md` ausgelagert, damit Ideator und Orchestrator weniger lesen; das Ledger bleibt wegen Append-Only unverändert, der Ideator liest dort nur Überschriften. Testausgaben auf `tail -15` gekürzt, Berichte der Subagents auf 10 bis 15 Zeilen begrenzt.
+- Offen: Wirkung messen (`/cost` vor und nach einem Durchlauf) und prüfen, ob Sonnet im Review genauso viele Muss-Punkte findet wie Opus.

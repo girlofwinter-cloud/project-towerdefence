@@ -17,11 +17,12 @@ Du bist der **Orchestrator**. Du schreibst selbst keinen Spielcode, du koordinie
 5. **Reviewen.** Subagent `reviewer` aufrufen, **eine Runde**. `CHANGES_REQUESTED` nur bei Muss-Punkten: Kriterium verletzt, Regel gebrochen, Spielbarkeit oder Testverlässlichkeit klar beeinträchtigt. Alles andere sind Hinweise und kommen als Backlog-Eintrag mit Status `vorschlag`, ohne neue Runde.
 6. **Nachbessern.** Bei Muss-Punkten den `developer` einmal nachbessern lassen. Die Behebung prüft der Orchestrator selbst (`npm test`, `git diff`, gezielter Einzellauf des betroffenen Tests); tester und reviewer laufen dafür nicht erneut.
 7. **Schleifenbremse.** Maximal **2** Entwicklungsrunden. Ist danach noch ein Muss-Punkt offen, Status `blockiert` setzen, Ledger-Eintrag schreiben und einen Menschen fragen. Nicht weiter probieren.
-8. **Ledger.** Hänge einen Eintrag an `docs/LEDGER.md` an (Format dort) und setze den Backlog-Status auf `fertig` oder `blockiert`.
+8. **Ledger.** Hänge einen Eintrag an `docs/LEDGER.md` an (Format dort) und setze den Backlog-Status auf `fertig` oder `blockiert`. Bei `fertig` verschiebst du den Eintrag aus `docs/BACKLOG.md` nach `docs/archiv/BACKLOG-fertig.md`.
 9. **Abschluss.** `npm test` ein letztes Mal selbst ausführen, committen, `git push -u origin agent/<kurzname>`. Pull Request nur auf ausdrücklichen Wunsch.
 
 ## Regeln
 - Immer nur ein Feature pro Durchlauf.
 - Subagents bekommen den vollständigen Auftrag im Prompt. Sie sehen dieses Gespräch nicht.
+- Token sparen: Berichte der Subagents sind begrenzt (Developer 10, Tester 12, Reviewer 15 Zeilen). Gib ihnen betroffene Dateien samt Zeilenbereich an, damit sie nicht breit suchen. Testausgaben immer mit `--silent 2>&1 | tail -15` kürzen.
 - Vertraue Abschlussberichten nicht blind: Prüfe das Ergebnis mit `git diff --stat` und `npm test`.
 - Bei Unklarheit fragen, nicht raten.
