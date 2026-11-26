@@ -483,13 +483,6 @@ Reihenfolge ist Abhängigkeit: B-062 und B-063 zuerst, dann gemeinsame Sichtprü
   - (3) `startMap` gegen unsanitisierte Eingabe ohne `maps` härten (wirft heute TypeError; in der Praxis nicht erreichbar).
   - Keine festen Zahlen im Staub-Code; Shop bei 390x844 und 200 % Schrift ohne horizontales Abschneiden; `npm test` grün.
 
-### B-119: Musik-Gain nach Kartenwechsel trennen
-- Status: vorschlag
-- Aufwand: S
-- Idee: Nach `stopMusic` in `src/audio.js` bleibt der alte Gain-Knoten mit `ctx.destination` verbunden (ein toter Knoten je Kartenwechsel, Reviewer-Hinweis zu B-118). `src.onended = () => gain.disconnect()`.
-- Akzeptanzkriterien:
-  - Nach einem Kartenwechsel ist der alte Gain getrennt (Fake-Audio-Test in `tests/sound.test.js`).
-
 ### B-120: Lava und Meteor nach Gegnerwelle skalieren
 - Status: vorschlag
 - Aufwand: S
