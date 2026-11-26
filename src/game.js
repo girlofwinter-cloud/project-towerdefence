@@ -228,6 +228,7 @@ export function spawnEnemy(state, type, wave = state.wave) {
     radius: def.radius,
     dist: 0,
     lane,
+    wave, // B-120: eigene Welle (Lava und Meteor skalieren damit, auch nach Frühstart)
     len: path.length, // Länge des eigenen Wegs (für Restweg-Zielwahl)
     x: pos.x,
     y: pos.y,
@@ -271,7 +272,7 @@ export function useAbility(state, id, x, y) {
     const r = def.radius * TILE;
     for (const e of state.enemies) {
       const d = Math.hypot(e.x - x, e.y - y);
-      if (d <= r) damage(state, e, { damage: meteorDamage(state.wave, d / r) });
+      if (d <= r) damage(state, e, { damage: meteorDamage(e.wave ?? state.wave, d / r) }); // B-120: Welle des Gegners
     }
     const life = meteorLife();
     state.effects.push({ kind: 'explosion', meteor: true, x, y, r, ttl: life, max: life });
@@ -365,13 +366,13 @@ function moveEnemies(state, dt) {
 // (kein Direkttreffer). Wer daran stirbt, bringt die normale Belohnung.
 function lavaStep(state, dt) {
   if (!state.hotPath || !state.hotPath.size || !state.enemies.length) return;
-  const amount = LAVA.dps * hpScale(Math.max(1, state.wave)) * dt;
   let hit = false;
   for (const e of state.enemies) {
     const col = Math.floor(e.x / TILE);
     const row = Math.floor(e.y / TILE);
     if (!state.hotPath.has(`${col},${row}`)) continue;
-    damage(state, e, { damage: amount });
+    // B-120: skaliert mit der Welle des Gegners (Rückfall: aktuelle Welle)
+    damage(state, e, { damage: LAVA.dps * hpScale(Math.max(1, e.wave ?? state.wave)) * dt });
     hit = true;
   }
   if (hit) removeDead(state);

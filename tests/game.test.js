@@ -2935,3 +2935,59 @@ test('B-121 Rand: Frühstart-Kette lässt nur nach Ende aller Wellen einen Count
   finishWave(s);
   assert.equal(s.autoWaveIn, AUTO_WAVE_DELAY);
 });
+
+// ---------- B-120: Lava und Meteor nach Gegnerwelle skalieren ----------
+
+test('B-120: spawnEnemy speichert die Welle; Spawn aus der Warteschlange trägt die eigene Welle', () => {
+  const s = createGame();
+  assert.equal(spawnEnemy(s, 'grunt', 4).wave, 4);
+  s.wave = 6;
+  assert.equal(spawnEnemy(s, 'grunt').wave, 6, 'Standard: aktuelle Welle');
+  const g = createGame();
+  startWave(g);
+  spawnAll(g);
+  assert.ok(startWave(g).ok); // Frühstart: Welle 2 läuft parallel
+  run(g, 1);
+  assert.equal(g.wave, 2);
+  assert.ok(g.enemies.length && g.enemies.every(e => e.wave === 1 || e.wave === 2));
+  assert.ok(g.enemies.some(e => e.wave === 1), 'Gegner der älteren Welle behalten Welle 1');
+});
+
+test('B-120 Lava: Gegner der älteren Welle bekommt Lava-Schaden seiner Welle, ohne Frühstart wie bisher', () => {
+  const hot = [10, 8];
+  // Zwei parallele Wellen: state.wave ist 8, der Gegner stammt aus Welle 3
+  const s = createGame({ mapId: 'volcano' });
+  s.wave = 8;
+  const e = spawnEnemy(s, 'grunt', 3);
+  e.speed = 0;
+  e.hp = e.maxHp = 1e6;
+  s.paths = [buildPath([hot, [hot[0] + 1, hot[1]]], TILE)];
+  run(s, 1, 1 / 60);
+  const lost = 1e6 - e.hp;
+  assert.ok(Math.abs(lost - LAVA.dps * hpScale(3)) < LAVA.dps * hpScale(3) * 0.05, `Welle 3: ${lost}`);
+  assert.ok(lost < LAVA.dps * hpScale(8) * 0.9, 'nicht nach state.wave');
+  // Ohne Frühstart (Gegnerwelle = state.wave) unverändert
+  const same = lavaBurn('grunt', ...hot, 1, 1 / 60, 8).lost;
+  assert.ok(Math.abs(same - LAVA.dps * hpScale(8)) < LAVA.dps * hpScale(8) * 0.05, `Welle 8: ${same}`);
+  // Rückfall ohne enemy.wave (z. B. von Hand erzeugt): state.wave
+  const f = lavaBurn('grunt', ...hot, 0, 1 / 60, 8);
+  delete f.e.wave;
+  run(f.s, 1, 1 / 60);
+  const lostF = 1e6 - f.e.hp;
+  assert.ok(Math.abs(lostF - LAVA.dps * hpScale(8)) < LAVA.dps * hpScale(8) * 0.05, `Rückfall: ${lostF}`);
+});
+
+test('B-120 Meteor: Gegner der älteren Welle bekommt Meteor-Schaden seiner Welle, ohne Frühstart wie bisher', () => {
+  const s = createGame();
+  s.wave = 9;
+  const old = enemyAt(s, 'shielded', 300, 300);
+  old.wave = 5; // aus der vorigen, noch laufenden Welle
+  const cur = enemyAt(s, 'shielded', 300, 300);
+  const none = enemyAt(s, 'shielded', 300, 300);
+  delete none.wave; // Rückfall: state.wave
+  for (const e of [old, cur, none]) e.hp = 1e6;
+  assert.ok(useAbility(s, 'meteor', 300, 300).ok);
+  assert.ok(Math.abs(1e6 - old.hp - meteorDamage(5)) < 1e-6, 'ältere Welle');
+  assert.ok(Math.abs(1e6 - cur.hp - meteorDamage(9)) < 1e-6, 'aktuelle Welle wie bisher');
+  assert.ok(Math.abs(1e6 - none.hp - meteorDamage(9)) < 1e-6, 'Rückfall state.wave');
+});
