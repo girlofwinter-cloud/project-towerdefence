@@ -574,3 +574,37 @@ test('B-030: Vulkan-Palette aus STIL.md (Boden, Weg, Lava), klar verschieden von
   for (const k of ['ember', 'ash']) assert.ok(kinds.includes(k), k);
   for (const id of Object.keys(MAPS)) if (id !== 'volcano') assert.ok(!themed(id, 'decor', DECOR_STYLE).scatterKinds.some(([k]) => k === 'ember' || k === 'ash'), id);
 });
+
+// ---------- Gruppierte Kleindeko (B-142 Nacharbeit) ----------
+test('groupedDecor: Büschel und Kiesel etwa halbiert und an Weg/Wasser/Hindernis, Blumen in 3 bis 5 Inseln, Zusatzblüten nie auf dem Weg', async () => {
+  const { groupedDecor, groundPatches, terrainTiles } = await import('../src/decor.js');
+  const { PAINT_STYLE } = await import('../src/config.js');
+  for (const id of Object.keys(MAPS)) {
+    const s = createGame({ mapId: id });
+    const g = groupedDecor(id, s.blocked, s.obstacles);
+    assert.deepEqual([...groupedDecor(id, s.blocked, s.obstacles).small], [...g.small], `${id}: deterministisch`);
+    assert.ok(g.groups >= PAINT_STYLE.flowerGroups[0] && g.groups <= PAINT_STYLE.flowerGroups[1], `${id}: ${g.groups} Inseln`);
+    assert.ok(g.blossoms.length >= g.groups * 3, `${id}: Inseln mit Blüten`);
+    let small = 0;
+    const terrain = terrainTiles(id);
+    for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
+      const d = decorFor(c, r, s.blocked, s.obstacles, terrain);
+      if (d && (d.kind === 'tuft' || d.kind === 'pebble')) small++;
+    }
+    assert.ok(g.small.size <= small * 0.75 && g.small.size > 0, `${id}: Kleindeko ${g.small.size} von ${small}`);
+    for (const k of g.small) { const [c, r] = k.split(',').map(Number); assert.ok(g.near(c, r), `${id}: ${k} ohne Nachbar-Merkmal`); }
+    for (const b of g.blossoms) {
+      const key = `${Math.floor(b.x / TILE)},${Math.floor(b.y / TILE)}`;
+      assert.ok(!s.blocked.has(key) && !terrain.has(key) && !s.obstacles.has(key), `${id}: Blüte auf ${key}`);
+    }
+    // Bodenbüschel: etwa halbiert gegenüber ohne theme.paint
+    const withPaint = groundPatches(id).tufts.length;
+    const paint = MAPS[id].theme.paint;
+    MAPS[id].theme.paint = false;
+    let without;
+    try { without = groundPatches(id).tufts.length; } finally { MAPS[id].theme.paint = paint; }
+    assert.ok(groundPatches(id).tufts.length === withPaint);
+    assert.ok(withPaint > 0 && withPaint <= without * 0.65, `${id}: Büschel ${withPaint} von ${without}`);
+  }
+  assert.equal(groupedDecor('gibtsnicht', new Set(), new Set()), null, 'ohne theme.paint keine Gruppierung');
+});

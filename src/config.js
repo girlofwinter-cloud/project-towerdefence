@@ -71,7 +71,7 @@ export const MAPS = {
     water: [...withoutBridges(MEADOW_RIVER, MEADOW_BRIDGES), ...MEADOW_LAKE],
     // B-071: Wegpalette der Wiese (STIL.md); Eiswelt und Zangenangriff haben eigene Wegfarben (B-072, B-073).
     // B-103: decor.flatTrees, damit die Hindernisse im Flat-Pop-Stil erscheinen (Laubbaum, Fels mit Kontur)
-    theme: { treeFrame: true, ground: true, accents: true, light: true, paint: true, decorStyle: 'flatpop', decor: { flatTrees: true }, path: { main: '#e2c88f', edge: '#8f6a3b', outline: '#4a3418', mid: '#ecd5a0', fringe: '#6fbf4e', groove: '#3a6a2c' } },
+    theme: { treeFrame: true, ground: true, accents: true, light: true, paint: true, decorStyle: 'flatpop', decor: { flatTrees: true }, path: { main: '#e2c88f', edge: '#8f6a3b', outline: '#4a3418', mid: '#ecd5a0', fringe: '#94d266', fringeAccent: '#46893a', groove: '#3a6a2c' } },
   },
   // Eiswelt (B-029, Glatteis): Gegner rutschen schneller, Kanone und Frost sind schwächer. Modifikatoren (enemySpeed, towerDamage je Typ, slowStrength) und kühles Farbschema (theme).
   ice: {
@@ -133,12 +133,15 @@ export const MAPS = {
         scatterChance: 0.1,
         scatterKinds: [['crystal', 0.28], ['snowpile', 0.3], ['rockgroup', 0.16], ['pebbles', 0.12], ['stakes', 0.08], ['sign', 0.06]],
       },
-      path: { main: '#9db3c9', edge: '#4f6682', outline: '#2f4560', mid: '#b4c7d9', fringe: '#ffffff', groove: '#62809a' },
+      path: { main: '#9db3c9', edge: '#4f6682', outline: '#2f4560', mid: '#b4c7d9', fringe: '#ffffff', fringeAccent: '#c6dcec', groove: '#62809a' },
+      // B-142 Nacharbeit: gemalter Boden hell (Schnee), Flecken in Halm-Blau und Weiß, Licht kühl
+      paint: { dark: [120, 166, 196], darkAlpha: 0.38, light: [255, 255, 255], lightAlpha: 0.55, tint: '214,236,255', shadow: '38,64,108', sunAlpha: 0.3 },
       // Glatter Eisweg: wenige Steine, weißer Glanz statt brauner Spurrillen, kühle Flecken
       pathStyle: {
         stoneChance: 0.14, rutColor: 'rgba(255,255,255,0.5)', rutWidth: 2.2,
         stoneColors: ['#7f94ab', '#c9d8e6'], pebbleColors: ['#8aa0b8', '#c9d8e6'], stoneShadow: 'rgba(38,64,108,0.4)',
         patchDark: 'rgba(79,102,130,0.16)', patchLight: 'rgba(255,255,255,0.3)',
+        fringeKind: 'snow', // B-143 Nacharbeit: Schneeklumpen am Wegrand
       },
     },
   },
@@ -203,7 +206,10 @@ export const MAPS = {
         scatterChance: 0.09,
         scatterKinds: [['leafpile', 0.3], ['rockgroup', 0.2], ['log', 0.14], ['stump', 0.14], ['sign', 0.1], ['mushroom', 0.12]],
       },
-      path: { main: '#d6ab70', edge: '#7d5632', outline: '#4a3018', mid: '#e8c88e', fringe: '#e0803a', groove: '#666529' },
+      path: { main: '#d6ab70', edge: '#7d5632', outline: '#4a3018', mid: '#e8c88e', fringe: '#e0803a', fringeAccent: '#c9562f', groove: '#666529' },
+      pathStyle: { fringeKind: 'leaves' }, // B-143 Nacharbeit: Herbstlaub am Wegrand
+      // B-142 Nacharbeit: gemalter Boden in Hochland-Oliv, helle Flecken goldgelb
+      paint: { dark: [104, 106, 40], darkAlpha: 0.42, light: [236, 214, 128], lightAlpha: 0.3, tint: '255,214,150' },
     },
     extraPaths: [
       [
@@ -291,7 +297,9 @@ export const MAPS = {
         scatterChance: 0.1,
         scatterKinds: [['mushroom', 0.18], ['stump', 0.18], ['log', 0.16], ['rockgroup', 0.18], ['sign', 0.12], ['pebbles', 0.18]],
       },
-      path: { main: '#dcc08a', edge: '#86603a', outline: '#3e2a14', mid: '#e8d2a0', fringe: '#a6cf5a', groove: '#4a6e2c' },
+      path: { main: '#dcc08a', edge: '#86603a', outline: '#3e2a14', mid: '#e8d2a0', fringe: '#bcdf6e', fringeAccent: '#5a8f36', groove: '#4a6e2c' },
+      // B-142 Nacharbeit: gemalter Boden Spätsommer (dunkel Halm-Grün, hell Gelbgrün)
+      paint: { dark: [62, 104, 36], darkAlpha: 0.4, light: [222, 238, 140], lightAlpha: 0.26, tint: '255,232,170' },
     },
   },
   // Vulkan (B-030): schwerste Karte nach Zwei Fronten. Ein Lavafluss quert die Karte (eine Brücke), dazu Lavatümpel neben
@@ -356,10 +364,13 @@ export const MAPS = {
         scatterChance: 0.11,
         scatterKinds: [['ember', 0.26], ['ash', 0.22], ['rockgroup', 0.24], ['stump', 0.12], ['pebbles', 0.16]],
       },
-      path: { main: '#8b7468', edge: '#2d1f20', outline: '#1f1415', mid: '#9c857a', fringe: '#2e2325', groove: '#211718' },
+      path: { main: '#8b7468', edge: '#2d1f20', outline: '#1f1415', mid: '#9c857a', fringe: '#8a7c78', fringeAccent: '#ffc23a', groove: '#211718' },
+      // B-142 Nacharbeit: gemalter Boden dunkel (Kruste), helle Flecken Asche, Licht glutwarm und schwach
+      paint: { dark: [26, 16, 18], darkAlpha: 0.5, light: [120, 96, 90], lightAlpha: 0.34, tint: '255,170,110', shadow: '24,10,12', sunAlpha: 0.2, sunMidAlpha: 0.08 },
       pathStyle: {
         rutColor: 'rgba(45,31,32,0.35)', stoneColors: ['#5a4a48', '#7a6a66'], pebbleColors: ['#6a5650', '#a08a80'],
         stoneShadow: 'rgba(20,10,12,0.45)', patchDark: 'rgba(45,31,32,0.16)', patchLight: 'rgba(255,190,140,0.12)',
+        fringeKind: 'ash', // B-143 Nacharbeit: Asche mit Glut am Wegrand
       },
     },
   },
@@ -728,7 +739,7 @@ export const PATH_STYLE = {
   waveLength: 0.11,        // Wellenzahl der Grundwelle (rad pro px)
   circleStep: 4.5,         // Abstand der Randkreise entlang des Wegs
   // B-143: eingesunkener Weg (Stil "Gemalt und warm"): dunkle Grasfuge, Kontur, Erde, helle Mitte nach oben versetzt
-  grooveWidth: 46,         // Breite der dunklen Grasfuge (außen um die Kontur)
+  grooveWidth: 48,         // Breite der dunklen Grasfuge (außen um die Kontur); B-143 Nacharbeit: 48, damit unter dem Saum Fuge bleibt
   contourWidth: 36,        // Breite der durchgehenden Kontur (die Randkreise ragen etwas darüber)
   sandWidth: 32,           // Breite der Sandfläche (liegt über den Randkreisen)
   sandShift: [0, -1.5],    // Versatz der oberen Erdschicht (Weg wirkt eingesunken)
@@ -741,9 +752,14 @@ export const PATH_STYLE = {
   shadowOffset: [2, 4],    // Versatz des Schlagschattens
   shadowColor: 'rgba(43,27,61,0.3)',
   bandShade: 0.12,         // Randband = Wegfarbe um diesen Anteil zum Schattenton gemischt
-  fringeStep: 0,           // Abstand der Gras-Säume entlang des Wegs (0 = kein Saum); B-143: die Grasfuge ersetzt den Saum
-  fringeRadius: 3.4,       // Radius eines Saumpunkts
-  fringeOffset: [21, 24],  // Abstand der Saumpunkte von der Achse (von, bis)
+  // B-143 Nacharbeit: Saum als unterbrochene Büschel über dem äußeren Rand der Fuge (Halme, Laub, Schnee, Asche je Karte)
+  fringeStep: 3.2,         // Abstand der Saum-Teile innerhalb eines Büschels (0 = kein Saum)
+  fringeClump: [8, 16],    // Länge eines Büschels entlang des Wegs in px (von, bis)
+  fringeGap: [12, 22],     // Lücke zwischen zwei Büscheln in px (von, bis); Anteil Saum etwa 30 bis 50 %
+  fringeInner: 22.6,       // innerer Rand der Büschel (Abstand zur Achse); innen bleibt die Fuge mindestens 3 px frei
+  fringeHeight: [5, 9],    // Länge eines Halms oder Blatts nach außen (in der Büschelmitte; zu den Enden kürzer)
+  fringeRadius: 3.6,       // größter Radius eines Schnee- oder Ascheklumpens
+  fringeKind: 'blades',    // 'blades' (Halme), 'leaves' (Laub), 'snow' (Schneeklumpen), 'ash' (Asche mit Glut)
   rutOffset: 7.5,          // Abstand der Spurrillen von der Achse
   rutWidth: 1.6,           // Breite der Rillen
   rutDash: [16, 7, 5, 10], // Strichmuster der Rillen
@@ -891,7 +907,7 @@ export const LIGHT_STYLE = {
 
 // Gemalter Boden (B-142, STIL.md 0): große Hell-Dunkel-Flecken aus eigenem Rauschen, warmes Licht oben links,
 // Abschattung nach rechts unten und Vignette. Nur Optik im Hintergrund-Cache, aktiv nur mit MAPS.<id>.theme.paint
-// (true = diese Werte; Objekt überschreibt einzelne Werte, z. B. Farben einer anderen Welt). Bisher nur die Wiese.
+// (true = diese Werte; Objekt überschreibt einzelne Werte, z. B. Farben einer anderen Welt). Seit der Nacharbeit alle Karten.
 export const PAINT_STYLE = {
   seed: 142,               // feste Saat (je Karte kommt ein Hash der Karten-ID dazu)
   cell: 8,                 // Rasterweite des Rausch-Feldes in px (dazwischen weich interpoliert)
@@ -901,11 +917,11 @@ export const PAINT_STYLE = {
   dark: [26, 72, 22],      // dunkle Flecken (Moos-Grün, RGB)
   darkGain: 2.4,           // Deckkraft = clamp(darkGain * n + darkOffset) * darkAlpha
   darkOffset: -1.05,
-  darkAlpha: 0.32,
+  darkAlpha: 0.4,          // B-142 Nacharbeit: kräftiger (vorher 0,32)
   light: [255, 236, 150],  // helle Flecken (warmes Gelb, RGB)
   lightGain: 2.4,
   lightOffset: -1.1,
-  lightAlpha: 0.2,
+  lightAlpha: 0.26,        // B-142 Nacharbeit: kräftiger (vorher 0,2)
   // Licht (ersetzt mit theme.light den Diagonalverlauf von LIGHT_STYLE): Stopps als Anteil der Diagonale oben links -> unten rechts
   tint: '255,240,176',     // Sonnenlicht (rgba-Anteil)
   sunAlpha: 0.38,          // Deckkraft in der Ecke oben links
@@ -913,11 +929,21 @@ export const PAINT_STYLE = {
   sunMidAlpha: 0.14,
   sunEnd: 0.45,            // ab hier kein Licht mehr, danach Abschattung
   shadow: '20,30,24',      // Schattenton für Abschattung und Vignette
-  shadeAlpha: 0.15,        // Abschattung diagonal nach rechts unten (höchstens LIGHT_STYLE.maxDarken)
+  shadeAlpha: 0.13,        // Abschattung diagonal nach rechts unten (höchstens LIGHT_STYLE.maxDarken); B-142 Nacharbeit: 0,13 für helle Tore
   vignetteAlpha: 0.15,     // Vignette (höchstens LIGHT_STYLE.maxDarken)
   vignetteInner: 0.45,     // Radius ohne Abdunklung, Anteil der halben Felddiagonale
   vignetteX: 0.56,         // Mitte der Vignette leicht nach rechts unten (Licht kommt von oben links)
   vignetteY: 0.56,
+  gateDarkMax: 0.2,        // B-142 Nacharbeit: Abschattung + Vignette an Weg-Ein-/Ausgang und Burgtor höchstens 20 % (Test)
+  // B-142 Nacharbeit: Streudeko gruppiert statt gleichmäßig (Gras-Büschel, Kiesel nur an Wegrand, Wasser, Bäumen)
+  tuftBand: 16,            // Bodenbüschel: höchstens so weit außerhalb ihres Mindestabstands zu Weg/Wasser bzw. Kronenrand
+  smallNear: 1,            // Kachel-Büschel/Kiesel nur so nah (Kacheln, Manhattan) an Weg, Wasser, Lava oder Hindernis
+  flowerGroups: [3, 5],    // Blumen nur in 3 bis 5 kleinen Wiesen-Inseln
+  flowerGroupRadius: 1,    // Radius einer Insel in Kacheln (Chebyshev)
+  flowerGroupGap: 4,       // Mindestabstand der Inseln in Kacheln
+  blossoms: 7,             // Zusatzblüten je Insel (flach, ohne arc)
+  blossomSpread: 26,       // Streuradius der Zusatzblüten um die Inselmitte in px
+  blossomPathMargin: 28,   // Mindestabstand der Zusatzblüten zur Wegachse
 };
 
 // Akzente der Wiese (B-080): Burgmauer oben, Teich und Brunnen unten. Nur Optik, Maße in px bei 1x.

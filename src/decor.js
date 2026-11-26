@@ -5,7 +5,7 @@
 //  - Grosse Dekoration (Baum, Busch, Fels) nur auf Randkacheln des Spielfelds.
 //  - Im Inneren nur kleine Dekoration (Blumen, Grasbuschel, Kiesel), die flach bleibt.
 //  - Die Dekoration wird in den Hintergrund gezeichnet; gebaute Tuerme liegen darueber.
-import { COLS, ROWS, TILE, WIDTH, HEIGHT, OBSTACLE_TREE_SHARE, MAPS, TREE_FRAME, GROUND_STYLE, DECOR_STYLE, ACCENT_STYLE, WATER_STYLE, themed } from './config.js';
+import { COLS, ROWS, TILE, WIDTH, HEIGHT, OBSTACLE_TREE_SHARE, MAPS, TREE_FRAME, GROUND_STYLE, DECOR_STYLE, ACCENT_STYLE, WATER_STYLE, PAINT_STYLE, themed } from './config.js';
 import { buildPath } from './path.js';
 
 // Dichten (Wahrscheinlichkeit pro Kachel, 0..1)
@@ -201,10 +201,19 @@ export function groundPatches(mapId = 'meadow') {
     if (water.size && edge.some((p) => [0, 0.5, 1].some((f) => nearWater(water, x + (p[0] - x) * f, y + (p[1] - y) * f, wm)))) continue;
     out.plateaus.push({ x, y, rx, ry, seed });
   }
+  // B-142 Nacharbeit (theme.paint): Büschel gruppiert an Wegrand, Wasser, Hindernissen und Rahmenbäumen
+  const paint = MAPS[mapId].theme.paint ? themed(mapId, 'paint', PAINT_STYLE) : null;
+  const crowns = paint && MAPS[mapId].theme.treeFrame ? treeFrame(mapId) : [];
+  const obst = (MAPS[mapId].obstacles || []).map(([c, r]) => [(c + 0.5) * TILE, (r + 0.5) * TILE]);
+  const tuftNearFeature = (x, y) => distToPaths(paths, x, y) < G.tuftPathMargin + paint.tuftBand
+    || (water.size > 0 && nearWater(water, x, y, wm + paint.tuftBand))
+    || obst.some(([ox, oy]) => Math.hypot(x - ox, y - oy) < TILE / 2 + paint.tuftBand)
+    || crowns.some((c) => Math.hypot(x - c.x, y - c.y) < c.r + paint.tuftBand);
   for (let i = 0; i < G.tufts; i++) {
     const x = 4 + tileRand(i, 0, 80) * (WIDTH - 8), y = 6 + tileRand(i, 0, 81) * (HEIGHT - 8);
     if (distToPaths(paths, x, y) < G.tuftPathMargin) continue;
     if (nearWater(water, x, y, wm)) continue;
+    if (paint && !tuftNearFeature(x, y)) continue; // B-142 Nacharbeit: nur an Weg, Wasser, Hindernis oder Bäumen
     out.tufts.push({ x, y, s: lerp(G.tuftScale, tileRand(i, 0, 82)), dark: i % 3 === 0, seed: tileHash(i, 0, 83) });
   }
   return out;
@@ -312,4 +321,54 @@ export function mottleField(mapId, P) {
     }
   }
   return { cols, rows, cell: P.cell, dark, light };
+}
+
+// ---------- Gruppierte Kleindeko (B-142 Nacharbeit) ----------
+// Nur Karten mit theme.paint: Kachel-Büschel und Kiesel nur nahe an Weg, Wasser, Lava oder Hindernis (statt Raster),
+// Blumen nur in 3 bis 5 kleinen Inseln um die blumenreichsten Kacheln. Rückgabe: null (ohne theme.paint: alles bleibt)
+// oder { small, flowers } als Sets "spalte,zeile" der Kacheln, auf denen die jeweilige Kleindeko gezeichnet wird,
+// dazu blossoms (Zusatzblüten der Inseln, px), groups (Anzahl Inseln) und near(c, r) (Kachel liegt an Weg/Wasser/Hindernis).
+export function groupedDecor(mapId, blocked, obstacles) {
+  if (!MAPS[mapId]?.theme?.paint) return null;
+  const P = themed(mapId, 'paint', PAINT_STYLE);
+  const terrain = terrainTiles(mapId);
+  const feature = (c, r) => blocked.has(`${c},${r}`) || terrain.has(`${c},${r}`) || !!(obstacles && obstacles.has(`${c},${r}`));
+  const near = (c, r, m) => {
+    for (let dr = -m; dr <= m; dr++) for (let dc = -m; dc <= m; dc++) if (Math.abs(dc) + Math.abs(dr) <= m && (dc || dr) && feature(c + dc, r + dr)) return true;
+    return false;
+  };
+  const small = new Set();
+  const flowerTiles = [];
+  for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
+    const d = decorFor(c, r, blocked, obstacles, terrain);
+    if (!d) continue;
+    if (d.kind === 'flower') flowerTiles.push([c, r]);
+    else if ((d.kind === 'tuft' || d.kind === 'pebble') && near(c, r, P.smallNear)) small.add(`${c},${r}`);
+  }
+  // Inseln: Kacheln mit den meisten Blumen ringsum, Abstand mindestens flowerGroupGap
+  const R = P.flowerGroupRadius;
+  const around = (c, r) => flowerTiles.filter(([fc, fr]) => Math.max(Math.abs(fc - c), Math.abs(fr - r)) <= R);
+  const ranked = flowerTiles.map(([c, r]) => ({ c, r, n: around(c, r).length, q: tileRand(c, r, 95) }))
+    .sort((a, b) => b.n - a.n || a.q - b.q);
+  const want = P.flowerGroups[0] + Math.floor(tileRand(COLS, ROWS, 96 + String(mapId).length) * (P.flowerGroups[1] - P.flowerGroups[0] + 1));
+  const centers = [];
+  for (const t of ranked) {
+    if (centers.length >= want) break;
+    if (centers.every((o) => Math.max(Math.abs(o.c - t.c), Math.abs(o.r - t.r)) >= P.flowerGroupGap)) centers.push(t);
+  }
+  const flowers = new Set();
+  for (const o of centers) for (const [c, r] of around(o.c, o.r)) flowers.add(`${c},${r}`);
+  // Zusatzblüten je Insel (flach gezeichnet), nur auf freien Kacheln und mit Abstand zum Weg
+  const paths = mapPoints(mapId);
+  const blossoms = [];
+  centers.forEach((o, gi) => {
+    const cx = (o.c + 0.5) * TILE, cy = (o.r + 0.5) * TILE;
+    for (let k = 0; k < P.blossoms; k++) {
+      const a = tileRand(gi, k, 97) * Math.PI * 2, d = Math.sqrt(tileRand(gi, k, 98)) * P.blossomSpread;
+      const x = cx + Math.cos(a) * d, y = cy + Math.sin(a) * d * 0.7;
+      if (feature(Math.floor(x / TILE), Math.floor(y / TILE)) || distToPaths(paths, x, y) < P.blossomPathMargin) continue;
+      blossoms.push({ x, y, v: Math.floor(tileRand(o.c, o.r, 3) * 3 + (k % 3 === 0 ? 1 : 0)) % 3 });
+    }
+  });
+  return { small, flowers, blossoms, groups: centers.length, near: (c, r) => near(c, r, P.smallNear) };
 }

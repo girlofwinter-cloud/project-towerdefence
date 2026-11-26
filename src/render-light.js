@@ -61,3 +61,13 @@ export function drawLight(ctx, L = LIGHT_STYLE, P = null) {
   ctx.fillRect(0, 0, WIDTH, HEIGHT);
 }
 
+// Abdunklung eines Punkts durch Abschattung und Vignette des gemalten Bodens (B-142 Nacharbeit), Anteil 0..1.
+// Rechnet dieselben Verläufe nach, die drawLight mit P zeichnet (für Tests: Weg-Ein-/Ausgang und Burgtor hell genug).
+export function paintDarkness(x, y, P) {
+  const t = (x * WIDTH + y * HEIGHT) / (WIDTH * WIDTH + HEIGHT * HEIGHT);
+  const shade = t <= P.sunEnd ? 0 : P.shadeAlpha * Math.min(1, (t - P.sunEnd) / (1 - P.sunEnd));
+  const r = Math.hypot(WIDTH, HEIGHT) / 2, r0 = r * P.vignetteInner;
+  const d = Math.hypot(x - P.vignetteX * WIDTH, y - P.vignetteY * HEIGHT);
+  const vig = P.vignetteAlpha * Math.max(0, Math.min(1, (d - r0) / (r - r0)));
+  return 1 - (1 - shade) * (1 - vig);
+}

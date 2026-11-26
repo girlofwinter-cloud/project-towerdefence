@@ -1691,3 +1691,75 @@ test('Gemalter Boden: Rauschen deterministisch, Flecken hell und dunkel, Deckkra
   assert.ok(P.shadeAlpha <= L.maxDarken && P.vignetteAlpha <= L.maxDarken, 'Abdunklung je Schicht höchstens maxDarken');
   assert.ok(P.sunAlpha > P.sunMidAlpha && P.sunMid < P.sunEnd && P.sunEnd < 1 && P.vignetteX >= 0.5 && P.vignetteY >= 0.5, 'Licht oben links, Schatten rechts unten');
 });
+
+// ---------- Nacharbeit B-142/B-143 nach Designer ----------
+test('Wegsaum: unterbrochene Büschel über der Fuge, 30 bis 50 % der Randlänge, Fuge innen mind. 3 px frei, je Karte eigene Art', async () => {
+  const { PATH_STYLE } = await import('../src/config.js');
+  const { fringeClumps, contourReach, drawPathStyled } = await import('../src/render-path.js');
+  const kinds = {};
+  for (const id of Object.keys(MAPS)) {
+    const P = { ...PATH_STYLE, ...(MAPS[id].theme.pathStyle || {}) };
+    const col = { ...P.colors, ...(MAPS[id].theme.path || {}) };
+    assert.ok(col.fringe && P.fringeStep > 0, `${id}: Saum an`);
+    assert.ok(P.fringeInner - contourReach(P) >= 3, `${id}: Fuge unter dem Saum nur ${(P.fringeInner - contourReach(P)).toFixed(1)} px`);
+    assert.ok(P.fringeInner < P.grooveWidth / 2, `${id}: Saum liegt über der Fuge`);
+    const s = createGame({ mapId: id });
+    const lists = (s.paths || [s.path]).map((p) => p.points);
+    const f = fringeClumps(lists, P);
+    const share = f.covered / f.total;
+    assert.ok(share >= 0.3 && share <= 0.5, `${id}: Saumanteil ${share.toFixed(2)}`);
+    assert.deepEqual(fringeClumps(lists, P), f, `${id}: deterministisch`);
+    // kein durchgehendes Band: der Abstand aufeinanderfolgender Teile springt immer wieder über eine Lücke
+    let gaps = 0;
+    for (let i = 1; i < f.items.length; i++) if (Math.hypot(f.items[i].x - f.items[i - 1].x, f.items[i].y - f.items[i - 1].y) > P.fringeGap[0]) gaps++;
+    assert.ok(gaps > f.items.length / 8, `${id}: nur ${gaps} Lücken bei ${f.items.length} Teilen`);
+    kinds[id] = P.fringeKind;
+    const m = mockCtx();
+    drawPathStyled(m.ctx, s.paths || [s.path], MAPS[id].theme);
+    assert.equal(m.depth, 0);
+  }
+  assert.deepEqual(kinds, { meadow: 'blades', ice: 'snow', fork: 'leaves', twin: 'blades', volcano: 'ash' });
+  assert.equal(MAPS.fork.theme.path.fringe, '#e0803a', 'Herbstlaub im Zangenangriff');
+});
+
+test('Gemalter Boden auf allen Karten: Farben aus der Kartenpalette (Eis hell, Vulkan dunkel), Flecken im Cache', async () => {
+  const { PAINT_STYLE, themed } = await import('../src/config.js');
+  const { render } = await import('../src/render.js?b142-alle');
+  const lum = ([r, g, b]) => (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  const P = {};
+  for (const id of Object.keys(MAPS)) {
+    assert.ok(MAPS[id].theme.paint, `${id}: theme.paint`);
+    P[id] = themed(id, 'paint', PAINT_STYLE);
+  }
+  assert.equal(new Set(Object.values(P).map((p) => p.dark.join())).size, Object.keys(MAPS).length, 'jede Karte eigene Fleckenfarbe');
+  assert.ok(lum(P.ice.light) > 0.95 && lum(P.ice.dark) > 0.55, 'Eis hell');
+  assert.ok(lum(P.volcano.light) < 0.45 && lum(P.volcano.dark) < 0.1, 'Vulkan dunkel');
+  let puts = 0;
+  globalThis.document = { createElement() { const m = mockCtx(); m.ctx.getImageData = (x, y, w, h) => ({ width: w, height: h, data: new Uint8ClampedArray(w * h * 4) }); m.ctx.putImageData = () => { puts++; }; return { width: 0, height: 0, getContext: () => m.ctx, m }; } };
+  try {
+    for (const id of Object.keys(MAPS)) render(mockCtx().ctx, createGame({ mapId: id }), {});
+  } finally { delete globalThis.document; }
+  assert.equal(puts, Object.keys(MAPS).length, 'jede Karte mischt die Flecken einmal in den Cache');
+});
+
+test('Vignette und Abschattung dunkeln Weg-Ein-/Ausgang und Burgtor höchstens 20 % ab', async () => {
+  const { PAINT_STYLE, LIGHT_STYLE, WIDTH, HEIGHT, themed } = await import('../src/config.js');
+  const { paintDarkness } = await import('../src/render-light.js');
+  assert.ok(PAINT_STYLE.gateDarkMax <= 0.2);
+  for (const id of Object.keys(MAPS)) {
+    const P = themed(id, 'paint', PAINT_STYLE);
+    assert.ok(P.shadeAlpha <= LIGHT_STYLE.maxDarken && P.vignetteAlpha <= LIGHT_STYLE.maxDarken, `${id}: je Schicht begrenzt`);
+    const s = createGame({ mapId: id });
+    for (const p of s.paths || [s.path]) {
+      for (const q of [p.points[0], p.points[p.points.length - 1]]) {
+        // Tor-Kachel am Feldrand (der Wegpunkt selbst liegt außerhalb)
+        const x = Math.min(Math.max(q.x, TILE / 2), WIDTH - TILE / 2), y = Math.min(Math.max(q.y, TILE / 2), HEIGHT - TILE / 2);
+        const d = paintDarkness(x, y, P);
+        assert.ok(d <= P.gateDarkMax, `${id}: ${x},${y} um ${(d * 100).toFixed(1)} % abgedunkelt`);
+      }
+    }
+  }
+  const P = themed('meadow', 'paint', PAINT_STYLE);
+  assert.ok(paintDarkness(WIDTH, HEIGHT, P) > paintDarkness(WIDTH / 2, HEIGHT / 2, P), 'Ecke rechts unten dunkler als die Mitte');
+  assert.equal(paintDarkness(0, 0, P) < 0.2, true);
+});

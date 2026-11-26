@@ -14,7 +14,7 @@ import { drawTreeShadows, drawLight } from './render-light.js';
 import { drawGround as drawGroundFill, drawGroundTufts, drawMottle } from './render-ground.js';
 import { waterGeometry, drawWater, drawBridges } from './render-water.js';
 import { lavaGeometry, drawLava, drawLavaBridges } from './render-lava.js';
-import { tileHash, tileRand, decorFor, obstacleKind, treeFrame, groundPatches, accentsFor, coveredByCrown, scatterFor, LARGE_DECOR_RADIUS, mottleField } from './decor.js';
+import { tileHash, tileRand, decorFor, obstacleKind, treeFrame, groundPatches, accentsFor, coveredByCrown, scatterFor, LARGE_DECOR_RADIUS, mottleField, groupedDecor } from './decor.js';
 
 export function render(ctx, state, ui) {
   const reduced = !!(ui && ui.reducedMotion);
@@ -170,6 +170,8 @@ function drawDecor(ctx, state, crowns) {
   const flatTrees = flatpop && style.flatTrees; // B-072: Bäume und Hindernisse im neuen Stil
   const firShare = style.firShare;
   const terrain = new Set([...(state.water || []), ...(state.lava || [])]); // B-030: nie Deko auf Wasser oder Lava
+  // B-142 Nacharbeit (theme.paint): Büschel und Kiesel nur an Weg/Wasser/Hindernis, Blumen nur in kleinen Inseln
+  const grouped = flatpop ? groupedDecor(state.mapId, state.blocked, state.obstacles) : null;
   for (let r = 0; r < ROWS; r++) {
     for (let c = 0; c < COLS; c++) {
       if (state.obstacles && state.obstacles.has(`${c},${r}`)) {
@@ -180,9 +182,11 @@ function drawDecor(ctx, state, crowns) {
       const d = decorFor(c, r, state.blocked, state.obstacles, terrain);
       if (!d) {
         const sc = flatpop && scatterFor(c, r, state.blocked, state.obstacles, state.mapId);
-        if (sc) flat.drawScatter(ctx, sc, c * TILE + sc.ox * TILE, r * TILE + sc.oy * TILE);
+        if (sc && !(grouped && sc.kind === 'pebbles' && !grouped.near(c, r))) flat.drawScatter(ctx, sc, c * TILE + sc.ox * TILE, r * TILE + sc.oy * TILE);
         continue;
       }
+      if (grouped && d.kind === 'flower' && !grouped.flowers.has(`${c},${r}`)) continue;
+      if (grouped && (d.kind === 'tuft' || d.kind === 'pebble') && !grouped.small.has(`${c},${r}`)) continue;
       const x = c * TILE + d.ox * TILE;
       const y = r * TILE + d.oy * TILE;
       if (crowns && d.kind === 'tree' && coveredByCrown(crowns, x, y)) continue;
@@ -206,6 +210,7 @@ function drawDecor(ctx, state, crowns) {
       else drawPebble(ctx, x, y);
     }
   }
+  if (grouped) for (const b of grouped.blossoms) flat.drawBlossom(ctx, b.x, b.y, b.v); // Zusatzblüten der Wiesen-Inseln
 }
 
 const OBSTACLE_SHADE = 'rgba(10,40,15,0.35)';
