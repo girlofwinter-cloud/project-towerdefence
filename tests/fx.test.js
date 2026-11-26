@@ -6,7 +6,7 @@ import { createGame, update, buildTower, startWave } from '../src/game.js';
 import { buildPath } from '../src/path.js';
 import { WAYPOINTS, TILE, ENEMY_TYPES } from '../src/config.js';
 import { walkPhase, animSpeedFactor, facingFor, facingFlip, facingTilt, WALK_RATE, TILT_MAX } from '../src/enemy-fx.js';
-import { createFx, syncTime, spawnParticle, updateParticles, liveParticles, syncFx, shakeAmplitude, shakeOffset, triggerShake, MAX_PARTICLES, MAX_STEP, SHAKE_COOLDOWN, SHAKE_MAX, SHAKE_DURATION, K_SPARK, K_SMOKE, K_COIN } from '../src/fx-system.js';
+import { createFx, syncTime, spawnParticle, updateParticles, liveParticles, syncFx, shakeAmplitude, shakeOffset, triggerShake, bossEntryShake, bossEntryProgress, MAX_PARTICLES, MAX_STEP, SHAKE_COOLDOWN, SHAKE_MAX, SHAKE_DURATION, K_SPARK, K_SMOKE, K_COIN } from '../src/fx-system.js';
 import { freeTileNearPath, recordEnemy, withoutRandom } from './helpers.js';
 
 // ---------- Gegner: Zeichnung und Animation (B-011) ----------
@@ -121,7 +121,8 @@ test('Gegner-Zeichnung: Typen unterscheiden sich, Boss ist am groessten', async 
   }
   const keys = Object.keys(prints);
   for (let i = 0; i < keys.length; i++) for (let j = i + 1; j < keys.length; j++) assert.notEqual(prints[keys[i]], prints[keys[j]], `${keys[i]} == ${keys[j]}`);
-  // Vergleich der Zeichenspur-Laenge Boss gegen andere entfaellt bis B-067 (Boss noch im alten Stil, Rest Flat-Pop)
+  // Boss (B-067, Flat-Pop) hat die laengste Zeichenspur (Krone, Keule, Aura)
+  for (const type of keys) if (type !== 'boss') assert.ok(prints.boss.length > prints[type].length, `Boss-Spur nicht laenger als ${type}`);
   assert.ok(extent.boss > extent.grunt && extent.boss > 1.15, `Boss-Ausdehnung ${extent.boss}`);
   // Unbekannter Typ nutzt den Rueckfall (weiter zeichnen, nicht crashen)
   assert.ok(prints.healer.length > 0);
@@ -812,5 +813,128 @@ test('Flat-Pop B-066 (B-085): Hauptfarbflaechen >= 0,25 Helligkeitsabstand zum W
       assert.ok(Math.abs(brightness(outlineOf(c.skin)) - brightness(road)) >= 0.25, `${type}: Kontur gegen ${road}`);
     }
     assert.equal(c.skin, ENEMY_TYPES[type].color, `${type}: skin == ENEMY_TYPES.color`);
+  }
+});
+
+
+// ---------- Boss Oger-Koenig im Flat-Pop-Stil (B-067) ----------
+
+test('Boss B-067: Massstab 1,6x des Goblins, Krone/Keule/Aura gezeichnet, Aura pulsiert, Phasen verschieden', async () => {
+  const { ENEMY_STYLE } = await import('../src/config.js');
+  const { BOSS_REF, drawBossFlat } = await import('../src/render-enemies-flat.js');
+  const px = (type, ref) => ENEMY_TYPES[type].radius / ref; // Weltpixel je Design-Pixel
+  assert.ok(Math.abs(px('boss', BOSS_REF) / px('grunt', ENEMY_STYLE.grunt.ref) - ENEMY_STYLE.boss.sizeFactor) < 1e-9);
+  assert.equal(ENEMY_STYLE.boss.sizeFactor, 1.6);
+  const r = await recordEnemy({ type: 'boss' });
+  for (const col of [ENEMY_STYLE.boss.gold, ENEMY_STYLE.boss.club, ENEMY_STYLE.boss.aura]) assert.ok(r.print.includes('|' + col), `Farbe ${col} fehlt`);
+  const aura = (time) => {
+    const arcs = [];
+    drawBossFlat(new Proxy({}, { get: (_, k) => (...a) => { if (k === 'arc') arcs.push(a[2]); }, set: () => true }), 0, time);
+    return arcs[0];
+  };
+  assert.notEqual(aura(0), aura(0.4));
+  const seen = new Set();
+  for (const time of [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6]) seen.add((await recordEnemy({ type: 'boss' }, time)).print);
+  assert.ok(seen.size >= 4, 'Boss: Phasen unterscheiden sich');
+});
+
+test('Boss B-067: Frost-Overlay/Ring unveraendert, HP-Balken ueber der Krone, Kontrast zum Weg, skin == ENEMY_TYPES.color', async () => {
+  const { ENEMY_STYLE, MAPS, PATH_STYLE } = await import('../src/config.js');
+  const { brightness, outlineOf } = await import('../src/draw-utils.js');
+  const r = await recordEnemy({ type: 'boss', slowUntil: 99, hp: 10, maxHp: 10 });
+  const tail = r.calls.slice(r.calls.findIndex((c) => c.startsWith('arc:0.00,0.00,0.95')));
+  assert.equal(tail[0].split('|')[1], 'rgba(150,220,255,0.4)');
+  assert.equal(tail.filter((c) => c.startsWith('moveTo')).length, 3, '3 Frost-Kristalle');
+  assert.ok(tail.find((c) => c.startsWith('arc:200.00,150.00')).endsWith('#bdf0ff'), 'Frost-Ring');
+  assert.deepEqual(r.calls.filter((c) => c.startsWith('fillRect')).map((c) => c.split('|')[1]), ['#300', '#4cd964']);
+  // Balken-Unterkante liegt ueber dem hoechsten Punkt der Figur (Krone)
+  for (const time of [0, 0.3, 0.7]) {
+    const q = await recordEnemy({ type: 'boss' }, time);
+    const top = Math.min(...q.figure.filter((p) => p.depth > 0 && !p.ext).map((p) => p.y));
+    const barBottom = Math.max(...q.world.filter((p) => p.hp).map((p) => p.y));
+    assert.ok(barBottom < top, `Balken ${barBottom} ueberdeckt Krone ${top}`);
+  }
+  const c = ENEMY_STYLE.boss;
+  let mean = 0, sum = 0;
+  for (const [name, w] of Object.entries(c.main)) { mean += w * brightness(c[name]); sum += w; }
+  assert.ok(Math.abs(sum - 1) < 1e-9);
+  for (const id of ['meadow', 'ice']) {
+    const road = { ...PATH_STYLE.colors, ...(MAPS[id].theme.path || {}) }.mid;
+    assert.ok(Math.abs(mean - brightness(road)) >= 0.25, `Boss gegen Weg ${road}: ${mean.toFixed(2)}`);
+    assert.ok(Math.abs(brightness(outlineOf(c.skin)) - brightness(road)) >= 0.25);
+  }
+  assert.equal(c.skin, ENEMY_TYPES.boss.color);
+});
+
+test('Boss-Auftritt B-067: Wackeln unter 3 px, reduced motion schaltet es aus, Ring-Fortschritt', async () => {
+  const { BOSS_ENTRY } = await import('../src/config.js');
+  assert.ok(bossEntryShake(false) > 0 && bossEntryShake(false) < 3);
+  assert.equal(bossEntryShake(true), 0);
+  assert.equal(bossEntryProgress(5, 5), 0);
+  assert.ok(Math.abs(bossEntryProgress(5 + BOSS_ENTRY.ringDuration / 2, 5) - 0.5) < 1e-9);
+  assert.equal(bossEntryProgress(5 + BOSS_ENTRY.ringDuration + 1e-6, 5), -1);
+  assert.equal(bossEntryProgress(BOSS_ENTRY.ringDuration, 0), -1);
+  assert.equal(bossEntryProgress(4.9, 5), -1);
+  assert.equal(bossEntryProgress(5, -Infinity), -1);
+  const path = { points: [] };
+  const boss = { type: 'boss', x: 100, y: 80, radius: 18 };
+  const run = (reduced) => {
+    const fx = createFx();
+    const s = { time: 1, path, projectiles: [], effects: [], enemies: [] };
+    syncFx(fx, s, reduced);
+    s.time = 1.02;
+    s.enemies.push(boss);
+    syncFx(fx, s, reduced);
+    const dust = liveParticles(fx);
+    let maxOff = 0;
+    for (let t = 1.02; t < 1.5; t += 0.005) maxOff = Math.max(maxOff, Math.abs(shakeOffset(t, fx.shakeStart, fx.shakeStrength, 0)), Math.abs(shakeOffset(t, fx.shakeStart, fx.shakeStrength, 1)));
+    // gleicher Boss im naechsten Frame: kein zweiter Auftritt
+    const start = fx.entryStart;
+    s.time = 1.2;
+    syncFx(fx, s, reduced);
+    assert.equal(fx.entryStart, start, 'nur einmal pro Boss');
+    return { fx, dust, maxOff };
+  };
+  const normal = run(false);
+  assert.ok(normal.maxOff > 0 && normal.maxOff < 3, `Wackeln ${normal.maxOff}`);
+  assert.equal(normal.dust, 0, 'Auftritt erzeugt keine Partikel (nur Ring und Wackeln)');
+  assert.equal(normal.fx.entryStart, 1.02);
+  assert.equal(normal.fx.entryX, 100);
+  const calm = run(true);
+  assert.equal(calm.maxOff, 0, 'reduced motion: kein Wackeln');
+  assert.equal(calm.fx.entryStart, 1.02, 'Ring bleibt als Hinweis');
+  // normaler Gegner loest nichts aus
+  const fx = createFx();
+  syncFx(fx, { time: 1, path, enemies: [] });
+  syncFx(fx, { time: 1.1, path, enemies: [{ type: 'grunt', x: 1, y: 1, radius: 12 }] });
+  assert.equal(fx.entryStart, -Infinity);
+  assert.equal(fx.shakeStrength, 0);
+});
+
+test('Boss-Auftritt B-067: render reicht ui.reducedMotion durch, Ring wird gezeichnet', async () => {
+  const { render } = await import('../src/render.js');
+  const { getFx, drawBossEntry } = await import('../src/render-fx.js');
+  const { BOSS_ENTRY } = await import('../src/config.js');
+  for (const reducedMotion of [false, true]) {
+    const state = createGame();
+    const { ctx, st } = plainCtx();
+    render(ctx, state, { hover: null, selectedTowerId: null, reducedMotion });
+    state.time += 0.05;
+    state.enemies.push(testEnemy({ type: 'boss', radius: ENEMY_TYPES.boss.radius }));
+    const before = st.fills.length;
+    render(ctx, state, { hover: null, selectedTowerId: null, reducedMotion });
+    assert.ok(st.fills.length > before);
+    const fx = getFx();
+    assert.equal(fx.entryStart, state.time);
+    assert.equal(fx.shakeStrength > 0, !reducedMotion, `reducedMotion=${reducedMotion}`);
+    assert.equal(st.depth, 0);
+    // Ring: Ellipse am Boden in Ringfarbe; bei reduced motion ohne Wachsen (Radius = Boss-Radius)
+    const rings = [];
+    const props = {};
+    drawBossEntry(new Proxy({}, { get: (_, k) => (k in props ? props[k] : (...a) => { if (k === 'ellipse') rings.push([a[2], props.strokeStyle]); }), set: (_, k, v) => { props[k] = v; return true; } }));
+    assert.equal(rings.length, 1);
+    assert.equal(rings[0][1], BOSS_ENTRY.ringColor);
+    if (reducedMotion) assert.equal(rings[0][0], ENEMY_TYPES.boss.radius);
+    else assert.ok(rings[0][0] < ENEMY_TYPES.boss.radius, 'Ring startet klein und waechst');
   }
 });

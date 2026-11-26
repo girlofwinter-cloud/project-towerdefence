@@ -6,7 +6,7 @@ import { drawPathStyled } from './render-path.js';
 import { TOWER_DRAWERS } from './render-towers.js';
 import { recoilOffset } from './tower-fx.js';
 import { drawEnemy, drawHealAura } from './render-enemies.js';
-import { updateFx, shakeX, shakeY, drawProjectileFx, drawParticles } from './render-fx.js';
+import { updateFx, shakeX, shakeY, drawProjectileFx, drawParticles, drawBossEntry } from './render-fx.js';
 import { drawTreeFrame } from './render-trees.js';
 import * as flat from './render-decor.js';
 import { drawIsland } from './render-island.js';
@@ -17,7 +17,7 @@ import { tileHash, tileRand, decorFor, obstacleKind, treeFrame, groundPatches, a
 
 export function render(ctx, state, ui) {
   // Partikel aus dem Zustand ableiten (nur lesen), danach Shake-Versatz bestimmen.
-  updateFx(state);
+  updateFx(state, !!(ui && ui.reducedMotion));
   const sx = shakeX();
   const sy = shakeY();
   const shaking = sx !== 0 || sy !== 0;
@@ -35,6 +35,7 @@ export function render(ctx, state, ui) {
   if (MAPS[state.mapId]?.theme?.islands) for (const t of state.towers) drawIsland(ctx, t.x, t.y);
   for (const t of state.towers) drawTower(ctx, t, ui.selectedTowerId === t.id);
   for (const e of state.enemies) drawHealAura(ctx, e, state.time);
+  drawBossEntry(ctx);
   for (const e of state.enemies) drawEnemy(ctx, e, state.time, enemyPath(state, e));
   for (const p of state.projectiles) drawProjectile(ctx, p);
   drawParticles(ctx);

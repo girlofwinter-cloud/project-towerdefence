@@ -4,6 +4,7 @@
 // Alles ist vorab allokiert (feste Pools, Typed Arrays); im Hotpath entstehen keine Objekte.
 // Zufall ist deterministisch (tileRand mit Zaehler), niemals Math.random.
 import { tileRand } from './decor.js';
+import { BOSS_ENTRY } from './config.js';
 
 export const MAX_PARTICLES = 256; // feste Obergrenze, ist der Pool voll wird das Aelteste ueberschrieben
 export const MAX_TRACKED = 256; // gleichzeitig verfolgte Projektile (Schweif-Richtung, Treffer-Erkennung)
@@ -74,6 +75,13 @@ export function createFx() {
     shakeStart: 0,
     shakeStrength: 0,
     shakeLock: -Infinity, // Spielzeit des letzten ausgeloesten Shakes (fuer SHAKE_COOLDOWN)
+    // Boss-Auftritt (B-067): bereits gesehene Gegner, letzter Bodenschlag
+    seenEnemies: new WeakSet(),
+    entryStart: -Infinity,
+    entryX: 0,
+    entryY: 0,
+    entryR: 0,
+    entryReduced: false,
   };
 }
 
@@ -91,6 +99,9 @@ export function resetFx(fx) {
   fx.shakeStart = 0;
   fx.shakeStrength = 0;
   fx.shakeLock = -Infinity; // Sperre leeren
+  fx.seenEnemies = new WeakSet();
+  fx.entryStart = -Infinity;
+  fx.entryReduced = false;
 }
 
 // Gleicht mit der Spielzeit ab. Neuer Weg (= neues Spiel) oder Zeit rueckwaerts -> Reset.
@@ -258,8 +269,39 @@ export function observeEffect(fx, e, time) {
   }
 }
 
+// ---------- Boss-Auftritt (B-067) ----------
+// Wackel-Staerke beim Erscheinen des Bosses: 0 bei prefers-reduced-motion, sonst unter SHAKE_MAX.
+export function bossEntryShake(reducedMotion) {
+  return reducedMotion ? 0 : Math.min(BOSS_ENTRY.shake, SHAKE_MAX);
+}
+
+// Fortschritt des Bodenschlag-Rings: 0..1 waehrend der Dauer, sonst -1 (nichts zeichnen).
+export function bossEntryProgress(time, start) {
+  const el = time - start;
+  if (!(el >= 0) || el >= BOSS_ENTRY.ringDuration) return -1;
+  return el / BOSS_ENTRY.ringDuration;
+}
+
+// Erkennt neue Gegner (Referenz-Merker); ein neuer Boss loest Bodenschlag (Ring) und Wackeln aus.
+// reducedMotion: kein Wackeln, der Ring waechst nicht (bleibt als ruhiger Hinweis).
+export function observeEnemy(fx, e, time, reducedMotion) {
+  if (!e || fx.seenEnemies.has(e)) return;
+  fx.seenEnemies.add(e);
+  if (e.type !== 'boss') return;
+  const x = Number.isFinite(e.x) ? e.x : 0;
+  const y = Number.isFinite(e.y) ? e.y : 0;
+  const r = Number.isFinite(e.radius) ? e.radius : 0;
+  fx.entryStart = time;
+  fx.entryX = x;
+  fx.entryY = y;
+  fx.entryR = r;
+  fx.entryReduced = !!reducedMotion;
+  triggerShake(fx, time, bossEntryShake(reducedMotion));
+}
+
 // Gesamter Ablauf pro Frame. Liest den Spielzustand nur, veraendert ihn nie.
-export function syncFx(fx, state) {
+// reducedMotion (prefers-reduced-motion, kommt aus main.js) schaltet das Boss-Wackeln aus.
+export function syncFx(fx, state, reducedMotion = false) {
   const dt = syncTime(fx, state.time, state.path && state.path.points);
   fx.frame++;
   updateParticles(fx, dt);
@@ -271,6 +313,8 @@ export function syncFx(fx, state) {
   sweepProjectiles(fx);
   const effects = state.effects || [];
   for (let i = 0; i < effects.length; i++) observeEffect(fx, effects[i], fx.lastTime);
+  const enemies = state.enemies || [];
+  for (let i = 0; i < enemies.length; i++) observeEnemy(fx, enemies[i], fx.lastTime, reducedMotion);
 }
 
 // ---------- Screen-Shake ----------

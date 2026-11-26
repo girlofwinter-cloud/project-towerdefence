@@ -741,4 +741,25 @@ export const ENEMY_STYLE = {
     skin: '#6f86a8', body: '#4f607c', helm: '#9aa7ba', shield: '#7a5530', rim: '#c9ccd2', emblem: '#e8d27a',
     main: { skin: 0.3, body: 0.3, shield: 0.4 },
   },
+  // Boss Oger-König (B-067): ref wird aus sizeFactor berechnet (render-enemies-flat.js), damit ein Design-Pixel
+  // beim Boss sizeFactor-mal so groß ist wie beim Goblin.
+  boss: {
+    sizeFactor: 1.6,
+    skin: '#7a2e8e', belly: '#b77fc4', fur: '#8a5a34', club: '#c58f55', stud: '#b3adaa',
+    gold: '#f4c542', jewel: '#d4503f', tusk: '#f1e8d2',
+    aura: 'rgba(190,110,235,0.2)', auraRing: 'rgba(225,170,255,0.65)', auraWidth: 1.1,
+    auraRadius: 12.6, auraPulse: 0.7, auraSpeed: 3, // Aura: Grundradius, Pulsausschlag (Design-px), Tempo (rad/s)
+    main: { skin: 0.55, belly: 0.15, fur: 0.15, gold: 0.15 },
+  },
+};
+
+// Auftritt des Bosses (B-067, nur Darstellung): Bodenschlag-Ring plus leichtes Wackeln.
+// Bei prefers-reduced-motion entfällt das Wackeln, der Ring wächst nicht.
+export const BOSS_ENTRY = {
+  shake: 2.4,          // Wackel-Amplitude in px (unter 3 px, SHAKE_MAX begrenzt zusätzlich)
+  ringDuration: 0.55,  // Dauer des Bodenschlag-Rings in Sekunden Spielzeit
+  ringRadius: 2.2,     // Endradius des Rings in Boss-Radien
+  ringStart: 0.5,      // Startradius in Boss-Radien
+  ringWidth: 3.5,      // Linienbreite in px (wird zum Ende dünner)
+  ringColor: 'rgba(244,197,66,0.85)',
 };

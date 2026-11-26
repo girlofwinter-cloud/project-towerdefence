@@ -1,10 +1,11 @@
 // Zeichnung der Projektil-Schweife und Partikel. Keine Spiel-Logik; der Zustand kommt aus fx-system.js.
 // Transparenz nur ueber globalAlpha innerhalb von save/restore. Keine Allokation pro Frame.
 import {
-  createFx, syncFx, shakeOffset, MAX_PARTICLES,
+  createFx, syncFx, shakeOffset, bossEntryProgress, MAX_PARTICLES,
   K_NONE, K_SMOKE, K_ICE, K_SPARK, K_FLASH, K_COIN,
   T_ARROW, T_CANNON, T_FROST, T_SNIPER,
 } from './fx-system.js';
+import { BOSS_ENTRY } from './config.js';
 
 // Ein gemeinsamer Partikelzustand fuer das Spiel (wird bei Neustart/Zeitsprung von syncFx geleert).
 const fx = createFx();
@@ -31,8 +32,24 @@ const COL_COIN_SHINE = '#fff6c4';
 const TWO_PI = Math.PI * 2;
 
 // Pro Frame einmal aufrufen (vor dem Zeichnen): leitet Partikel aus dem Zustand ab.
-export function updateFx(state) {
-  syncFx(fx, state);
+// reducedMotion: prefers-reduced-motion (aus main.js ueber ui), schaltet das Boss-Wackeln aus.
+export function updateFx(state, reducedMotion = false) {
+  syncFx(fx, state, reducedMotion);
+}
+
+// Bodenschlag beim Boss-Auftritt (B-067): goldener Ring am Boden, waechst und wird duenner.
+// Bei reduzierter Bewegung waechst er nicht, sondern wird nur duenner.
+export function drawBossEntry(ctx) {
+  const u = bossEntryProgress(fx.lastTime, fx.entryStart);
+  if (u < 0) return;
+  const k = fx.entryReduced ? 1 : BOSS_ENTRY.ringStart + (BOSS_ENTRY.ringRadius - BOSS_ENTRY.ringStart) * (1 - (1 - u) * (1 - u));
+  ctx.save();
+  ctx.strokeStyle = BOSS_ENTRY.ringColor;
+  ctx.lineWidth = BOSS_ENTRY.ringWidth * (1 - u); // verblasst ueber die Linienbreite (kein globalAlpha noetig)
+  ctx.beginPath();
+  ctx.ellipse(fx.entryX, fx.entryY + fx.entryR * 0.7, fx.entryR * k, fx.entryR * k * 0.4, 0, 0, TWO_PI);
+  ctx.stroke();
+  ctx.restore();
 }
 
 // Shake-Versatz fuer die Welt-Zeichnung (nur Zeichnung, die Eingabe in main.js bleibt unberuehrt).
