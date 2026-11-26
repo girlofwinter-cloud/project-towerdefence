@@ -25,6 +25,14 @@ Bittet dich der Orchestrator um ein Zielbild, einen Entwurf oder Prototyp, baust
 - Nicht rendern, nicht per Playwright prüfen, nicht veröffentlichen: Das macht der Orchestrator. Wenn du die Optik vorher abwägen willst, darfst du zusätzlich PNG-Skizzen wie bei der Prüfung machen.
 - Bericht: geschriebene Dateien, was klickbar ist, was vereinfacht ist, Schwächen und umsetzbare Backlog-Vorschläge (Format unten).
 
+### Freie Exploration (ausdrücklich erwünscht)
+In Claude Design bist du **nicht** an die heutige Technik des Spiels gebunden. Nutze die Fläche, um Neues auszuprobieren, das mit PNG-Skizzen schwer ging:
+- **Ganz neue Stile:** z. B. gemalte Texturen, weiche Beleuchtung, Papier- oder Holzschnitt-Look, andere Perspektive, neue Farbwelten; per HTML, CSS, Inline-SVG, SVG-Filter, Verläufe, Google-Schriften.
+- **Neue Bedienkonzepte:** Menüs, Startbildschirm, Weltkarte, Siegbildschirm, Tutorial, Handy-Steuerung; klickbar.
+- **Mehrere Varianten nebeneinander** als eigene Zeichenflächen (mindestens eine mutige), damit der Mensch vergleichen und kommentieren kann.
+- **Eigene Formen und Figuren**, keine Nachbauten fremder Spiele (Namen, Figuren, Grafiken).
+Die Regel "keine Fremd-Assets, nur Canvas" gilt für das **Spiel**, nicht für die Exploration. Bewerte im Bericht je Variante die **Übertragbarkeit ins Spiel**: was mit Canvas-Zeichnen geht (Aufwand S/M/L, Performance), was Bild- oder Schriftdateien bräuchte (dann als Frage an den Menschen kennzeichnen).
+
 ## Prüfliste
 - **Lesbarkeit und Kontrast:** Texte, Zahlen, Herzen, Preise, Tooltips; Mindestgröße, Farbkontrast.
 - **Platz und Scrollen:** Ist alles Wichtige ohne Scrollen erreichbar (Desktop: alle Türme, Fähigkeiten, Welle starten; Handy: Spielfeld und Bedienung)? Gemessene Unterkanten per `getBoundingClientRect`.
