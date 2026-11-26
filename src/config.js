@@ -31,6 +31,13 @@ export function themed(mapId, key, base) {
   return v && typeof v === 'object' ? { ...base, ...v } : base;
 }
 
+// B-104: Fluss und See der Wiese (Kacheln [spalte, zeile]). Der Fluss ist eine Kette von oben (unter dem Baumrahmen)
+// bis zum See, inklusive Brückenkachel; Wasser = Fluss + See ohne Brücken (Brücken liegen auf dem Weg).
+const MEADOW_RIVER = [[1, 0], [1, 1], [1, 2], [1, 3], [1, 4], [1, 5], [1, 6], [1, 7], [1, 8]];
+const MEADOW_LAKE = [[1, 9], [2, 9], [1, 10], [2, 10], [2, 11]];
+const MEADOW_BRIDGES = [[1, 2]];
+const notBridge = ([c, r]) => !MEADOW_BRIDGES.some(([bc, br]) => bc === c && br === r);
+
 // Karten: Wegpunkte in Kachel-Koordinaten [spalte, zeile].
 // Erster und letzter Punkt liegen außerhalb des Spielfelds (Ein-/Ausgang).
 export const MAPS = {
@@ -48,6 +55,11 @@ export const MAPS = {
     ],
     // B-103: wenige Hindernisse (Art aus obstacleKind in decor.js): Fels, Baum
     obstacles: [[8, 1], [12, 12]],
+    // B-104: Wasser ist nicht bebaubar (canBuild), Brücken sind Weg-Kacheln (nur Optik, Gegner laufen normal)
+    river: MEADOW_RIVER,
+    lake: MEADOW_LAKE,
+    bridges: MEADOW_BRIDGES,
+    water: [...MEADOW_RIVER.filter(notBridge), ...MEADOW_LAKE],
     // B-071: Wegpalette der Wiese (STIL.md); Eiswelt und Zangenangriff haben eigene Wegfarben (B-072, B-073).
     // B-103: decor.flatTrees, damit die Hindernisse im Flat-Pop-Stil erscheinen (Laubbaum, Fels mit Kontur)
     theme: { treeFrame: true, ground: true, accents: true, light: true, islands: true, decorStyle: 'flatpop', decor: { flatTrees: true }, path: { main: '#e2c88f', edge: '#8f6a3b', outline: '#4a3418', mid: '#ecd5a0', fringe: '#6fbf4e' } },
@@ -735,6 +747,39 @@ export const ACCENT_STYLE = {
   wood: '#c58f55', woodDark: '#8a5a34', gate: '#6b4a2b', wellRoof: '#d4503f',
   water: '#5aa9d6', bank: '#6a8a3e', mud: '#8a6a42', pad: '#4aa84a', padFlower: '#ff8fb1', padCenter: '#ffe07a', reed: '#4d8a3a', reedHead: '#7a4a2a',
   towerW: 14, towerBody: 22, towerRoof: 10, wallHeight: 16, merlon: [8, 5], merlonStep: 11, gateW: 16, gateH: 12,
+};
+
+// Fluss, See und Brücke der Wiese (B-104): nur Optik im Hintergrund-Cache, Maße in px bei 1x.
+// Gezeichnet nur auf Karten mit MAPS.<id>.water (Kacheln aus river/lake/bridges).
+export const WATER_STYLE = {
+  water: '#5aa9d6',        // Fläche wie ACCENT_STYLE.water (Teich)
+  channelShade: [0.1, 0.2], // Rinne zur Mitte hin: shd(water, t) je Stufe
+  channelScale: [0.7, 0.4], // Breite der Rinnen-Stufen als Anteil der Fläche
+  outline: '#28506a',
+  outlineWidth: 1.3,
+  bank: '#6a8a3e',         // Ufersaum
+  bankWidth: 3.5,
+  mud: '#8a6a42',          // Schlammflecken an Innenkurven
+  riverWidth: 28,
+  riverWiggle: 4,          // seitlicher Schwung je Kachel, höchstens (deterministisch)
+  riverTop: 6,             // y des oberen (runden) Endes, liegt unter den Baumkronen
+  lakeRadius: 21,          // Radius je Seekachel (Umriss = Hülle der Kreise um die Kachelmitten)
+  lakePoints: 24,          // Stützpunkte des Seeumrisses
+  glint: 'rgba(255,243,201,0.5)', // Glanzstriche (#fff3c9, Alpha 0,5)
+  glintWidth: 1.6,
+  pad: '#4aa84a', padFlower: '#ff8fb1', padCenter: '#ffe07a', reed: '#4d8a3a', reedHead: '#7a4a2a',
+  groundMargin: 6,         // Plateaus und Büschel halten so viel Abstand zu Wasserkacheln
+  // Brücke: Holzbohlen quer zur Laufrichtung, Geländer an beiden Seiten, Schlagschatten auf dem Wasser
+  bridge: {
+    length: 46,            // entlang des Wegs
+    width: 30,             // quer zum Weg (Deck)
+    plank: 5.5,            // Bohlenbreite (Fugenabstand)
+    wood: '#c58f55', seam: '#8a5a34', outline: '#5a3a20', outlineWidth: 1.3,
+    rail: 3.5,             // Stärke des Geländerbalkens
+    post: 4,               // Pfostengröße
+    shadow: 'rgba(43,27,61,0.3)', shadowOffset: [2, 4],
+    waterReach: 0.75,      // Wasser wird unter der Brücke bis zu diesem Anteil einer Kachel quer zum Weg neu gemalt
+  },
 };
 
 // Bauplatz-Inseln der Wiese (B-082): Gras-Plateau mit Kontur und kurzer Wand unter jedem Turm, blasse Vorschau beim Hover.

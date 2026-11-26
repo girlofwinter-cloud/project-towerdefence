@@ -13,6 +13,7 @@ import { drawIsland } from './render-island.js';
 import { drawAccents } from './render-accents.js';
 import { drawTreeShadows, drawLight } from './render-light.js';
 import { drawGround as drawGroundFill, drawGroundTufts } from './render-ground.js';
+import { waterGeometry, drawWater, drawBridges } from './render-water.js';
 import { tileHash, tileRand, decorFor, obstacleKind, treeFrame, groundPatches, accentsFor, coveredByCrown, scatterFor, LARGE_DECOR_RADIUS } from './decor.js';
 
 export function render(ctx, state, ui) {
@@ -33,7 +34,7 @@ export function render(ctx, state, ui) {
   }
   drawHover(ctx, state, ui);
   // Wiese (theme.islands): Inseln aller Türme zuerst, damit sie keinen Nachbarturm überdecken
-  if (MAPS[state.mapId]?.theme?.islands) for (const t of state.towers) drawIsland(ctx, t.x, t.y);
+  if (MAPS[state.mapId]?.theme?.islands) drawIslands(ctx, state);
   for (const t of state.towers) drawTower(ctx, t, ui.selectedTowerId === t.id);
   for (const e of state.enemies) drawHealAura(ctx, e, state.time);
   drawBossEntry(ctx);
@@ -45,6 +46,24 @@ export function render(ctx, state, ui) {
   drawParticles(ctx);
   for (const fx of state.effects) drawEffectOver(ctx, fx, reduced);
   if (shaking) ctx.restore();
+}
+
+// Inseln der Türme; B-104: nie über Wasserkacheln (Clip spart sie aus, evenodd)
+function drawIslands(ctx, state) {
+  if (!state.towers.length) return;
+  const water = state.water && state.water.size ? state.water : null;
+  if (water) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(0, 0, WIDTH, HEIGHT);
+    for (const k of water) {
+      const [c, r] = k.split(',').map(Number);
+      ctx.rect(c * TILE, r * TILE, TILE, TILE);
+    }
+    ctx.clip('evenodd');
+  }
+  for (const t of state.towers) drawIsland(ctx, t.x, t.y);
+  if (water) ctx.restore();
 }
 
 // ---------- Hintergrund (Gelaende, Weg, Dekoration) ----------
@@ -94,7 +113,10 @@ function paintBackground(ctx, state) {
   flat.useDecorStyle(themed(id, 'decor', DECOR_STYLE));
   if (ground) drawGroundFill(ctx, ground, groundStyle);
   else drawGrass(ctx, MAPS[id]?.theme);
+  const water = waterGeometry(id, state.blocked); // B-104: Ebenen Boden, Wasser, Weg, Brücke
+  drawWater(ctx, water);
   drawPath(ctx, state);
+  drawBridges(ctx, water);
   if (ground) drawGroundTufts(ctx, ground, groundStyle);
   const crowns = MAPS[id]?.theme?.treeFrame ? treeFrame(id) : null;
   drawDecor(ctx, state, crowns);
@@ -155,7 +177,7 @@ function drawDecor(ctx, state, crowns) {
         else drawObstacle(ctx, c, r);
         continue;
       }
-      const d = decorFor(c, r, state.blocked, state.obstacles);
+      const d = decorFor(c, r, state.blocked, state.obstacles, state.water);
       if (!d) {
         const sc = flatpop && scatterFor(c, r, state.blocked, state.obstacles, state.mapId);
         if (sc) flat.drawScatter(ctx, sc, c * TILE + sc.ox * TILE, r * TILE + sc.oy * TILE);

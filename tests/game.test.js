@@ -46,7 +46,7 @@ test('Bauen: kostet Gold, kein Doppelbau, kein Bau ohne Gold', () => {
   assert.equal(s.gold, START_GOLD - TOWER_TYPES.arrow.cost);
   assert.equal(buildTower(s, 'arrow', 0, 0).ok, false);
   s.gold = 10;
-  assert.equal(buildTower(s, 'sniper', 1, 0).reason, 'Nicht genug Gold');
+  assert.equal(buildTower(s, 'sniper', 2, 0).reason, 'Nicht genug Gold'); // B-104: [1,0] ist seitdem Fluss
 });
 
 test('Bauen: außerhalb des Felds verboten', () => {
@@ -2023,4 +2023,46 @@ test('B-069 Randfälle (Tester): heartStates bei 0 Leben, NaN und max 0', async 
   assert.deepEqual(heartStates(NaN, 2), [false, false]);
   assert.deepEqual(heartStates(5, 0), []);
   assert.equal(livesText(1, 2), '❤️🖤');
+});
+
+// ---------- Wasser (B-104): Fluss und See auf der Wiese ----------
+test('B-104: Wasser liegt im Feld, nie auf dem Weg; Brücke liegt auf dem Weg und im Fluss', () => {
+  const m = MAPS.meadow;
+  const s = createGame({ mapId: 'meadow' });
+  assert.ok(s.water.size >= 10, 'Fluss und See vorhanden');
+  assert.equal(s.water.size, m.water.length, 'keine Duplikate');
+  for (const k of s.water) {
+    const [c, r] = k.split(',').map(Number);
+    assert.ok(c >= 0 && r >= 0 && c < COLS && r < ROWS, `${k} im Feld`);
+    assert.ok(!s.blocked.has(k), `${k} nicht auf dem Weg`);
+    assert.ok(!s.obstacles.has(k), `${k} nicht auf einem Hindernis`);
+  }
+  assert.deepEqual(m.bridges, [[1, 2]]);
+  for (const [c, r] of m.bridges) {
+    assert.ok(s.blocked.has(`${c},${r}`), 'Brücke auf dem Weg');
+    assert.ok(m.river.some(([rc, rr]) => rc === c && rr === r), 'Brücke im Fluss');
+    assert.ok(!s.water.has(`${c},${r}`), 'Brücke ist kein Wasser');
+  }
+  // Fluss ist eine zusammenhängende Kette, Wasser = Fluss + See ohne Brücke
+  for (let i = 1; i < m.river.length; i++) assert.equal(Math.abs(m.river[i][0] - m.river[i - 1][0]) + Math.abs(m.river[i][1] - m.river[i - 1][1]), 1);
+  assert.equal(s.water.size, m.river.length - m.bridges.length + m.lake.length);
+  // andere Karten ohne Wasser
+  for (const id of Object.keys(MAPS)) if (id !== 'meadow') assert.equal(createGame({ mapId: id }).water.size, 0, id);
+});
+
+test('B-104: canBuild lehnt Wasser ab ("Hier ist Wasser"), kein Gold weg; Gegner laufen über die Brücke', () => {
+  const s = createGame({ mapId: 'meadow' });
+  for (const k of s.water) {
+    const [c, r] = k.split(',').map(Number);
+    assert.deepEqual(canBuild(s, c, r), { ok: false, reason: 'Hier ist Wasser' });
+  }
+  const g0 = s.gold;
+  assert.equal(buildTower(s, 'arrow', 1, 5).reason, 'Hier ist Wasser');
+  assert.equal(s.gold, g0);
+  assert.equal(canBuild(s, 1, 2).reason, 'Auf dem Weg kann nicht gebaut werden', 'Brücke ist Weg');
+  assert.equal(canBuild(s, 0, 5).ok, true, 'Ufer daneben bebaubar');
+  assert.equal(canBuild(createGame({ water: undefined }), 1, 5).ok, true, 'override ohne water');
+  const e = spawnEnemy(s, 'grunt', 1);
+  run(s, 3);
+  assert.ok(e.x > 2 * TILE, 'Goblin hat die Brücke überquert');
 });

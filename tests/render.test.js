@@ -1401,3 +1401,46 @@ test('B-097: contrastRatio versteht auch die Kurzform #rgb, ungültige Farben er
     assert.ok(Number.isNaN(contrastRatio(bad, '#000')), `contrastRatio(${bad})`);
   }
 });
+
+// ---------- Wasser (B-104) ----------
+test('B-104: Render zeichnet mit und ohne Wasser ohne Fehler; Geometrie deterministisch, nur auf der Wiese', async () => {
+  const { waterGeometry, lakeOutline, mudSpots, drawWater, drawBridges } = await import('../src/render-water.js');
+  const s = createGame({ mapId: 'meadow' });
+  const g = waterGeometry('meadow', s.blocked);
+  assert.deepEqual(g, waterGeometry('meadow', s.blocked), 'deterministisch');
+  for (const id of Object.keys(MAPS)) if (id !== 'meadow') assert.equal(waterGeometry(id, createGame({ mapId: id }).blocked), null, id);
+  // Fluss beginnt oben unter dem Baumrahmen, Brücke liegt waagrecht (Weg läuft in Zeile 2 nach rechts), gerade über dem Fluss
+  assert.ok(g.river[0][1] < TILE / 2);
+  assert.deepEqual(g.bridges, [{ x: 1.5 * TILE, y: 2.5 * TILE, horizontal: true }]);
+  assert.ok(g.river.some(([x, y]) => x === 1.5 * TILE && y === 2.5 * TILE), 'Flusslinie läuft gerade unter der Brücke durch');
+  // Schwung höchstens riverWiggle, See-Umriss umschließt alle Seekacheln-Mitten
+  const { WATER_STYLE } = await import('../src/config.js');
+  for (const [x] of g.river) assert.ok(Math.abs(x - 1.5 * TILE) <= WATER_STYLE.riverWiggle + 1e-9);
+  assert.equal(lakeOutline(g.lake, WATER_STYLE.lakeRadius).length, WATER_STYLE.lakePoints);
+  assert.ok(mudSpots(g).length >= 2);
+  const m = mockCtx();
+  drawWater(m.ctx, g);
+  drawBridges(m.ctx, g);
+  assert.equal(m.depth, 0, 'save/restore ausgeglichen');
+  assert.ok(m.counts.quadraticCurveTo > 0 && m.counts.clip === 1 && m.counts.fillRect > 0);
+  const n = mockCtx();
+  drawWater(n.ctx, null);
+  drawBridges(n.ctx, null);
+  assert.equal(Object.keys(n.counts).length, 0, 'ohne Wasser nichts zeichnen');
+  // ganzer Render mit Turm neben dem Fluss (Insel ausgespart) und Vorschau über Wasser
+  const { render } = await import('../src/render.js?wasser');
+  globalThis.document = { createElement() { const c = mockCtx(); return { width: 0, height: 0, getContext: () => c.ctx }; } };
+  try {
+    for (const id of Object.keys(MAPS)) {
+      const st = createGame({ mapId: id, gold: 1000 });
+      if (id === 'meadow') assert.ok(buildTower(st, 'arrow', 2, 5).ok);
+      const main = mockCtx();
+      render(main.ctx, st, { buildType: 'arrow', hover: { col: 1, row: 5, ok: false } });
+      assert.equal(main.depth, 0, id);
+      if (id !== 'meadow') continue;
+      const dry = mockCtx(); // gleicher Zustand ohne Wasser: ein Clip weniger
+      render(dry.ctx, { ...st, water: new Set() }, { buildType: 'arrow', hover: { col: 1, row: 5, ok: false } });
+      assert.equal(main.counts.clip - (dry.counts.clip || 0), 1, 'Inseln sparen Wasser aus');
+    }
+  } finally { delete globalThis.document; }
+});

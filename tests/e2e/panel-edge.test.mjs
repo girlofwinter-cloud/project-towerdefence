@@ -21,7 +21,7 @@ after(async () => {
   server?.close();
 });
 
-// Testseite mit unbegrenztem Gold, Türme auf Kachel (0,0) und (1,0)
+// Testseite mit unbegrenztem Gold, Türme auf Kachel (0,0) und (2,0) (B-104: (1,0) ist Fluss)
 async function setup(viewport) {
   const ctx = await browser.newContext({ viewport });
   const page = await ctx.newPage();
@@ -37,7 +37,7 @@ async function setup(viewport) {
   await page.locator('.tower-btn[data-type="arrow"]').click();
   await click(0, 0); await click(0, 0);
   await page.locator('.tower-btn[data-type="frost"]').click();
-  await click(1, 0); await click(1, 0);
+  await click(2, 0); await click(2, 0);
   await page.keyboard.press('Escape');
   return { ctx, page, click };
 }
@@ -47,7 +47,7 @@ test('Desktop: Wechsel Turm A zu B, Tastatur T/U/S, Verkaufen schließt das Pane
   await click(0, 0);
   await page.waitForSelector('#tower-info:not([hidden])');
   assert.match(await page.locator('#ti-name').textContent(), /Pfeilturm/);
-  await click(1, 0);
+  await click(2, 0);
   assert.match(await page.locator('#ti-name').textContent(), /Stufe 1/);
   assert.doesNotMatch(await page.locator('#ti-name').textContent(), /Pfeilturm/);
   await page.keyboard.press('t');
