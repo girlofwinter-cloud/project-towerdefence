@@ -85,6 +85,8 @@ export function createFx() {
     entryReduced: false,
     // reduzierte Bewegung (B-068): zuletzt von syncFx gesetzt, die Zeichnung liest es
     reduced: false,
+    // B-095: letzter Reset kam von einem Zeitsprung rueckwaerts bei gleichem Weg (kein neues Spiel)
+    timeJump: false,
   };
 }
 
@@ -111,8 +113,11 @@ export function resetFx(fx) {
 // Rueckgabe: Zeitschritt in Sekunden, 0 bei Pause/Reset, hoechstens MAX_STEP.
 export function syncTime(fx, time, pathRef) {
   const t = Number.isFinite(time) ? time : 0;
+  fx.timeJump = false;
   if (fx.pathRef !== pathRef || t < fx.lastTime) {
+    const jump = fx.pathRef === pathRef;
     resetFx(fx);
+    fx.timeJump = jump;
     fx.pathRef = pathRef;
     fx.lastTime = t;
     return 0;
@@ -235,7 +240,7 @@ export function sweepProjectiles(fx) {
 // Treffer-Blitz plus Funken bzw. Eis. Kanonentreffer zeigt die Explosion (kind 'explosion').
 export function spawnHit(fx, type, x, y) {
   if (type === T_CANNON) return;
-  spawnParticle(fx, K_FLASH, x, y, 0, 0, 0.14, 6);
+  spawnParticle(fx, K_FLASH, x, y, 0, 0, FX_STYLE.hit.flashLife, 6); // Dauer rein optisch (STIL.md: 0,08 s)
   const n = type === T_FROST ? 5 : 3;
   const kind = type === T_FROST ? K_ICE : K_SPARK;
   for (let i = 0; i < n; i++) {
@@ -343,6 +348,11 @@ export function syncFx(fx, state, reducedMotion = false) {
   const effects = state.effects || [];
   for (let i = 0; i < effects.length; i++) observeEffect(fx, effects[i], fx.lastTime, reducedMotion);
   const enemies = state.enemies || [];
+  if (fx.timeJump) {
+    // Zeitsprung im selben Spiel (z. B. Testseite): schon vorhandene Gegner gelten als gesehen,
+    // ein Boss auf dem Feld loest seinen Auftritt nicht noch einmal aus.
+    for (let i = 0; i < enemies.length; i++) if (enemies[i] && typeof enemies[i] === 'object') fx.seenEnemies.add(enemies[i]);
+  }
   for (let i = 0; i < enemies.length; i++) observeEnemy(fx, enemies[i], fx.lastTime, reducedMotion);
 }
 

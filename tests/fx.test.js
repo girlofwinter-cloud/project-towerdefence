@@ -1149,3 +1149,37 @@ test('B-068 Tester: coinHop stetig an split und end, coinSpin an Grenzen', async
   assert.equal(coinSpin(-Infinity), 1);
   assert.ok(coinSpin(1 / (2 * c.spins)) === c.minWidth, 'Kante: Mindestbreite');
 });
+
+// ---------- B-095: Boss und Effekte Feinschliff ----------
+test('B-095: Zeitsprung rueckwaerts im selben Spiel loest den Boss-Auftritt nicht erneut aus, neuer Boss schon', () => {
+  const fx = createFx();
+  const path = { points: [] };
+  const boss = { type: 'boss', x: 10, y: 10, radius: 18 };
+  const s = { time: 5, path, enemies: [boss] };
+  syncFx(fx, s);
+  assert.equal(fx.entryStart, 5);
+  // Zeitsprung zurueck (Reset), Boss steht noch auf dem Feld: kein Ring, kein Wackeln
+  s.time = 2; syncFx(fx, s);
+  assert.equal(fx.entryStart, -Infinity, 'kein erneuter Auftritt');
+  assert.equal(fx.shakeStrength, 0, 'kein Wackeln');
+  s.time = 2.5; syncFx(fx, s);
+  assert.equal(fx.entryStart, -Infinity, 'auch im naechsten Frame nicht');
+  // ein spaeter erscheinender Boss loest normal aus
+  const boss2 = { type: 'boss', x: 40, y: 10, radius: 18 };
+  s.time = 3; s.enemies = [boss, boss2, null]; syncFx(fx, s);
+  assert.equal(fx.entryStart, 3);
+  assert.equal(fx.entryX, 40);
+});
+
+test('B-095: Treffer-Blitz dauert laut STIL.md 0,08 s', async () => {
+  const { spawnHit, T_ARROW, K_FLASH } = await import('../src/fx-system.js');
+  const { FX_STYLE } = await import('../src/config.js');
+  assert.equal(FX_STYLE.hit.flashLife, 0.08);
+  const fx = createFx();
+  spawnHit(fx, T_ARROW, 10, 10);
+  const i = fx.pkind.indexOf(K_FLASH);
+  assert.ok(i >= 0);
+  assert.ok(Math.abs(fx.plife[i] - 0.08) < 1e-6);
+  updateParticles(fx, 0.09);
+  assert.equal(fx.pkind.indexOf(K_FLASH), -1, 'nach 0,09 s verschwunden');
+});
