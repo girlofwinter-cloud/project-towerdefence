@@ -16,7 +16,7 @@ const throwingStorage = { getItem() { throw new Error('verboten'); }, setItem() 
 test('Konfiguration: Schlüssel und Sterne-Grenzen', () => {
   assert.equal(PROGRESS_KEY, 'td-progress-v1');
   assert.deepEqual(STAR_LIVES_SHARE, [0, 0.5, 1]);
-  assert.deepEqual(MAP_ORDER, ['meadow', 'ice', 'fork', 'twin']); // B-098: Wald entfernt, B-099: Zwei Fronten neu
+  assert.deepEqual(MAP_ORDER, ['meadow', 'ice', 'fork', 'twin', 'volcano']); // B-098: Wald entfernt, B-099: Zwei Fronten neu, B-030: Vulkan
 });
 
 test('starsFor: Niederlage 0, Sieg 1 bis 3 nach übrigen Leben', () => {
@@ -55,7 +55,7 @@ test('recordResult: Rekord und Sterne werden nie schlechter', () => {
   assert.deepEqual(mapProgress(p, 'meadow'), { bestWave: MAX_WAVES, stars: 3 });
 });
 
-test('Freischalten: Reihenfolge meadow, ice, fork, twin', () => {
+test('Freischalten: Reihenfolge meadow, ice, fork, twin, volcano', () => {
   const p = emptyProgress();
   assert.equal(isUnlocked(p, 'meadow'), true);
   assert.equal(isUnlocked(p, 'ice'), false);
@@ -70,8 +70,11 @@ test('Freischalten: Reihenfolge meadow, ice, fork, twin', () => {
   assert.equal(isUnlocked(p, 'fork'), false);
   assert.equal(recordResult(p, { mapId: 'ice', status: 'won', wave: MAX_WAVES, lives: 1 }).unlockedMap, 'fork');
   assert.equal(recordResult(p, { mapId: 'fork', status: 'won', wave: MAX_WAVES, lives: 1 }).unlockedMap, 'twin');
+  assert.equal(isUnlocked(p, 'volcano'), false);
+  assert.equal(recordResult(p, { mapId: 'twin', status: 'won', wave: MAX_WAVES, lives: 1 }).unlockedMap, 'volcano'); // B-030
+  assert.equal(isUnlocked(p, 'volcano'), true);
   // Letzte Karte schaltet nichts mehr frei
-  assert.equal(recordResult(p, { mapId: 'twin', status: 'won', wave: MAX_WAVES, lives: 1 }).unlockedMap, null);
+  assert.equal(recordResult(p, { mapId: 'volcano', status: 'won', wave: MAX_WAVES, lives: 1 }).unlockedMap, null);
   // Unbekannte Karte wird ignoriert, auch der entfernte Wald (B-098)
   assert.deepEqual(recordResult(p, { mapId: 'mond', status: 'won', wave: 20, lives: 10 }), { newRecord: false, newStars: false, unlockedMap: null });
   assert.equal('mond' in p.maps, false);

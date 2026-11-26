@@ -36,7 +36,16 @@ export function themed(mapId, key, base) {
 const MEADOW_RIVER = [[1, 0], [1, 1], [1, 2], [1, 3], [1, 4], [1, 5], [1, 6], [1, 7], [1, 8]];
 const MEADOW_LAKE = [[1, 9], [2, 9], [1, 10], [2, 10], [2, 11]];
 const MEADOW_BRIDGES = [[1, 2]];
-const notBridge = ([c, r]) => !MEADOW_BRIDGES.some(([bc, br]) => bc === c && br === r);
+// Kacheln einer Liste ohne die Brücken-Kacheln (Brücken liegen auf dem Weg, sind also weder Wasser noch Lava)
+const withoutBridges = (list, bridges) => list.filter(([c, r]) => !bridges.some(([bc, br]) => bc === c && br === r));
+
+// B-030: Lava des Vulkans (Kacheln [spalte, zeile]). Lavafluss als Kette von oben nach unten (1 Kachel breit, schlängelnd,
+// inklusive Brückenkachel), dazu einzelne Lavatümpel neben dem Weg. Lava = Fluss + Tümpel ohne Brücken.
+const VOLCANO_LAVA_RIVER = [
+  [13, 0], [13, 1], [13, 2], [13, 3], [13, 4], [13, 5], [12, 5], [12, 6], [12, 7], [12, 8], [13, 8], [13, 9], [13, 10], [13, 11], [13, 12], [13, 13],
+];
+const VOLCANO_LAVA_POOLS = [[4, 6], [4, 7], [9, 8], [17, 7]]; // drei Tümpel: [4,6]+[4,7], [9,8], [17,7]
+const VOLCANO_BRIDGES = [[13, 11]];
 
 // Karten: Wegpunkte in Kachel-Koordinaten [spalte, zeile].
 // Erster und letzter Punkt liegen außerhalb des Spielfelds (Ein-/Ausgang).
@@ -59,7 +68,7 @@ export const MAPS = {
     river: MEADOW_RIVER,
     lake: MEADOW_LAKE,
     bridges: MEADOW_BRIDGES,
-    water: [...MEADOW_RIVER.filter(notBridge), ...MEADOW_LAKE],
+    water: [...withoutBridges(MEADOW_RIVER, MEADOW_BRIDGES), ...MEADOW_LAKE],
     // B-071: Wegpalette der Wiese (STIL.md); Eiswelt und Zangenangriff haben eigene Wegfarben (B-072, B-073).
     // B-103: decor.flatTrees, damit die Hindernisse im Flat-Pop-Stil erscheinen (Laubbaum, Fels mit Kontur)
     theme: { treeFrame: true, ground: true, accents: true, light: true, islands: true, decorStyle: 'flatpop', decor: { flatTrees: true }, path: { main: '#e2c88f', edge: '#8f6a3b', outline: '#4a3418', mid: '#ecd5a0', fringe: '#6fbf4e' } },
@@ -285,6 +294,34 @@ export const MAPS = {
       path: { main: '#dcc08a', edge: '#86603a', outline: '#3e2a14', mid: '#e8d2a0', fringe: '#a6cf5a' },
     },
   },
+  // Vulkan (B-030): schwerste Karte nach Zwei Fronten. Ein Lavafluss quert die Karte (eine Brücke), dazu Lavatümpel neben
+  // dem Weg. Lava ist nicht bebaubar; Gegner auf Wegkacheln direkt neben Lava nehmen Schaden (LAVA.dps), Türme direkt
+  // neben Lava überhitzen und schießen langsamer (LAVA.overheat). Werte per Strategie-Simulation gemessen.
+  volcano: {
+    name: 'Vulkan',
+    waypoints: [
+      [-1, 11],
+      [3, 11],
+      [3, 2],
+      [10, 2],
+      [10, 11],
+      [16, 11],
+      [16, 3],
+      [20, 3],
+    ],
+    // Gemessen (Strategie-Läufe, dt 1/30 und 1/60, Skript im Scratchpad): Kanonen-Mix auf Plätzen ohne Überhitzung gewinnt
+    // mit 4 Leben, dieselben Mischungen auf den besten (oft überhitzten) Plätzen verlieren ab Welle 5. Ohne Lava-Schaden
+    // verliert jede Strategie bis Welle 4; ohne Überhitzung brechen bei der Platzwahl nach Abdeckung deutlich weniger Gegner durch.
+    // Nicht ahnungslos ändern.
+    modifiers: { enemySpeed: 1.15 },
+    lavaRiver: VOLCANO_LAVA_RIVER,
+    lavaPools: VOLCANO_LAVA_POOLS,
+    bridges: VOLCANO_BRIDGES,
+    lava: [...withoutBridges(VOLCANO_LAVA_RIVER, VOLCANO_BRIDGES), ...VOLCANO_LAVA_POOLS],
+    // B-103: wenige Hindernisse (verkohlter Baum oder Fels)
+    obstacles: [[1, 8], [7, 1], [18, 8]],
+    theme: { treeFrame: true, ground: true, light: true, decorStyle: 'flatpop', decor: { flatTrees: true } },
+  },
 };
 export const DEFAULT_MAP_ID = 'meadow';
 
@@ -404,6 +441,11 @@ export const ABILITIES = {
 ABILITIES.meteor.text = `Flächenschaden (${ABILITIES.meteor.damage}) im Umkreis von ${num(ABILITIES.meteor.radius)} Kacheln, Abklingzeit ${ABILITIES.meteor.cooldown} s.`;
 ABILITIES.freeze.text = `Alle Gegner ${pct(ABILITIES.freeze.slow)} langsamer für ${ABILITIES.freeze.duration} s, Abklingzeit ${ABILITIES.freeze.cooldown} s.`;
 ABILITIES.repair.text = `+${ABILITIES.repair.heal} Leben, höchstens ${ABILITIES.repair.maxUses}× pro Spiel, Abklingzeit ${ABILITIES.repair.cooldown} s.`;
+
+// Lava (B-030, Karte Vulkan): dps = Schaden pro Sekunde für Gegner auf einer Wegkachel direkt neben Lava (8er-Nachbarschaft),
+// mal hpScale(Welle), damit die Lava auch in späten Wellen spürbar bleibt. Gilt auch für den Boss.
+// overheat = Faktor auf das Feuerintervall von Türmen auf einer Kachel direkt neben Lava (größer = langsamer).
+export const LAVA = { dps: 7.5, overheat: 1.5 };
 
 // speed in Kacheln/Sekunde, reward = Gold pro Kill, leak = verlorene Leben am Ziel
 // Healer: healRadius in Kacheln, healPerSec = Anteil der maxHp des Ziels pro Sekunde,

@@ -537,3 +537,26 @@ test('B-103/B-104 Randfälle (Tester): auf allen Karten keine Deko/Streu-Deko au
     }
   }
 });
+
+// ---------- Lava (B-030, Vulkan) ----------
+test('B-030: Deko, Streu-Deko, Plateaus und Büschel liegen nie auf Lava; Karten ohne Lava unverändert', async () => {
+  const { scatterFor, groundPatches, lavaTiles, terrainTiles, nearWater } = await import('../src/decor.js');
+  const { WATER_STYLE } = await import('../src/config.js');
+  const s = createGame({ mapId: 'volcano' });
+  assert.deepEqual([...lavaTiles('volcano')].sort(), [...s.lava].sort());
+  assert.equal(terrainTiles('volcano').size, s.lava.size);
+  assert.equal(terrainTiles('meadow').size, createGame({ mapId: 'meadow' }).water.size);
+  let free = 0;
+  for (const k of s.lava) {
+    const [c, r] = k.split(',').map(Number);
+    assert.equal(decorFor(c, r, s.blocked, s.obstacles, terrainTiles('volcano')), null, `Deko auf Lava ${k}`);
+    assert.equal(scatterFor(c, r, s.blocked, s.obstacles, 'volcano'), null, `Streu-Deko auf Lava ${k}`);
+    if (decorFor(c, r, s.blocked, s.obstacles) || scatterFor(c, r, s.blocked, s.obstacles, 'meadow')) free++;
+  }
+  assert.ok(free > 0, 'mindestens eine Lavakachel hätte sonst Deko');
+  const g = groundPatches('volcano');
+  assert.ok(g.plateaus.length > 0 && g.tufts.length > 0);
+  for (const t of g.tufts) assert.ok(!nearWater(s.lava, t.x, t.y, WATER_STYLE.groundMargin), `Büschel an Lava ${t.x},${t.y}`);
+  for (const p of g.plateaus) assert.ok(!nearWater(s.lava, p.x, p.y, WATER_STYLE.groundMargin), `Plateau an Lava ${p.x},${p.y}`);
+  for (const id of Object.keys(MAPS)) if (id !== 'volcano') assert.equal(lavaTiles(id).size, 0, id);
+});

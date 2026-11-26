@@ -5,7 +5,7 @@ import {
   useAbility, abilityCooldownLeft, canBuild, towerAt, towerStats, upgradeCost, sellValue,
 } from './game.js';
 import { render, drawTower } from './render.js';
-import { heartStates, abilityView } from './hud.js';
+import { heartStates, abilityView, overheatNote } from './hud.js';
 import { drawIcon } from './render-icons.js';
 import { buildTapStep, aimStep } from './input.js';
 import { loadProgress, saveProgress, recordResult, isUnlocked, mapProgress, starText, resultLines, startMap, MAP_ORDER } from './progress.js';
@@ -219,6 +219,7 @@ canvas.addEventListener('click', (ev) => {
     } else {
       const res = buildTower(state, ui.buildType, col, row);
       if (!res.ok) flash(res.reason);
+      else if (res.tower.overheated) flash(`${overheatNote(res.tower)} (neben Lava)`, 'info'); // B-030
       if (touch) ui.hover = null;
     }
   } else {
@@ -407,7 +408,8 @@ function refreshUI() {
     const s = towerStats(t, state.modifiers);
     const up = upgradeCost(t);
     $('ti-name').textContent = `${s.name} (Stufe ${t.level})`;
-    $('ti-stats').textContent = `Schaden ${Math.round(s.damage)} · Reichweite ${s.range.toFixed(1)} · ${(1 / s.rate).toFixed(1)} Schuss/s`;
+    const heat = overheatNote(t); // B-030: steht in der Werte-Zeile, damit es auch auf dem Handy sichtbar bleibt
+    $('ti-stats').textContent = `Schaden ${Math.round(s.damage)} · Reichweite ${s.range.toFixed(1)} · ${(1 / s.rate).toFixed(1)} Schuss/s${heat ? ` · ${heat}` : ''}`;
     $('ti-special').textContent = s.special?.text ?? '';
     // Knöpfe (B-056): Beschriftung und Preis als eigene Zeilen-Teile, Klammern und Kürzel
     // fallen auf dem Handy weg (CSS); der zugängliche Name bleibt vollständig (aria-label).
