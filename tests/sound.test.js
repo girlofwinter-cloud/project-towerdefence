@@ -1034,3 +1034,120 @@ test('Pfeil: echter Bogenschuss aus Bow.wav, leiser als Kanone, Lizenz je Datei'
     assert.ok(fs.statSync(`${ROOT}assets/sounds/${f}.m4a`).size > 0);
   }
 });
+
+// ---------- Tester: Randfälle Musik und Töne ----------
+import { ENEMY_TYPES } from '../src/config.js';
+
+// Musik bis zum Start bringen (Ton an, Nutzeraktion, Effekte geladen)
+async function startFakeMusic({ mod, release, tick }) {
+  const play = { status: 'playing', paused: false };
+  mod.setSoundOn(true);
+  mod.unlockAudio();
+  release();
+  await tick();
+  mod.updateMusic(play);
+  await tick();
+  mod.updateMusic(play);
+}
+const loops = (log) => log.filter((l) => l[0] === 'start' && l[1] === 'source' && l[2].loop);
+
+test('Rand B-116: Ton aus vor der ersten Aktion -> keine Musik, kein Laden; erst nach Einschalten', async () => {
+  await withFakeMusic({}, async ({ mod, log, fetched, release, tick }) => {
+    const play = { status: 'playing', paused: false };
+    mod.setSoundOn(false);
+    mod.unlockAudio(); // Nutzeraktion bei Ton aus
+    release();
+    for (let i = 0; i < 3; i++) { mod.updateMusic(play); await tick(); }
+    assert.equal(fetched.length, 0, 'nichts geladen');
+    assert.equal(loops(log).length, 0, 'keine Musik');
+    // Ton-Knopf: an + Nutzeraktion
+    mod.setSoundOn(true);
+    mod.unlockAudio();
+    await tick();
+    mod.updateMusic(play);
+    await tick();
+    mod.updateMusic(play);
+    assert.equal(loops(log).length, 1, 'jetzt startet die Musik');
+  });
+});
+
+test('Rand B-116: Ton an/aus mehrfach schnell -> genau eine Musik-Quelle, endet eingeblendet', async () => {
+  await withFakeMusic({}, async (h) => {
+    const { mod, log } = h;
+    const M = SOUND.music;
+    await startFakeMusic(h);
+    const play = { status: 'playing', paused: false };
+    for (let i = 0; i < 6; i++) {
+      mod.setSoundOn(false);
+      mod.updateMusic(play);
+      mod.setSoundOn(true);
+      mod.unlockAudio();
+      if (i % 2) mod.updateMusic(play); // manchmal ohne Frame dazwischen
+    }
+    mod.setSoundOn(false);
+    mod.setSoundOn(true);
+    mod.unlockAudio();
+    mod.updateMusic(play);
+    assert.equal(loops(log).length, 1, 'keine doppelte Schleife');
+    const ramps = log.filter((l) => l[0] === 'gain' && l[1] === 'ramp');
+    assert.equal(ramps.at(-1)[2], M.gain);
+    // endet aus: zuletzt auf 0 gesetzt, keine Rampe danach
+    mod.setSoundOn(false);
+    const n = log.filter((l) => l[0] === 'gain' && l[1] === 'ramp').length;
+    mod.updateMusic(play);
+    assert.equal(log.filter((l) => l[0] === 'gain' && l[1] === 'ramp').length, n, 'bei Ton aus keine Rampe');
+  });
+});
+
+test('Rand B-116: Kartenwechsel mitten im Ausblenden blendet vom aktuellen Wert wieder ein', async () => {
+  await withFakeMusic({}, async (h) => {
+    const { mod, log } = h;
+    const M = SOUND.music;
+    await startFakeMusic(h);
+    mod.updateMusic({ status: 'lost', paused: false });
+    const src = loops(log)[0][2];
+    const g = src.outs[0].gain;
+    g.value = M.gain / 2; // Ausblenden halb fertig
+    mod.updateMusic({ status: 'playing', paused: false }); // neues state-Objekt der neuen Karte
+    const tail = log.filter((l) => l[0] === 'gain').slice(-3);
+    assert.deepEqual(tail[1], ['gain', 'set', M.gain / 2, 10], 'kein Sprung');
+    assert.deepEqual(tail[2], ['gain', 'ramp', M.gain, 10 + M.fadeIn]);
+    assert.equal(loops(log).length, 1);
+  });
+});
+
+test('Rand B-116: Testseiten-Cheat "Sieg erzwingen" -> Musik aus, neues Spiel -> wieder an', () => {
+  const M = SOUND.music;
+  const s = createGame();
+  let level = 0;
+  const step = (st) => { const r = musicRamp(level, musicLevel({ soundOn: true, status: st.status, paused: st.paused })); if (r) level = r.target; return r; };
+  assert.equal(step(s).target, M.gain);
+  assert.ok(forceEnd(s, 'won'));
+  assert.deepEqual(step(s), { target: 0, time: M.fadeOut });
+  togglePause(s); // Pause nach Spielende bleibt aus
+  assert.equal(step(s), null);
+  assert.deepEqual(step(createGame()), { target: M.gain, time: M.fadeIn });
+  assert.ok(forceEnd(s, 'lost'));
+  assert.equal(musicLevel({ soundOn: true, status: s.status, paused: false }), 0);
+});
+
+test('Rand Tod: enemyRate deckt alle Gegnertypen (außer Boss) ab, keine unbekannten Namen', () => {
+  const r = SOUND.samples.sounds.death.enemyRate;
+  const types = Object.keys(ENEMY_TYPES).filter((t) => t !== 'boss');
+  assert.deepEqual(Object.keys(r).sort(), types.sort());
+  for (const v of Object.values(r)) assert.ok(v > 0.5 && v < 2);
+  // Extremwerte mit Variation bleiben im hörbaren Bereich
+  const bufs = new Map([['death', ['a']]]);
+  for (const t of [...types, 'unbekannt', undefined, null]) {
+    for (const rnd of [() => 0, () => 0.999999]) {
+      const p = planSound({ kind: 'death', enemy: t }, bufs, rnd);
+      assert.ok(Number.isFinite(p.rate) && p.rate > 0.5 && p.rate < 2, `${t}: ${p.rate}`);
+    }
+  }
+});
+
+test('Rand: Gesamtgröße assets (Effekte und Musik) höchstens 2 MB', () => {
+  const sum = (dir) => fs.readdirSync(`${ROOT}${dir}`).reduce((a, f) => a + fs.statSync(`${ROOT}${dir}/${f}`).size, 0);
+  const total = sum('assets/sounds') + sum('assets/music');
+  assert.ok(total <= 2 * 1024 * 1024, `assets ${total} B`);
+});
