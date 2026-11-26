@@ -11,9 +11,9 @@ Bearbeitung: von Ogg Vorbis nach AAC (.m4a, mono, 48 kbit/s) umgewandelt; einzel
 | arrow-1.m4a | Impact Sounds (kenney_impact-sounds) | impactWood_light_000.ogg | CC0 |  |
 | arrow-2.m4a | Impact Sounds (kenney_impact-sounds) | impactWood_light_001.ogg | CC0 |  |
 | arrow-3.m4a | Impact Sounds (kenney_impact-sounds) | impactWood_light_002.ogg | CC0 |  |
-| cannon-1.m4a | Impact Sounds (kenney_impact-sounds) | impactWood_heavy_000.ogg | CC0 |  |
-| cannon-2.m4a | Impact Sounds (kenney_impact-sounds) | impactWood_heavy_001.ogg | CC0 |  |
-| cannon-3.m4a | Impact Sounds (kenney_impact-sounds) | impactWood_heavy_002.ogg | CC0 |  |
+| cannon-1.m4a | Sci-Fi Sounds (kenney_sci-fi-sounds) | explosionCrunch_000.ogg + lowFrequency_explosion_001.ogg | CC0 | explosionCrunch auf 0,45 s gekürzt (exponentiell abklingend), mit lowFrequency_explosion_001.ogg (0,35 s) gemischt, normalisiert, um Faktor 0,78 tiefer gestimmt (ca. 0,58 s) |
+| cannon-2.m4a | Sci-Fi Sounds (kenney_sci-fi-sounds) | explosionCrunch_001.ogg + lowFrequency_explosion_001.ogg | CC0 | explosionCrunch auf 0,45 s gekürzt (exponentiell abklingend), mit lowFrequency_explosion_001.ogg (0,35 s) gemischt, normalisiert, um Faktor 0,78 tiefer gestimmt (ca. 0,58 s) |
+| cannon-3.m4a | Sci-Fi Sounds (kenney_sci-fi-sounds) | explosionCrunch_004.ogg + lowFrequency_explosion_001.ogg | CC0 | explosionCrunch auf 0,45 s gekürzt (exponentiell abklingend), mit lowFrequency_explosion_001.ogg (0,35 s) gemischt, normalisiert, um Faktor 0,78 tiefer gestimmt (ca. 0,58 s) |
 | frost-1.m4a | Impact Sounds (kenney_impact-sounds) | impactGlass_light_000.ogg | CC0 |  |
 | frost-2.m4a | Impact Sounds (kenney_impact-sounds) | impactGlass_light_001.ogg | CC0 |  |
 | frost-3.m4a | Impact Sounds (kenney_impact-sounds) | impactGlass_light_002.ogg | CC0 |  |

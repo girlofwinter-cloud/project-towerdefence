@@ -1114,10 +1114,13 @@ export const SOUND = {
   storageKey: 'td-sound', // localStorage-Schlüssel für Ton an/aus
   defaultOn: true,
   // Begrenzung: höchstens perWindow Töne je Art (Schuss je Turmtyp, Tod, Boss) pro window Sekunden Echtzeit
-  // Schuss-Töne zusammen höchstens total pro totalWindow (Tode, Boss, Warnton und Meteor zählen nie dagegen).
+  // Schuss-Töne zusammen höchstens total pro totalWindow (Tode, Boss, Warnton und Meteor zählen nie dagegen;
+  // Kanonenschüsse zählen mit, werden aber nie verschluckt, siehe totalExemptShots).
   limit: { window: 0.12, perWindow: 1, total: 3, totalWindow: 0.15 },
   limitOverrides: { death: { window: 0.1, perWindow: 2 } }, // eigene Grenzen je Art (Warnton: lifeLost.limit)
   totalExempt: ['lifeLost', 'meteorFlight', 'meteorImpact'],
+  // Schuss-Arten, die die gemeinsame Grenze nie verschluckt (zählen aber mit); ihre Grenze je Art gilt weiter
+  totalExemptShots: ['cannon'],
   // Tonhöhen-Variation je Schuss (Anteil, ±), damit Salven nicht maschinell klingen
   shotPitchVar: { arrow: 0.06, cannon: 0.04, frost: 0.05, sniper: 0.05, lightning: 0.05 },
   shots: {
@@ -1127,10 +1130,11 @@ export const SOUND = {
       { type: 'osc', wave: 'sine', freq: 460, endFreq: 370, duration: 0.06, gain: 0.06, attack: 0.002 },
       { type: 'noise', filter: 'bandpass', cutoff: 900, endCutoff: 2600, q: 1.5, duration: 0.18, gain: 0.11, attack: 0.055, delay: 0.02 },
     ],
-    // Kanone: dumpfer Knall mit Rauschen
+    // Kanone: tiefer Abschuss-Bumm mit Rauschen und kurzem Nachgrollen (lauteste Schuss-Synthese, unter dem Warnton)
     cannon: [
-      { type: 'osc', wave: 'sine', freq: 140, endFreq: 42, duration: 0.3, gain: 0.4 },
-      { type: 'noise', filter: 'lowpass', cutoff: 700, q: 0.7, duration: 0.22, gain: 0.28 },
+      { type: 'osc', wave: 'sine', freq: 110, endFreq: 32, duration: 0.45, gain: 0.44 },
+      { type: 'noise', filter: 'lowpass', cutoff: 900, q: 0.7, duration: 0.25, gain: 0.34 },
+      { type: 'noise', filter: 'lowpass', cutoff: 250, q: 0.7, duration: 0.5, gain: 0.3, attack: 0.02 },
     ],
     // Frost: sanftes, glasiges "Kling" (zwei Sinus zwischen 1200 und 1800 Hz)
     frost: [
@@ -1195,7 +1199,8 @@ export const SOUND = {
     base: 'assets/sounds/',
     sounds: {
       'shot:arrow':     { files: ['arrow-1', 'arrow-2', 'arrow-3'], gain: 0.3, pitchVar: 0.08 },
-      'shot:cannon':    { files: ['cannon-1', 'cannon-2', 'cannon-3'], gain: 0.4, pitchVar: 0.06 },
+      // Kanone: Abschussknall (Aufnahme schon tiefer gestimmt und laut gemischt), deutlich lauter als andere Schüsse
+      'shot:cannon':    { files: ['cannon-1', 'cannon-2', 'cannon-3'], gain: 0.5, pitchVar: 0.06 },
       'shot:frost':     { files: ['frost-1', 'frost-2', 'frost-3'], gain: 0.2, pitchVar: 0.06 },
       'shot:sniper':    { files: ['sniper-1', 'sniper-2', 'sniper-3'], gain: 0.3, pitchVar: 0.06 },
       'shot:lightning': { files: ['lightning-1', 'lightning-2', 'lightning-3'], gain: 0.18, pitchVar: 0.06 },
@@ -1293,7 +1298,7 @@ export const SOUND = {
   music: {
     base: 'assets/music/',
     file: 'music-old-tower-inn',
-    gain: 0.04,          // Lautstärke im laufenden Spiel
+    gain: 0.025,         // Lautstärke im laufenden Spiel
     pausedFactor: 0.6,   // bei Pause etwas leiser (Anteil von gain)
     fadeIn: 2,           // Einblenden in s (Start, Ton wieder an, neues Spiel)
     fadeOut: 0.6,        // Ausblenden in s (Sieg, Niederlage), damit die Jingles hörbar sind

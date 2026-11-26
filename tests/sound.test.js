@@ -920,3 +920,56 @@ test('B-116: Fehler beim Laden der Musik bleibt still, Effekte spielen weiter', 
     assert.ok(log.some((l) => l[0] === 'start' && l[1] === 'source'), 'Effekt spielt');
   });
 });
+
+test('Kanone: Abschussknall lauter als andere Schüsse, aber leiser als Boss und Meteor', () => {
+  const s = SOUND.samples.sounds;
+  const cannon = s['shot:cannon'].gain;
+  for (const t of Object.keys(TOWER_TYPES)) if (t !== 'cannon') assert.ok(cannon >= 1.5 * s[`shot:${t}`].gain, t);
+  for (const k of ['boss', 'meteorImpact', 'meteorFlight']) assert.ok(cannon < s[k].gain, k);
+  // Synthese-Ersatz: tiefer, kräftiger Bumm (Grundton unter 150 Hz, lauteste Lage der Kanone über allen anderen Schüssen)
+  const peak = (layers) => Math.max(...layers.map((l) => l.gain));
+  const osc = SOUND.shots.cannon.find((l) => l.type === 'osc');
+  assert.ok(osc.freq < 150 && osc.endFreq < osc.freq);
+  for (const t of Object.keys(SOUND.shots)) if (t !== 'cannon') assert.ok(peak(SOUND.shots.cannon) > peak(SOUND.shots[t]), t);
+});
+
+test('Kanone: gemeinsame Schuss-Grenze verschluckt Kanonenschüsse nicht, eigene Grenze gilt weiter', () => {
+  const L = SOUND.limit;
+  assert.deepEqual(SOUND.totalExemptShots, ['cannon']);
+  const lim = createLimiter();
+  // gemeinsame Grenze mit anderen Schüssen füllen
+  const others = ['arrow', 'frost', 'sniper', 'lightning'];
+  let n = 0;
+  for (const tower of others) if (allowEvent(lim, { kind: 'shot', tower }, 0)) n++;
+  assert.equal(n, L.total);
+  assert.equal(allowEvent(lim, { kind: 'shot', tower: 'arrow' }, 0.01), false);
+  // Kanone trotzdem erlaubt, aber nur einmal pro eigenem Fenster
+  assert.equal(allowEvent(lim, { kind: 'shot', tower: 'cannon' }, 0.01), true);
+  assert.equal(allowEvent(lim, { kind: 'shot', tower: 'cannon' }, 0.02), false);
+  assert.equal(allowEvent(lim, { kind: 'shot', tower: 'cannon' }, 0.01 + L.window + 0.001), true);
+  // collectSounds: viele Pfeile zuerst im Frame, Kanone trotzdem zu hören
+  const state = createGame();
+  const tr = createSoundTracker();
+  collectSounds(tr, state, 0);
+  for (const tower of others) for (let i = 0; i < 10; i++) state.projectiles.push({ towerType: tower });
+  state.projectiles.push({ towerType: 'cannon' });
+  state.time += 0.05;
+  const shots = collectSounds(tr, state, 5).filter((e) => e.kind === 'shot');
+  assert.ok(shots.some((e) => e.tower === 'cannon'));
+  assert.equal(shots.filter((e) => e.tower !== 'cannon').length, L.total);
+});
+
+test('Kanone: Ton beim Abschuss (neues Geschoss), kein Ton beim Aufschlag', () => {
+  const state = createGame();
+  const tr = createSoundTracker();
+  detectSoundEvents(tr, state);
+  const ball = { towerType: 'cannon' };
+  state.projectiles.push(ball);
+  state.time += 0.02;
+  assert.deepEqual(detectSoundEvents(tr, state), [{ kind: 'shot', tower: 'cannon' }]);
+  // Aufschlag: Geschoss verschwindet, Explosions-Effekt ohne Meteor erscheint -> still
+  state.projectiles.length = 0;
+  state.effects.push({ kind: 'explosion', x: 0, y: 0, t: 0 });
+  state.time += 0.02;
+  assert.deepEqual(detectSoundEvents(tr, state), []);
+});

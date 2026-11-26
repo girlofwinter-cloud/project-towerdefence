@@ -181,7 +181,8 @@ export function allowEvent(lim, ev, now) {
   const key = soundKey(ev);
   if (ev.kind !== 'shot' || SOUND.totalExempt.includes(ev.kind)) return allowSound(lim, key, now);
   const total = totalSlot(lim, now);
-  if (total.count >= lim.limit.total) return false;
+  // Kanone (totalExemptShots): nie von der gemeinsamen Grenze verschluckt, zählt aber mit
+  if (total.count >= lim.limit.total && !SOUND.totalExemptShots.includes(ev.tower)) return false;
   if (!allowSound(lim, key, now)) return false;
   total.count += 1;
   return true;
