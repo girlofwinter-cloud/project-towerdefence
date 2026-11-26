@@ -764,3 +764,13 @@ Neue Einträge werden unten angehängt. Bestehende Einträge werden nie geänder
 - Tests: 434 bestanden, e2e 38/38. Zwei Assertions „zweiter Start abgelehnt“ entfernt bzw. nach den Sieg verlegt (widersprechen dem Feature, vom Menschen freigegeben).
 - Review: APPROVE; Runde 2 wegen Tester-Fund (19 Klicks = sofort 715 Gold): Mensch entschied „Frühstart erst nach vollständigem Spawn“. Tastenwiederholung und doppelte Bonus-Formel behoben.
 - Entscheidungen: Simulation (5 Karten, dt 1/30 und 1/60): früh rufen bringt ca. +195 Gold, aber nie mehr Leben als ohne; Spiel wird nicht leichter. Hinweis Lava/Meteor-Skalierung als B-120 (vorschlag).
+
+---
+
+## 2026-11-26 · B-121 · Nächste Welle startet automatisch
+- Rolle(n): orchestrator, developer, tester, reviewer
+- Branch: agent/auto-welle
+- Ergebnis: fertig. Nach Wellenende 5 s Countdown (`AUTO_WAVE_DELAY`, Spielzeit, Pause hält an), dann Auto-Start; Knopf „Welle N in X…“ startet sofort (ohne Frühstart-Bonus). Immer an, kein Schalter (Mensch).
+- Tests: 458 bestanden (inkl. 6 Randfall-Tests des Testers), e2e 38/38. Zwei Tests laufen bis Ende von Welle 1 statt fester Zeit, weil sonst Welle 2 automatisch startet (vom Menschen freigegeben, Reviewer: gleich streng).
+- Review: APPROVE ohne Muss-Punkte.
+- Entscheidungen: Bestehende Strategie-Simulationen unverändert. Nebenbefund: Wer laufend auch während Wellen baut, gewinnt in der Simulation alle 5 Karten ohne Lebensverlust; die Sims bauen nur zwischen Wellen und unterschätzen aktives Spiel. Dem Menschen gemeldet, kein Eintrag ohne seine Entscheidung.

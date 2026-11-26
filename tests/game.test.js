@@ -2860,3 +2860,78 @@ test('B-121: HUD-Knopf zeigt den Countdown (aufgerundet) und bleibt bedienbar', 
   s.status = 'lost';
   assert.equal(startButtonView(s).disabled, true);
 });
+
+// ---------- B-121: Tester-Randfälle ----------
+import { createSoundTracker, detectStateEvents } from '../src/sound-events.js';
+
+test('B-121 Rand: Tempo x3 läuft den Countdown dreimal so schnell ab', () => {
+  const s = createGame();
+  startWave(s);
+  finishWave(s);
+  const frames = Math.floor(AUTO_WAVE_DELAY / 3 * 60);
+  for (let i = 0; i < frames - 2; i++) stepGame(s, 1 / 60, 3);
+  assert.equal(s.wave, 1, 'nicht zu früh');
+  for (let i = 0; i < 4; i++) stepGame(s, 1 / 60, 3);
+  assert.equal(s.wave, 2);
+});
+
+test('B-121 Rand: Status lost während Countdown startet nichts, startWave lehnt ab', () => {
+  const s = createGame();
+  startWave(s);
+  finishWave(s);
+  s.status = 'lost';
+  run(s, AUTO_WAVE_DELAY * 2);
+  assert.equal(s.wave, 1);
+  assert.equal(startWave(s).ok, false);
+});
+
+test('B-121 Rand: kein Lebensverlust und keine Gegner während des Countdowns', () => {
+  const s = createGame();
+  startWave(s);
+  finishWave(s);
+  const lives = s.lives;
+  run(s, AUTO_WAVE_DELAY - 0.1);
+  assert.equal(s.lives, lives);
+  assert.equal(s.enemies.length, 0);
+});
+
+test('B-121 Rand: Countdown nach Welle 19 startet Welle 20, danach Sieg ohne Countdown', () => {
+  const s = createGame({ wave: MAX_WAVES - 2 });
+  startWave(s);
+  finishWave(s);
+  assert.equal(s.autoWaveIn, AUTO_WAVE_DELAY);
+  run(s, AUTO_WAVE_DELAY + 0.1);
+  assert.equal(s.wave, MAX_WAVES);
+  finishWave(s);
+  assert.equal(s.status, 'won');
+  assert.equal(s.autoWaveIn, null);
+  assert.equal(startButtonView(s).disabled, true);
+});
+
+test('B-121 Rand: Auto-Start löst den Wellenstart-Ton aus', () => {
+  const s = createGame();
+  const tr = createSoundTracker();
+  startWave(s);
+  detectStateEvents(tr, s);
+  finishWave(s);
+  detectStateEvents(tr, s);
+  let started = false;
+  for (let i = 0; i < (AUTO_WAVE_DELAY + 0.5) * 60; i++) {
+    update(s, 1 / 60);
+    if (detectStateEvents(tr, s).some((e) => e.kind === 'waveStart')) started = true;
+  }
+  assert.equal(s.wave, 2);
+  assert.ok(started, 'waveStart-Ton beim automatischen Start');
+});
+
+test('B-121 Rand: Frühstart-Kette lässt nur nach Ende aller Wellen einen Countdown zu', () => {
+  const s = createGame();
+  startWave(s);
+  s.spawnQueue = [];
+  startWave(s); // Frühstart Welle 2, Welle-1-Gegner noch unterwegs
+  assert.equal(s.autoWaveIn, null);
+  update(s, 1 / 60);
+  assert.equal(s.autoWaveIn, null, 'kein Countdown, solange Welle 2 läuft');
+  finishWave(s);
+  assert.equal(s.autoWaveIn, AUTO_WAVE_DELAY);
+});
