@@ -17,14 +17,6 @@ Erledigte Einträge (`fertig`) liegen in `docs/archiv/BACKLOG-fertig.md`. Beim A
 
 ---
 
-### B-116: Hintergrundmusik
-- Status: offen
-- Aufwand: M
-- Idee: Wunsch des Menschen am 2026-11-26: ruhige Musikschleife (frei lizenziert, CC0) im Hintergrund, leiser als die Effekte.
-- Akzeptanzkriterien:
-  - Startet erst nach der ersten Nutzeraktion, nahtlose Schleife, mit dem Ton-Knopf aus; kein Lautstärkeregler (Wunsch des Menschen).
-  - Datei höchstens ca. 1,5 MB, Lizenz in `assets/sounds/LIZENZ.md`.
-
 ### B-105: Statistik je Turm im Panel
 - Status: vorschlag
 - Aufwand: S
