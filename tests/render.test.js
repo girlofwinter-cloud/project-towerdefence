@@ -523,12 +523,15 @@ test('Effekt-Render: Shake verschiebt nur die Zeichnung (translate <= 3 px), Hov
 });
 
 
-test('Render: Karte Wald mit Hindernissen zeichnet ohne Fehler, auch nach Kartenwechsel', async () => {
+// B-098: Wald entfernt; Hindernisse per Override auf einer Karte mit Flat-Pop-Bäumen
+const OBST_FORK = new Set(['0,0', '7,1', '13,4', '1,7']);
+test('Render: Karte mit Hindernissen zeichnet ohne Fehler, auch nach Kartenwechsel', async () => {
   const { render } = await import('../src/render.js');
   const m = mockCtx();
-  render(m.ctx, createGame({ mapId: 'forest' }), {});
+  render(m.ctx, createGame({ mapId: 'fork', obstacles: OBST_FORK }), {});
   render(m.ctx, createGame(), {});
-  render(m.ctx, createGame({ mapId: 'forest' }), {});
+  render(m.ctx, createGame({ mapId: 'twin' }), {});
+  render(m.ctx, createGame({ mapId: 'fork', obstacles: OBST_FORK }), {});
   assert.equal(m.depth, 0);
 });
 
@@ -885,7 +888,7 @@ test('Karten mit theme.ground zeichnen kein Schachbrett, Karten ohne es schon (a
     if (MAPS[id].theme?.ground) assert.ok(rects[id] < COLS * ROWS, `${id}: kein Schachbrett (${rects[id]} fillRect)`);
     else assert.ok(rects[id] > rects.meadow, `${id}: Schachbrett (${rects[id]} vs ${rects.meadow})`);
   }
-  assert.ok(rects.ice < rects.forest * 3, 'Eis zeichnet kein Schachbrett mehr');
+  assert.ok(rects.ice < rects.fork * 3, 'Eis zeichnet kein Schachbrett mehr');
 });
 
 test('Wiesen-Deko (flatpop): nur im Cache, Aufbau schnell', async () => {
@@ -937,7 +940,7 @@ test('Wiesen-Licht: Abdunklung begrenzt, nur Wiese, Gradienten nur im Cache, Auf
   const lighten = L.gradientAlpha + L.beamAlpha * L.beams.length;
   assert.ok(lighten <= 0.3, 'Aufhellung bleibt dezent');
   assert.equal(MAPS.meadow.theme.light, true);
-  for (const id of ['forest', 'ice', 'fork']) {
+  for (const id of ['ice', 'fork', 'twin']) {
     const l = MAPS[id].theme.light;
     assert.ok(l.vignetteAlpha <= 0.3, `${id}: Vignette begrenzt`);
     assert.ok((l.gradientAlpha ?? L.gradientAlpha) + (l.beamAlpha ?? L.beamAlpha) * L.beams.length <= 0.3, `${id}: Aufhellung dezent`);
@@ -989,11 +992,11 @@ test('B-082: Insel wird im Frame-Pfad mit dem Turm gezeichnet (nur Wiese), nicht
     assert.equal(cache.m.counts.ellipse || 0, bgEll, 'Cache enthält keine Insel');
     assert.ok(withTowers > empty, 'Insel im Frame-Pfad');
     assert.equal(frame(s), withTowers, 'zweiter Frame zeichnet die Insel erneut');
-    // gleiche Türme auf dem Wald: weniger Ellipsen pro Turm (keine Inseln)
-    const f = createGame({ mapId: 'forest' });
-    const forestEmpty = frame(f);
+    // gleiche Türme auf der Eiswelt: weniger Ellipsen pro Turm (keine Inseln)
+    const f = createGame({ mapId: 'ice' });
+    const otherEmpty = frame(f);
     build(f);
-    assert.ok(withTowers - empty > frame(f) - forestEmpty, 'Wiese zeichnet je Turm zusätzlich eine Insel');
+    assert.ok(withTowers - empty > frame(f) - otherEmpty, 'Wiese zeichnet je Turm zusätzlich eine Insel');
     // Vorschau: gültig und ungültig bekommen eine Insel (nur Wiese)
     const hover = (map, ok) => frame(createGame({ mapId: map }), { buildType: 'cannon', hover: { col: 3, row: 1, ok } });
     assert.ok(hover('meadow', true) > frame(createGame({ mapId: 'meadow' })));
@@ -1033,19 +1036,19 @@ test('Tester B-082: Rand-Turm, Hover null/Rand, Meteor-Zielkreis und Kartenwechs
     { hover: { col: 0, row: 0, ok: true }, buildType: 'arrow' }, { aiming: true, hoverPx: { x: 0, y: 0 } }, { aiming: true }])
     run(s, ui);
   const wiese = run(s, {}).counts.ellipse || 0;
-  const wald = createGame({ mapId: 'forest' });
-  for (const id of ['forest', 'ice', 'fork']) {
+  const other = createGame({ mapId: 'twin' });
+  for (const id of ['ice', 'fork', 'twin']) {
     const g = createGame({ mapId: id }); g.gold = 99999;
     buildTower(g, 'arrow', 0, 0); buildTower(g, 'arrow', COLS - 1, ROWS - 1);
     const g0 = createGame({ mapId: id });
     const withT = run(g, {}).counts.ellipse || 0, without = run(g0, {}).counts.ellipse || 0;
     assert.ok(withT - without < 20, `${id}: keine Insel-Ellipsen (Insel hätte 7 je Turm)`);
   }
-  assert.ok(wiese > 0 && wald);
+  assert.ok(wiese > 0 && other);
 });
 
-// ---------- Welten Wald und Zangenangriff (B-072) ----------
-test('B-072: Wald und Fork zeichnen ihre Paletten aus config, die Wiese nicht (Boden, Weg, Tanne, Laub)', async () => {
+// ---------- Welten Zangenangriff (B-072) und Zwei Fronten (B-099) ----------
+test('B-072/B-099: Zwei Fronten und Fork zeichnen ihre Paletten aus config, die Wiese nicht (Boden, Weg, Laub)', async () => {
   const { render } = await import('../src/render.js?welten-farben');
   const seen = (id) => {
     const set = new Set();
@@ -1053,18 +1056,18 @@ test('B-072: Wald und Fork zeichnen ihre Paletten aus config, die Wiese nicht (B
     render(m, createGame({ mapId: id }), {});
     return set;
   };
-  const w = seen('forest'), f = seen('fork'), m = seen('meadow');
-  for (const c of ['#4b9448', '#c9a56a', '#3b2813', '#8fd14f']) assert.ok(w.has(c), `Wald: ${c}`);
+  const w = seen('twin'), f = seen('fork'), m = seen('meadow');
+  for (const c of ['#7cb24f', '#dcc08a', '#3e2a14']) assert.ok(w.has(c), `Zwei Fronten: ${c}`);
   for (const c of ['#b3b45a', '#d6ab70', '#4a3018', '#e0803a']) assert.ok(f.has(c), `Fork: ${c}`);
-  for (const c of ['#4b9448', '#c9a56a', '#b3b45a', '#d6ab70', '#e0803a']) assert.ok(!m.has(c), `Wiese ohne ${c}`);
-  assert.ok(!w.has('#b3b45a') && !f.has('#4b9448'), 'keine Farben der anderen Welt');
+  for (const c of ['#7cb24f', '#dcc08a', '#b3b45a', '#d6ab70', '#e0803a']) assert.ok(!m.has(c), `Wiese ohne ${c}`);
+  assert.ok(!w.has('#b3b45a') && !f.has('#7cb24f'), 'keine Farben der anderen Welt');
   assert.ok(m.has('#5fae48') && !w.has('#5fae48') && !f.has('#5fae48'), 'Wiesen-Boden nur auf der Wiese');
 });
 
 test('B-072: Wegmitte hebt sich vom Boden ab (>= 10 % Helligkeit), Gegner-Konturen >= 25 % von der Wegmitte, alle Karten mit eigenem Weg', async () => {
   const { MAPS, ENEMY_TYPES, GROUND_STYLE, themed } = await import('../src/config.js');
   const { brightness, outlineOf } = await import('../src/draw-utils.js');
-  for (const id of ['forest', 'fork']) {
+  for (const id of ['twin', 'fork']) {
     const path = MAPS[id].theme.path;
     const ground = themed(id, 'ground', GROUND_STYLE).base;
     // Die Wegmitte (hellste Wegflaeche) hebt sich ab; der Rand (dunkle Kontur) trennt zusaetzlich
@@ -1077,13 +1080,13 @@ test('B-072: Wegmitte hebt sich vom Boden ab (>= 10 % Helligkeit), Gegner-Kontur
   }
 });
 
-test('B-072: Wald und Fork nur im Hintergrund-Cache, kein Neuzeichnen, Gradienten nur im Cache, Aufbau unter 60 ms, Kartenwechsel baut neu', async () => {
+test('B-072: Zwei Fronten und Fork nur im Hintergrund-Cache, kein Neuzeichnen, Gradienten nur im Cache, Aufbau unter 60 ms, Kartenwechsel baut neu', async () => {
   const { render } = await import('../src/render.js?welten-cache');
   const offscreen = [];
   globalThis.document = { createElement() { const m = mockCtx(); const c = { width: 0, height: 0, getContext: () => m.ctx, m }; offscreen.push(c); return c; } };
   try {
     const main = mockCtx();
-    for (const id of ['forest', 'fork']) {
+    for (const id of ['twin', 'fork']) {
       const s = createGame({ mapId: id });
       const before = { ...(offscreen[offscreen.length - 1]?.m.counts || {}) }; // der Cache-Canvas wird pro Karte neu bemalt
       const t0 = performance.now();
@@ -1113,11 +1116,11 @@ test('B-072: Wald und Fork nur im Hintergrund-Cache, kein Neuzeichnen, Gradiente
   } finally { delete globalThis.document; }
 });
 
-test('B-072: Hindernisse des Walds im neuen Stil (Kontur), Lage und Zahl unveraendert; Wiese/Eis behalten ihre Zeichnung', async () => {
+test('B-072: Hindernisse im neuen Stil (Kontur), nur im Hintergrund-Cache; Wiese/Eis behalten ihre Zeichnung', async () => {
   const { drawObstacleFlat, drawTree, useDecorStyle } = await import('../src/render-decor.js');
   const { themed, DECOR_STYLE } = await import('../src/config.js');
   const strokes = (fn) => { const m = mockCtx(); fn(m.ctx); return m.counts; };
-  useDecorStyle(themed('forest', 'decor', DECOR_STYLE));
+  useDecorStyle(themed('fork', 'decor', DECOR_STYLE));
   try {
     for (const [kind, fir] of [['tree', true], ['tree', false], ['rock', false]]) {
       for (let v = 0; v < 3; v++) {
@@ -1133,11 +1136,14 @@ test('B-072: Hindernisse des Walds im neuen Stil (Kontur), Lage und Zahl unverae
   globalThis.document = { createElement() { const m = mockCtx(); const c = { width: 0, height: 0, getContext: () => m.ctx, m }; offscreen.push(c); return c; } };
   try {
     const main = mockCtx();
-    const s = createGame({ mapId: 'forest' });
+    const s = createGame({ mapId: 'fork', obstacles: OBST_FORK });
     render(main.ctx, s, {});
     const n = offscreen[offscreen.length - 1].m.counts.arcTo;
-    assert.ok(n >= 39 * 4, `je Hindernis ein Bodenfleck (${n})`);
-    assert.equal(s.obstacles.size, 39);
+    const plainBg = mockCtx(); // gleicher Hintergrund ohne Hindernisse zum Vergleich
+    globalThis.document = { createElement() { const c = { width: 0, height: 0, getContext: () => plainBg.ctx }; return c; } };
+    const { render: render2 } = await import('../src/render.js?welten-hindernis-ohne');
+    render2(mockCtx().ctx, createGame({ mapId: 'fork' }), {});
+    assert.ok(n - (plainBg.counts.arcTo || 0) >= OBST_FORK.size * 4, `je Hindernis ein Bodenfleck (${n})`);
     render(main.ctx, s, {});
     assert.equal(main.counts.arcTo || 0, 0, 'Frame-Pfad zeichnet keine Hindernisse');
   } finally { delete globalThis.document; }
@@ -1154,7 +1160,7 @@ test('B-073: Eis zeichnet seine Palette aus config (Schnee, Weg, Kristall), nich
   };
   const i = seen('ice');
   for (const c of ['#e3f1fa', '#9db3c9', '#2f4560', '#7fe0ff', '#ffffff']) assert.ok(i.has(c), `Eis: ${c}`);
-  for (const id of ['meadow', 'forest', 'fork']) {
+  for (const id of ['meadow', 'twin', 'fork']) {
     const o = seen(id);
     for (const c of ['#e3f1fa', '#9db3c9', '#2f4560', '#7fe0ff']) assert.ok(!o.has(c), `${id} ohne Eis-Farbe ${c}`);
   }
@@ -1183,7 +1189,7 @@ test('B-073: Schneekappen auf Tannen nur mit theme-Schnee (Eis), Kristall und Sc
   assert.equal(c1.counts.fill, 2);
   const crowns = [{ x: 100, y: 100, r: 16, kind: 'fir', row: 0, shade: 0, seed: 1 }];
   const ice = mockCtx(); drawTreeFrame(ice.ctx, crowns, themed('ice', 'treeFrame', TREE_FRAME));
-  const plain = mockCtx(); drawTreeFrame(plain.ctx, crowns, themed('forest', 'treeFrame', TREE_FRAME));
+  const plain = mockCtx(); drawTreeFrame(plain.ctx, crowns, themed('twin', 'treeFrame', TREE_FRAME));
   assert.equal(ice.counts.fill - plain.counts.fill, 6, 'je Stufe zwei Flaechen Schnee (3 Stufen)');
   useDecorStyle(themed('ice', 'decor', DECOR_STYLE));
   try {
