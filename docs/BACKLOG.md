@@ -17,6 +17,16 @@ Erledigte Einträge (`fertig`) liegen in `docs/archiv/BACKLOG-fertig.md`. Beim A
 
 ---
 
+### B-113: Sounds für Schüsse und besiegte Gegner
+- Status: offen
+- Aufwand: M
+- Idee: Wunsch des Menschen am 2026-11-26: Man soll hören, wenn Türme schießen und wenn Gegner sterben; das erhöht den Spielspaß. Töne werden mit der Web-Audio-API erzeugt (keine Sounddateien, keine Abhängigkeit).
+- Akzeptanzkriterien:
+  - Jeder Turmtyp (Pfeil, Kanone, Frost, Scharfschütze, Blitz) hat einen eigenen, kurzen Schuss-Ton; besiegte Gegner einen „Plopp“, der Boss einen größeren Ton.
+  - Erkennung der Ereignisse aus dem Spielzustand in einem reinen Modul ohne DOM (in Node getestet); `game.js` bleibt unverändert.
+  - Begrenzung: höchstens wenige Töne pro Zeitfenster und Art, auch bei Tempo ×3 kein Lärm; Lautstärke leise. Alle Zahlen in `config.js` (`SOUND`).
+  - Ton an/aus per Knopf und Taste M, Wahl gespeichert; AudioContext erst nach der ersten Nutzeraktion; ohne Web Audio läuft das Spiel normal weiter.
+
 ### B-105: Statistik je Turm im Panel
 - Status: vorschlag
 - Aufwand: S
