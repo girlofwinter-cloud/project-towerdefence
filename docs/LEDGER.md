@@ -711,3 +711,10 @@ Neue Einträge werden unten angehängt. Bestehende Einträge werden nie geänder
 - Ergebnis: fertig. B-113: Ereignis-Erkennung ohne DOM (`src/sound-events.js`), Web-Audio-Wiedergabe (`src/audio.js`), Ton an/aus per Knopf und Taste M (gespeichert), Begrenzung je Art und gemeinsam für Schüsse. Nach Rückmeldung des Menschen („etwas nervig“, „Pfeil klingt nicht wie Pfeil“) weicher, leiser, seltener. B-114: Nach Recherche (Prinzip guter Tower-Defense-Spiele: echte Aufnahmen, leise Schüsse, deutliche Ereignisse) Kenney-CC0-Aufnahmen in `assets/sounds/` (Lizenz in `LIZENZ.md`), Synthese bleibt als Ersatz. B-115: Bauen, Ausbauen, Verkaufen, Wellenstart, Sieg, Niederlage. Der Mensch hat die Töne angehört: passen.
 - Tests: 400 Unit-Tests, 37 Browser-Tests. Tester: PASS, Review: APPROVE. **Mit Freigabe des Menschen geändert:** `tests/render.test.js` Icon-Anzahl 14 → 16 (Ton an/aus).
 - Entscheidungen: Kein Lautstärkeregler (Mensch). Kenney-Pakete hat der Mensch selbst geladen (automatischer Download wurde nicht gemacht). `game.js` unverändert. Offen: `.github/workflows/pages.yml` kopiert `assets/` noch nicht (nur Mensch); bis dahin spielt live die Synthese. B-116 Musik wartet auf eine Quelle.
+
+## 2026-11-26 · Werkzeug · Dauerhafter Testserver
+- Rolle(n): orchestrator, developer
+- Branch: agent/testserver
+- Ergebnis: fertig. `npm run testserver [-- <branch>] [--dir <ordner>] [--no-open]` liefert Spiel und Testseite auf Port 8091 direkt aus Git (Standard `origin/main`), holt höchstens alle 10 s neue Commits, öffnet die Testseite. `scripts/serve.mjs` bekommt eine austauschbare Lesefunktion; `npm start` unverändert, Pfad-Ausbruch jetzt 403.
+- Tests: 405 Unit-Tests (5 neu in `tests/testserver.test.js`), 37 Browser-Tests. Kein Tester/Reviewer (nur Werkzeug, keine Spieldateien); Orchestrator hat den Code selbst geprüft (execFile ohne Shell, Ref-Prüfung, nur 127.0.0.1).
+- Entscheidungen: `package.json` geändert (neues Skript, keine Abhängigkeit); Merge ausdrücklich vom Menschen erlaubt.
