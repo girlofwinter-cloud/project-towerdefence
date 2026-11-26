@@ -657,3 +657,11 @@ Neue Einträge werden unten angehängt. Bestehende Einträge werden nie geänder
 - Ergebnis: fertig. Desktop: `#tower-info` als flache Leiste unter dem Spielfeld (`#sell` endet bei y=721 statt 958). Handy: feste Leiste unten mit Name/Stufe, Ziel/Verbessern/Verkaufen (≥ 44 px, zweizeilig, ohne Kürzel), Schließen per × oder Tipp aufs Feld. Shop-Karten: Farben in `SHOP_CARD`, deutlicher Zustand „zu teuer“, Kontrast ≥ 4,5:1 per Test (`contrastRatio` in `src/hud.js`), Kartenhöhen unverändert.
 - Tests: 302 Unit-Tests, 26 Browser-Tests (neu `tests/e2e/panel.test.mjs`, vom Tester `panel-edge.test.mjs`). Tester: PASS. Review: APPROVE, Hinweise als B-097.
 - Entscheidungen: Einträge standen auf `vorschlag`, vom Menschen per Auftrag freigegeben. Layout-Einträge als Block, da alle dasselbe Panel betreffen. B-070 und die B-056-Nachbesserung in einem Commit (Developer committete nicht, Aufteilung nach Hunks zu fehleranfällig). „Canvas ≥ 280 px“: Feld ist auf dem Handy nur 266/245 px hoch; Test verlangt, dass das ganze Feld über der Leiste sichtbar bleibt.
+
+## 2026-11-26 · B-095 bis B-098 · Feinschliff Boss/Effekte, HUD, Turm-Panel; Startkarte merken (Block)
+- Rolle(n): orchestrator, developer (je Eintrag, B-095 und B-098 parallel in eigenen Worktrees), danach einmal tester und reviewer über den Block
+- Branch: agent/feinschliff-095-097
+- Runden: 1 von max. 2 (plus Nachtrag nach Entscheidung des Menschen)
+- Ergebnis: fertig. B-095: Zahlen nach `FX_STYLE`, Treffer-Blitz 0,08 s, kein erneuter Boss-Auftritt nach Zeitsprung, Staub beim Auftritt. B-096: keine Emoji mehr in der Spiel-UI (neue Icons Trophäe, Totenkopf, Burg), Kürzel auf Touch aus, `abilityView` gehärtet. B-097: Fokus nach ×, Klammerabstand, Leistenhöhe per ResizeObserver, gleiche Kartenhöhe, `#rgb`. B-098 (neu, Wunsch des Menschen): Start auf zuletzt gewählter bzw. neuester freigeschalteter Karte.
+- Tests: 319 Unit-Tests, 37 Browser-Tests. Tester: PASS (5 Unit-, 2 e2e-Tests ergänzt). Review: APPROVE, Hinweise als B-099.
+- Entscheidungen: **Zwei Test-Zusicherungen mit ausdrücklicher Freigabe des Menschen geändert:** `tests/fx.test.js` Boss-Auftritt erzeugt wenige Staubpartikel statt keine; `tests/render.test.js` 14 statt 11 Icons. B-098: `lastMap` wird nur beim Kartenwechsel gespeichert und bei neuer Freischaltung gelöscht, damit man nach einem Sieg auf der neuen Karte startet.
