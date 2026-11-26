@@ -13,6 +13,7 @@ const TYPES = {
   '.json': 'application/json',
   '.png': 'image/png',
   '.svg': 'image/svg+xml',
+  '.m4a': 'audio/mp4',
 };
 
 export function createServer() {

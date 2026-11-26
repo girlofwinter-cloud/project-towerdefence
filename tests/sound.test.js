@@ -401,3 +401,154 @@ test('B-113: Töne weicher und seltener (Grenzen, Lautstärken, Klangfarbe aus S
   for (const ls of [SOUND.meteor.impact, SOUND.boss.layers, SOUND.lifeLost.layers]) assert.ok(peak(ls) > loudestShot);
   assert.equal(SOUND.death.layers[0].wave, 'sine');
 });
+
+// ---------- B-114: Aufnahmen statt Synthese ----------
+import { sampleUrls, planSound } from '../src/sound-events.js';
+import fs from 'node:fs';
+import { fileURLToPath } from 'node:url';
+
+const ROOT = fileURLToPath(new URL('..', import.meta.url));
+
+test('B-114: jedes B-113-Ereignis hat 2–4 Aufnahmen, Dateien vorhanden, zusammen höchstens 400 KB, Lizenz je Datei', () => {
+  const keys = [...Object.keys(TOWER_TYPES).map((t) => `shot:${t}`), 'death', 'boss', 'lifeLost', 'meteorFlight', 'meteorImpact'];
+  assert.deepEqual(Object.keys(SOUND.samples.sounds).sort(), keys.sort());
+  const lic = fs.readFileSync(`${ROOT}assets/sounds/LIZENZ.md`, 'utf8');
+  assert.match(lic, /CC0/);
+  assert.match(lic, /https:\/\/kenney\.nl/);
+  let total = 0;
+  for (const def of Object.values(SOUND.samples.sounds)) {
+    assert.ok(def.files.length >= 2 && def.files.length <= 4);
+    assert.ok(def.gain > 0 && def.pitchVar >= 0 && def.pitchVar < 0.3);
+  }
+  for (const { url } of sampleUrls()) {
+    assert.match(url, /^assets\/sounds\/[a-z0-9-]+\.m4a$/);
+    total += fs.statSync(`${ROOT}${url}`).size;
+    assert.ok(lic.includes(url.split('/').pop()), `${url} fehlt in LIZENZ.md`);
+  }
+  assert.ok(total <= 400 * 1024, `zu groß: ${total}`);
+});
+
+test('B-114: Schüsse leiser als Tod, Boss, Meteor und Warnton', () => {
+  const s = SOUND.samples.sounds;
+  const shotMax = Math.max(...Object.keys(TOWER_TYPES).map((t) => s[`shot:${t}`].gain));
+  for (const k of ['death', 'boss', 'lifeLost', 'meteorFlight', 'meteorImpact']) assert.ok(s[k].gain > shotMax, k);
+});
+
+test('B-114: planSound wählt Variante und Tonhöhe, sonst Synthese als Ersatz', () => {
+  const ev = { kind: 'shot', tower: 'cannon' };
+  const def = SOUND.samples.sounds['shot:cannon'];
+  assert.deepEqual(planSound(ev, new Map()), { type: 'synth' });
+  assert.deepEqual(planSound(ev, new Map([['shot:cannon', []]])), { type: 'synth' });
+  assert.deepEqual(planSound(ev, null), { type: 'synth' });
+  assert.deepEqual(planSound({ kind: 'unbekannt' }, new Map([['unbekannt', ['x']]])), { type: 'synth' });
+  // andere Art geladen, diese nicht -> Synthese
+  assert.deepEqual(planSound(ev, new Map([['shot:arrow', ['a']]])), { type: 'synth' });
+  const bufs = new Map([['shot:cannon', ['a', 'b', 'c']]]);
+  const seq = (...v) => { let i = 0; return () => v[i++]; };
+  let p = planSound(ev, bufs, seq(0, 0.5));
+  assert.equal(p.type, 'sample');
+  assert.equal(p.buffer, 'a');
+  assert.equal(p.rate, 1);
+  assert.equal(p.gain, def.gain);
+  p = planSound(ev, bufs, seq(0.999999, 0.999999));
+  assert.equal(p.buffer, 'c');
+  assert.ok(Math.abs(p.rate - (1 + def.pitchVar)) < 1e-4);
+  p = planSound(ev, bufs, seq(0.4, 0));
+  assert.equal(p.buffer, 'b');
+  assert.ok(Math.abs(p.rate - (1 - def.pitchVar)) < 1e-9);
+  // rnd() == 1 (außerhalb [0,1)) bleibt im Bereich
+  assert.equal(planSound(ev, bufs, () => 1).buffer, 'c');
+  // Verteilung: alle Varianten kommen vor
+  const seen = new Set();
+  for (let i = 0; i < 200; i++) seen.add(planSound(ev, bufs).buffer);
+  assert.equal(seen.size, 3);
+});
+
+// Web Audio und fetch nachgebaut: Aufnahme spielt, wenn geladen; sonst Synthese
+async function withFakeAudio({ fetchImpl, decode }, fn) {
+  const log = [];
+  const param = () => ({ value: 0, setValueAtTime() {}, exponentialRampToValueAtTime() {} });
+  const node = (kind) => ({ kind, connect() {}, start() { log.push(['start', kind, this]); }, stop() {} });
+  class FakeCtx {
+    constructor() { this.state = 'running'; this.currentTime = 0; this.sampleRate = 100; this.destination = {}; }
+    createGain() { return { ...node('gain'), gain: param() }; }
+    createBuffer(_c, len) { return { getChannelData: () => new Float32Array(len) }; }
+    createBufferSource() { return { ...node('source'), playbackRate: { value: 1 } }; }
+    createBiquadFilter() { return { ...node('filter'), frequency: param(), Q: { value: 0 } }; }
+    createOscillator() { return { ...node('osc'), frequency: param() }; }
+    decodeAudioData(data) { return decode(data); }
+    resume() { return Promise.resolve(); }
+    suspend() { return Promise.resolve(); }
+  }
+  const hadWindow = 'window' in globalThis;
+  const origFetch = globalThis.fetch;
+  globalThis.window = { AudioContext: FakeCtx };
+  globalThis.fetch = fetchImpl;
+  try {
+    const mod = await import(`../src/audio.js?b114=${Math.random()}`);
+    mod.setSoundOn(true);
+    mod.unlockAudio();
+    await new Promise((r) => setTimeout(r, 20)); // Laden abwarten
+    await fn(mod, log);
+  } finally {
+    globalThis.fetch = origFetch;
+    if (hadWindow) globalThis.window = undefined; else delete globalThis.window;
+  }
+}
+
+test('B-114: audio.js lädt die Aufnahmen nach unlockAudio und spielt sie mit playbackRate', async () => {
+  const fetched = [];
+  await withFakeAudio({
+    fetchImpl: async (url) => { fetched.push(url); return { ok: true, arrayBuffer: async () => ({ url }) }; },
+    decode: async (data) => ({ decoded: data.url }),
+  }, async ({ playSound }, log) => {
+    assert.deepEqual(fetched.sort(), sampleUrls().map((u) => u.url).sort());
+    log.length = 0;
+    playSound({ kind: 'meteorImpact' });
+    const src = log.find((l) => l[1] === 'source')?.[2];
+    assert.ok(src, 'Aufnahme gestartet');
+    assert.match(src.buffer.decoded, /meteor-impact-\d\.m4a$/);
+    const v = SOUND.samples.sounds.meteorImpact.pitchVar;
+    assert.ok(Math.abs(src.playbackRate.value - 1) <= v + 1e-9);
+    assert.ok(!log.some((l) => l[1] === 'osc'), 'keine Synthese');
+  });
+});
+
+test('B-114: fehlende Datei oder Dekodier-Fehler -> Synthese, kein Fehler', async () => {
+  // 404 für Kanone, Dekodier-Fehler für Tod, alles andere kaputt per Netzwerkfehler
+  await withFakeAudio({
+    fetchImpl: async (url) => {
+      if (url.includes('cannon')) return { ok: false, status: 404 };
+      if (url.includes('death')) return { ok: true, arrayBuffer: async () => ({ url }) };
+      if (url.includes('frost')) return { ok: true, arrayBuffer: async () => ({ url }) };
+      throw new TypeError('Netzwerk');
+    },
+    decode: async (data) => {
+      if (data.url.includes('death')) throw new Error('kaputt');
+      return { decoded: data.url };
+    },
+  }, async ({ playSound }, log) => {
+    for (const ev of [{ kind: 'shot', tower: 'cannon' }, { kind: 'death' }, { kind: 'boss' }]) {
+      log.length = 0;
+      assert.doesNotThrow(() => playSound(ev));
+      assert.ok(log.some((l) => l[1] === 'osc'), `${ev.kind}: Synthese als Ersatz`);
+    }
+    log.length = 0;
+    playSound({ kind: 'shot', tower: 'frost' });
+    assert.ok(log.some((l) => l[1] === 'source' && l[2].buffer?.decoded), 'Frost als Aufnahme');
+  });
+});
+
+test('B-114: serve.mjs liefert .m4a als audio/mp4', async () => {
+  const { createServer } = await import('../scripts/serve.mjs');
+  const server = createServer().listen(0);
+  await new Promise((r) => server.once('listening', r));
+  try {
+    const res = await fetch(`http://127.0.0.1:${server.address().port}/${sampleUrls()[0].url}`);
+    assert.equal(res.status, 200);
+    assert.equal(res.headers.get('content-type'), 'audio/mp4');
+    await res.arrayBuffer();
+  } finally {
+    server.close();
+  }
+});

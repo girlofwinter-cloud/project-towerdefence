@@ -1188,4 +1188,22 @@ export const SOUND = {
       { type: 'noise', filter: 'lowpass', cutoff: 220, q: 0.7, duration: 1.6, gain: 0.6, attack: 0.06 }, // Nachgrollen
     ],
   },
+  // B-114: Aufnahmen (Kenney, CC0, siehe assets/sounds/LIZENZ.md) statt Synthese. Schlüssel wie soundKey().
+  // Je Ton mehrere Varianten (zufällig), gain = Lautstärke vor dem Master, pitchVar = Tonhöhen-Variation (±Anteil).
+  // Fehlt eine Datei oder schlägt Laden/Dekodieren fehl, spielt die Synthese von oben als Ersatz.
+  samples: {
+    base: 'assets/sounds/',
+    sounds: {
+      'shot:arrow':     { files: ['arrow-1', 'arrow-2', 'arrow-3'], gain: 0.3, pitchVar: 0.08 },
+      'shot:cannon':    { files: ['cannon-1', 'cannon-2', 'cannon-3'], gain: 0.4, pitchVar: 0.06 },
+      'shot:frost':     { files: ['frost-1', 'frost-2', 'frost-3'], gain: 0.2, pitchVar: 0.06 },
+      'shot:sniper':    { files: ['sniper-1', 'sniper-2', 'sniper-3'], gain: 0.3, pitchVar: 0.06 },
+      'shot:lightning': { files: ['lightning-1', 'lightning-2', 'lightning-3'], gain: 0.18, pitchVar: 0.06 },
+      death:            { files: ['death-1', 'death-2', 'death-3', 'death-4'], gain: 0.7, pitchVar: 0.15 },
+      boss:             { files: ['boss-1', 'boss-2'], gain: 1.2, pitchVar: 0.03 },
+      lifeLost:         { files: ['life-lost-1', 'life-lost-2'], gain: 0.8, pitchVar: 0 },
+      meteorFlight:     { files: ['meteor-flight-1', 'meteor-flight-2'], gain: 0.7, pitchVar: 0.05 },
+      meteorImpact:     { files: ['meteor-impact-1', 'meteor-impact-2'], gain: 1.4, pitchVar: 0.04 },
+    },
+  },
 };

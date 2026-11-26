@@ -1,8 +1,10 @@
-// B-113: Töne mit der Web-Audio-API (Oszillatoren, Rauschen-Buffer, Hüllkurven). Keine Dateien.
+// B-113/B-114: Töne mit der Web-Audio-API. Bevorzugt Aufnahmen (assets/sounds, geladen nach der ersten
+// Nutzeraktion), sonst Synthese (Oszillatoren, Rauschen-Buffer, Hüllkurven) als Ersatz.
 // Ohne Web Audio (Node, alte Browser) tun alle Funktionen nichts.
 import { SOUND } from './config.js';
+import { sampleUrls, planSound } from './sound-events.js';
 
-const audio = { ctx: null, master: null, noise: null, on: SOUND.defaultOn };
+const audio = { ctx: null, master: null, noise: null, on: SOUND.defaultOn, buffers: new Map() };
 
 function AudioCtor() {
   if (typeof window === 'undefined') return null;
@@ -27,6 +29,7 @@ export function unlockAudio() {
       audio.master.connect(soft);
       soft.connect(audio.ctx.destination);
       audio.noise = makeNoise(audio.ctx);
+      loadSamples(audio.ctx);
     }
     if (audio.ctx.state === 'suspended') audio.ctx.resume().catch(() => {});
   } catch { audio.ctx = null; }
@@ -36,6 +39,42 @@ export function unlockAudio() {
 export function setSoundOn(on) {
   audio.on = !!on;
   if (!audio.on && audio.ctx && audio.ctx.state === 'running') audio.ctx.suspend().catch(() => {});
+}
+
+// Lädt alle Aufnahmen im Hintergrund. Fehler (fehlende Datei, Dekodieren) bleiben still: dann Synthese.
+function loadSamples(ctx) {
+  if (typeof fetch !== 'function' || typeof ctx.decodeAudioData !== 'function') return;
+  for (const { key, url } of sampleUrls()) {
+    Promise.resolve()
+      .then(() => fetch(url))
+      .then((res) => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.arrayBuffer();
+      })
+      .then((data) => new Promise((resolve, reject) => {
+        // Promise- und alte Callback-Form (Safari) zugleich abdecken
+        const p = ctx.decodeAudioData(data, resolve, reject);
+        if (p && typeof p.then === 'function') p.then(resolve, reject);
+      }))
+      .then((buf) => {
+        if (!buf) return;
+        if (!audio.buffers.has(key)) audio.buffers.set(key, []);
+        audio.buffers.get(key).push(buf);
+      })
+      .catch(() => { /* fehlt oder defekt: Synthese bleibt der Ersatz */ });
+  }
+}
+
+// Aufnahme abspielen: Variante mit Tonhöhe (playbackRate) und Lautstärke über den Master (Tiefpass)
+function playSample(ctx, plan) {
+  const src = ctx.createBufferSource();
+  src.buffer = plan.buffer;
+  src.playbackRate.value = plan.rate;
+  const g = ctx.createGain();
+  g.gain.value = plan.gain;
+  src.connect(g);
+  g.connect(audio.master);
+  src.start(ctx.currentTime);
 }
 
 // Gemeinsamer Rauschen-Buffer (weißes Rauschen)
@@ -101,6 +140,10 @@ function layersFor(ev) {
 export function playSound(ev) {
   const ctx = audio.ctx;
   if (!audio.on || !ctx || ctx.state !== 'running') return;
+  try {
+    const plan = planSound(ev, audio.buffers);
+    if (plan.type === 'sample') { playSample(ctx, plan); return; }
+  } catch { /* Aufnahme ging schief: Synthese versuchen */ }
   const def = layersFor(ev);
   if (!def || !def.layers) return;
   const pitch = 1 + (Math.random() * 2 - 1) * (def.pitchVar || 0);

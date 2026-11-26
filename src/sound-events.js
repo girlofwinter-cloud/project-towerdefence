@@ -153,3 +153,25 @@ export function loadSoundOn(storage) {
 export function saveSoundOn(storage, on) {
   try { storage?.setItem(SOUND.storageKey, on ? '1' : '0'); } catch { /* Speicher voll oder gesperrt */ }
 }
+
+// ---------- B-114: Aufnahmen (Zuordnung, Variante, Ersatz) ----------
+// Alle zu ladenden Dateien: [{ key, url }] (key wie soundKey, url relativ zur Seite)
+export function sampleUrls(samples = SOUND.samples) {
+  const out = [];
+  for (const [key, def] of Object.entries(samples.sounds)) {
+    for (const f of def.files || []) out.push({ key, url: `${samples.base}${f}.m4a` });
+  }
+  return out;
+}
+
+// Wahl für ein Ereignis. buffers: Map key -> geladene Varianten. rnd() liefert [0, 1).
+// { type: 'sample', buffer, gain, rate } oder { type: 'synth' } (keine Aufnahme geladen: Synthese als Ersatz)
+export function planSound(ev, buffers, rnd = Math.random, samples = SOUND.samples) {
+  const key = soundKey(ev);
+  const def = samples.sounds[key];
+  const list = def && buffers && typeof buffers.get === 'function' ? buffers.get(key) : null;
+  if (!list || list.length === 0) return { type: 'synth' };
+  const i = Math.min(list.length - 1, Math.floor(rnd() * list.length));
+  const rate = 1 + (rnd() * 2 - 1) * (def.pitchVar || 0);
+  return { type: 'sample', buffer: list[i], gain: def.gain, rate };
+}
