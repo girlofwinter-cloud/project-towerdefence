@@ -37,6 +37,7 @@ export function createGame({ mapId, ...overrides } = {}) {
     nextId: 1,
     healAt: ENEMY_TYPES.healer.healInterval, // Zeitpunkt (state.time) des nächsten Heilimpulses
     healTick: 0, // Zähler der Heilimpulse (verhindert doppelte Heilung pro Impuls)
+    wardAt: ENEMY_TYPES.mage.wardInterval, // B-126: Zeitpunkt (state.time) des nächsten Schildzaubers der Magier
     path: buildPath(waypoints, TILE),
     blocked: new Set([waypoints, ...extraPaths].flatMap((w) => [...pathTiles(w)])), // alle Wege
     nextLane: 0, // Zähler für die abwechselnde Wegwahl neuer Gegner
@@ -279,6 +280,7 @@ export function spawnEnemy(state, type, wave = state.wave, lane = null) {
     slowFactor: 1,
     armor: def.armor || 0,
     healTick: 0,
+    ward: 0, // B-126: Schild des Magiers (schluckt Schaden vor den HP)
   };
   state.enemies.push(enemy);
   return enemy;
@@ -362,6 +364,7 @@ export function update(state, dt) {
   if (state.status !== 'playing') return;
   lavaStep(state, dt);
   healStep(state);
+  wardStep(state);
   towersStep(state, dt);
   projectilesStep(state, dt);
   effectsStep(state, dt);
@@ -442,6 +445,26 @@ function healStep(state) {
       if (Math.hypot(e.x - h.x, e.y - h.y) > reach) continue;
       e.hp = Math.min(e.maxHp, e.hp + e.maxHp * def.healPerSec * def.healInterval);
       e.healTick = tick;
+    }
+  }
+}
+
+// B-126: Schildzauber. Alle wardInterval Sekunden (state.time) schützt jeder lebende Magier alle ANDEREN lebenden
+// Gegner im Umkreis wardRadius (Kacheln): ward = max(ward, wardShare * maxHp des Ziels), also kein Stapeln.
+function wardStep(state) {
+  if (state.wardAt === undefined || state.time < state.wardAt) return;
+  const interval = ENEMY_TYPES.mage.wardInterval;
+  state.wardAt += interval;
+  if (state.wardAt <= state.time) state.wardAt = state.time + interval; // nach großem dt nicht aufholen
+  const list = state.enemies;
+  for (const m of list) {
+    const def = ENEMY_TYPES[m.type];
+    if (!def || !def.wardRadius || m.hp <= 0) continue;
+    const reach = def.wardRadius * TILE;
+    for (const e of list) {
+      if (e === m || e.hp <= 0) continue;
+      if (Math.hypot(e.x - m.x, e.y - m.y) > reach) continue;
+      e.ward = Math.max(e.ward || 0, def.wardShare * e.maxHp);
     }
   }
 }
@@ -602,11 +625,18 @@ function knockBack(state, e, p) {
   e.y = pt.y;
 }
 
-// Rüstung (Schildträger): gilt nur für Direkttreffer (direct = true), also Pfeil, Frost
+// Rüstung (Schildträger) und Schild (Magier): Rüstung gilt nur für Direkttreffer (direct = true), also Pfeil, Frost
 // und Scharfschütze. Kanonen-Splash trifft immer mit vollem Schaden. Der Frost-Slow
 // wirkt unabhängig von der Rüstung unverändert.
 function damage(state, enemy, p, direct = false) {
-  enemy.hp -= direct ? p.damage * (p.ignoreArmor ? 1 : 1 - (enemy.armor || 0)) : p.damage;
+  let dmg = direct ? p.damage * (p.ignoreArmor ? 1 : 1 - (enemy.armor || 0)) : p.damage;
+  // B-126: Der Schild des Magiers schluckt den Schaden (nach der Rüstung) zuerst, der Rest geht auf die HP.
+  if (enemy.ward > 0) {
+    const absorbed = Math.min(enemy.ward, dmg);
+    enemy.ward -= absorbed;
+    dmg -= absorbed;
+  }
+  enemy.hp -= dmg;
   if (p.slow) {
     enemy.slowFactor = 1 - p.slow;
     enemy.slowUntil = state.time + p.slowDuration;

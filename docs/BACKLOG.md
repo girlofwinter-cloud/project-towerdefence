@@ -17,6 +17,24 @@ Erledigte Einträge (`fertig`) liegen in `docs/archiv/BACKLOG-fertig.md`. Beim A
 
 ---
 
+### B-128: Magier stärker machen
+- Status: vorschlag
+- Aufwand: M
+- Idee: Der Magier-Schild aus B-126 steht nur auf `wardShare` 0,05, weil bei 0,25 bestehende Strategie-Tests (Eiswelt, Zwei Fronten, Pfeil-Mix vor Welle 15) kippen. Für spürbare Wirkung den Schild auf etwa 0,15 bis 0,25 anheben und die betroffenen Strategie-Grenzen neu bewerten (Teständerung, nur mit dem Menschen). Nebenbei: Deckkraft der Schild-Blase (`0.35 + 0.65 * frac` in `src/render-enemies.js`) nach `ENEMY_STYLE.mage`.
+- Akzeptanzkriterien:
+  - Schild im Spiel klar spürbar; perfektes Spiel bleibt auf allen Karten möglich.
+
+### B-127: Zweiter Boss „Nekromantin“
+- Status: offen
+- Aufwand: L
+- Idee: Neuer Boss, der sich mit dem Oger-König abwechselt: Wellen 5 und 15 Oger-König, Wellen 10 und 20 Nekromantin (gleiche Anzahl wie bisher). Die Nekromantin beschwört alle `summonInterval` Sekunden `summonCount` Skelette (schwach, langsam, kaum Gold), die etwas vor ihr auf ihrem Weg erscheinen. Fordert Flächenschaden. Vom Menschen freigegeben am 2026-11-26, Vorgabe: Spiel etwas schwerer.
+- Akzeptanzkriterien:
+  - `ENEMY_TYPES.necro` und `ENEMY_TYPES.skeleton` in `config.js`; Boss-Eigenschaften über ein Merkmal (z. B. `boss: true`) statt `type === 'boss'`, damit Immunitäten (Einfrieren, Rückstoß-Faktor), Boss-Auftritt und Boss-Sound für beide Bosse gelten.
+  - Skelette bekommen die HP-Skalierung der Welle des Bosses, erscheinen auf demselben Weg und zählen zum Wellenende (Welle endet erst, wenn alle tot oder durch sind). Beschwörung hört mit dem Tod der Nekromantin auf.
+  - Tests: Beschwörung im Takt, Position auf dem Weg, Boss-Immunitäten für die Nekromantin, Wellenplan 5/10/15/20.
+  - Test „perfektes Spiel möglich“ bleibt auf allen Karten grün; Standard-Strategien gemessen, Messwerte im Ledger.
+  - Darstellung: eigene Boss-Figur (Kapuze, Stab mit grünem Licht) und Skelett-Figur im Flat-Pop-Stil, Beschwörungs-Effekt; Wellenvorschau und Sounds kennen beide Typen.
+
 ### B-105: Statistik je Turm im Panel
 - Status: vorschlag
 - Aufwand: S

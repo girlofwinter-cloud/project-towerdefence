@@ -751,7 +751,7 @@ test('Flat-Pop-Gegner (B-085): Hauptfarbflaechen haben >= 0,25 Helligkeitsabstan
 
 // ---------- Gegner im Flat-Pop-Stil (B-066): Schamane, Schildträger ----------
 
-const FLAT2 = ['healer', 'shielded'];
+const FLAT2 = ['healer', 'shielded', 'mage'];
 
 test('Flat-Pop B-066: Schamane/Schildtraeger zeichnen ausgewogen, bleiben im Kreis radius*1,3, auch gefroren', async () => {
   const paths = [buildPath([[0, 0], [5, 0]], TILE), buildPath([[5, 0], [0, 0]], TILE), buildPath([[0, 0], [0, 5]], TILE)];
@@ -816,6 +816,37 @@ test('Flat-Pop B-066 (B-085): Hauptfarbflaechen >= 0,25 Helligkeitsabstand zum W
   }
 });
 
+
+// ---------- Magier (B-126): Figur und Schild-Blase ----------
+
+test('Magier B-126: Hut und Kugel gezeichnet, Schild-Blase nur bei ward > 0, Deckkraft wächst mit dem Schild', async () => {
+  const { ENEMY_STYLE } = await import('../src/config.js');
+  const c = ENEMY_STYLE.mage;
+  const r = await recordEnemy({ type: 'mage' });
+  for (const col of [c.hat, c.hatBand, c.orb, c.staff]) assert.ok(r.print.includes('|' + col), `Farbe ${col} fehlt`);
+  assert.ok(!r.print.includes(c.wardFill), 'ohne Schild keine Blase');
+  const max = ENEMY_TYPES.mage.wardShare * 100;
+  const alphaOf = async (ward) => {
+    const rec = await recordEnemy({ type: 'grunt', hp: 100, maxHp: 100, ward });
+    const fill = rec.calls.find((k) => k.startsWith('fill:') && k.includes('|' + c.wardFill + '|'));
+    assert.ok(fill, `Blase bei ward ${ward}`);
+    assert.ok(rec.calls.some((k) => k.startsWith('stroke:') && k.endsWith('|' + c.wardRing)), 'Ring der Blase');
+    assert.equal(rec.depth, 0, 'save/restore ausgeglichen');
+    return rec;
+  };
+  await alphaOf(max);
+  await alphaOf(max / 4);
+  const { drawWardBubble } = await import('../src/render-enemies.js');
+  const alphas = (ward) => {
+    const seen = [];
+    const ctx = new Proxy({}, { get: () => () => {}, set: (_, k, v) => { if (k === 'globalAlpha') seen.push(v); return true; } });
+    drawWardBubble(ctx, { id: 1, x: 0, y: 0, radius: 10, maxHp: 100, ward }, 0);
+    return seen;
+  };
+  assert.deepEqual(alphas(0), [], 'ward 0: nichts');
+  assert.ok(alphas(max)[0] > alphas(max / 4)[0], 'voller Schild deckender');
+  assert.ok(alphas(max)[0] <= 1 && alphas(max / 4)[0] > 0);
+});
 
 // ---------- Boss Oger-Koenig im Flat-Pop-Stil (B-067) ----------
 

@@ -160,7 +160,7 @@ test('Wellen: jede 5. Welle hat einen Boss, Wellen werden größer', () => {
 test('waveSummary: Anzahl pro Gegnertyp für Welle 1, 5 und 10', () => {
   assert.deepEqual(waveSummary(1), { grunt: 9 });
   assert.deepEqual(waveSummary(5), { grunt: 21, runner: 13, tank: 3, boss: 1 });
-  assert.deepEqual(waveSummary(10), { grunt: 36, runner: 23, tank: 6, shielded: 1, healer: 1, boss: 2 });
+  assert.deepEqual(waveSummary(10), { grunt: 36, runner: 23, tank: 6, shielded: 1, mage: 1, healer: 1, boss: 2 });
   for (const w of [1, 5, 10]) {
     const total = Object.values(waveSummary(w)).reduce((a, b) => a + b, 0);
     assert.equal(total, waveFor(w).length, `Welle ${w}`);
@@ -513,6 +513,57 @@ function mkEnemy(state, type, dist, over = {}) {
   return e;
 }
 const HEAL = ENEMY_TYPES.healer;
+
+const MAGE = ENEMY_TYPES.mage;
+
+test('B-126 Magier: Schild nach wardInterval, nur im Radius, nicht für sich selbst, kein Stapeln', () => {
+  const s = createGame();
+  const m = mkEnemy(s, 'mage', 100);
+  const near = mkEnemy(s, 'tank', 100 + (MAGE.wardRadius - 0.5) * TILE);
+  const far = mkEnemy(s, 'tank', 100 + (MAGE.wardRadius + 0.5) * TILE);
+  mkEnemy(s, 'mage', 100 + 0.2 * TILE); // zweiter Magier: Schilde stapeln nicht
+  update(s, MAGE.wardInterval - 0.1);
+  assert.equal(near.ward, 0, 'vor dem Zauber kein Schild');
+  update(s, 0.2);
+  assert.ok(Math.abs(near.ward - MAGE.wardShare * near.maxHp) < 1e-9, 'Schild = wardShare * maxHp');
+  assert.equal(far.ward, 0, 'außerhalb kein Schild');
+  assert.ok(m.ward <= MAGE.wardShare * m.maxHp, 'kein Stapeln beim Magier');
+  const solo = createGame();
+  const alone = mkEnemy(solo, 'mage', 100);
+  update(solo, MAGE.wardInterval + 0.1);
+  assert.equal(alone.ward, 0, 'Magier schützt sich nicht selbst');
+  update(s, MAGE.wardInterval);
+  assert.ok(Math.abs(near.ward - MAGE.wardShare * near.maxHp) < 1e-9, 'neuer Zauber füllt nur auf');
+});
+
+test('B-126 Magier: Schild schluckt Schaden bis zur Grenze, Rest auf HP; Rüstung zuerst; auch gegen Splash', () => {
+  const s = createGame();
+  const e = mkEnemy(s, 'grunt', 240, { hp: 100, maxHp: 100, ward: 10 });
+  s.projectiles.push({ x: e.x, y: e.y, targetId: e.id, speed: 1e6, damage: 25, splash: 0 });
+  update(s, 1 / 60);
+  assert.equal(e.ward, 0);
+  assert.equal(e.hp, 85, 'Rest geht auf HP');
+  const a = createGame();
+  const sh = mkEnemy(a, 'shielded', 240, { hp: 100, maxHp: 100, ward: 30 });
+  a.projectiles.push({ x: sh.x, y: sh.y, targetId: sh.id, speed: 1e6, damage: 20, splash: 0 });
+  update(a, 1 / 60);
+  assert.equal(sh.hp, 100, 'Rüstung halbiert, Schild schluckt den Rest');
+  assert.ok(Math.abs(sh.ward - (30 - 20 * (1 - ENEMY_TYPES.shielded.armor))) < 1e-9);
+  const b = createGame();
+  const g = mkEnemy(b, 'grunt', 240, { hp: 100, maxHp: 100, ward: 5 });
+  b.projectiles.push({ x: g.x, y: g.y, targetId: g.id, speed: 1e6, damage: 12, splash: 40 });
+  update(b, 1 / 60);
+  assert.equal(g.ward, 0, 'Splash trifft zuerst den Schild');
+  assert.equal(g.hp, 93);
+});
+
+test('B-126 Magier: Wellenplan ab Welle 8 mit 1 + floor((w-8)/4) Magiern, feste Seite wie Schamane', () => {
+  for (let w = 1; w <= MAX_WAVES; w++) {
+    assert.equal(waveSummary(w).mage || 0, w >= 8 ? 1 + Math.floor((w - 8) / 4) : 0, `Welle ${w}`);
+  }
+  for (const id of Object.keys(MAPS)) if (MAPS[id].lanes) assert.equal(MAPS[id].lanes.mage, MAPS[id].lanes.healer, id);
+  assert.equal(spawnEnemy(createGame(), 'mage').ward, 0);
+});
 
 test('B-006 Heilung: Healer heilt verletzten Nachbarn im Radius, aber keinen außerhalb', () => {
   const s = createGame();

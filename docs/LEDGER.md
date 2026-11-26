@@ -817,3 +817,11 @@ Neue Einträge werden unten angehängt. Bestehende Einträge werden nie geänder
 - B-124: Auf Karten mit zwei Eingängen kommen freie Gegnertypen in Schüben von 5 je Seite (`planLanes`, `LANE_ASYNC`), eine Seite startet je Welle 6 s später (wechselt). Feste Seiten (B-099) bleiben.
 - B-125: HP-Zuwachs ab Welle 11 von +7 % auf +11 % pro Welle (Welle 20 ca. +44 % HP). Messung (Scharfschützen- und Kanonen-Mix mit Fähigkeiten, dt 1/30 und 1/60): perfekter Sieg weiter auf jeder Karte möglich; weitester Gegner in Welle 10-20 (bester Wert je Karte) Wiese 70→80 %, Eis 84→89 %, Zange 71→86 %, Vulkan 74→91 %, Zwei Fronten unverändert ca. 92 % des Wegs.
 - Tests: 6 Schwierigkeitstests umgebaut (einfache Strategien ohne Fähigkeiten dürfen in der Spätphase verlieren, aber nicht vor Welle 15 bzw. auf Zwei Fronten nicht vor Welle 9); Perfekt-Strategie auf Zwei Fronten nutzt jetzt den Kanonen-Mix; 4 neue Tests für B-124, 2 Tester-Ergänzungen (Frühstart-Versatz, Welle 20). Nach dem Review strenger: Wiese Kanonen-Mix mind. 2 Leben, Zwei Fronten Kanonen-Mix ohne Fähigkeiten hält bis mind. Welle 15, Blitz-Mix ohne Lebensverlust vor Welle 10. 472 Unit- und 38 e2e-Tests grün. Review: APPROVE, Tester: PASS.
+
+---
+
+## 2026-11-26 · B-126 · Neuer Gegner Magier (Schildzauber)
+- Rolle(n): developer, reviewer (Doppelrolle ohne Tester, auf Wunsch des Menschen nach mehr Tempo). Branch: agent/magier
+- Ergebnis: Magier (hp 55, speed 1,1, reward 6) schützt alle 5 s andere Gegner im Umkreis 1,5 Kacheln mit einem Schild von 5 % ihrer maxHp (kein Stapeln, nicht sich selbst); Schaden: Rüstung, dann Schild, dann HP. Ab Welle 8 zusätzlich 1 + floor((w−8)/4) Magier. Eigene Figur und Schild-Blase.
+- Abweichung: geplant waren 25 % Schild; das kippte Strategie-Tests (Eiswelt, Zwei Fronten). Der Mensch hat 5 % zum Mergen freigegeben, stärkerer Magier als B-128 (vorschlag). Kanonen-Mix-Leben je Karte praktisch unverändert, perfektes Spiel überall 10 Leben.
+- Tests: 3 neue in game.test.js, 1 in fx.test.js; FLAT2 und waveSummary(10) nur ergänzt. 476 Unit-Tests grün. Review: APPROVE.

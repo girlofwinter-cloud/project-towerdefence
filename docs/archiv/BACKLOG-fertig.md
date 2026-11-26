@@ -606,3 +606,14 @@ Agents lesen diese Datei nur bei konkretem Bedarf.
 - Idee: Lava-Schaden (`game.js` nearLava/hpScale) und Meteor-Schaden skalieren mit `state.wave`, also der höchsten gestarteten Welle. Nach einem Frühstart (B-005) bekommen Gegner der vorigen Welle dadurch etwas mehr Schaden. Mit der Welle des Gegners skalieren (Tester-Hinweis zu B-005). Balancing: Mensch entscheidet.
 - Akzeptanzkriterien:
   - Gegner speichern ihre Welle; Lava/Meteor nutzen sie. Test mit zwei parallelen Wellen.
+
+### B-126: Neuer Gegner „Magier“ (Schildzauber)
+- Status: fertig
+- Aufwand: M
+- Idee: Der Magier wirft alle `wardInterval` Sekunden einen magischen Schild auf alle anderen Gegner im Umkreis `wardRadius`. Der Schild schluckt Schaden bis `wardShare` × maxHp des Ziels (jeder Schaden, auch Splash, Kette und Lava), danach geht Schaden wieder auf die HP. Kein Stapeln: ein neuer Zauber füllt den Schild nur bis zum Höchstwert auf. Der Magier schützt sich nicht selbst. Ergänzt den Schamanen (Heilung) und macht Gruppen zäher. Vom Menschen freigegeben am 2026-11-26, Vorgabe: Spiel etwas schwerer, Magier kommen zusätzlich dazu.
+- Akzeptanzkriterien:
+  - `ENEMY_TYPES.mage` in `config.js` mit allen Zahlen (`hp`, `speed`, `reward`, `wardRadius`, `wardInterval`, `wardShare`); Logik in `game.js` ohne DOM.
+  - Wellen: ab etwa Welle 8 zusätzlich 1 + floor((Welle − 8) / 4) Magier, in oder kurz nach der Troll-Gruppe. Auf Karten mit `lanes` eine passende feste Seite (wie Schamane).
+  - Tests: Schild schluckt Schaden bis zur Grenze, Restschaden geht auf HP; kein Stapeln; Magier schützt sich nicht selbst; Schild auch gegen Splash.
+  - Test „perfektes Spiel möglich“ bleibt auf allen Karten grün; Standard-Strategien gemessen, Messwerte im Ledger.
+  - Darstellung: eigene Figur im Flat-Pop-Stil (Robe, Hut, Stab) und gut sichtbare Schild-Blase um geschützte Gegner; Wellenvorschau und Sounds kennen den neuen Typ.
