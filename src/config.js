@@ -603,6 +603,7 @@ export const ICON = {
     heartEmpty: '#5b4a5e', flag: '#d4503f', meteorRock: '#7a6a64', meteorCrater: '#55474a', flame: '#ff7a1f', flameCore: '#ffc23a',
     glass: '#bff0ff', glassShine: '#ffffff', pause: '#fff3c9', play: '#7fd24a', paper: '#e2c88f', mapMark: '#d4503f',
     bone: '#f1e8d2', boneDark: '#4a3030', castleGate: '#4a3030', castleRoof: '#d4503f', // B-096: Totenkopf, Burg
+    speaker: '#e2c88f', soundWave: '#7fd8f4', mute: '#d4503f', // B-113: Ton an/aus
   },
 };
 
@@ -1095,5 +1096,194 @@ export const FX_STYLE = {
     rocks: 8, rockSpeed: 220, rockSpeedVar: 120, rockLift: 170, rockLife: 0.75, rockSize: 3.2, chunk: '#5a4a48',
     smoke: 6, smokeSize: 9, smokeSizeVar: 5, smokeLife: 1.1, smokeSpread: 0.5, smokeSpeed: 22,
     shake: 2.8, // Wackeln in px (SHAKE_MAX begrenzt), nur ohne prefers-reduced-motion
+  },
+};
+
+// B-113: Töne (Web Audio, synthetisiert, keine Dateien). Jeder Ton besteht aus Lagen:
+// osc = Oszillator (wave, freq -> endFreq in Hz), noise = gefiltertes Rauschen (filter, cutoff in Hz, q).
+// duration in s, gain = Spitzenlautstärke der Lage (0..1), attack = Anstiegszeit in s, delay = Start nach s (optional),
+// endCutoff = Filterfrequenz am Ende (optional, Rauschen gleitet exponentiell von cutoff dorthin).
+// Die Hüllkurve fällt exponentiell bis SOUND.floorGain ab.
+export const SOUND = {
+  masterGain: 0.12,     // Gesamtlautstärke (leise)
+  masterLowpass: 4500,  // Tiefpass am Master in Hz (nimmt Schärfe)
+  masterLowpassQ: 0.7,
+  floorGain: 0.0001,    // Endwert der Hüllkurve (exponentiell, darf nicht 0 sein)
+  attack: 0.005,        // Standard-Anstiegszeit in s
+  noiseLength: 0.5,     // Länge des gemeinsamen Rauschen-Buffers in s
+  storageKey: 'td-sound', // localStorage-Schlüssel für Ton an/aus
+  defaultOn: true,
+  // Begrenzung: höchstens perWindow Töne je Art (Schuss je Turmtyp, Tod, Boss) pro window Sekunden Echtzeit
+  // Schuss-Töne zusammen höchstens total pro totalWindow (Tode, Boss, Warnton und Meteor zählen nie dagegen).
+  limit: { window: 0.12, perWindow: 1, total: 3, totalWindow: 0.15 },
+  limitOverrides: { death: { window: 0.1, perWindow: 2 } }, // eigene Grenzen je Art (Warnton: lifeLost.limit)
+  totalExempt: ['lifeLost', 'meteorFlight', 'meteorImpact'],
+  // Tonhöhen-Variation je Schuss (Anteil, ±), damit Salven nicht maschinell klingen
+  shotPitchVar: { arrow: 0.06, cannon: 0.04, frost: 0.05, sniper: 0.05, lightning: 0.05 },
+  shots: {
+    // Pfeil: tiefer Sehnen-"Twang" mit leisem Oberton, dann Flug-"Wusch" (Bandpass gleitet nach oben)
+    arrow: [
+      { type: 'osc', wave: 'triangle', freq: 230, endFreq: 185, duration: 0.12, gain: 0.2, attack: 0.002 },
+      { type: 'osc', wave: 'sine', freq: 460, endFreq: 370, duration: 0.06, gain: 0.06, attack: 0.002 },
+      { type: 'noise', filter: 'bandpass', cutoff: 900, endCutoff: 2600, q: 1.5, duration: 0.18, gain: 0.11, attack: 0.055, delay: 0.02 },
+    ],
+    // Kanone: dumpfer Knall mit Rauschen
+    cannon: [
+      { type: 'osc', wave: 'sine', freq: 140, endFreq: 42, duration: 0.3, gain: 0.4 },
+      { type: 'noise', filter: 'lowpass', cutoff: 700, q: 0.7, duration: 0.22, gain: 0.28 },
+    ],
+    // Frost: sanftes, glasiges "Kling" (zwei Sinus zwischen 1200 und 1800 Hz)
+    frost: [
+      { type: 'osc', wave: 'sine', freq: 1500, endFreq: 1420, duration: 0.22, gain: 0.1 },
+      { type: 'osc', wave: 'sine', freq: 1790, endFreq: 1760, duration: 0.12, gain: 0.04 },
+    ],
+    // Scharfschütze: kurzes, tieferes "Tock" (Rauschen im Bandpass plus Sinus)
+    sniper: [
+      { type: 'noise', filter: 'bandpass', cutoff: 1500, q: 2, duration: 0.06, gain: 0.25 },
+      { type: 'osc', wave: 'sine', freq: 420, endFreq: 220, duration: 0.07, gain: 0.15 },
+    ],
+    // Blitz: kurzes Zischen
+    lightning: [
+      { type: 'noise', filter: 'bandpass', cutoff: 2500, q: 1.2, duration: 0.11, gain: 0.18 },
+      { type: 'osc', wave: 'triangle', freq: 95, endFreq: 70, duration: 0.09, gain: 0.03 },
+    ],
+  },
+  // Besiegter Gegner: kurzer "Plopp", Tonhöhe zufällig um ±pitchVar (Anteil) variiert
+  death: {
+    pitchVar: 0.25,
+    layers: [{ type: 'osc', wave: 'sine', freq: 440, endFreq: 170, duration: 0.1, gain: 0.3, attack: 0.008 }],
+  },
+  // Boss besiegt: tiefer, größerer Ton
+  boss: {
+    pitchVar: 0,
+    layers: [
+      { type: 'osc', wave: 'triangle', freq: 220, endFreq: 55, duration: 0.7, gain: 0.7 },
+      { type: 'osc', wave: 'sine', freq: 110, endFreq: 40, duration: 0.9, gain: 0.6 },
+      { type: 'noise', filter: 'lowpass', cutoff: 500, q: 0.7, duration: 0.4, gain: 0.4 },
+    ],
+  },
+  // Leben verloren (Gegner am Ziel): zwei kurze, absteigende Töne. Höchstens ein Warnton je limit-Fenster,
+  // auch wenn mehrere Leben auf einmal verloren gehen.
+  lifeLost: {
+    pitchVar: 0,
+    limit: { window: 0.8, perWindow: 1 },
+    layers: [
+      { type: 'osc', wave: 'triangle', freq: 494, endFreq: 470, duration: 0.14, gain: 0.45 },
+      { type: 'osc', wave: 'triangle', freq: 370, endFreq: 340, duration: 0.22, gain: 0.45, delay: 0.13 },
+      { type: 'osc', wave: 'sine', freq: 185, endFreq: 170, duration: 0.3, gain: 0.25, delay: 0.13 },
+    ],
+  },
+  // Meteor (Fähigkeit): kurzes Pfeifen/Rauschen beim Anflug, beim Einschlag dumpfer Knall mit Nachgrollen.
+  // Einschlag zählt nur, wenn er höchstens impactLate Anteile der Einschlagphase zurückliegt (sonst nicht nachholen).
+  meteor: {
+    impactLate: 0.5,
+    flight: [
+      { type: 'osc', wave: 'sine', freq: 1800, endFreq: 500, duration: 0.28, gain: 0.14 },
+      { type: 'noise', filter: 'bandpass', cutoff: 1400, q: 1.5, duration: 0.28, gain: 0.22, attack: 0.15 },
+    ],
+    impact: [
+      { type: 'osc', wave: 'sine', freq: 110, endFreq: 30, duration: 0.9, gain: 1 },
+      { type: 'osc', wave: 'triangle', freq: 70, endFreq: 28, duration: 1.4, gain: 0.5 },
+      { type: 'noise', filter: 'lowpass', cutoff: 900, q: 0.7, duration: 0.5, gain: 0.9 },
+      { type: 'noise', filter: 'lowpass', cutoff: 220, q: 0.7, duration: 1.6, gain: 0.6, attack: 0.06 }, // Nachgrollen
+    ],
+  },
+  // B-114: Aufnahmen (Kenney, CC0, siehe assets/sounds/LIZENZ.md) statt Synthese. Schlüssel wie soundKey().
+  // Je Ton mehrere Varianten (zufällig), gain = Lautstärke vor dem Master, pitchVar = Tonhöhen-Variation (±Anteil).
+  // Fehlt eine Datei oder schlägt Laden/Dekodieren fehl, spielt die Synthese von oben als Ersatz.
+  samples: {
+    base: 'assets/sounds/',
+    sounds: {
+      'shot:arrow':     { files: ['arrow-1', 'arrow-2', 'arrow-3'], gain: 0.3, pitchVar: 0.08 },
+      'shot:cannon':    { files: ['cannon-1', 'cannon-2', 'cannon-3'], gain: 0.4, pitchVar: 0.06 },
+      'shot:frost':     { files: ['frost-1', 'frost-2', 'frost-3'], gain: 0.2, pitchVar: 0.06 },
+      'shot:sniper':    { files: ['sniper-1', 'sniper-2', 'sniper-3'], gain: 0.3, pitchVar: 0.06 },
+      'shot:lightning': { files: ['lightning-1', 'lightning-2', 'lightning-3'], gain: 0.18, pitchVar: 0.06 },
+      death:            { files: ['death-1', 'death-2', 'death-3', 'death-4'], gain: 0.7, pitchVar: 0.15 },
+      boss:             { files: ['boss-1', 'boss-2'], gain: 1.2, pitchVar: 0.03 },
+      lifeLost:         { files: ['life-lost-1', 'life-lost-2'], gain: 0.8, pitchVar: 0 },
+      meteorFlight:     { files: ['meteor-flight-1', 'meteor-flight-2'], gain: 0.7, pitchVar: 0.05 },
+      meteorImpact:     { files: ['meteor-impact-1', 'meteor-impact-2'], gain: 1.4, pitchVar: 0.04 },
+    },
+  },
+  // B-115: Ereignis-Töne (Bauen, Ausbauen, Verkaufen, Wellenstart, Sieg, Niederlage). Deutlich lauter als Schüsse,
+  // zählen nicht gegen die gemeinsame Schuss-Grenze; je Art eigene Grenze (limit). layers = Synthese-Ersatz.
+  events: {
+    // Bauen: drei dumpfe Holzschläge
+    build: {
+      pitchVar: 0.04,
+      limit: { window: 0.25, perWindow: 1 },
+      layers: [
+        { type: 'noise', filter: 'lowpass', cutoff: 900, q: 0.8, duration: 0.07, gain: 0.5 },
+        { type: 'osc', wave: 'triangle', freq: 190, endFreq: 120, duration: 0.08, gain: 0.5 },
+        { type: 'noise', filter: 'lowpass', cutoff: 900, q: 0.8, duration: 0.07, gain: 0.4, delay: 0.16 },
+        { type: 'osc', wave: 'triangle', freq: 180, endFreq: 115, duration: 0.08, gain: 0.4, delay: 0.16 },
+        { type: 'noise', filter: 'lowpass', cutoff: 900, q: 0.8, duration: 0.1, gain: 0.5, delay: 0.32 },
+        { type: 'osc', wave: 'triangle', freq: 170, endFreq: 105, duration: 0.12, gain: 0.5, delay: 0.32 },
+      ],
+    },
+    // Ausbauen: aufsteigender Dreiklang
+    upgrade: {
+      pitchVar: 0,
+      limit: { window: 0.2, perWindow: 1 },
+      layers: [
+        { type: 'osc', wave: 'triangle', freq: 523, endFreq: 523, duration: 0.1, gain: 0.35 },
+        { type: 'osc', wave: 'triangle', freq: 659, endFreq: 659, duration: 0.1, gain: 0.35, delay: 0.08 },
+        { type: 'osc', wave: 'triangle', freq: 784, endFreq: 784, duration: 0.2, gain: 0.35, delay: 0.16 },
+      ],
+    },
+    // Verkaufen: zwei helle Münz-Klänge
+    sell: {
+      pitchVar: 0.03,
+      limit: { window: 0.2, perWindow: 1 },
+      layers: [
+        { type: 'osc', wave: 'sine', freq: 1900, endFreq: 1850, duration: 0.12, gain: 0.25 },
+        { type: 'osc', wave: 'sine', freq: 2300, endFreq: 2250, duration: 0.18, gain: 0.25, delay: 0.07 },
+      ],
+    },
+    // Wellenstart: kurzes Horn (Quinte aufwärts)
+    waveStart: {
+      pitchVar: 0,
+      limit: { window: 1, perWindow: 1 },
+      layers: [
+        { type: 'osc', wave: 'sawtooth', freq: 233, endFreq: 233, duration: 0.16, gain: 0.25, attack: 0.03 },
+        { type: 'osc', wave: 'sawtooth', freq: 349, endFreq: 349, duration: 0.35, gain: 0.25, attack: 0.03, delay: 0.15 },
+      ],
+    },
+    // Sieg: kurze aufsteigende Fanfare
+    won: {
+      pitchVar: 0,
+      limit: { window: 2, perWindow: 1 },
+      layers: [
+        { type: 'osc', wave: 'triangle', freq: 392, endFreq: 392, duration: 0.14, gain: 0.4 },
+        { type: 'osc', wave: 'triangle', freq: 523, endFreq: 523, duration: 0.14, gain: 0.4, delay: 0.13 },
+        { type: 'osc', wave: 'triangle', freq: 659, endFreq: 659, duration: 0.14, gain: 0.4, delay: 0.26 },
+        { type: 'osc', wave: 'triangle', freq: 784, endFreq: 784, duration: 0.6, gain: 0.45, delay: 0.39 },
+      ],
+    },
+    // Niederlage: dumpfer, absteigender Jingle
+    lost: {
+      pitchVar: 0,
+      limit: { window: 2, perWindow: 1 },
+      layers: [
+        { type: 'osc', wave: 'triangle', freq: 349, endFreq: 345, duration: 0.3, gain: 0.4 },
+        { type: 'osc', wave: 'triangle', freq: 330, endFreq: 326, duration: 0.3, gain: 0.4, delay: 0.3 },
+        { type: 'osc', wave: 'triangle', freq: 311, endFreq: 307, duration: 0.3, gain: 0.4, delay: 0.6 },
+        { type: 'osc', wave: 'triangle', freq: 294, endFreq: 270, duration: 0.9, gain: 0.45, delay: 0.9 },
+        { type: 'osc', wave: 'sine', freq: 147, endFreq: 135, duration: 1.2, gain: 0.3, delay: 0.6 },
+      ],
+    },
+  },
+  // B-115: Aufnahmen der Ereignis-Töne (Kenney, CC0, siehe LIZENZ.md). Aufbau wie samples, Schlüssel = Ereignis-Art.
+  eventSamples: {
+    base: 'assets/sounds/',
+    sounds: {
+      build:     { files: ['build-1', 'build-2'], gain: 0.8, pitchVar: 0.04 },
+      upgrade:   { files: ['upgrade-1', 'upgrade-2'], gain: 0.6, pitchVar: 0 },
+      sell:      { files: ['sell-1', 'sell-2'], gain: 0.7, pitchVar: 0.03 },
+      waveStart: { files: ['wave-start'], gain: 0.8, pitchVar: 0 },
+      won:       { files: ['won'], gain: 0.9, pitchVar: 0 },
+      lost:      { files: ['lost'], gain: 0.9, pitchVar: 0 },
+    },
   },
 };

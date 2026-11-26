@@ -8,6 +8,8 @@ import { render, drawTower } from './render.js';
 import { heartStates, abilityView, overheatNote } from './hud.js';
 import { drawIcon } from './render-icons.js';
 import { buildTapStep, aimStep } from './input.js';
+import { createSoundTracker, collectSounds, loadSoundOn, saveSoundOn } from './sound-events.js';
+import { unlockAudio, setSoundOn, playSound } from './audio.js';
 import { loadProgress, saveProgress, recordResult, isUnlocked, mapProgress, starText, resultLines, startMap, MAP_ORDER } from './progress.js';
 
 const canvas = document.getElementById('game');
@@ -41,6 +43,17 @@ if (!TEST_MODE) {
   mapId = startMap(progress);
   state = createGame({ mapId });
 }
+// ---------- Ton (B-113) ----------
+// Eigener Speicherzugriff: die Ton-Wahl gilt auch auf der Testseite (kein Spielfortschritt).
+function soundStorage() {
+  try { return window.localStorage; } catch { return null; }
+}
+ui.soundOn = loadSoundOn(soundStorage());
+setSoundOn(ui.soundOn);
+const soundTracker = createSoundTracker();
+// AudioContext erst nach der ersten Nutzeraktion (Autoplay-Regeln)
+for (const evName of ['pointerdown', 'keydown']) window.addEventListener(evName, unlockAudio, { capture: true });
+
 // Merker: Ergebnis dieses Spiels schon gespeichert? (refreshUI läuft alle 0,1 s)
 let resultSaved = false;
 let resultText = []; // Zeilen fürs Overlay (resultLines)
@@ -290,6 +303,15 @@ if (typeof ResizeObserver === 'function') {
 }
 $('restart').addEventListener('click', restart);
 $('zoom').addEventListener('click', toggleZoom);
+$('sound').addEventListener('click', toggleSound);
+
+function toggleSound() {
+  ui.soundOn = !ui.soundOn;
+  setSoundOn(ui.soundOn);
+  if (ui.soundOn) unlockAudio(); // Klick bzw. Taste ist die Nutzeraktion
+  saveSoundOn(soundStorage(), ui.soundOn);
+  refreshUI();
+}
 
 // Zoom (mobil): Spielfeld auf doppelte Breite, im Rahmen verschiebbar. Größere Kacheln = treffsicheres Tippen.
 function toggleZoom() {
@@ -354,6 +376,7 @@ window.addEventListener('keydown', (ev) => {
   else if (key === 't') doCycleTarget();
   else if (key === 'f') toggleSpeed();
   else if (key === 'p') doTogglePause();
+  else if (key === 'm' && !ev.repeat && !ev.ctrlKey && !ev.metaKey) toggleSound();
 });
 
 // ---------- HUD ----------
@@ -369,6 +392,9 @@ function refreshUI() {
   // Deutliches Banner über dem Spielfeld (nur Anzeige, Bauen bleibt möglich)
   $('pause-banner').hidden = !state.paused;
   $('pause-label').textContent = state.paused ? 'Weiter' : 'Pause';
+  $('sound-label').textContent = ui.soundOn ? 'Ton an' : 'Ton aus';
+  $('sound').setAttribute('aria-pressed', String(ui.soundOn));
+  if ($('sound-icon').dataset.icon !== (ui.soundOn ? 'sound' : 'soundOff')) setIcon($('sound-icon'), ui.soundOn ? 'sound' : 'soundOff');
   if ($('pause-icon').dataset.icon !== (state.paused ? 'play' : 'pause')) setIcon($('pause-icon'), state.paused ? 'play' : 'pause');
   mapSelect.disabled = state.wave !== 0 || state.waveActive;
   mapSelect.value = state.mapId;
@@ -481,6 +507,8 @@ function frame(now) {
   last = now;
   // Bei hoher Geschwindigkeit in kleinen Teilschritten simulieren.
   stepGame(state, dt, ui.speed);
+  // Töne: Ereignisse immer erkennen (sonst käme nach dem Einschalten ein Schwall), nur bei Ton an abspielen
+  for (const ev of collectSounds(soundTracker, state, now / 1000)) if (ui.soundOn) playSound(ev);
   ui.messageTtl -= dt;
   render(ctx, state, ui);
   hudTimer -= dt;

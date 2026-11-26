@@ -1341,7 +1341,7 @@ test('B-069: Fähigkeiten-Icons heißen wie die ABILITIES-Schlüssel, unbekannte
 test('B-069 Randfälle (Tester): alle Icons zeichnen in jeder Anzeigegröße mit ausgeglichenem save/restore', async () => {
   const { drawIcon, ICON_NAMES } = await import('../src/render-icons.js');
   const { ICON } = await import('../src/config.js');
-  assert.equal(ICON_NAMES.length, 14);
+  assert.equal(ICON_NAMES.length, 16); // B-113: sound, soundOff
   for (const size of Object.values(ICON.sizes)) {
     for (const name of ICON_NAMES) {
       const m = mockCtx();
