@@ -641,3 +641,11 @@ Neue Einträge werden unten angehängt. Bestehende Einträge werden nie geänder
 - Ergebnis: fertig. Boss im Flat-Pop-Stil (1,6x, Krone, Keule, Aura) mit Auftritt (goldener Bodenring, Wackeln 2,4 px); Pfeil, Kugel, Frostsplitter, Blitz, Funken, Münzen-Hopser neu; Explosion/Rauch unter den Gegnern. `prefers-reduced-motion` (`ui.reducedMotion`) schaltet Wackeln, Hopser und Drift ab.
 - Tests: 292 Unit-Tests (9 neu vom Developer, 4 vom Tester), 14 Browser-Tests. Tester: PASS. Review: APPROVE, Hinweise als B-095. Boss-Zeichenspurvergleich in `tests/fx.test.js` wieder ergänzt.
 - Entscheidungen: Einträge standen auf `vorschlag`, vom Menschen per Auftrag freigegeben. Münzen ohne Schwerkraft (nur Hopser, Stiländerung); bei reduzierter Bewegung wackeln auch Explosionen nicht. Gearbeitet im eigenen Worktree, weil parallel eine zweite Sitzung im Repo lief.
+
+## 2026-11-26 · B-069 und B-058 · HUD-Icons und Fähigkeitsknöpfe (Design-Overhaul und Design-Prüfung, Block)
+- Rolle(n): orchestrator, developer (je Eintrag), danach einmal tester und reviewer über den Block
+- Branch: agent/handy-knoepfe-icons
+- Runden: 1 von max. 2
+- Ergebnis: fertig. Neue `src/render-icons.js` (11 Canvas-Icons) ersetzt Emoji in HUD und Knöpfen; Fähigkeitsknöpfe mit großem Symbol, Kurzname, Ladungs-Abzeichen und Abklingbalken (`abilityView` in `src/hud.js`), Laden grau mit Goldbalken; Tastenkürzel (`.key`) auf dem Handy ausgeblendet; alle Knöpfe ≥ 44 px, Desktop-Fähigkeitsknöpfe 58 statt ~100 px.
+- Tests: 299 Unit-Tests (6 neu vom Developer, 3 vom Tester), 16 Browser-Tests (neu `tests/e2e/buttons.test.mjs`). Tester: PASS. Review: APPROVE, Hinweise als B-096.
+- Entscheidungen: Einträge standen auf `vorschlag`, vom Menschen per Auftrag freigegeben. B-058 (Layout) mit B-069 im Block, weil beide dieselben Knöpfe betreffen. Neues Textfeld `short` in `ABILITIES` (kein Balancing). Kein bestehender Test geändert.
