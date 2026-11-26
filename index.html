@@ -14,10 +14,10 @@
   <main>
     <div class="board">
       <div class="hud" id="hud-bar">
-        <span class="hud-item" title="Gold"><i class="coin"></i><b id="gold">0</b></span>
-        <span class="hud-item" title="Welle"><i class="icon">⚔️</i><b id="wave">0</b></span>
+        <span class="hud-item" title="Gold"><img class="ico ico-hud" data-icon="gold" alt="Gold"><b id="gold">0</b></span>
+        <span class="hud-item" title="Welle"><img class="ico ico-hud" data-icon="wave" alt="Welle"><b id="wave">0</b></span>
         <span class="hud-item" id="lives-box" title="Leben"><span id="hearts"></span><b id="lives">0</b></span>
-        <span id="pause-hint" hidden>⏸</span>
+        <span id="pause-hint" hidden><img class="ico ico-hud" data-icon="pause" alt="Pause"></span>
       </div>
       <div class="stage">
         <div class="scroller">
@@ -30,17 +30,17 @@
           <button id="restart">Neues Spiel</button>
         </div>
         <p id="message" role="status"></p>
-        <div id="pause-banner" hidden>⏸ PAUSE – P drücken zum Fortsetzen</div>
+        <div id="pause-banner" hidden><img class="ico ico-button" data-icon="pause" alt=""> PAUSE – P drücken zum Fortsetzen</div>
       </div>
     </div>
 
     <aside>
       <div class="controls">
         <button id="start-wave" class="primary">Welle 1 starten</button>
-        <button id="pause">⏸ Pause (P)</button>
+        <button id="pause"><img class="ico ico-button" id="pause-icon" data-icon="pause" alt=""><span id="pause-label">Pause (P)</span></button>
         <button id="speed">Tempo ×1 (F)</button>
-        <label class="map-pick">🗺️ Karte <select id="map-select"></select></label>
-        <button id="zoom" aria-pressed="false">🔍 Zoom</button>
+        <label class="map-pick"><img class="ico ico-button" data-icon="map" alt=""> Karte <select id="map-select"></select></label>
+        <button id="zoom" aria-pressed="false"><img class="ico ico-button" data-icon="zoom" alt=""><span id="zoom-label">Zoom</span></button>
       </div>
       <div class="abilities" id="abilities"></div>
       <p id="wave-preview"></p>

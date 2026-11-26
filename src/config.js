@@ -458,6 +458,19 @@ export const STYLE = {
   },
 };
 
+// HUD- und Knopf-Icons im Flat-Pop-Stil (B-069, docs/STIL.md Abschnitt 5). Zeichenraster 32x32, Mitte im Ursprung.
+export const ICON = {
+  grid: 32,          // Zeichenraster in px (Motiv innerhalb von ±half)
+  half: 13,          // halbe Motivgröße (26 px Motiv, 3 px Rand)
+  outline: 2,        // Kontur im Raster (bei 16 px noch 1 px)
+  maxDpr: 3,         // höchste Pixeldichte der vorgerenderten Bilder
+  sizes: { hud: 22, heart: 16, inline: 16, button: 20, ability: 26 }, // Anzeigegröße in CSS-px
+  colors: {
+    heartEmpty: '#5b4a5e', flag: '#d4503f', meteorRock: '#7a6a64', meteorCrater: '#55474a', flame: '#ff7a1f', flameCore: '#ffc23a',
+    glass: '#bff0ff', pause: '#fff3c9', play: '#7fd24a', paper: '#e2c88f', mapMark: '#d4503f',
+  },
+};
+
 // Pfeilturm im Flat-Pop-Stil (B-063). Alle Maße in px, Ursprung = Bodenmitte des Turms, y nach oben negativ.
 export const ARROW_TOWER = {
   scale: 0.85,              // Gesamtskalierung (Turm ca. 30 px breit, ca. 58 px hoch)

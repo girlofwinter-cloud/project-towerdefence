@@ -1841,3 +1841,12 @@ test('Sniper: unbekannter Gegnertyp ohne Basis-HP crasht nicht, kein Bonus (B-05
   fireAndLand(s, tower);
   assert.ok(Math.abs((e.maxHp - e.hp) - TOWER_TYPES.sniper.damage) < 1e-6);
 });
+
+test('B-069: heartStates liefert die Herzreihe als Liste (gefüllt/leer), nie negativ, gekappt', async () => {
+  const { heartStates } = await import('../src/hud.js');
+  assert.deepEqual(heartStates(2, 4), [true, true, false, false]);
+  assert.deepEqual(heartStates(-1, 3), [false, false, false]);
+  assert.deepEqual(heartStates(9, 3), [true, true, true]);
+  assert.deepEqual(heartStates(2.7, 3), [true, true, false]);
+  assert.equal(heartStates(START_LIVES).length, START_LIVES);
+});
