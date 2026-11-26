@@ -149,7 +149,7 @@ export const MAPS = {
   // Schamane), damit man auf beiden Seiten unterschiedlich bauen muss.
   fork: {
     name: 'Zangenangriff',
-    lanes: { runner: 0, tank: 1, shielded: 1, healer: 1 },
+    lanes: { runner: 0, tank: 1, shielded: 1, healer: 1, mage: 1 },
     waypoints: [
       [-1, 2],
       [5, 2],
@@ -254,7 +254,7 @@ export const MAPS = {
         [20, 7],
       ],
     ],
-    lanes: { runner: 0, tank: 1, shielded: 1, healer: 1 },
+    lanes: { runner: 0, tank: 1, shielded: 1, healer: 1, mage: 1 },
     // Gegner etwas langsamer, weil sich die Türme auf zwei Wege verteilen. Gemessen (Strategie-Tests, dt 1/30 und 1/60):
     // Kanonen-Mix über beide Wege gewinnt mit 3 bis 4 Leben, eine Seite allein verliert in Welle 2. Bei 0,85 wird es
     // für gute Platzierung zu leicht (10 Leben), bei 1,0 verliert jede Strategie bis Welle 10.
@@ -508,6 +508,8 @@ export const LAVA = { dps: 7.5, overheat: 1.5 };
 // Healer: healRadius in Kacheln, healPerSec = Anteil der maxHp des Ziels pro Sekunde,
 //   healInterval = Sekunden (Spielzeit) zwischen zwei Heilimpulsen.
 // Schildträger: armor = Anteil des Schadens, den Treffer ohne Splash blockiert (0,5 = 50 %).
+// Magier (B-126): wardRadius in Kacheln, wardInterval = Sekunden (Spielzeit) zwischen zwei Zaubern,
+//   wardShare = Anteil der maxHp des Ziels, den der Schild schluckt (jeder Schaden, auch Splash, Kette, Lava).
 // boss: true = Boss (immun gegen Einfrieren, nur anteiliger Rückstoß, Boss-Auftritt und Boss-Sound).
 // Nekromantin (B-127): beschwört alle summonInterval Sekunden (Spielzeit) summonCount Gegner vom Typ summonType,
 //   summonBehind Kacheln hinter sich auf ihrem Weg (nie vor den Wegstart), jeweils summonSpacing Kacheln versetzt.
@@ -518,7 +520,8 @@ export const ENEMY_TYPES = {
   boss: { name: 'Oger-König', hp: 1100, speed: 0.6, reward: 65, leak: 6, radius: 18, color: '#7a2e8e', boss: true },
   healer: { name: 'Schamane', hp: 40, speed: 1.1, reward: 9, leak: 1, radius: 11, color: '#3fbf8f', healRadius: 1.5, healPerSec: 0.02, healInterval: 1 },
   shielded: { name: 'Schildträger', hp: 90, speed: 1.0, reward: 12, leak: 2, radius: 13, color: '#6f86a8', armor: 0.5 },
-  necro: { name: 'Nekromantin', hp: 1000, speed: 0.6, reward: 65, leak: 6, radius: 18, color: '#3d4a5c', boss: true,
+  mage: { name: 'Magier', hp: 55, speed: 1.1, reward: 6, leak: 1, radius: 11, color: '#d9c3a0', wardRadius: 1.5, wardInterval: 5, wardShare: 0.05 },
+  necro: { name: 'Nekromantin', hp: 1000, speed: 0.6, reward: 75, leak: 6, radius: 18, color: '#3d4a5c', boss: true,
     summonInterval: 8, summonCount: 2, summonType: 'skeleton', summonBehind: 0.6, summonSpacing: 0.3 },
   skeleton: { name: 'Skelett', hp: 18, speed: 0.9, reward: 1, leak: 1, radius: 10, color: '#e6e0cf' },
 };
@@ -589,6 +592,8 @@ export function waveFor(wave) {
   const tankStart = t;
   if (wave >= 5) add('tank', Math.floor(wave / 2) + 1 + lateTanks, 1.0);
   if (wave >= 9) add('shielded', 1 + Math.floor((wave - 9) / 2), 1.0);
+  // B-126: Magier laufen kurz nach der Troll-Gruppe
+  if (wave >= 8) add('mage', 1 + Math.floor((wave - 8) / 4), 1.5);
   if (wave >= 7 && wave < LATE_WAVE) add('healer', 1 + Math.floor((wave - 7) / 4), 1.2);
   // Spätphase: Heiler laufen mitten in der Troll-Gruppe mit, statt ihr als letzte Gruppe hinterherzulaufen
   if (wave >= LATE_WAVE) {
@@ -1039,6 +1044,14 @@ export const ENEMY_STYLE = {
     skin: '#6f86a8', body: '#4f607c', helm: '#9aa7ba', shield: '#7a5530', rim: '#c9ccd2', emblem: '#e8d27a',
     main: { skin: 0.3, body: 0.3, shield: 0.4 },
   },
+  // B-126: Magier mit Schildzauber; wardFill/wardRing = Schild-Blase um geschützte Gegner (Stärke ~ ward/Höchstschild)
+  mage: {
+    ref: 11,
+    skin: '#d9c3a0', robe: '#4b3fa8', robeDark: '#31287a', hat: '#3a2f8c', hatBand: '#f2c14e', staff: '#6b4a2b', orb: '#9fe8ff',
+    orbRadius: 2.6, orbPulse: 0.3, orbSpeed: 4,
+    wardFill: 'rgba(120,200,255,0.28)', wardRing: 'rgba(190,235,255,0.9)', wardRingWidth: 1.6, wardPad: 4, wardPulse: 0.6, wardSpeed: 3,
+    main: { skin: 0.2, robe: 0.5, hat: 0.3 },
+  },
   // Boss Oger-König (B-067): ref wird aus sizeFactor berechnet (render-enemies-flat.js), damit ein Design-Pixel
   // beim Boss sizeFactor-mal so groß ist wie beim Goblin.
   boss: {
@@ -1246,7 +1259,7 @@ export const SOUND = {
       'shot:lightning': { files: ['lightning-1', 'lightning-2', 'lightning-3'], gain: 0.18, pitchVar: 0.06 },
       // Tod: kurze Monster-Schreie (OpenGameArt, CC0); enemyRate = Tonhöhe je Gegnertyp (klein/schnell höher)
       death:            { files: ['death-1', 'death-2', 'death-3', 'death-4'], gain: 0.55, pitchVar: 0.08,
-                          enemyRate: { runner: 1.25, grunt: 1.1, healer: 1.05, shielded: 0.95, tank: 0.85, skeleton: 1.35 } },
+                          enemyRate: { runner: 1.25, grunt: 1.1, healer: 1.05, mage: 1.0, shielded: 0.95, tank: 0.85, skeleton: 1.35 } },
       // Boss-Tod: langer, tiefer Schrei, zusätzlich tiefer abgespielt (rate = Grund-Tonhöhe)
       boss:             { files: ['boss-1', 'boss-2'], gain: 0.9, pitchVar: 0.03, rate: 0.85 },
       lifeLost:         { files: ['life-lost-1', 'life-lost-2'], gain: 0.8, pitchVar: 0 },

@@ -111,6 +111,24 @@ export function drawHealerFlat(ctx, phase, time = 0) {
   ctx.restore();
 }
 
+// Magier (B-126): Robe, spitzer Hut mit Band, Stab mit pulsierender Kugel
+export function drawMageFlat(ctx, phase, time = 0) {
+  const c = ES.mage;
+  beginFigure(ctx, c.ref, phase, 0.8);
+  line(ctx, [[6.5, 8], [6.5, -5]], c.staff, 1.4);                              // Stab hinter der Robe
+  stub(ctx, -2.5, 6.5, 3.4, 3, phase + Math.PI, c.robeDark);
+  stub(ctx, 2.5, 6.5, 3.4, 3, phase, c.robeDark);
+  poly(ctx, [[-6.5, 8], [6, 8], [3, -2], [-3.5, -2]], c.robe, W);          // Robe
+  poly(ctx, [[-2, 8], [2, 8], [1.2, 0], [-1.2, 0]], c.robeDark, 0);        // Falte
+  ell(ctx, 0.4, -4.6, 3.8, 3.8, c.skin, W);                                  // Kopf
+  eye(ctx, 2.4, -4.8, 1.5, 1.8);
+  poly(ctx, [[-4.6, -6.6], [4.8, -6.6], [-0.6, -11]], c.hat, W);           // spitzer Hut
+  line(ctx, [[-4.2, -7.2], [4.4, -7.2]], c.hatBand, 1.2);                  // Hutband
+  const r = c.orbRadius + Math.sin(time * c.orbSpeed) * c.orbPulse;
+  ell(ctx, 6.5, -7.5, r, r, c.orb, W);                                       // Zauberkugel
+  ctx.restore();
+}
+
 // Schildträger: kleine Gestalt mit Helm hinter einem großen Schild (Wappenkreuz) vorn
 export function drawShieldedFlat(ctx, phase) {
   const c = ES.shielded;

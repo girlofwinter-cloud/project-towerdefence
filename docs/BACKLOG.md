@@ -17,16 +17,12 @@ Erledigte Einträge (`fertig`) liegen in `docs/archiv/BACKLOG-fertig.md`. Beim A
 
 ---
 
-### B-126: Neuer Gegner „Magier“ (Schildzauber)
-- Status: offen
+### B-128: Magier stärker machen
+- Status: vorschlag
 - Aufwand: M
-- Idee: Der Magier wirft alle `wardInterval` Sekunden einen magischen Schild auf alle anderen Gegner im Umkreis `wardRadius`. Der Schild schluckt Schaden bis `wardShare` × maxHp des Ziels (jeder Schaden, auch Splash, Kette und Lava), danach geht Schaden wieder auf die HP. Kein Stapeln: ein neuer Zauber füllt den Schild nur bis zum Höchstwert auf. Der Magier schützt sich nicht selbst. Ergänzt den Schamanen (Heilung) und macht Gruppen zäher. Vom Menschen freigegeben am 2026-11-26, Vorgabe: Spiel etwas schwerer, Magier kommen zusätzlich dazu.
+- Idee: Der Magier-Schild aus B-126 steht nur auf `wardShare` 0,05, weil bei 0,25 bestehende Strategie-Tests (Eiswelt, Zwei Fronten, Pfeil-Mix vor Welle 15) kippen. Für spürbare Wirkung den Schild auf etwa 0,15 bis 0,25 anheben und die betroffenen Strategie-Grenzen neu bewerten (Teständerung, nur mit dem Menschen). Nebenbei: Deckkraft der Schild-Blase (`0.35 + 0.65 * frac` in `src/render-enemies.js`) nach `ENEMY_STYLE.mage`.
 - Akzeptanzkriterien:
-  - `ENEMY_TYPES.mage` in `config.js` mit allen Zahlen (`hp`, `speed`, `reward`, `wardRadius`, `wardInterval`, `wardShare`); Logik in `game.js` ohne DOM.
-  - Wellen: ab etwa Welle 8 zusätzlich 1 + floor((Welle − 8) / 4) Magier, in oder kurz nach der Troll-Gruppe. Auf Karten mit `lanes` eine passende feste Seite (wie Schamane).
-  - Tests: Schild schluckt Schaden bis zur Grenze, Restschaden geht auf HP; kein Stapeln; Magier schützt sich nicht selbst; Schild auch gegen Splash.
-  - Test „perfektes Spiel möglich“ bleibt auf allen Karten grün; Standard-Strategien gemessen, Messwerte im Ledger.
-  - Darstellung: eigene Figur im Flat-Pop-Stil (Robe, Hut, Stab) und gut sichtbare Schild-Blase um geschützte Gegner; Wellenvorschau und Sounds kennen den neuen Typ.
+  - Schild im Spiel klar spürbar; perfektes Spiel bleibt auf allen Karten möglich.
 
 ### B-127: Zweiter Boss „Nekromantin“
 - Status: offen
