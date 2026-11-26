@@ -1286,4 +1286,19 @@ export const SOUND = {
       lost:      { files: ['lost'], gain: 0.9, pitchVar: 0 },
     },
   },
+  // B-116: Hintergrundmusik ("The Old Tower Inn", RandomMind, CC0, siehe assets/sounds/LIZENZ.md).
+  // Eigener Gain direkt zum Ausgang (nicht über Master und Effekt-Tiefpass), deutlich leiser als die Effekte.
+  // Geladen erst nach den Effekt-Aufnahmen. Stille am Anfang/Ende (Betrag <= silence) wird per loopStart/loopEnd
+  // übersprungen; ist danach weniger als minLoop Sekunden übrig, läuft die ganze Datei.
+  music: {
+    base: 'assets/music/',
+    file: 'music-old-tower-inn',
+    gain: 0.04,          // Lautstärke im laufenden Spiel
+    pausedFactor: 0.6,   // bei Pause etwas leiser (Anteil von gain)
+    fadeIn: 2,           // Einblenden in s (Start, Ton wieder an, neues Spiel)
+    fadeOut: 0.6,        // Ausblenden in s (Sieg, Niederlage), damit die Jingles hörbar sind
+    fadeChange: 0.5,     // Übergang Pause <-> Spiel in s
+    silence: 0.001,      // Grenzwert für Stille (ca. -60 dB)
+    minLoop: 1,          // kürzeste Schleife in s
+  },
 };

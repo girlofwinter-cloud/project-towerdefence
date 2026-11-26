@@ -732,3 +732,191 @@ test('B-115: planSound findet Ereignis-Aufnahmen; audio.js spielt sie oder die S
     }
   });
 });
+
+// ---------- B-116: Hintergrundmusik ----------
+import { musicUrl, musicLevel, musicRamp, findLoopPoints } from '../src/sound-events.js';
+
+test('B-116: Musik-Datei, Lizenz, Größe und Zahlen in SOUND.music; leiser als die Effekte', () => {
+  const M = SOUND.music;
+  const url = musicUrl();
+  assert.equal(url, 'assets/music/music-old-tower-inn.m4a');
+  const size = fs.statSync(`${ROOT}${url}`).size;
+  assert.ok(size > 100 * 1024 && size <= 1.5 * 1024 * 1024, `Größe ${size}`);
+  const lic = fs.readFileSync(`${ROOT}assets/sounds/LIZENZ.md`, 'utf8');
+  for (const s of ['music-old-tower-inn.m4a', 'The Old Tower Inn', 'RandomMind', 'https://opengameart.org/content/medieval-the-old-tower-inn']) assert.ok(lic.includes(s), s);
+  assert.ok(!sampleUrls().some((u) => u.url === url), 'Musik nicht unter den Effekten');
+  for (const k of ['gain', 'pausedFactor', 'fadeIn', 'fadeOut', 'fadeChange', 'silence', 'minLoop']) assert.ok(M[k] > 0, k);
+  assert.ok(M.pausedFactor <= 1 && M.fadeIn >= 1 && M.silence < 0.01);
+  // Musik läuft ohne Master: deutlich leiser als der leiseste Ereignis-Ton und als der Master selbst
+  const minEvent = Math.min(...Object.values(SOUND.eventSamples.sounds).map((s) => s.gain)) * SOUND.masterGain;
+  assert.ok(M.gain < minEvent * 0.75 && M.gain < SOUND.masterGain);
+});
+
+test('B-116: musicLevel und musicRamp (Ton an/aus, Pause, Sieg/Niederlage, Ein-/Ausblenden)', () => {
+  const M = SOUND.music;
+  assert.equal(musicLevel({ soundOn: true, status: 'playing', paused: false }), M.gain);
+  assert.ok(Math.abs(musicLevel({ soundOn: true, status: 'playing', paused: true }) - M.gain * M.pausedFactor) < 1e-12);
+  assert.equal(musicLevel({ soundOn: false, status: 'playing', paused: false }), 0);
+  assert.equal(musicLevel({ soundOn: true, status: 'won', paused: false }), 0);
+  assert.equal(musicLevel({ soundOn: true, status: 'lost', paused: true }), 0);
+  assert.equal(musicRamp(M.gain, M.gain), null, 'unverändert: nichts tun');
+  assert.equal(musicRamp(0, 0), null);
+  assert.deepEqual(musicRamp(0, M.gain), { target: M.gain, time: M.fadeIn });
+  assert.deepEqual(musicRamp(M.gain, 0), { target: 0, time: M.fadeOut });
+  assert.deepEqual(musicRamp(M.gain, M.gain * M.pausedFactor), { target: M.gain * M.pausedFactor, time: M.fadeChange });
+  assert.equal(musicRamp(0, NaN), null);
+  // Ablauf: Start -> Sieg -> neues Spiel blendet wieder ein
+  let level = 0;
+  const step = (s) => { const r = musicRamp(level, musicLevel(s)); if (r) level = r.target; return r; };
+  assert.equal(step({ soundOn: true, status: 'playing' }).time, M.fadeIn);
+  assert.equal(step({ soundOn: true, status: 'playing' }), null);
+  assert.equal(step({ soundOn: true, status: 'won' }).time, M.fadeOut);
+  assert.equal(step({ soundOn: true, status: 'playing' }).time, M.fadeIn);
+});
+
+test('B-116: findLoopPoints schneidet Stille an den Rändern ab', () => {
+  const sr = 100;
+  const sig = (len, from, to, v = 0.5) => Float32Array.from({ length: len }, (_, i) => (i >= from && i < to ? v : 0));
+  // Stille 0,3 s vorne, 0,5 s hinten
+  let p = findLoopPoints([sig(500, 30, 450)], sr, 0.001, 1);
+  assert.ok(Math.abs(p.start - 0.3) < 1e-9 && Math.abs(p.end - 4.5) < 1e-9);
+  // Stereo: der lautere Kanal zählt
+  p = findLoopPoints([sig(500, 100, 300), sig(500, 20, 480)], sr, 0.001, 1);
+  assert.ok(Math.abs(p.start - 0.2) < 1e-9 && Math.abs(p.end - 4.8) < 1e-9);
+  // Grenzwert: Werte unter dem Grenzwert gelten als Stille, negative zählen per Betrag
+  const a = sig(500, 0, 500, 0.0009); a[50] = -0.01; a[400] = 0.01;
+  p = findLoopPoints([a], sr, 0.001, 1);
+  assert.ok(Math.abs(p.start - 0.5) < 1e-9 && Math.abs(p.end - 4.01) < 1e-9);
+  // keine Stille: ganze Länge
+  assert.deepEqual(findLoopPoints([sig(500, 0, 500)], sr, 0.001, 1), { start: 0, end: 5 });
+  // ganz still, zu kurz, leer, ungültig: ganze Länge
+  assert.deepEqual(findLoopPoints([sig(500, 0, 0)], sr, 0.001, 1), { start: 0, end: 5 });
+  assert.deepEqual(findLoopPoints([sig(500, 200, 250)], sr, 0.001, 1), { start: 0, end: 5 });
+  assert.deepEqual(findLoopPoints([], sr), { start: 0, end: 0 });
+  assert.deepEqual(findLoopPoints([sig(10, 0, 10)], 0), { start: 0, end: 0 });
+  // Standardwerte aus SOUND.music
+  p = findLoopPoints([sig(500, 30, 450)], sr);
+  assert.ok(Math.abs(p.start - 0.3) < 1e-9);
+});
+
+// Web Audio nachgebaut mit Rampen-Protokoll; Laden der Effekte steuerbar (release)
+async function withFakeMusic({ musicFails = false } = {}, fn) {
+  const log = [];
+  const fetched = [];
+  let release;
+  const effectsDone = new Promise((r) => { release = r; });
+  const param = (name) => ({
+    name, value: 0,
+    setValueAtTime(v, t) { log.push([name, 'set', v, t]); },
+    linearRampToValueAtTime(v, t) { log.push([name, 'ramp', v, t]); this.value = v; },
+    exponentialRampToValueAtTime() {},
+    cancelScheduledValues(t) { log.push([name, 'cancel', t]); },
+  });
+  const node = (kind) => ({ kind, outs: [], connect(n) { this.outs.push(n); }, start(...a) { log.push(['start', kind, this, a]); }, stop() {} });
+  const sr = 100;
+  const musicBuf = {
+    numberOfChannels: 2, sampleRate: sr, length: 1000,
+    getChannelData: (c) => Float32Array.from({ length: 1000 }, (_, i) => (i >= 50 + c * 10 && i < 900 ? 0.3 : 0)),
+  };
+  let ctx;
+  class FakeCtx {
+    constructor() { ctx = this; this.state = 'running'; this.currentTime = 10; this.sampleRate = sr; this.destination = { kind: 'destination' }; }
+    createGain() { return { ...node('gain'), gain: param('gain') }; }
+    createBuffer(_c, len) { return { getChannelData: () => new Float32Array(len) }; }
+    createBufferSource() { return { ...node('source'), playbackRate: { value: 1 } }; }
+    createBiquadFilter() { return { ...node('filter'), frequency: param('filter'), Q: { value: 0 } }; }
+    createOscillator() { return { ...node('osc'), frequency: param('osc') }; }
+    decodeAudioData(data) { return Promise.resolve(data.url.includes('music') ? musicBuf : { url: data.url }); }
+    resume() { this.state = 'running'; return Promise.resolve(); }
+    suspend() { this.state = 'suspended'; return Promise.resolve(); }
+  }
+  const hadWindow = 'window' in globalThis;
+  const origFetch = globalThis.fetch;
+  globalThis.window = { AudioContext: FakeCtx };
+  globalThis.fetch = async (url) => {
+    fetched.push(url);
+    if (url.includes('music')) {
+      if (musicFails) return { ok: false, status: 404 };
+      return { ok: true, arrayBuffer: async () => ({ url }) };
+    }
+    await effectsDone;
+    return { ok: true, arrayBuffer: async () => ({ url }) };
+  };
+  const tick = () => new Promise((r) => setTimeout(r, 10));
+  try {
+    const mod = await import(`../src/audio.js?b116=${Math.random()}`);
+    await fn({ mod, log, fetched, release, tick, getCtx: () => ctx });
+  } finally {
+    globalThis.fetch = origFetch;
+    if (hadWindow) globalThis.window = undefined; else delete globalThis.window;
+  }
+}
+
+test('B-116: Musik lädt erst nach Nutzeraktion und nach den Effekten, Schleife ohne Stille, eigener Gain', async () => {
+  await withFakeMusic({}, async ({ mod, log, fetched, release, tick, getCtx }) => {
+    const M = SOUND.music;
+    const play = { status: 'playing', paused: false };
+    mod.setSoundOn(true);
+    mod.updateMusic(play); // vor der Nutzeraktion: nichts
+    await tick();
+    assert.equal(fetched.length, 0);
+    mod.unlockAudio();
+    mod.updateMusic(play);
+    await tick();
+    assert.ok(fetched.length > 0 && !fetched.some((u) => u.includes('music')), 'Effekte zuerst, Musik wartet');
+    release();
+    await tick();
+    mod.updateMusic(play);
+    await tick();
+    assert.equal(fetched.filter((u) => u === musicUrl()).length, 1);
+    mod.updateMusic(play);
+    const start = log.find((l) => l[0] === 'start' && l[1] === 'source');
+    assert.ok(start, 'Musik gestartet');
+    const src = start[2];
+    assert.equal(src.loop, true);
+    assert.ok(Math.abs(src.loopStart - 0.5) < 1e-9 && Math.abs(src.loopEnd - 9) < 1e-9, 'Stille weggeschnitten');
+    assert.ok(Math.abs(start[3][1] - 0.5) < 1e-9, 'startet bei loopStart');
+    const g = src.outs[0];
+    assert.equal(g.kind, 'gain');
+    assert.deepEqual(g.outs, [getCtx().destination], 'direkt zum Ausgang, nicht über den Effekt-Tiefpass');
+    const ramps = () => log.filter((l) => l[0] === 'gain' && l[1] === 'ramp');
+    assert.deepEqual(ramps().at(-1), ['gain', 'ramp', M.gain, 10 + M.fadeIn], 'sanft einblenden');
+    // gleicher Zustand: keine neue Rampe
+    const n = ramps().length;
+    mod.updateMusic(play);
+    assert.equal(ramps().length, n);
+    // Pause leiser, Sieg aus, neues Spiel wieder einblenden
+    mod.updateMusic({ status: 'playing', paused: true });
+    assert.ok(Math.abs(ramps().at(-1)[2] - M.gain * M.pausedFactor) < 1e-12);
+    mod.updateMusic({ status: 'won', paused: false });
+    assert.deepEqual(ramps().at(-1), ['gain', 'ramp', 0, 10 + M.fadeOut]);
+    mod.updateMusic(play);
+    assert.deepEqual(ramps().at(-1), ['gain', 'ramp', M.gain, 10 + M.fadeIn]);
+    // Ton aus: sofort stumm; wieder an: neu einblenden, dieselbe Schleife läuft weiter
+    mod.setSoundOn(false);
+    assert.deepEqual(log.filter((l) => l[0] === 'gain' && l[1] === 'set').at(-1), ['gain', 'set', 0, 10]);
+    mod.updateMusic(play);
+    mod.setSoundOn(true);
+    mod.unlockAudio();
+    await tick();
+    mod.updateMusic(play);
+    assert.deepEqual(ramps().at(-1), ['gain', 'ramp', M.gain, 10 + M.fadeIn]);
+    assert.equal(log.filter((l) => l[0] === 'start' && l[1] === 'source' && l[2].loop).length, 1, 'nur eine Schleife');
+  });
+});
+
+test('B-116: Fehler beim Laden der Musik bleibt still, Effekte spielen weiter', async () => {
+  await withFakeMusic({ musicFails: true }, async ({ mod, log, fetched, release, tick }) => {
+    mod.setSoundOn(true);
+    mod.unlockAudio();
+    release();
+    await tick();
+    for (let i = 0; i < 3; i++) { assert.doesNotThrow(() => mod.updateMusic({ status: 'playing', paused: false })); await tick(); }
+    assert.equal(fetched.filter((u) => u.includes('music')).length, 1, 'kein erneuter Versuch');
+    assert.ok(!log.some((l) => l[0] === 'start' && l[1] === 'source' && l[2].loop), 'keine Musik');
+    assert.ok(!log.some((l) => l[0] === 'start' && l[1] === 'osc'), 'keine Synthese-Musik');
+    log.length = 0;
+    mod.playSound({ kind: 'won' });
+    assert.ok(log.some((l) => l[0] === 'start' && l[1] === 'source'), 'Effekt spielt');
+  });
+});

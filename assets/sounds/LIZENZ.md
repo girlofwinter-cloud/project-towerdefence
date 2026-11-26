@@ -44,3 +44,11 @@ Bearbeitung: von Ogg Vorbis nach AAC (.m4a, mono, 48 kbit/s) umgewandelt; einzel
 | wave-start.m4a | Music Jingles (kenney_music-jingles) | Sax jingles/jingles_SAX16.ogg | CC0 | normalisiert |
 | won.m4a | Music Jingles (kenney_music-jingles) | Sax jingles/jingles_SAX02.ogg | CC0 | normalisiert |
 | lost.m4a | Music Jingles (kenney_music-jingles) | Sax jingles/jingles_SAX07.ogg | CC0 | normalisiert |
+
+## Hintergrundmusik (B-116)
+
+| Datei | Titel | Autor | Quelle | Lizenz | Bearbeitung |
+|---|---|---|---|---|---|
+| ../music/music-old-tower-inn.m4a | The Old Tower Inn (2018) | RandomMind (in den Datei-Tags RandomMynd) | https://opengameart.org/content/medieval-the-old-tower-inn | CC0 | Vollversion The_Old_Tower_Inn.mp3 (Stereo, 192 kbit/s) nach AAC (.m4a, Stereo, 96 kbit/s) umgewandelt |
+
+Laut OpenGameArt-Seite (veröffentlicht am 26.08.2018): „My CC0 track available in full and loop version, you can freely use for any purpose!“

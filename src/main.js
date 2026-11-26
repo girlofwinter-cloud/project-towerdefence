@@ -9,7 +9,7 @@ import { heartStates, abilityView, overheatNote } from './hud.js';
 import { drawIcon } from './render-icons.js';
 import { buildTapStep, aimStep } from './input.js';
 import { createSoundTracker, collectSounds, loadSoundOn, saveSoundOn } from './sound-events.js';
-import { unlockAudio, setSoundOn, playSound } from './audio.js';
+import { unlockAudio, setSoundOn, playSound, updateMusic } from './audio.js';
 import { loadProgress, saveProgress, recordResult, isUnlocked, mapProgress, starText, resultLines, startMap, MAP_ORDER } from './progress.js';
 
 const canvas = document.getElementById('game');
@@ -509,6 +509,8 @@ function frame(now) {
   stepGame(state, dt, ui.speed);
   // Töne: Ereignisse immer erkennen (sonst käme nach dem Einschalten ein Schwall), nur bei Ton an abspielen
   for (const ev of collectSounds(soundTracker, state, now / 1000)) if (ui.soundOn) playSound(ev);
+  // B-116: Musik laden/starten und je nach Spielstatus ein- oder ausblenden
+  updateMusic({ status: state.status, paused: state.paused });
   ui.messageTtl -= dt;
   render(ctx, state, ui);
   hudTimer -= dt;

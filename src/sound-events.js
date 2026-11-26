@@ -235,3 +235,39 @@ export function planSound(ev, buffers, rnd = Math.random, samples = SAMPLE_GROUP
   const rate = 1 + (rnd() * 2 - 1) * (def.pitchVar || 0);
   return { type: 'sample', buffer: list[i], gain: def.gain, rate };
 }
+
+// ---------- B-116: Hintergrundmusik (reine Logik) ----------
+export function musicUrl(cfg = SOUND.music) {
+  return `${cfg.base}${cfg.file}.m4a`;
+}
+
+// Ziel-Lautstärke der Musik: aus bei Ton aus und nach Sieg/Niederlage, bei Pause leiser.
+export function musicLevel({ soundOn, status, paused }, cfg = SOUND.music) {
+  if (!soundOn || status !== 'playing') return 0;
+  return paused ? cfg.gain * cfg.pausedFactor : cfg.gain;
+}
+
+// Übergang von current zu next: null = nichts zu tun, sonst { target, time } (Dauer der linearen Rampe in s).
+// Von 0 aus einblenden (fadeIn), auf 0 ausblenden (fadeOut), sonst fadeChange.
+export function musicRamp(current, next, cfg = SOUND.music) {
+  if (!Number.isFinite(next) || Math.abs(next - current) < 1e-9) return null;
+  const time = !(current > 0) ? cfg.fadeIn : next <= 0 ? cfg.fadeOut : cfg.fadeChange;
+  return { target: next, time };
+}
+
+// Schleifenpunkte ohne Stille an den Rändern. channels: Liste von Sample-Arrays (gleich lang).
+// Liefert { start, end } in Sekunden; ganz still, ungültig oder kürzer als minLoop -> ganze Länge.
+export function findLoopPoints(channels, sampleRate, threshold = SOUND.music.silence, minLoop = SOUND.music.minLoop) {
+  const n = channels && channels.length ? Math.min(...channels.map((c) => c.length)) : 0;
+  const whole = { start: 0, end: sampleRate > 0 ? n / sampleRate : 0 };
+  if (!(n > 0) || !(sampleRate > 0)) return whole;
+  const loud = (i) => channels.some((c) => Math.abs(c[i]) > threshold);
+  let a = 0;
+  while (a < n && !loud(a)) a++;
+  if (a >= n) return whole;
+  let e = n - 1;
+  while (e > a && !loud(e)) e--;
+  const start = a / sampleRate;
+  const end = (e + 1) / sampleRate;
+  return end - start >= minLoop ? { start, end } : whole;
+}
