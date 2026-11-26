@@ -592,3 +592,10 @@ Agents lesen diese Datei nur bei konkretem Bedarf.
   - HUD: Knopf zeigt während des Countdowns z. B. „Welle 5 in 3…“ (ganze Sekunden, aufgerundet); Wellenvorschau bleibt sichtbar. Desktop und Handy prüfen (Screenshot).
   - Tests: Countdown startet die Welle nach 5 s, nicht vor Welle 1, Pause hält an, manueller Start bricht den Countdown ab, kein Countdown nach Welle 20/Sieg/Niederlage.
   - Balancing: Strategie-Simulationen messen (5 Karten, dt 1/30 und 1/60). Ändert sich ein bestehendes Balancing-Testergebnis, Test nicht anpassen, sondern melden (Mensch entscheidet).
+
+### B-119: Musik-Gain nach Kartenwechsel trennen
+- Status: fertig (Mensch hat am 2026-11-26 freigegeben)
+- Aufwand: S
+- Idee: Nach `stopMusic` in `src/audio.js` bleibt der alte Gain-Knoten mit `ctx.destination` verbunden (ein toter Knoten je Kartenwechsel, Reviewer-Hinweis zu B-118). `src.onended = () => gain.disconnect()`.
+- Akzeptanzkriterien:
+  - Nach einem Kartenwechsel ist der alte Gain getrennt (Fake-Audio-Test in `tests/sound.test.js`).

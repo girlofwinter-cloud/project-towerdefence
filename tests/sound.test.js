@@ -813,7 +813,7 @@ async function withFakeMusic({ musicFails = false, failUrls = [] } = {}, fn) {
     exponentialRampToValueAtTime() {},
     cancelScheduledValues(t) { log.push([name, 'cancel', t]); },
   });
-  const node = (kind) => ({ kind, outs: [], connect(n) { this.outs.push(n); }, start(...a) { log.push(['start', kind, this, a]); }, stop(...a) { log.push(['stop', kind, this, a]); } });
+  const node = (kind) => ({ kind, outs: [], connect(n) { this.outs.push(n); }, disconnect() { this.outs = []; log.push(['disconnect', kind, this]); }, start(...a) { log.push(['start', kind, this, a]); }, stop(...a) { log.push(['stop', kind, this, a]); } });
   const sr = 100;
   const musicBuf = {
     numberOfChannels: 2, sampleRate: sr, length: 1000,
@@ -1121,6 +1121,32 @@ test('B-118 Rand: Wechsel nach Sieg (Pegel 0) stoppt alten Titel sofort, neuer b
       const stop = log.find((l) => l[0] === 'stop' && l[1] === 'source');
       assert.ok(stop, 'alter Titel gestoppt');
       assert.ok(!log.some((l) => l[0] === 'gain' && l[1] === 'ramp' && l[2] > 0), 'nichts eingeblendet');
+    });
+  });
+});
+
+test('B-119: nach Kartenwechsel sind alte Quelle und alter Gain vom Ausgang getrennt', async () => {
+  await withTestTracks(async () => {
+    await withFakeMusic({}, async ({ mod, log, release, tick, getCtx }) => {
+      const play = (mapId) => mod.updateMusic({ status: 'playing', paused: false, mapId });
+      mod.setSoundOn(true);
+      mod.unlockAudio();
+      release();
+      await tick();
+      play('meadow'); await tick(); play('meadow');
+      const oldSrc = activeLoops(log)[0];
+      assert.ok(oldSrc, 'Wiesen-Titel läuft');
+      const oldGain = oldSrc.outs[0];
+      assert.ok(oldGain.outs.includes(getCtx().destination), 'alter Gain zunächst am Ausgang');
+      play('ice'); await tick(); play('ice');
+      const stop = log.find((l) => l[0] === 'stop' && l[2] === oldSrc);
+      assert.ok(stop, 'alter Titel gestoppt');
+      assert.equal(typeof oldSrc.onended, 'function', 'Aufräumen nach dem Ende vorgemerkt');
+      oldSrc.onended(); // Ende der Quelle (im echten Web Audio nach stop)
+      assert.equal(oldGain.outs.length, 0, 'alter Gain getrennt');
+      assert.equal(oldSrc.outs.length, 0, 'alte Quelle getrennt');
+      const newSrc = activeLoops(log).find((s) => s !== oldSrc);
+      assert.ok(newSrc && newSrc.outs[0].outs.includes(getCtx().destination), 'neuer Titel bleibt verbunden');
     });
   });
 });

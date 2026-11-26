@@ -774,3 +774,11 @@ Neue Einträge werden unten angehängt. Bestehende Einträge werden nie geänder
 - Tests: 458 bestanden (inkl. 6 Randfall-Tests des Testers), e2e 38/38. Zwei Tests laufen bis Ende von Welle 1 statt fester Zeit, weil sonst Welle 2 automatisch startet (vom Menschen freigegeben, Reviewer: gleich streng).
 - Review: APPROVE ohne Muss-Punkte.
 - Entscheidungen: Bestehende Strategie-Simulationen unverändert. Nebenbefund: Wer laufend auch während Wellen baut, gewinnt in der Simulation alle 5 Karten ohne Lebensverlust; die Sims bauen nur zwischen Wellen und unterschätzen aktives Spiel. Dem Menschen gemeldet, kein Eintrag ohne seine Entscheidung.
+
+---
+
+## 2026-11-26 · B-119 · Musik-Gain nach Kartenwechsel trennen
+- Rolle(n): orchestrator, developer (kein Tester/Reviewer: nur `src/audio.js`, kein Risiko laut Pipeline)
+- Branch: agent/gain-trennen
+- Ergebnis: fertig. `stopMusic` trennt Quelle und Gain per `onended`.
+- Tests: 459 bestanden, e2e 38/38. Fake-Audio um `disconnect()` erweitert, neuer Test.
