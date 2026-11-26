@@ -110,3 +110,58 @@ test('Robustheit: werfender oder fehlender Speicher stürzt nicht ab', () => {
   assert.equal(saveProgress(throwingStorage, emptyProgress()), false);
   assert.equal(saveProgress(null, emptyProgress()), false);
 });
+
+// Tester B-093: gezielte Randfälle
+test('Tester B-093: Leben über START_LIVES geben 3 Sterne, negative Leben bei Sieg 1 Stern', () => {
+  assert.equal(starsFor('won', START_LIVES + 5), STAR_LIVES_SHARE.length);
+  assert.equal(starsFor('won', -3), 1);
+  assert.equal(starsFor('won', START_LIVES - 1), 2);
+  assert.equal(starsFor('lost', START_LIVES), 0);
+  assert.equal(starsFor('playing', START_LIVES), 0);
+});
+
+test('Tester B-093: Welle negativ/NaN/Infinity zählt als 0, Gleichstand ist kein neuer Rekord', () => {
+  const p = emptyProgress();
+  for (const wave of [-4, NaN, Infinity, undefined, '7']) {
+    const r = recordResult(p, { mapId: MAP_ORDER[0], status: 'lost', wave, lives: 0 });
+    assert.equal(r.newRecord, false);
+    assert.equal(mapProgress(p, MAP_ORDER[0]).bestWave, 0);
+  }
+  recordResult(p, { mapId: MAP_ORDER[0], status: 'lost', wave: 5, lives: 0 });
+  const tie = recordResult(p, { mapId: MAP_ORDER[0], status: 'lost', wave: 5, lives: 0 });
+  assert.equal(tie.newRecord, false);
+  assert.equal(recordResult(p, { mapId: MAP_ORDER[0], status: 'lost', wave: 6, lives: 0 }).newRecord, true);
+});
+
+test('Tester B-093: unbekannte mapId ändert nichts, Freischalten nur einmal gemeldet', () => {
+  const p = emptyProgress();
+  const r = recordResult(p, { mapId: 'gibtsnicht', status: 'won', wave: MAX_WAVES, lives: START_LIVES });
+  assert.deepEqual(r, { newRecord: false, newStars: false, unlockedMap: null });
+  assert.deepEqual(p, emptyProgress());
+  assert.equal(isUnlocked(p, 'gibtsnicht'), false);
+  const first = recordResult(p, { mapId: MAP_ORDER[0], status: 'won', wave: MAX_WAVES, lives: 1 });
+  assert.equal(first.unlockedMap, MAP_ORDER[1]);
+  const again = recordResult(p, { mapId: MAP_ORDER[0], status: 'won', wave: MAX_WAVES, lives: START_LIVES });
+  assert.equal(again.unlockedMap, null);
+  assert.equal(again.newStars, true);
+  // Niederlage auf gesperrter Karte schaltet nichts frei; letzte Karte hat keine Nachfolgerin
+  const last = MAP_ORDER[MAP_ORDER.length - 1];
+  assert.equal(recordResult(p, { mapId: last, status: 'won', wave: MAX_WAVES, lives: START_LIVES }).unlockedMap, null);
+});
+
+test('Tester B-093: Speicherinhalt null/Array/Zahl/String und Eintrag mit Unsinn stürzen nicht ab', () => {
+  for (const text of ['null', '[]', '[1,2]', '42', '"x"', 'true', '{"maps":null}', '{"maps":[]}', '{"maps":5}']) {
+    const s = { getItem: () => text, setItem() {} };
+    assert.deepEqual(loadProgress(s), emptyProgress(), text);
+  }
+  const s = { getItem: () => null, setItem() {} };
+  assert.deepEqual(loadProgress(s), emptyProgress());
+  const id = MAP_ORDER[0];
+  const weird = JSON.stringify({ maps: { [id]: { bestWave: 3.9, stars: 99 }, [MAP_ORDER[1]]: [1, 2], __proto__x: {} } });
+  const p = loadProgress({ getItem: () => weird, setItem() {} });
+  assert.deepEqual(mapProgress(p, id), { bestWave: 3, stars: STAR_LIVES_SHARE.length });
+  assert.equal(starText(99), starText(STAR_LIVES_SHARE.length));
+  assert.equal(starText(-1), starText(0));
+  // saveProgress mit kaputtem Fortschritt wirft nicht
+  assert.equal(saveProgress({ setItem() {} }, null), true);
+});
