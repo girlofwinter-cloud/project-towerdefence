@@ -48,7 +48,7 @@ function towerLevels(state) {
 }
 
 // Ereignisse seit dem letzten Aufruf (ohne Begrenzung):
-// { kind: 'shot', tower }, { kind: 'death' }, { kind: 'boss' }, { kind: 'meteorFlight' }, { kind: 'meteorImpact' },
+// { kind: 'shot', tower }, { kind: 'death', enemy }, { kind: 'boss' }, { kind: 'meteorFlight' }, { kind: 'meteorImpact' },
 // { kind: 'lifeLost' } (einmal je Frame, auch wenn mehrere Leben verloren gehen; Reparatur = mehr Leben = still)
 export function detectSoundEvents(tr, state) {
   const out = [];
@@ -81,7 +81,7 @@ export function detectSoundEvents(tr, state) {
   const alive = new Set(now);
   for (const e of tr.enemies) {
     if (alive.has(e) || !(e.hp <= 0)) continue;
-    out.push({ kind: e.type === 'boss' ? 'boss' : 'death' });
+    out.push(e.type === 'boss' ? { kind: 'boss' } : { kind: 'death', enemy: e.type });
   }
   tr.enemies = now.slice();
   if (Number.isFinite(state.lives) && Number.isFinite(tr.lives) && state.lives < tr.lives) out.push({ kind: 'lifeLost' });
@@ -233,7 +233,9 @@ export function planSound(ev, buffers, rnd = Math.random, samples = SAMPLE_GROUP
   const list = def && buffers && typeof buffers.get === 'function' ? buffers.get(key) : null;
   if (!list || list.length === 0) return { type: 'synth' };
   const i = Math.min(list.length - 1, Math.floor(rnd() * list.length));
-  const rate = 1 + (rnd() * 2 - 1) * (def.pitchVar || 0);
+  // Grund-Tonhöhe (rate) und je Gegnertyp (enemyRate), dazu zufällige Variation
+  const base = (def.rate ?? 1) * (def.enemyRate?.[ev.enemy] ?? 1);
+  const rate = base * (1 + (rnd() * 2 - 1) * (def.pitchVar || 0));
   return { type: 'sample', buffer: list[i], gain: def.gain, rate };
 }
 

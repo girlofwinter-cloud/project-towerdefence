@@ -973,3 +973,47 @@ test('Kanone: Ton beim Abschuss (neues Geschoss), kein Ton beim Aufschlag', () =
   state.time += 0.02;
   assert.deepEqual(detectSoundEvents(tr, state), []);
 });
+
+test('Gegner-Tod: Monster-Schreie für death und boss, Lizenz je Datei, Tonhöhe je Gegnertyp', () => {
+  const s = SOUND.samples.sounds;
+  assert.deepEqual(s.death.files, ['death-1', 'death-2', 'death-3', 'death-4']);
+  assert.deepEqual(s.boss.files, ['boss-1', 'boss-2']);
+  const lic = fs.readFileSync(`${ROOT}assets/sounds/LIZENZ.md`, 'utf8');
+  assert.ok(!lic.includes('impactSoft'), 'alte Aufprall-Töne entfernt');
+  for (const f of [...s.death.files, ...s.boss.files]) {
+    const row = lic.split('\n').find((l) => l.startsWith(`| ${f}.m4a |`));
+    assert.ok(row, `${f} fehlt in LIZENZ.md`);
+    assert.match(row, /Monster sound effects pack/);
+    assert.match(row, /https:\/\/opengameart\.org\/content\/monster-sound-effects-pack/);
+    assert.match(row, /monster-\d+\.wav/);
+    assert.match(row, /CC0/);
+  }
+  // Boss lauter und tiefer als normale Tode; Begrenzung Tod bleibt 2 pro 0,1 s
+  assert.ok(s.boss.gain > s.death.gain);
+  assert.ok(s.boss.rate < 1);
+  assert.deepEqual(SOUND.limitOverrides.death, { window: 0.1, perWindow: 2 });
+  // kleine/schnelle Gegner höher, schwere tiefer
+  const r = s.death.enemyRate;
+  assert.ok(r.runner > r.grunt && r.grunt > 1 && r.tank < 1);
+  const bufs = new Map([['death', ['a']], ['boss', ['b']]]);
+  const mid = () => 0.5; // keine Zufalls-Variation
+  assert.ok(Math.abs(planSound({ kind: 'death', enemy: 'runner' }, bufs, mid).rate - r.runner) < 1e-9);
+  assert.ok(Math.abs(planSound({ kind: 'death', enemy: 'tank' }, bufs, mid).rate - r.tank) < 1e-9);
+  assert.equal(planSound({ kind: 'death' }, bufs, mid).rate, 1);
+  assert.equal(planSound({ kind: 'death', enemy: 'unbekannt' }, bufs, mid).rate, 1);
+  assert.ok(Math.abs(planSound({ kind: 'boss' }, bufs, mid).rate - s.boss.rate) < 1e-9);
+});
+
+test('Gegner-Tod: Ereignis nennt den Gegnertyp (Boss weiter eigenes Ereignis)', () => {
+  const state = createGame();
+  const tr = createSoundTracker();
+  const g = spawnEnemy(state, 'runner') ?? state.enemies.at(-1);
+  const b = spawnEnemy(state, 'boss') ?? state.enemies.at(-1);
+  detectSoundEvents(tr, state);
+  g.hp = 0;
+  b.hp = 0;
+  update(state, 1 / 60);
+  const evs = detectSoundEvents(tr, state);
+  assert.ok(evs.some((e) => e.kind === 'death' && e.enemy === 'runner'));
+  assert.ok(evs.some((e) => e.kind === 'boss'));
+});

@@ -1204,8 +1204,11 @@ export const SOUND = {
       'shot:frost':     { files: ['frost-1', 'frost-2', 'frost-3'], gain: 0.2, pitchVar: 0.06 },
       'shot:sniper':    { files: ['sniper-1', 'sniper-2', 'sniper-3'], gain: 0.3, pitchVar: 0.06 },
       'shot:lightning': { files: ['lightning-1', 'lightning-2', 'lightning-3'], gain: 0.18, pitchVar: 0.06 },
-      death:            { files: ['death-1', 'death-2', 'death-3', 'death-4'], gain: 0.7, pitchVar: 0.15 },
-      boss:             { files: ['boss-1', 'boss-2'], gain: 1.2, pitchVar: 0.03 },
+      // Tod: kurze Monster-Schreie (OpenGameArt, CC0); enemyRate = Tonhöhe je Gegnertyp (klein/schnell höher)
+      death:            { files: ['death-1', 'death-2', 'death-3', 'death-4'], gain: 0.55, pitchVar: 0.08,
+                          enemyRate: { runner: 1.25, grunt: 1.1, healer: 1.05, shielded: 0.95, tank: 0.85 } },
+      // Boss-Tod: langer, tiefer Schrei, zusätzlich tiefer abgespielt (rate = Grund-Tonhöhe)
+      boss:             { files: ['boss-1', 'boss-2'], gain: 0.9, pitchVar: 0.03, rate: 0.85 },
       lifeLost:         { files: ['life-lost-1', 'life-lost-2'], gain: 0.8, pitchVar: 0 },
       meteorFlight:     { files: ['meteor-flight-1', 'meteor-flight-2'], gain: 0.7, pitchVar: 0.05 },
       meteorImpact:     { files: ['meteor-impact-1', 'meteor-impact-2'], gain: 1.4, pitchVar: 0.04 },
