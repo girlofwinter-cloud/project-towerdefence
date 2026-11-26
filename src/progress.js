@@ -86,6 +86,17 @@ export function recordResult(progress, { mapId, status, wave, lives }) {
   };
 }
 
+// Texte fürs Overlay am Spielende (B-094): erste Zeile Rekord und Sterne, danach Hervorhebungen.
+// before = Stand der Karte vor recordResult. Beim ersten Ergebnis ist jeder Rekord „neu“: keine Meldung.
+export function resultLines(progress, mapId, res, before = { bestWave: 0, stars: 0 }) {
+  const p = mapProgress(progress, mapId);
+  const lines = [`Rekord: Welle ${p.bestWave} · ${starText(p.stars)}`];
+  if (res.newRecord && before.bestWave > 0) lines.push('Neuer Rekord!');
+  if (res.newStars) lines.push(`Neue Sterne: ${starText(p.stars)}`);
+  if (res.unlockedMap) lines.push(`Neue Karte freigeschaltet: ${MAPS[res.unlockedMap].name}`);
+  return lines;
+}
+
 // Sterne als Text, z. B. "★★☆" (volle und leere Sterne).
 export function starText(stars) {
   const max = STAR_LIVES_SHARE.length;

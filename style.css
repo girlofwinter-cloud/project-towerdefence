@@ -126,6 +126,11 @@ canvas#game {
 }
 #overlay[hidden], #tower-info[hidden] { display: none; }
 #overlay h2 { font-size: 2.8rem; margin: 0 0 8px; color: var(--gold); text-shadow: 0 3px 0 var(--panel-edge); }
+/* Ergebnis am Spielende (B-094): Rekordzeile, darunter hervorgehobene Meldungen */
+#overlay-progress { display: flex; flex-direction: column; align-items: center; gap: 4px; margin: 0 0 14px; }
+#overlay-progress:empty { display: none; }
+#overlay-progress .result-line { font-size: 1.05rem; color: #f3e6c8; }
+#overlay-progress .result-highlight { font-weight: 700; color: var(--gold); text-shadow: 0 2px 0 var(--panel-edge); }
 
 /* Seitenleiste: Holzpanel */
 aside {

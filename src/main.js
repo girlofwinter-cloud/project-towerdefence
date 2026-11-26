@@ -7,7 +7,7 @@ import {
 import { render, drawTower } from './render.js';
 import { livesText } from './hud.js';
 import { buildTapStep, aimStep } from './input.js';
-import { loadProgress, saveProgress, recordResult, isUnlocked, mapProgress, starText, MAP_ORDER } from './progress.js';
+import { loadProgress, saveProgress, recordResult, isUnlocked, mapProgress, starText, resultLines, MAP_ORDER } from './progress.js';
 
 const canvas = document.getElementById('game');
 canvas.width = WIDTH;
@@ -32,7 +32,7 @@ const progress = loadProgress(getStorage());
 const mapOpen = (id) => TEST_MODE || isUnlocked(progress, id);
 // Merker: Ergebnis dieses Spiels schon gespeichert? (refreshUI läuft alle 0,1 s)
 let resultSaved = false;
-let resultText = '';
+let resultText = []; // Zeilen fürs Overlay (resultLines)
 
 // Für Tests und Neugierige: im Browser-Konsole `__game` eintippen.
 window.__game = () => state;
@@ -250,7 +250,7 @@ function restart() {
   if (mapId !== undefined && !mapOpen(mapId)) mapId = MAP_ORDER[0];
   state = createGame({ mapId });
   resultSaved = false;
-  resultText = '';
+  resultText = [];
   Object.assign(ui, { buildType: null, selectedTowerId: null, pending: null, aiming: false, hoverPx: null, speed: SPEED_STEPS[0] });
   refreshUI();
 }
@@ -336,22 +336,30 @@ function refreshUI() {
   if (state.status === 'lost') $('overlay-title').textContent = '💀 Verloren';
   $('overlay-stats').textContent = `Welle ${state.wave} · ${state.kills} Gegner besiegt`;
   if (state.status !== 'playing' && !resultSaved) saveResult();
-  $('overlay-progress').textContent = resultText;
+  renderResultLines($('overlay-progress'), resultText);
+}
+
+// Erste Zeile normal, weitere als hervorgehobene Meldungen (nur neu bauen, wenn sich etwas ändert).
+function renderResultLines(el, lines) {
+  const key = lines.join('\n');
+  if (el.dataset.key === key) return;
+  el.dataset.key = key;
+  el.replaceChildren(...lines.map((text, i) => {
+    const span = document.createElement('span');
+    span.className = i === 0 ? 'result-line' : 'result-line result-highlight';
+    span.textContent = text;
+    return span;
+  }));
 }
 
 // Genau einmal pro Spielende: Ergebnis eintragen, speichern und Overlay-Text bauen.
 function saveResult() {
   resultSaved = true;
+  const before = { ...mapProgress(progress, state.mapId) };
   const res = recordResult(progress, { mapId: state.mapId, status: state.status, wave: state.wave, lives: state.lives });
   saveProgress(getStorage(), progress);
-  const p = mapProgress(progress, state.mapId);
-  const parts = [`Rekord: Welle ${p.bestWave} · ${starText(p.stars)}`];
-  if (res.newRecord) parts.push('Neuer Rekord!');
-  if (res.unlockedMap) {
-    parts.push(`Neue Karte freigeschaltet: ${MAPS[res.unlockedMap].name}`);
-  }
   refreshMapOptions();
-  resultText = parts.join(' · ');
+  resultText = resultLines(progress, state.mapId, res, before);
 }
 
 // ---------- Game Loop ----------
@@ -377,7 +385,7 @@ if (TEST_MODE) {
     ui,
     restartOn: (id) => { mapId = id; restart(); },
     // Weiterspielen nach erzwungenem Spielende: Overlay-Text des alten Ergebnisses verwerfen.
-    resume: () => { resultSaved = false; resultText = ''; },
+    resume: () => { resultSaved = false; resultText = []; },
     refresh: refreshUI,
   }));
 }
