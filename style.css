@@ -47,6 +47,27 @@ h1 { font-size: 1.5rem; margin: 0; color: var(--gold); text-shadow: 0 2px 0 var(
 h1 .ico, #overlay-title .ico { vertical-align: -4px; } /* B-096: Burg, Trophäe, Totenkopf auf Schrifthöhe */
 #lives-box.low { color: #ff5a5a; animation: pulse 1s ease-in-out infinite; }
 @keyframes pulse { 50% { opacity: 0.45; } }
+/* B-123: Münzen springen beim Frühstart-Bonus aus der Goldanzeige */
+.hud-item { position: relative; }
+.hud-item.gold-gain > b { animation: gold-gain 0.6s ease-out; }
+@keyframes gold-gain { 30% { transform: scale(1.35); color: #fff6c2; } }
+.gold-pop { position: absolute; inset: 0; pointer-events: none; z-index: 5; }
+.gold-coin { position: absolute; left: 3px; top: calc(50% - 8px); opacity: 0; animation-name: coin-burst; animation-timing-function: linear; animation-fill-mode: forwards; }
+.gold-coin .ico { display: block; filter: drop-shadow(0 1px 0 rgba(0,0,0,.5)); }
+/* Herausschießen (schnell, abbremsend), dann mit Schwerkraft fallen und verblassen */
+@keyframes coin-burst {
+  0% { opacity: 1; transform: translate(0, 0) scale(.5) rotate(0); animation-timing-function: cubic-bezier(.15,.8,.35,1); }
+  45% { opacity: 1; transform: translate(var(--dx), var(--dy)) scale(1.1) rotate(calc(var(--spin) * 200deg)); animation-timing-function: cubic-bezier(.5,0,.9,.5); }
+  100% { opacity: 0; transform: translate(calc(var(--dx) * 1.15), calc(var(--dy) + var(--fall))) scale(.8) rotate(calc(var(--spin) * 420deg)); }
+}
+.gold-pop > b { position: absolute; left: calc(100% + 6px); top: -4px; white-space: nowrap; font-size: 1.1rem; color: #ffe27a; animation: gold-text 1.3s ease-out forwards; }
+@keyframes gold-text { 0% { opacity: 0; transform: translateY(6px); } 20% { opacity: 1; } 70% { opacity: 1; } 100% { opacity: 0; transform: translateY(-26px); } }
+@media (prefers-reduced-motion: reduce) {
+  .gold-coin { display: none; }
+  .hud-item.gold-gain > b { animation: none; }
+  .gold-pop > b { animation: gold-text-still 1.3s linear forwards; }
+  @keyframes gold-text-still { 0%, 80% { opacity: 1; } 100% { opacity: 0; } }
+}
 #pause-hint { color: var(--gold); }
 #pause-hint[hidden] { display: none; }
 

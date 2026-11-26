@@ -559,7 +559,7 @@ import { detectStateEvents } from '../src/sound-events.js';
 import { prepareWave, applyCheats, forceEnd, clearEnemies } from '../src/test-tools.js';
 import { MAX_WAVES } from '../src/config.js';
 
-const EVENT_KINDS = ['build', 'upgrade', 'sell', 'waveStart', 'won', 'lost'];
+const EVENT_KINDS = ['build', 'upgrade', 'sell', 'coinBurst', 'waveStart', 'won', 'lost'];
 
 test('B-115: jede Ereignis-Art hat Synthese, Grenze und Aufnahmen; lauter als Schüsse; Lizenz und Größe', () => {
   assert.deepEqual(Object.keys(SOUND.events).sort(), [...EVENT_KINDS].sort());

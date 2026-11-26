@@ -1,5 +1,5 @@
 // Verbindet Spiel-Logik, Rendering und Bedienung (DOM, Maus, Tastatur).
-import { TILE, WIDTH, HEIGHT, ARROW_TOWER, TOWER_STYLE, SHOP_CARD, TOWER_TYPES, ENEMY_TYPES, MAX_WAVES, MAPS, SPEED_STEPS, TARGET_MODES, TARGET_MODE_NAMES, MAX_SUBSTEP, LOW_LIVES, ABILITIES, ICON, waveSummary, meteorText } from './config.js';
+import { TILE, WIDTH, HEIGHT, ARROW_TOWER, TOWER_STYLE, SHOP_CARD, TOWER_TYPES, ENEMY_TYPES, MAX_WAVES, MAPS, SPEED_STEPS, TARGET_MODES, TARGET_MODE_NAMES, MAX_SUBSTEP, LOW_LIVES, ABILITIES, ICON, COIN_BURST, waveSummary, meteorText } from './config.js';
 import {
   createGame, stepGame, togglePause, buildTower, upgradeTower, sellTower, setTargetMode, startWave,
   useAbility, abilityCooldownLeft, canBuild, towerAt, towerStats, upgradeCost, sellValue,
@@ -323,7 +323,43 @@ function toggleZoom() {
 function doStartWave() {
   const res = startWave(state);
   if (!res.ok) flash(res.reason);
+  if (res.ok && res.bonus > 0) {
+    coinBurst(res.bonus);
+    flash(`Frühstart-Bonus: +${res.bonus} Gold`, 'info');
+  }
   refreshUI();
+}
+// B-123: Münzen explodieren aus der Goldanzeige in alle Richtungen und fallen, dazu „+Betrag“ und Münzklang.
+// Bahnen per CSS-Variablen (Animation in style.css, ohne Bewegung bei reduced motion).
+function coinBurst(amount) {
+  const item = $('gold').closest('.hud-item');
+  const pop = document.createElement('span');
+  pop.className = 'gold-pop';
+  pop.setAttribute('aria-hidden', 'true');
+  const { count, minDist, maxDist, fall, duration, stagger } = COIN_BURST;
+  for (let i = 0; i < count; i++) {
+    const angle = (i / count) * Math.PI * 2 + Math.random() * 0.4;
+    const dist = minDist + Math.random() * (maxDist - minDist);
+    const coin = document.createElement('span');
+    coin.className = 'gold-coin';
+    coin.innerHTML = iconHtml('gold', 'inline');
+    coin.style.setProperty('--dx', `${(Math.cos(angle) * dist).toFixed(1)}px`);
+    coin.style.setProperty('--dy', `${(Math.sin(angle) * dist * 0.8).toFixed(1)}px`);
+    coin.style.setProperty('--fall', `${fall}px`);
+    coin.style.setProperty('--spin', `${Math.random() < 0.5 ? -1 : 1}`);
+    coin.style.animationDuration = `${duration}s`;
+    coin.style.animationDelay = `${(Math.random() * stagger).toFixed(2)}s`;
+    pop.appendChild(coin);
+  }
+  const text = document.createElement('b');
+  text.textContent = `+${amount}`;
+  pop.appendChild(text);
+  item.appendChild(pop);
+  setTimeout(() => pop.remove(), (duration + stagger) * 1000 + 400);
+  item.classList.remove('gold-gain');
+  void item.offsetWidth; // Animation neu starten, auch bei schnellen Folge-Starts
+  item.classList.add('gold-gain');
+  if (ui.soundOn) playSound({ kind: 'coinBurst' });
 }
 function doTogglePause() {
   togglePause(state);

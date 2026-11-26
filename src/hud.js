@@ -1,5 +1,6 @@
 // Reine Darstellungs-Helfer fürs HUD (kein DOM).
-import { START_LIVES, MAX_WAVES, earlyStartBonus } from './config.js';
+import { START_LIVES, MAX_WAVES } from './config.js';
+import { earlyStartPreview } from './game.js';
 
 // Herzreihe als Liste: true = verbleibendes Leben, false = verlorenes (nie negativ, gekappt).
 export function heartStates(lives, max = START_LIVES) {
@@ -58,7 +59,7 @@ export function contrastRatio(a, b) {
 }
 
 // B-005: Zustand des Knopfs „Welle starten“. Während einer Welle wird er bedienbar, sobald alle ihre Gegner
-// gespawnt sind (bis zur letzten Welle), und zeigt dann den Frühstart-Bonus der nächsten Welle.
+// gespawnt sind (bis zur letzten Welle), und zeigt dann den Frühstart-Bonus (B-123: sinkt mit jedem besiegten Gegner).
 export function startButtonView(state) {
   const spawning = state.waveActive && state.spawnQueue.length > 0;
   const canStart = state.status === 'playing' && state.wave < MAX_WAVES && !spawning;
@@ -66,7 +67,7 @@ export function startButtonView(state) {
   let label = `Welle ${next} starten`;
   if (state.waveActive) {
     if (state.wave >= MAX_WAVES) label = 'Letzte Welle läuft…';
-    else label = spawning ? 'Welle läuft…' : `Nächste Welle +${earlyStartBonus(next)}`;
+    else label = spawning ? 'Welle läuft…' : `Nächste Welle +${earlyStartPreview(state)}`;
   } else if (canStart && state.autoWaveIn != null) {
     // B-121: Countdown bis zum automatischen Start (ganze Sekunden, aufgerundet); Klick startet sofort
     label = `Welle ${next} in ${Math.max(1, Math.ceil(state.autoWaveIn))}…`;
