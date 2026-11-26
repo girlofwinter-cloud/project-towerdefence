@@ -388,3 +388,20 @@ Agents lesen diese Datei nur bei konkretem Bedarf.
   - Maximale Partikelzahl wie vorher.
   - Effekte verdecken Gegner nicht (Screenshot einer Welle mit vielen Gegnern).
   - Reduzierte Bewegung wird respektiert.
+
+### B-069: HUD-Icons (Design-Overhaul)
+- Status: fertig
+- Aufwand: S
+- Idee: Gold, Herz, Welle und Fähigkeiten aus dem Icon-Set per Canvas zeichnen und in HUD/Knöpfen statt Emoji einsetzen. Verknüpft mit B-058.
+- Akzeptanzkriterien:
+  - Bei 16 und 32 px lesbar, Tippziele mindestens 44 px, keine Emoji-Mischung.
+
+### B-058: Fähigkeitsknöpfe: Tippgröße, Symbol und Abklingbalken (Muss, Design-Prüfung)
+- Status: fertig
+- Aufwand: S
+- Idee: 10 Buttons unter 44 px Höhe auf dem Handy (Meteor, Kälteschock, Notfall-Reparatur, Zoom). Label "Notfall-Reparatur (E) bereit (2x)" ist umständlich, "bereit" und "lädt" sind kaum unterscheidbar. Großes Symbol, Kürzel klein, Abklingzeit als Füllbalken, auf dem Handy keine Tastenkürzel.
+- Akzeptanzkriterien:
+  - `.abilities button` und Zoom-Knopf sind auf Handy und Desktop mindestens 44 px hoch.
+  - Zustand "bereit" und "lädt" ist ohne Text unterscheidbar (Balken oder Helligkeit).
+  - Tastenkürzel-Hinweise sind auf dem Handy ausgeblendet (auch bei Pause und Tempo).
+  - Unit-/Browser-Test prüft die Mindesthöhe.

@@ -361,10 +361,11 @@ for (const [type, build] of Object.entries(SPECIAL_TEXTS)) TOWER_TYPES[type].spe
 
 // Aktive Fähigkeiten (B-038): lange Abklingzeiten, damit das Spiel nicht leichter wird.
 // Zeiten in Sekunden Spielzeit, radius in Kacheln, slow = Anteil der Verlangsamung (0,7 = 70 % langsamer).
+// short = Kurzname auf dem Knopf (B-058), der volle Name steht im zugänglichen Namen.
 export const ABILITIES = {
-  meteor: { name: 'Meteor', key: 'q', cooldown: 50, radius: 1.8, damage: 150 },
-  freeze: { name: 'Kälteschock', key: 'w', cooldown: 60, slow: 0.7, duration: 4 },
-  repair: { name: 'Notfall-Reparatur', key: 'e', cooldown: 120, maxUses: 2, heal: 1 },
+  meteor: { name: 'Meteor', short: 'Meteor', key: 'q', cooldown: 50, radius: 1.8, damage: 150 },
+  freeze: { name: 'Kälteschock', short: 'Kälte', key: 'w', cooldown: 60, slow: 0.7, duration: 4 },
+  repair: { name: 'Notfall-Reparatur', short: 'Reparatur', key: 'e', cooldown: 120, maxUses: 2, heal: 1 },
 };
 ABILITIES.meteor.text = `Flächenschaden (${ABILITIES.meteor.damage}) im Umkreis von ${num(ABILITIES.meteor.radius)} Kacheln, Abklingzeit ${ABILITIES.meteor.cooldown} s.`;
 ABILITIES.freeze.text = `Alle Gegner ${pct(ABILITIES.freeze.slow)} langsamer für ${ABILITIES.freeze.duration} s, Abklingzeit ${ABILITIES.freeze.cooldown} s.`;
@@ -455,6 +456,19 @@ export const STYLE = {
     gold: '#f4c542', goldDark: '#b07a14', red: '#d4503f', heart: '#e8455a', blue: '#4f7fc8',
     ice: '#7fd8f4', iceLight: '#bff0ff', wood: '#c58f55', woodDark: '#8a5a34', stone: '#b3adaa',
     skin: '#f2c9a0', leaf: '#4a8a3a', leafDark: '#3c7a30', dark: '#4a3030', pole: '#6b4a2b', string: '#f0e6d2',
+  },
+};
+
+// HUD- und Knopf-Icons im Flat-Pop-Stil (B-069, docs/STIL.md Abschnitt 5). Zeichenraster 32x32, Mitte im Ursprung.
+export const ICON = {
+  grid: 32,          // Zeichenraster in px (Motiv innerhalb von ±half)
+  half: 13,          // halbe Motivgröße (26 px Motiv, 3 px Rand)
+  outline: 2,        // Kontur im Raster (bei 16 px noch 1 px)
+  maxDpr: 3,         // höchste Pixeldichte der vorgerenderten Bilder
+  sizes: { hud: 22, heart: 16, inline: 16, button: 20, ability: 26 }, // Anzeigegröße in CSS-px
+  colors: {
+    heartEmpty: '#5b4a5e', flag: '#d4503f', meteorRock: '#7a6a64', meteorCrater: '#55474a', flame: '#ff7a1f', flameCore: '#ffc23a',
+    glass: '#bff0ff', pause: '#fff3c9', play: '#7fd24a', paper: '#e2c88f', mapMark: '#d4503f',
   },
 };
 

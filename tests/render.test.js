@@ -1240,3 +1240,96 @@ test('Tester Welten-Block: Kartenwechsel durch alle 4 Karten ist reproduzierbar 
   assert.equal(new Set(Object.values(first)).size, ids.length, 'jede Karte sieht anders aus');
   for (const a of [undefined, null, 'gibtsnicht']) for (const k of ['path', 'pathStyle', 'decor', 'ground', 'light']) assert.doesNotThrow(() => themed(a, k, PATH_STYLE), `themed(${a},${k})`);
 });
+
+// ---------- B-069: HUD- und Knopf-Icons ----------
+// Mock mit Transformationsmatrix: sammelt alle Punkte (inkl. Radius und halber Linienbreite) in Gerätekoordinaten.
+function recordIcon(drawFn) {
+  const props = {};
+  const counts = {};
+  const pts = [];
+  const stack = [];
+  let m = [1, 0, 0, 1, 0, 0];
+  let depth = 0;
+  const tp = (x, y) => [m[0] * x + m[2] * y + m[4], m[1] * x + m[3] * y + m[5]];
+  const sc = () => Math.max(Math.hypot(m[0], m[1]), Math.hypot(m[2], m[3]));
+  const add = (x, y, r = 0) => { const [px, py] = tp(x, y); pts.push({ x: px, y: py, r: r * sc() }); };
+  const ctx = new Proxy({}, {
+    get(_, k) {
+      if (k in props) return props[k];
+      return (...a) => {
+        counts[k] = (counts[k] || 0) + 1;
+        if (k === 'save') { depth++; stack.push(m.slice()); }
+        else if (k === 'restore') { depth--; assert.ok(depth >= 0, 'restore ohne save'); m = stack.pop(); }
+        else if (k === 'translate') m = [m[0], m[1], m[2], m[3], m[0] * a[0] + m[2] * a[1] + m[4], m[1] * a[0] + m[3] * a[1] + m[5]];
+        else if (k === 'scale') m = [m[0] * a[0], m[1] * a[0], m[2] * a[1], m[3] * a[1], m[4], m[5]];
+        else if (k === 'rotate') {
+          const c = Math.cos(a[0]), s = Math.sin(a[0]);
+          m = [m[0] * c + m[2] * s, m[1] * c + m[3] * s, m[2] * c - m[0] * s, m[3] * c - m[1] * s, m[4], m[5]];
+        }
+        else if (k === 'moveTo' || k === 'lineTo') add(a[0], a[1]);
+        else if (k === 'bezierCurveTo') { add(a[0], a[1]); add(a[2], a[3]); add(a[4], a[5]); }
+        else if (k === 'arcTo') { add(a[0], a[1]); add(a[2], a[3]); }
+        else if (k === 'arc') add(a[0], a[1], a[2]);
+        else if (k === 'ellipse') add(a[0], a[1], Math.max(a[2], a[3]));
+        else if (k === 'fillRect') { add(a[0], a[1]); add(a[0] + a[2], a[1] + a[3]); }
+        else if (k === 'stroke') {
+          // Linienbreite wirkt nach außen: als Rand auf alle bisherigen Punkte anrechnen
+          const half = (props.lineWidth ?? 1) * sc() / 2;
+          for (const p of pts) p.r = Math.max(p.r, half);
+        }
+      };
+    },
+    set(_, k, v) { props[k] = v; return true; },
+  });
+  const res = drawFn(ctx);
+  const b = { minX: Infinity, maxX: -Infinity, minY: Infinity, maxY: -Infinity };
+  for (const p of pts) {
+    b.minX = Math.min(b.minX, p.x - p.r); b.maxX = Math.max(b.maxX, p.x + p.r);
+    b.minY = Math.min(b.minY, p.y - p.r); b.maxY = Math.max(b.maxY, p.y + p.r);
+  }
+  return { res, counts, depth, b, n: pts.length };
+}
+
+test('B-069: jedes Icon zeichnet, bleibt in seinem Rahmen (16 und 32 px), save/restore ausgewogen', async () => {
+  const { drawIcon, ICON_NAMES } = await import('../src/render-icons.js');
+  for (const name of ['gold', 'heart', 'heartEmpty', 'wave', 'meteor', 'freeze', 'repair', 'zoom', 'pause', 'play', 'map']) {
+    assert.ok(ICON_NAMES.includes(name), `${name} fehlt`);
+  }
+  for (const name of ICON_NAMES) {
+    for (const size of [16, 32]) {
+      const cx = 50, cy = 70;
+      const rec = recordIcon((ctx) => drawIcon(ctx, name, cx, cy, size));
+      assert.equal(rec.res, true, name);
+      assert.equal(rec.depth, 0, `${name}: save/restore ausgewogen`);
+      assert.ok(rec.counts.fill > 0 && rec.n > 0, `${name}: zeichnet etwas`);
+      const half = size / 2;
+      assert.ok(rec.b.minX >= cx - half && rec.b.maxX <= cx + half && rec.b.minY >= cy - half && rec.b.maxY <= cy + half,
+        `${name}@${size}: ${JSON.stringify(rec.b)} außerhalb ${half}`);
+      // Motiv nutzt den Rahmen (mindestens 60 % der Kante), damit es bei 16 px lesbar bleibt
+      assert.ok(rec.b.maxX - rec.b.minX >= size * 0.6 || rec.b.maxY - rec.b.minY >= size * 0.6, `${name}@${size}: zu klein`);
+    }
+  }
+});
+
+test('B-069: Fähigkeiten-Icons heißen wie die ABILITIES-Schlüssel, unbekannter Name zeichnet nichts', async () => {
+  const { drawIcon, ICON_NAMES } = await import('../src/render-icons.js');
+  const { ABILITIES } = await import('../src/config.js');
+  for (const id of Object.keys(ABILITIES)) assert.ok(ICON_NAMES.includes(id), `Icon für ${id} fehlt`);
+  const m = mockCtx();
+  assert.equal(drawIcon(m.ctx, 'gibtsnicht', 0, 0, 32), false);
+  assert.equal(m.depth, 0);
+  assert.equal(m.counts.fill ?? 0, 0);
+});
+
+test('B-069 Randfälle (Tester): alle Icons zeichnen in jeder Anzeigegröße mit ausgeglichenem save/restore', async () => {
+  const { drawIcon, ICON_NAMES } = await import('../src/render-icons.js');
+  const { ICON } = await import('../src/config.js');
+  assert.equal(ICON_NAMES.length, 11);
+  for (const size of Object.values(ICON.sizes)) {
+    for (const name of ICON_NAMES) {
+      const m = mockCtx();
+      assert.equal(drawIcon(m.ctx, name, size / 2, size / 2, size), true, `${name}@${size}`);
+      assert.equal(m.depth, 0, `save/restore ausgeglichen: ${name}@${size}`);
+    }
+  }
+});

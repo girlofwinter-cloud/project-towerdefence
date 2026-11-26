@@ -304,16 +304,6 @@ Erledigte Einträge (`fertig`) liegen in `docs/archiv/BACKLOG-fertig.md`. Beim A
   - Bei 1280x800 und 1366x768 liegt `#sell` bei gewähltem Turm mit Unterkante < 800 bzw. 768.
   - Alle Turmkarten bleiben ohne Scrollen sichtbar (bestehender Browser-Test aus shop-kompakt bleibt grün).
 
-### B-058: Fähigkeitsknöpfe: Tippgröße, Symbol und Abklingbalken (Muss, Design-Prüfung)
-- Status: vorschlag
-- Aufwand: S
-- Idee: 10 Buttons unter 44 px Höhe auf dem Handy (Meteor, Kälteschock, Notfall-Reparatur, Zoom). Label "Notfall-Reparatur (E) bereit (2x)" ist umständlich, "bereit" und "lädt" sind kaum unterscheidbar. Großes Symbol, Kürzel klein, Abklingzeit als Füllbalken, auf dem Handy keine Tastenkürzel.
-- Akzeptanzkriterien:
-  - `.abilities button` und Zoom-Knopf sind auf Handy und Desktop mindestens 44 px hoch.
-  - Zustand "bereit" und "lädt" ist ohne Text unterscheidbar (Balken oder Helligkeit).
-  - Tastenkürzel-Hinweise sind auf dem Handy ausgeblendet (auch bei Pause und Tempo).
-  - Unit-/Browser-Test prüft die Mindesthöhe.
-
 
 ### B-060: Wellen-Vorschau mit Symbolen und Fortschritt am Start-Knopf (Sollte, Design-Prüfung)
 - Status: vorschlag
@@ -359,13 +349,6 @@ Reihenfolge ist Abhängigkeit: B-062 und B-063 zuerst, dann gemeinsame Sichtprü
 - Akzeptanzkriterien:
   - Je Typ ein Screenshot-Beleg, keine reine Farbunterscheidung.
 
-
-### B-069: HUD-Icons (Design-Overhaul)
-- Status: vorschlag
-- Aufwand: S
-- Idee: Gold, Herz, Welle und Fähigkeiten aus dem Icon-Set per Canvas zeichnen und in HUD/Knöpfen statt Emoji einsetzen. Verknüpft mit B-058.
-- Akzeptanzkriterien:
-  - Bei 16 und 32 px lesbar, Tippziele mindestens 44 px, keine Emoji-Mischung.
 
 ### B-070: Shop-Karten (Design-Overhaul)
 - Status: vorschlag
@@ -481,3 +464,10 @@ Reihenfolge ist Abhängigkeit: B-062 und B-063 zuerst, dann gemeinsame Sichtprü
 - Idee: (1) Restliche Zeichenzahlen in `src/render-fx.js` (`drawSniperShot` lineWidth 3, Blitz-Faktoren 0.6/0.3, Eis `/1.5`, Chill-Farbe in `drawEffectOver`) nach `FX_STYLE` in `config.js`. (2) Treffer-Blitz 0,14 s gegen 0,08 s aus `docs/STIL.md` abstimmen. (3) Boss-Auftritt wiederholt sich nach Zeitsprung/Reset (Testseite, `syncTime` → `resetFx` leert `seenEnemies`). (4) Staub-Partikel beim Boss-Auftritt, ohne den globalAlpha-Test zu verletzen.
 - Akzeptanzkriterien:
   - Keine Magic Numbers in `render-fx.js`, `npm test` grün.
+
+### B-096: HUD und Knöpfe: Feinschliff (Hinweise aus dem Block-Review B-058/B-069)
+- Status: vorschlag
+- Aufwand: S
+- Idee: (1) Restliche Emoji außerhalb von HUD/Knöpfen: 🔒 in den Kartenoptionen, 🏆/💀 im Overlay-Titel, 🏰 in der Überschrift. (2) Tastenkürzel auch bei „Ziel: … (T)“ und `<kbd>` auf den Turmkarten über `.key` auf dem Handy ausblenden; Pause-Banner zeigt auf dem Handy noch „P drücken“. (3) `#ffffff` in `src/render-icons.js` (Zoom-Glanzpunkt) nach `ICON.colors`. (4) `abilityView` gegen `uses` undefined („NaN×“) und `left` NaN (meldet „bereit“) härten.
+- Akzeptanzkriterien:
+  - Keine Emoji mehr in sichtbarer Spiel-UI außer wo technisch nötig; Randfälle mit Test; `npm test` grün.

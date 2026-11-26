@@ -1,11 +1,12 @@
 // Verbindet Spiel-Logik, Rendering und Bedienung (DOM, Maus, Tastatur).
-import { TILE, WIDTH, HEIGHT, ARROW_TOWER, TOWER_STYLE, TOWER_TYPES, ENEMY_TYPES, MAX_WAVES, MAPS, SPEED_STEPS, TARGET_MODES, TARGET_MODE_NAMES, MAX_SUBSTEP, LOW_LIVES, ABILITIES, waveSummary } from './config.js';
+import { TILE, WIDTH, HEIGHT, ARROW_TOWER, TOWER_STYLE, TOWER_TYPES, ENEMY_TYPES, MAX_WAVES, MAPS, SPEED_STEPS, TARGET_MODES, TARGET_MODE_NAMES, MAX_SUBSTEP, LOW_LIVES, ABILITIES, ICON, waveSummary } from './config.js';
 import {
   createGame, stepGame, togglePause, buildTower, upgradeTower, sellTower, setTargetMode, startWave,
   useAbility, abilityCooldownLeft, canBuild, towerAt, towerStats, upgradeCost, sellValue,
 } from './game.js';
 import { render, drawTower } from './render.js';
-import { livesText } from './hud.js';
+import { heartStates, abilityView } from './hud.js';
+import { drawIcon } from './render-icons.js';
 import { buildTapStep, aimStep } from './input.js';
 import { loadProgress, saveProgress, recordResult, isUnlocked, mapProgress, starText, resultLines, MAP_ORDER } from './progress.js';
 
@@ -43,6 +44,47 @@ let resultText = []; // Zeilen fürs Overlay (resultLines)
 window.__game = () => state;
 window.__ui = ui;
 
+// ---------- Icons (B-069) ----------
+// Icons werden einmal je Name und Größe auf ein Canvas gezeichnet und als Bild-URL wiederverwendet.
+const ICON_DPR = Math.min(ICON.maxDpr, Math.max(1, Math.ceil(window.devicePixelRatio || 1)));
+const iconCache = new Map();
+function iconUrl(name, size) {
+  const key = `${name}@${size}`;
+  let url = iconCache.get(key);
+  if (!url) {
+    const px = size * ICON_DPR;
+    const cv = document.createElement('canvas');
+    cv.width = px;
+    cv.height = px;
+    drawIcon(cv.getContext('2d'), name, px / 2, px / 2, px);
+    url = cv.toDataURL();
+    iconCache.set(key, url);
+  }
+  return url;
+}
+// <img> eines Icons; alt leer = nur Schmuck (Text daneben trägt den Namen)
+function iconHtml(name, sizeKey, alt = '') {
+  const size = ICON.sizes[sizeKey];
+  return `<img class="ico ico-${sizeKey}" src="${iconUrl(name, size)}" width="${size}" height="${size}" alt="${alt}">`;
+}
+function setIcon(img, name) {
+  const sizeKey = Object.keys(ICON.sizes).find((k) => img.classList.contains(`ico-${k}`)) ?? 'inline';
+  const size = ICON.sizes[sizeKey];
+  img.width = size;
+  img.height = size;
+  img.dataset.icon = name;
+  img.src = iconUrl(name, size);
+}
+// Statisches Markup (index.html): <img data-icon="..."> mit Bildern füllen
+for (const img of document.querySelectorAll('img[data-icon]')) setIcon(img, img.dataset.icon);
+// innerHTML nur bei Änderung neu setzen (refreshUI läuft alle 0,1 s)
+function setHtml(el, html) {
+  if (el.dataset.html === html) return;
+  el.dataset.html = html;
+  el.innerHTML = html;
+}
+const COIN = () => iconHtml('gold', 'inline', 'Gold');
+
 // ---------- Turm-Leiste ----------
 // Mini-Turm als Kartenbild: nutzt dieselbe Zeichenfunktion wie das Spielfeld (kein extra Grafik-Aufwand).
 const ICON_SIZE = 48;
@@ -63,7 +105,7 @@ for (const [type, def] of Object.entries(TOWER_TYPES)) {
   btn.dataset.type = type;
   btn.innerHTML = `<canvas class="t-icon" width="${ICON_SIZE}" height="${ICON_SIZE}"></canvas>
     <span class="t-name">${def.name} <kbd>${def.key}</kbd></span>
-    <span class="t-cost">${def.cost} 💰</span>
+    <span class="t-cost">${def.cost} ${COIN()}</span>
     <span class="t-desc">${def.description}</span>`;
   // Fähigkeiten-Text: als Tooltip der Karte (und im Turm-Info-Panel des gewählten Turms)
   if (def.special) btn.title = def.special.text;
@@ -76,7 +118,12 @@ for (const [type, def] of Object.entries(TOWER_TYPES)) {
 const abilityBtns = {};
 for (const [id, def] of Object.entries(ABILITIES)) {
   const btn = document.createElement('button');
+  btn.className = 'ability-btn';
+  btn.dataset.ability = id;
   btn.title = def.text;
+  // Großes Symbol, Kurzname mit Tastenkürzel, Ladungs-Abzeichen, Abklingbalken (B-058)
+  btn.innerHTML = `${iconHtml(id, 'ability')}<span class="ab-label">${def.short} <span class="key">${def.key.toUpperCase()}</span></span>`
+    + '<span class="ab-badge"></span><span class="ab-bar"><span class="ab-fill"></span></span>';
   btn.addEventListener('click', () => doAbility(id));
   $('abilities').appendChild(btn);
   abilityBtns[id] = btn;
@@ -214,7 +261,7 @@ $('zoom').addEventListener('click', toggleZoom);
 function toggleZoom() {
   const on = document.querySelector('.board').classList.toggle('zoomed');
   $('zoom').setAttribute('aria-pressed', String(on));
-  $('zoom').textContent = on ? '🔍 Normal' : '🔍 Zoom';
+  $('zoom-label').textContent = on ? 'Normal' : 'Zoom';
 }
 
 function doStartWave() {
@@ -280,18 +327,20 @@ function refreshUI() {
   if (state.status !== 'playing' || state.paused) ui.aiming = false; // Zielmodus nur im laufenden Spiel
   $('gold').textContent = state.gold;
   $('lives').textContent = state.lives;
-  $('hearts').textContent = livesText(state.lives);
+  renderHearts($('hearts'), state.lives);
   $('lives-box').classList.toggle('low', state.status === 'playing' && state.lives <= LOW_LIVES);
   $('wave').textContent = `${state.wave} / ${MAX_WAVES}`;
-  $('speed').textContent = `Tempo ×${ui.speed} (F)`;
+  $('speed-label').textContent = `Tempo ×${ui.speed}`;
   $('pause-hint').hidden = !state.paused;
   // Deutliches Banner über dem Spielfeld (nur Anzeige, Bauen bleibt möglich)
   $('pause-banner').hidden = !state.paused;
-  $('pause').textContent = state.paused ? '▶ Weiter (P)' : '⏸ Pause (P)';
+  $('pause-label').textContent = state.paused ? 'Weiter' : 'Pause';
+  if ($('pause-icon').dataset.icon !== (state.paused ? 'play' : 'pause')) setIcon($('pause-icon'), state.paused ? 'play' : 'pause');
   mapSelect.disabled = state.wave !== 0 || state.waveActive;
   mapSelect.value = state.mapId;
   $('start-wave').disabled = state.waveActive || state.status !== 'playing';
-  $('start-wave').textContent = state.waveActive ? 'Welle läuft…' : `Welle ${state.wave + 1} starten (Leertaste)`;
+  $('start-label').textContent = state.waveActive ? 'Welle läuft…' : `Welle ${state.wave + 1} starten`;
+  $('start-key').hidden = state.waveActive;
 
   // Vorschau der nächsten Welle (nur solange keine Welle läuft)
   const showPreview = !state.waveActive && state.status === 'playing' && state.wave < MAX_WAVES;
@@ -303,13 +352,14 @@ function refreshUI() {
   }
 
   for (const [id, def] of Object.entries(ABILITIES)) {
-    const a = state.abilities[id];
-    const left = abilityCooldownLeft(state, id);
-    const used = def.maxUses !== undefined && a.uses >= def.maxUses;
-    const status = used ? 'aufgebraucht' : left > 0 ? `${Math.ceil(left)} s` : def.maxUses !== undefined ? `bereit (${def.maxUses - a.uses}×)` : 'bereit';
-    abilityBtns[id].textContent = `${def.name} (${def.key.toUpperCase()}) ${status}`;
-    abilityBtns[id].disabled = used || left > 0 || state.status !== 'playing';
-    abilityBtns[id].classList.toggle('aiming', id === 'meteor' && ui.aiming);
+    const btn = abilityBtns[id];
+    const v = abilityView(def, state.abilities[id].uses, abilityCooldownLeft(state, id));
+    btn.setAttribute('aria-label', v.aria);
+    btn.dataset.state = v.state;
+    btn.style.setProperty('--fill', v.fill.toFixed(3));
+    btn.querySelector('.ab-badge').textContent = v.badge;
+    btn.disabled = v.state !== 'ready' || state.status !== 'playing';
+    btn.classList.toggle('aiming', id === 'meteor' && ui.aiming);
   }
 
   for (const btn of shop.children) {
@@ -326,10 +376,10 @@ function refreshUI() {
     $('ti-name').textContent = `${s.name} (Stufe ${t.level})`;
     $('ti-stats').textContent = `Schaden ${Math.round(s.damage)} · Reichweite ${s.range.toFixed(1)} · ${(1 / s.rate).toFixed(1)} Schuss/s`;
     $('ti-special').textContent = s.special?.text ?? '';
-    $('upgrade').textContent = up === null ? 'Max. Stufe' : `Verbessern (${up} 💰)`;
+    setHtml($('upgrade'), up === null ? 'Max. Stufe' : `Verbessern (${up} ${COIN()})`);
     $('upgrade').disabled = up === null || state.gold < up;
     $('target-mode').textContent = `Ziel: ${TARGET_MODE_NAMES[t.targetMode]} (T)`;
-    $('sell').textContent = `Verkaufen (+${sellValue(t)} 💰)`;
+    setHtml($('sell'), `Verkaufen (+${sellValue(t)} ${COIN()})`);
   }
 
   $('message').textContent = ui.messageTtl > 0 ? ui.message : '';
@@ -342,6 +392,14 @@ function refreshUI() {
   $('overlay-stats').textContent = `Welle ${state.wave} · ${state.kills} Gegner besiegt`;
   if (state.status !== 'playing' && !resultSaved) saveResult();
   renderResultLines($('overlay-progress'), resultText);
+}
+
+// Herzreihe als Icons (gefüllt/leer); nur neu bauen, wenn sich die Lebenszahl ändert.
+function renderHearts(el, lives) {
+  const key = String(lives);
+  if (el.dataset.key === key) return;
+  el.dataset.key = key;
+  setHtml(el, heartStates(lives).map((full) => iconHtml(full ? 'heart' : 'heartEmpty', 'heart')).join(''));
 }
 
 // Erste Zeile normal, weitere als hervorgehobene Meldungen (nur neu bauen, wenn sich etwas ändert).

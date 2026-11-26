@@ -1841,3 +1841,55 @@ test('Sniper: unbekannter Gegnertyp ohne Basis-HP crasht nicht, kein Bonus (B-05
   fireAndLand(s, tower);
   assert.ok(Math.abs((e.maxHp - e.hp) - TOWER_TYPES.sniper.damage) < 1e-6);
 });
+
+test('B-069: heartStates liefert die Herzreihe als Liste (gefüllt/leer), nie negativ, gekappt', async () => {
+  const { heartStates } = await import('../src/hud.js');
+  assert.deepEqual(heartStates(2, 4), [true, true, false, false]);
+  assert.deepEqual(heartStates(-1, 3), [false, false, false]);
+  assert.deepEqual(heartStates(9, 3), [true, true, true]);
+  assert.deepEqual(heartStates(2.7, 3), [true, true, false]);
+  assert.equal(heartStates(START_LIVES).length, START_LIVES);
+});
+
+test('B-058: abilityView liefert Zustand, Füllanteil, Abzeichen und zugänglichen Namen', async () => {
+  const { abilityView } = await import('../src/hud.js');
+  const { ABILITIES } = await import('../src/config.js');
+  const m = ABILITIES.meteor;
+  assert.deepEqual(abilityView(m, 0, 0), { state: 'ready', fill: 1, badge: '', aria: 'Meteor, bereit' });
+  const c = abilityView(m, 1, m.cooldown * 0.25);
+  assert.equal(c.state, 'charging');
+  assert.ok(Math.abs(c.fill - 0.75) < 1e-9);
+  assert.equal(c.aria, `Meteor, lädt noch ${Math.ceil(m.cooldown * 0.25)} s`);
+  assert.equal(abilityView(m, 1, m.cooldown).fill, 0, 'frisch ausgelöst = leerer Balken');
+  assert.equal(abilityView(m, 1, m.cooldown * 2).fill, 0, 'gekappt nach unten');
+  assert.equal(abilityView(m, 1, -3).state, 'ready', 'negative Restzeit = bereit');
+  const r = ABILITIES.repair;
+  assert.deepEqual(abilityView(r, 0, 0), { state: 'ready', fill: 1, badge: `${r.maxUses}×`, aria: `Notfall-Reparatur, bereit, noch ${r.maxUses} Ladungen` });
+  assert.equal(abilityView(r, r.maxUses - 1, 0).aria, 'Notfall-Reparatur, bereit, noch 1 Ladung');
+  assert.deepEqual(abilityView(r, r.maxUses, 10), { state: 'used', fill: 0, badge: '', aria: 'Notfall-Reparatur, aufgebraucht' });
+  for (const def of Object.values(ABILITIES)) assert.ok(def.short && def.short.length <= 10, `${def.name}: Kurzname vorhanden und kurz`);
+});
+
+test('B-058 Randfälle (Tester): abilityView bei Überbuchung, Restzeit knapp über 0, monotoner Balken', async () => {
+  const { abilityView } = await import('../src/hud.js');
+  const m = ABILITIES.meteor, r = ABILITIES.repair;
+  assert.equal(abilityView(r, r.maxUses + 3, 0).state, 'used', 'mehr Einsätze als erlaubt bleibt aufgebraucht');
+  assert.equal(abilityView(r, r.maxUses + 3, 0).badge, '');
+  assert.equal(abilityView(m, 0, 0.01).aria, 'Meteor, lädt noch 1 s', 'Restzeit wird aufgerundet, nie 0 s');
+  assert.equal(abilityView(m, 0, 0.01).state, 'charging');
+  let prev = -1;
+  for (let left = m.cooldown; left >= 0; left -= m.cooldown / 10) {
+    const { fill } = abilityView(m, 1, left);
+    assert.ok(fill >= prev && fill >= 0 && fill <= 1, `Füllanteil monoton in [0,1], left=${left}`);
+    prev = fill;
+  }
+  assert.equal(abilityView(m, 0, 0).badge, '', 'unbegrenzte Fähigkeit ohne Abzeichen');
+});
+
+test('B-069 Randfälle (Tester): heartStates bei 0 Leben, NaN und max 0', async () => {
+  const { heartStates, livesText } = await import('../src/hud.js');
+  assert.deepEqual(heartStates(0, 3), [false, false, false]);
+  assert.deepEqual(heartStates(NaN, 2), [false, false]);
+  assert.deepEqual(heartStates(5, 0), []);
+  assert.equal(livesText(1, 2), '❤️🖤');
+});
