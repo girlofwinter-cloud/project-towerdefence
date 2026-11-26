@@ -2,10 +2,11 @@
 // Transparenz nur ueber globalAlpha innerhalb von save/restore. Keine Allokation pro Frame.
 import {
   createFx, syncFx, shakeOffset, bossEntryProgress, MAX_PARTICLES,
-  K_NONE, K_SMOKE, K_ICE, K_SPARK, K_FLASH, K_COIN,
+  K_NONE, K_SMOKE, K_ICE, K_SPARK, K_FLASH, K_COIN, coinHop, coinSpin,
   T_ARROW, T_CANNON, T_FROST, T_SNIPER,
 } from './fx-system.js';
-import { BOSS_ENTRY } from './config.js';
+import { BOSS_ENTRY, FX_STYLE, STYLE, WIDTH, HEIGHT } from './config.js';
+import { outlineOf } from './draw-utils.js';
 
 // Ein gemeinsamer Partikelzustand fuer das Spiel (wird bei Neustart/Zeitsprung von syncFx geleert).
 const fx = createFx();
@@ -13,23 +14,29 @@ export function getFx() {
   return fx;
 }
 
-// Rein visuelle Konstanten
-const ARROW_TAIL = 16; // Schweiflaenge in Pixeln
-const ARROW_SEGMENTS = 3;
-const SNIPER_BEAM = 38;
-const COL_ARROW_TAIL = '#f5e6c8';
-const COL_SNIPER_BEAM = '#efe2ff';
-const COL_SNIPER_CORE = '#ffffff';
-const COL_FROST_GLOW = '#8fdcf5';
-const COL_SMOKE = '#6a6a70';
-const COL_ICE = '#d6f6ff';
-const COL_SPARK = '#ffcf5a';
-const COL_FLASH = '#ffffff';
-const COL_COIN = '#ffd54a';
-const COL_CANNON_SHINE = '#777';
-const COL_COIN_EDGE = '#c9a227';
-const COL_COIN_SHINE = '#fff6c4';
+// Rein visuelle Konstanten (Farben und Maße in config.js, FX_STYLE). Konturen einmal beim Laden ableiten.
 const TWO_PI = Math.PI * 2;
+const A = FX_STYLE.arrow;
+const TR = FX_STYLE.trail;
+const CN = FX_STYLE.cannon;
+const FR = FX_STYLE.frost;
+const SN = FX_STYLE.sniper;
+const BO = FX_STYLE.bolt;
+const EX = FX_STYLE.explosion;
+const HI = FX_STYLE.hit;
+const SM = FX_STYLE.smoke;
+const CO = FX_STYLE.coin;
+const CT = FX_STYLE.coinText;
+const OUT_WIDTH = STYLE.outlineWidth;
+const OUT_SHAFT = outlineOf(A.shaft);
+const OUT_HEAD = outlineOf(A.head);
+const OUT_FLETCH = outlineOf(A.fletch);
+const OUT_CANNON = outlineOf(CN.color);
+const OUT_FROST = outlineOf(FR.color);
+const OUT_EXPLOSION = outlineOf(EX.ring);
+const OUT_ICE = outlineOf(HI.ice);
+const COIN_EDGE = outlineOf(CO.dark);
+const SNIPER_INNER = 0.7; // Anteil des hellen Kerns am Strahl
 
 // Pro Frame einmal aufrufen (vor dem Zeichnen): leitet Partikel aus dem Zustand ab.
 // reducedMotion: prefers-reduced-motion (aus main.js ueber ui), schaltet das Boss-Wackeln aus.
@@ -60,125 +67,317 @@ export function shakeY() {
   return shakeOffset(fx.lastTime, fx.shakeStart, fx.shakeStrength, 1);
 }
 
-// Zusatz-Zeichnung zu einem Projektil (Schweif/Strahl/Leuchten); der Grundkreis kommt aus render.js.
+// Zeichnet ein Projektil im Flat-Pop-Stil (B-068). Rueckgabe: true, wenn gezeichnet; false bei
+// unbekanntem Typ oder nicht verfolgtem Projektil (dann zeichnet render.js einen einfachen Kreis).
 export function drawProjectileFx(ctx, p) {
   const s = fx.slotOf.get(p);
-  if (s === undefined || !fx.sActive[s]) return;
+  if (s === undefined || !fx.sActive[s]) return false;
   const type = fx.sType[s];
+  if (type !== T_ARROW && type !== T_CANNON && type !== T_FROST && type !== T_SNIPER) return false;
+  const x = fx.sX[s];
+  const y = fx.sY[s];
   const dx = fx.sDx[s];
   const dy = fx.sDy[s];
-  if (type === T_ARROW) {
-    ctx.save();
-    ctx.strokeStyle = COL_ARROW_TAIL;
-    ctx.lineWidth = 2;
-    for (let i = 0; i < ARROW_SEGMENTS; i++) {
-      const a = (i * ARROW_TAIL) / ARROW_SEGMENTS;
-      const b = ((i + 1) * ARROW_TAIL) / ARROW_SEGMENTS;
-      ctx.globalAlpha = 0.7 * (1 - i / ARROW_SEGMENTS);
-      ctx.beginPath();
-      ctx.moveTo(p.x - dx * a, p.y - dy * a);
-      ctx.lineTo(p.x - dx * b, p.y - dy * b);
-      ctx.stroke();
-    }
-    ctx.globalAlpha = 1;
-    ctx.restore();
-  } else if (type === T_SNIPER) {
-    ctx.save();
-    ctx.lineCap = 'round';
-    ctx.strokeStyle = COL_SNIPER_BEAM;
-    ctx.globalAlpha = 0.45;
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.moveTo(p.x, p.y);
-    ctx.lineTo(p.x - dx * SNIPER_BEAM, p.y - dy * SNIPER_BEAM);
-    ctx.stroke();
-    ctx.globalAlpha = 0.95;
-    ctx.strokeStyle = COL_SNIPER_CORE;
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(p.x, p.y);
-    ctx.lineTo(p.x - dx * SNIPER_BEAM * 0.7, p.y - dy * SNIPER_BEAM * 0.7);
-    ctx.stroke();
-    ctx.globalAlpha = 1;
-    ctx.restore();
-  } else if (type === T_FROST) {
-    ctx.save();
-    ctx.globalAlpha = 0.3;
-    ctx.fillStyle = COL_FROST_GLOW;
-    ctx.beginPath();
-    ctx.arc(p.x, p.y, 6, 0, TWO_PI);
-    ctx.fill();
-    ctx.globalAlpha = 1;
-    ctx.restore();
-  } else if (type === T_CANNON) {
-    ctx.save();
-    ctx.globalAlpha = 0.6; // Glanz auf der Kugel
-    ctx.fillStyle = COL_CANNON_SHINE;
-    ctx.beginPath();
-    ctx.arc(p.x - 1.5, p.y - 1.5, 1.6, 0, TWO_PI);
-    ctx.fill();
-    ctx.globalAlpha = 1;
-    ctx.restore();
-  }
+  ctx.save();
+  ctx.lineJoin = 'round';
+  ctx.lineCap = 'round';
+  if (type === T_ARROW) drawArrow(ctx, x, y, dx, dy);
+  else if (type === T_CANNON) drawCannonball(ctx, x, y);
+  else if (type === T_FROST) drawFrostShard(ctx, x, y, dx, dy);
+  else drawSniperShot(ctx, x, y, dx, dy);
+  ctx.globalAlpha = 1;
+  ctx.restore();
+  return true;
 }
 
-// Alle lebenden Partikel (nach Gegnern und Projektilen).
-export function drawParticles(ctx) {
+// Pfeil: Schweif aus wenigen Punkten, Holzschaft, Steinspitze, rote Federn. Spitze zeigt in Flugrichtung.
+function drawArrow(ctx, x, y, dx, dy) {
+  const h = A.length / 2;
+  ctx.fillStyle = TR.color;
+  for (let i = 0; i < TR.points; i++) {
+    const k = 1 - i / TR.points;
+    const d = h + (i + 1) * TR.spacing;
+    ctx.globalAlpha = TR.alpha * k;
+    ctx.beginPath();
+    ctx.arc(x - dx * d, y - dy * d, TR.size * (0.5 + 0.5 * k), 0, TWO_PI);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+  ctx.translate(x, y);
+  ctx.transform(dx, dy, -dy, dx, 0, 0); // lokale x-Achse = Flugrichtung
+  // Schaft mit Kontur
+  ctx.strokeStyle = OUT_SHAFT;
+  ctx.lineWidth = A.shaftWidth + OUT_WIDTH;
+  ctx.beginPath();
+  ctx.moveTo(-h, 0);
+  ctx.lineTo(h - A.headLen, 0);
+  ctx.stroke();
+  ctx.strokeStyle = A.shaft;
+  ctx.lineWidth = A.shaftWidth;
+  ctx.stroke();
+  ctx.lineWidth = OUT_WIDTH;
+  // Federn
+  ctx.fillStyle = A.fletch;
+  ctx.strokeStyle = OUT_FLETCH;
+  ctx.beginPath();
+  ctx.moveTo(-h - 1, -A.fletchHalf);
+  ctx.lineTo(-h + A.fletchLen, 0);
+  ctx.lineTo(-h - 1, A.fletchHalf);
+  ctx.lineTo(-h + 0.5, 0);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  // Spitze
+  ctx.fillStyle = A.head;
+  ctx.strokeStyle = OUT_HEAD;
+  ctx.beginPath();
+  ctx.moveTo(h, 0);
+  ctx.lineTo(h - A.headLen, -A.headHalf);
+  ctx.lineTo(h - A.headLen, A.headHalf);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+}
+
+// Kanonenkugel: dunkle Kugel mit Kontur und einem Glanzpunkt oben links.
+function drawCannonball(ctx, x, y) {
+  ctx.fillStyle = CN.color;
+  ctx.strokeStyle = OUT_CANNON;
+  ctx.lineWidth = OUT_WIDTH;
+  ctx.beginPath();
+  ctx.arc(x, y, CN.radius, 0, TWO_PI);
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = CN.shine;
+  ctx.beginPath();
+  ctx.arc(x - CN.radius * 0.35, y - CN.radius * 0.35, CN.shineR, 0, TWO_PI);
+  ctx.fill();
+}
+
+// Frostsplitter: Raute in Flugrichtung mit heller Oberseite und schwachem Leuchten.
+function drawFrostShard(ctx, x, y, dx, dy) {
+  ctx.globalAlpha = FR.glowAlpha;
+  ctx.fillStyle = FR.glowColor;
+  ctx.beginPath();
+  ctx.arc(x, y, FR.glowR, 0, TWO_PI);
+  ctx.fill();
+  ctx.globalAlpha = 1;
+  ctx.translate(x, y);
+  ctx.transform(dx, dy, -dy, dx, 0, 0);
+  const back = -FR.len * 0.6;
+  ctx.fillStyle = FR.color;
+  ctx.beginPath();
+  ctx.moveTo(FR.len, 0);
+  ctx.lineTo(0, -FR.half);
+  ctx.lineTo(back, 0);
+  ctx.lineTo(0, FR.half);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = FR.light;
+  ctx.beginPath();
+  ctx.moveTo(FR.len, 0);
+  ctx.lineTo(0, -FR.half);
+  ctx.lineTo(back, 0);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = OUT_FROST;
+  ctx.lineWidth = OUT_WIDTH;
+  ctx.beginPath();
+  ctx.moveTo(FR.len, 0);
+  ctx.lineTo(0, -FR.half);
+  ctx.lineTo(back, 0);
+  ctx.lineTo(0, FR.half);
+  ctx.closePath();
+  ctx.stroke();
+}
+
+// Scharfschuetze: heller Strahl hinter einer kleinen Kugel.
+function drawSniperShot(ctx, x, y, dx, dy) {
+  ctx.strokeStyle = SN.beam;
+  ctx.globalAlpha = SN.beamAlpha;
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(x, y);
+  ctx.lineTo(x - dx * SN.beamLen, y - dy * SN.beamLen);
+  ctx.stroke();
+  ctx.globalAlpha = 1;
+  ctx.strokeStyle = SN.core;
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(x, y);
+  ctx.lineTo(x - dx * SN.beamLen * SNIPER_INNER, y - dy * SN.beamLen * SNIPER_INNER);
+  ctx.stroke();
+  ctx.fillStyle = SN.bullet;
+  ctx.beginPath();
+  ctx.arc(x, y, SN.bulletR, 0, TWO_PI);
+  ctx.fill();
+}
+
+// Partikel in zwei Schichten: under = true zeichnet Rauch (unter den Gegnern), sonst Funken, Eis,
+// Treffer-Blitz und Muenzen (ueber den Gegnern, klein gehalten, damit sie keine Figur verdecken).
+export function drawParticles(ctx, under = false) {
   let any = false;
   for (let i = 0; i < MAX_PARTICLES; i++) {
-    if (fx.pkind[i] !== K_NONE) { any = true; break; }
+    const k = fx.pkind[i];
+    if (k !== K_NONE && (k === K_SMOKE) === under) { any = true; break; }
   }
   if (!any) return;
   ctx.save();
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
   for (let i = 0; i < MAX_PARTICLES; i++) {
     const k = fx.pkind[i];
-    if (k === K_NONE) continue;
+    if (k === K_NONE || (k === K_SMOKE) !== under) continue;
     const u = fx.page[i] / fx.plife[i]; // 0 neu .. 1 fast weg
     const x = fx.px[i];
     const y = fx.py[i];
     const size = fx.psize[i];
     if (k === K_SMOKE) {
-      ctx.globalAlpha = 0.5 * (1 - u);
-      ctx.fillStyle = COL_SMOKE;
+      ctx.globalAlpha = SM.alpha * (1 - u);
+      ctx.fillStyle = SM.color;
       ctx.beginPath();
-      ctx.arc(x, y, size * (1 + u * 0.6), 0, TWO_PI);
+      ctx.arc(x, y, size * (1 + u * SM.grow), 0, TWO_PI);
       ctx.fill();
     } else if (k === K_ICE) {
+      // kleine Eisraute mit Kontur
+      const r = HI.iceSize * (size > 1 ? size / 1.5 : 1);
       ctx.globalAlpha = 1 - u;
-      ctx.fillStyle = COL_ICE;
+      ctx.fillStyle = HI.ice;
+      ctx.strokeStyle = OUT_ICE;
+      ctx.lineWidth = 1;
       ctx.beginPath();
-      ctx.arc(x, y, size, 0, TWO_PI);
+      ctx.moveTo(x, y - r * 1.4);
+      ctx.lineTo(x + r, y);
+      ctx.lineTo(x, y + r * 1.4);
+      ctx.lineTo(x - r, y);
+      ctx.closePath();
       ctx.fill();
+      ctx.stroke();
     } else if (k === K_SPARK) {
       ctx.globalAlpha = 1 - u;
-      ctx.strokeStyle = COL_SPARK;
-      ctx.lineWidth = 1.5;
+      ctx.strokeStyle = HI.spark;
+      ctx.lineWidth = HI.sparkWidth;
       ctx.beginPath();
       ctx.moveTo(x, y);
       ctx.lineTo(x - fx.pvx[i] * 0.04, y - fx.pvy[i] * 0.04);
       ctx.stroke();
     } else if (k === K_FLASH) {
-      ctx.globalAlpha = 1 - u;
-      ctx.fillStyle = COL_FLASH;
+      // kleiner Vierzack-Stern statt grosser Scheibe
+      const r = HI.flashSize * (0.6 + u * 0.6);
+      const q = r * 0.3;
+      ctx.globalAlpha = HI.flashAlpha * (1 - u);
+      ctx.fillStyle = HI.flash;
       ctx.beginPath();
-      ctx.arc(x, y, size * (0.5 + u), 0, TWO_PI);
+      ctx.moveTo(x, y - r);
+      ctx.lineTo(x + q, y - q);
+      ctx.lineTo(x + r, y);
+      ctx.lineTo(x + q, y + q);
+      ctx.lineTo(x, y + r);
+      ctx.lineTo(x - q, y + q);
+      ctx.lineTo(x - r, y);
+      ctx.lineTo(x - q, y - q);
+      ctx.closePath();
       ctx.fill();
     } else if (k === K_COIN) {
-      ctx.globalAlpha = u < 0.6 ? 1 : 1 - (u - 0.6) / 0.4;
-      ctx.fillStyle = COL_COIN_EDGE;
+      const cy = y + coinHop(u, fx.reduced);
+      const w = size * coinSpin(u, fx.reduced);
+      ctx.globalAlpha = u < CO.fadeFrom ? 1 : 1 - (u - CO.fadeFrom) / (1 - CO.fadeFrom);
+      ctx.fillStyle = CO.dark;
+      ctx.strokeStyle = COIN_EDGE;
+      ctx.lineWidth = 1;
       ctx.beginPath();
-      ctx.arc(x, y, size, 0, TWO_PI);
+      ctx.ellipse(x, cy, w, size, 0, 0, TWO_PI);
       ctx.fill();
-      ctx.fillStyle = COL_COIN;
+      ctx.stroke();
+      ctx.fillStyle = CO.color;
       ctx.beginPath();
-      ctx.arc(x, y, size * 0.75, 0, TWO_PI);
+      ctx.ellipse(x, cy, w * 0.72, size * 0.72, 0, 0, TWO_PI);
       ctx.fill();
-      ctx.fillStyle = COL_COIN_SHINE;
-      ctx.beginPath();
-      ctx.arc(x - size * 0.3, y - size * 0.3, size * 0.25, 0, TWO_PI);
-      ctx.fill();
+      if (w > size * 0.6) {
+        ctx.fillStyle = CO.shine;
+        ctx.beginPath();
+        ctx.arc(x - w * 0.3, cy - size * 0.3, size * 0.22, 0, TWO_PI);
+        ctx.fill();
+      }
     }
   }
+  ctx.globalAlpha = 1;
+  ctx.restore();
+}
+
+// Effekte aus dem Spielzustand, die unter den Gegnern liegen (Explosion als Bodenfleck mit Ring).
+export function drawEffectUnder(ctx, e) {
+  if (!e || e.kind !== 'explosion') return;
+  const a = e.ttl / e.max;
+  const r = e.r * (1.2 - a * EX.grow);
+  if (!(r > 0) || !(a > 0)) return;
+  ctx.save();
+  ctx.globalAlpha = EX.fillAlpha * a;
+  ctx.fillStyle = EX.fill;
+  ctx.beginPath();
+  ctx.arc(e.x, e.y, r, 0, TWO_PI);
+  ctx.fill();
+  ctx.globalAlpha = a;
+  ctx.strokeStyle = OUT_EXPLOSION;
+  ctx.lineWidth = EX.ringWidth * a + OUT_WIDTH;
+  ctx.stroke();
+  ctx.strokeStyle = EX.ring;
+  ctx.lineWidth = EX.ringWidth * a;
+  ctx.stroke();
+  ctx.globalAlpha = 1;
+  ctx.restore();
+}
+
+// Effekte ueber den Gegnern: Frost-Schimmer, Blitz, Muenz-Text. reducedMotion: Text steigt nicht.
+export function drawEffectOver(ctx, e, reducedMotion = false) {
+  if (!e) return;
+  const a = e.ttl / e.max;
+  if (e.kind === 'chill') {
+    ctx.fillStyle = `rgba(120,200,255,${0.25 * a})`;
+    ctx.fillRect(0, 0, WIDTH, HEIGHT);
+  } else if (e.kind === 'bolt') {
+    drawBolt(ctx, e, a);
+  } else if (e.kind === 'coin') {
+    const ty = e.y - 20 + (reducedMotion ? 0 : a * CT.rise);
+    ctx.save();
+    ctx.globalAlpha = a > 0 ? (a < 1 ? a : 1) : 0;
+    ctx.font = CT.font;
+    ctx.textAlign = 'center';
+    ctx.lineJoin = 'round';
+    ctx.lineWidth = CT.outlineWidth;
+    ctx.strokeStyle = CT.outline;
+    ctx.strokeText(e.text, e.x, ty);
+    ctx.fillStyle = CT.color;
+    ctx.fillText(e.text, e.x, ty);
+    ctx.globalAlpha = 1;
+    ctx.restore();
+  }
+}
+
+// Blitzlinie: Turm -> Ziel 1 -> Ziel 2 ..., blauer Rand, goldene Mitte, heller Kern; blendet aus.
+function drawBolt(ctx, e, a) {
+  const pts = e.points;
+  if (!Array.isArray(pts) || pts.length < 2) return;
+  ctx.save();
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  const path = () => {
+    ctx.beginPath();
+    ctx.moveTo(pts[0].x, pts[0].y);
+    for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+    ctx.stroke();
+  };
+  ctx.globalAlpha = BO.outerAlpha * a;
+  ctx.strokeStyle = BO.outer;
+  ctx.lineWidth = BO.outerWidth;
+  path();
+  ctx.globalAlpha = a;
+  ctx.strokeStyle = BO.mid;
+  ctx.lineWidth = BO.midWidth;
+  path();
+  ctx.strokeStyle = BO.core;
+  ctx.lineWidth = BO.coreWidth;
+  path();
   ctx.globalAlpha = 1;
   ctx.restore();
 }

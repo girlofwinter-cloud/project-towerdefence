@@ -938,3 +938,160 @@ test('Boss-Auftritt B-067: render reicht ui.reducedMotion durch, Ring wird gezei
     else assert.ok(rings[0][0] < ENEMY_TYPES.boss.radius, 'Ring startet klein und waechst');
   }
 });
+
+// ---------- B-068: Projektile und Effekte im Flat-Pop-Stil ----------
+test('B-068: Partikel-Obergrenze unveraendert, Treffer hoechstens 6 Funken, Muenze genau ein Partikel', async () => {
+  const { spawnHit, observeEffect, T_ARROW, T_FROST, T_SNIPER } = await import('../src/fx-system.js');
+  assert.equal(MAX_PARTICLES, 256);
+  for (const type of [T_ARROW, T_FROST, T_SNIPER, 0]) {
+    const fx = createFx();
+    spawnHit(fx, type, 10, 10);
+    assert.ok(liveParticles(fx) - 1 <= 6, `Typ ${type}: Funken`); // minus Treffer-Blitz
+  }
+  const fx = createFx();
+  observeEffect(fx, { kind: 'coin', x: 5, y: 5 }, 1);
+  assert.equal(liveParticles(fx), 1);
+});
+
+test('B-068: coinHop springt hoch, hopst nach und liegt dann; reduzierte Bewegung = kein Hopser', async () => {
+  const { coinHop, coinSpin } = await import('../src/fx-system.js');
+  const { FX_STYLE } = await import('../src/config.js');
+  const c = FX_STYLE.coin;
+  assert.equal(coinHop(0), 0);
+  assert.equal(coinHop(c.split), 0);
+  assert.equal(coinHop(c.end), 0);
+  assert.equal(coinHop(1), 0);
+  assert.ok(Math.abs(coinHop(c.split / 2) + c.hop) < 1e-9, 'Scheitel = volle Hoehe');
+  assert.ok(Math.abs(coinHop((c.split + c.end) / 2) + c.hop * c.bounce) < 1e-9, 'Nachhopser kleiner');
+  for (let u = -0.5; u <= 1.5; u += 0.01) {
+    const h = coinHop(u);
+    assert.ok(h <= 0 && h >= -c.hop, `u=${u}`);
+    assert.equal(coinHop(u, true), 0);
+    const w = coinSpin(u);
+    assert.ok(w >= c.minWidth && w <= 1);
+    assert.equal(coinSpin(u, true), 1);
+  }
+  for (const bad of [NaN, undefined, Infinity]) {
+    assert.equal(coinHop(bad), 0);
+    assert.equal(coinSpin(bad), 1);
+  }
+});
+
+test('B-068: reduzierte Bewegung - Explosion ohne Wackeln, Muenze ohne Seitendrift, Partikel bleiben', () => {
+  const run = (reduced) => {
+    const fx = createFx();
+    const s = fxState(2);
+    s.effects.push({ kind: 'explosion', x: 50, y: 50, r: 44, ttl: 0.3, max: 0.3 }, { kind: 'coin', x: 9, y: 9, ttl: 1, max: 1, text: '+1' });
+    syncFx(fx, s, reduced);
+    let coin = -1;
+    for (let i = 0; i < MAX_PARTICLES; i++) if (fx.pkind[i] === K_COIN) coin = i;
+    return { fx, coin };
+  };
+  const calm = run(true);
+  assert.equal(calm.fx.shakeStrength, 0);
+  assert.equal(calm.fx.reduced, true);
+  assert.equal(calm.fx.pvx[calm.coin], 0);
+  assert.equal(calm.fx.pvy[calm.coin], 0);
+  assert.ok(liveParticles(calm.fx) > 5, 'Funken und Rauch bleiben');
+  const normal = run(false);
+  assert.ok(normal.fx.shakeStrength > 0);
+  assert.equal(normal.fx.reduced, false);
+});
+
+// Zeichen-Protokoll: jede Fuell-/Strichoperation mit aktueller Farbe; prueft save/restore und globalAlpha.
+function logCtx() {
+  const props = { globalAlpha: 1 };
+  const st = { depth: 0, minDepth: 0, ops: [] };
+  const ctx = new Proxy({}, {
+    get(_, k) {
+      if (k in props) return props[k];
+      if (k === 'createLinearGradient' || k === 'createRadialGradient') return () => ({ addColorStop() {} });
+      if (k === 'measureText') return () => ({ width: 10 });
+      return (...a) => {
+        if (k === 'save') st.depth++;
+        if (k === 'restore') { st.depth--; st.minDepth = Math.min(st.minDepth, st.depth); }
+        if (k === 'fill' || k === 'fillRect' || k === 'fillText') st.ops.push(['fill', props.fillStyle]);
+        if (k === 'stroke' || k === 'strokeText') st.ops.push(['stroke', props.strokeStyle]);
+        if (k === 'ellipse') st.ops.push(['ellipse', a[1]]);
+      };
+    },
+    set(_, k, v) { props[k] = v; return true; },
+  });
+  return { ctx, st, props };
+}
+
+test('B-068: Projektile je Typ im eigenen Stil, unbekannte als Rueckfall; save/restore und globalAlpha bleiben', async () => {
+  const { getFx, drawProjectileFx } = await import('../src/render-fx.js');
+  const { FX_STYLE } = await import('../src/config.js');
+  const fx = getFx();
+  const path = { points: [] };
+  const ps = ['arrow', 'cannon', 'frost', 'sniper', 'lightning', 'zzz', undefined].map((t) => ({ x: 100, y: 100, tx: 200, ty: 100, towerType: t }));
+  syncFx(fx, { time: 1, path, projectiles: ps });
+  const expect = { arrow: FX_STYLE.arrow.head, cannon: FX_STYLE.cannon.color, frost: FX_STYLE.frost.color, sniper: FX_STYLE.sniper.bullet };
+  for (const p of ps) {
+    const { ctx, st, props } = logCtx();
+    const drawn = drawProjectileFx(ctx, p);
+    assert.equal(drawn, Object.hasOwn(expect, p.towerType), `${p.towerType}`);
+    if (drawn) assert.ok(st.ops.some(([, c]) => c === expect[p.towerType]), `${p.towerType}: Stilfarbe`);
+    assert.equal(st.depth, 0);
+    assert.equal(st.minDepth, 0);
+    assert.equal(props.globalAlpha, 1);
+  }
+  // nicht verfolgtes Projektil -> Rueckfall
+  assert.equal(drawProjectileFx(logCtx().ctx, { x: 1, y: 1, towerType: 'arrow' }), false);
+});
+
+test('B-068: Explosion und Rauch unter den Gegnern, Funken/Muenzen darueber; Muenze hopst nur ohne reduzierte Bewegung', async () => {
+  const { render } = await import('../src/render.js');
+  const { getFx, drawParticles } = await import('../src/render-fx.js');
+  const { FX_STYLE } = await import('../src/config.js');
+  const s = createGame();
+  s.time = 2;
+  const { ctx, st, props } = logCtx();
+  render(ctx, s, {});
+  s.time = 2.05;
+  s.enemies.push(testEnemy({ x: 200, y: 200 }));
+  s.effects.push({ kind: 'explosion', x: 200, y: 200, r: 44, ttl: 0.25, max: 0.3 }, { kind: 'coin', x: 300, y: 200, ttl: 0.8, max: 0.8, text: '+5' });
+  const baseColors = new Set(st.ops.map(([, c]) => c)); // Farben ohne Gegner (Boden, Deko)
+  st.ops.length = 0;
+  render(ctx, s, {});
+  const first = (c) => st.ops.findIndex(([, x]) => x === c);
+  const last = (c) => st.ops.map(([, x]) => x).lastIndexOf(c);
+  // Gegner erkennen: erste Operation mit einer Farbe, die nur die Gegner-Zeichnung nutzt
+  const { drawEnemy } = await import('../src/render-enemies.js');
+  const solo = logCtx();
+  drawEnemy(solo.ctx, testEnemy({ x: 200, y: 200 }), s.time, buildPath(WAYPOINTS, TILE));
+  const fxColors = new Set(Object.values(FX_STYLE).flatMap((v) => Object.values(v)));
+  const enemyColors = new Set(solo.st.ops.map(([, c]) => c).filter((c) => typeof c === 'string' && !fxColors.has(c) && !baseColors.has(c)));
+  const enemy = st.ops.findIndex(([, c]) => enemyColors.has(c));
+  assert.ok(first(FX_STYLE.explosion.fill) >= 0, 'Explosion gezeichnet');
+  assert.ok(enemy >= 0, 'Gegner gezeichnet');
+  assert.ok(last(FX_STYLE.explosion.fill) < enemy, 'Explosion vor (unter) dem Gegner');
+  assert.ok(last(FX_STYLE.smoke.color) < enemy, 'Rauch vor (unter) dem Gegner');
+  assert.ok(st.ops.slice(enemy).some(([k, c]) => k === 'stroke' && c === FX_STYLE.hit.spark), 'Funken ueber dem Gegner');
+  assert.ok(st.ops.slice(enemy).some(([k, c]) => k === 'fill' && c === FX_STYLE.coin.color), 'Muenze ueber dem Gegner');
+  assert.equal(st.depth, 0);
+  assert.equal(props.globalAlpha, 1);
+  // Schichten getrennt
+  const under = logCtx();
+  drawParticles(under.ctx, true);
+  assert.ok(under.st.ops.every(([, c]) => c === FX_STYLE.smoke.color));
+  const over = logCtx();
+  drawParticles(over.ctx);
+  assert.ok(!over.st.ops.some(([, c]) => c === FX_STYLE.smoke.color));
+  // Muenz-Hoehe: mit Bewegung ueber dem Startpunkt, bei reduzierter Bewegung genau dort
+  const fx = getFx();
+  let coin = -1;
+  for (let i = 0; i < MAX_PARTICLES; i++) if (fx.pkind[i] === K_COIN) coin = i;
+  assert.ok(coin >= 0);
+  for (const reduced of [false, true]) {
+    fx.page[coin] = fx.plife[coin] * FX_STYLE.coin.split / 2;
+    fx.reduced = reduced;
+    const l = logCtx();
+    drawParticles(l.ctx);
+    const ys = l.st.ops.filter(([k]) => k === 'ellipse').map(([, y]) => y);
+    assert.ok(ys.length > 0);
+    if (reduced) assert.ok(ys.every((y) => Math.abs(y - fx.py[coin]) < 1e-6));
+    else assert.ok(ys.every((y) => y < fx.py[coin] - FX_STYLE.coin.hop * 0.9));
+  }
+});
