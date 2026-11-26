@@ -622,6 +622,12 @@ Neue Einträge werden unten angehängt. Bestehende Einträge werden nie geänder
 - Ergebnis: fertig. Neuer Abschnitt 9 in `docs/LERNEN.md`: `npm start`/Server, zwei Arten von Pipeline, Commits, Branches, Pull Requests, Lehre aus PR #57, Git-Befehle.
 - Tests: nur Doku, keine Code-Änderung.
 
+## 2026-11-26 · Doku · LERNEN.md Abschnitt 3 an den schnellen Ablauf angepasst
+- Rolle(n): Claude (interaktiv, auf Wunsch des Menschen)
+- Branch: agent/lernen-ablauf (eigener Worktree)
+- Ergebnis: fertig. Abschnitt 3 beschrieb noch den alten Ablauf (jeder Eintrag mit Tester und Reviewer, max. 3 Runden). Jetzt: Blöcke, Prüftiefe nach Risiko, Merge-Bedingungen, Entscheidungen des Menschen, Schleifenbremse 2 Runden / 1 Review-Runde, wie in `.claude/skills/pipeline/SKILL.md`.
+- Tests: nur Doku.
+
 ## 2026-11-26 · B-067 und B-068 · Boss Oger-König, Projektile und Effekte (Design-Overhaul, Block)
 - Rolle(n): orchestrator, developer (je Eintrag), danach einmal tester und reviewer über den Block (`src/main.js` berührt)
 - Branch: agent/boss-effekte
