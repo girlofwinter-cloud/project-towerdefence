@@ -808,3 +808,12 @@ Neue Einträge werden unten angehängt. Bestehende Einträge werden nie geänder
 - Ergebnis: Bonus = floor(Wellenbonus × `EARLY_START_MAX` (3) × Risiko), Risiko = Gegner-HP auf dem Feld / HP der laufenden Welle (0..1). Der Knopf zeigt den aktuellen Wert, der mit jedem Kill sinkt. Beim Bonus explodieren 12 Münzen aus der Goldanzeige, dazu „+Betrag“, eine Meldung und der neue Ton `coinBurst` (vorhandene Münz-Aufnahmen, heller).
 - Messung (Wiese, immer frühestmöglich gestartet): +692 Gold statt +195 über das Spiel; Risiko beim frühesten Start 0,45 bis 1,0. Strategien ohne Frühstart unverändert.
 - Tests: B-005-Tests auf die neue Formel umgestellt (`EARLY_START_BONUS` 0,5 → `EARLY_START_MAX` 3), 3 neue Tests, `coinBurst` in der Liste der Ereignis-Töne; 466 Unit- und 38 e2e-Tests grün.
+
+---
+
+## 2026-11-26 · B-124 + B-125 · Asynchrone Eingänge, stärkere Spätphase
+- Rolle(n): orchestrator (Umsetzung), tester, reviewer. Vom Menschen entschieden: „Schübe + Versatz“, kein fester Wellen-Takt, Stärke „Mittel“, Tests dürfen umgebaut werden.
+- Branch: agent/spaetphase-schwerer
+- B-124: Auf Karten mit zwei Eingängen kommen freie Gegnertypen in Schüben von 5 je Seite (`planLanes`, `LANE_ASYNC`), eine Seite startet je Welle 6 s später (wechselt). Feste Seiten (B-099) bleiben.
+- B-125: HP-Zuwachs ab Welle 11 von +7 % auf +11 % pro Welle (Welle 20 ca. +44 % HP). Messung beste Strategie je Karte: perfekter Sieg weiter überall möglich, weitester Gegner in Welle 10-20 jetzt 76-100 % statt 51-75 % des Wegs.
+- Tests: 6 Schwierigkeitstests umgebaut (einfache Strategien ohne Fähigkeiten dürfen in der Spätphase verlieren, aber nicht vor Welle 15 bzw. auf Zwei Fronten nicht vor Welle 9); Perfekt-Strategie auf Zwei Fronten nutzt jetzt den Kanonen-Mix; 4 neue Tests für B-124. 470 Unit- und 38 e2e-Tests grün.

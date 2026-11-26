@@ -1,12 +1,12 @@
 // Unit-Tests der Spiel-Logik (game.js, path.js, config.js). Ausführen: npm test
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createGame, mapModifiers, update, buildTower, upgradeTower, sellTower, startWave, earlyStartBonus, earlyStartRisk, earlyStartPreview, waveHp, spawnEnemy, canBuild, towerStats, upgradeCost, togglePause, stepGame, setTargetMode, pickTarget, enemyPath, chainTargets, laneFor, nearLava } from '../src/game.js';
+import { createGame, mapModifiers, update, buildTower, upgradeTower, sellTower, startWave, planLanes, earlyStartBonus, earlyStartRisk, earlyStartPreview, waveHp, spawnEnemy, canBuild, towerStats, upgradeCost, togglePause, stepGame, setTargetMode, pickTarget, enemyPath, chainTargets, laneFor, nearLava } from '../src/game.js';
 
 import { livesText, startButtonView } from '../src/hud.js';
 
 import { buildPath, pointAt, pathTiles } from '../src/path.js';
-import { TOWER_TYPES, MAX_WAVES, START_GOLD, START_LIVES, LOW_LIVES, WAYPOINTS, MAPS, DEFAULT_MAP_ID, TILE, COLS, ROWS, TARGET_MODES, EARLY_START_MAX, waveFor, waveBonus, waveSummary, hpScale, ENEMY_TYPES, SPEED_STEPS, MAX_SUBSTEP } from '../src/config.js';
+import { TOWER_TYPES, MAX_WAVES, START_GOLD, START_LIVES, LOW_LIVES, WAYPOINTS, MAPS, DEFAULT_MAP_ID, TILE, COLS, ROWS, TARGET_MODES, EARLY_START_MAX, LANE_ASYNC, waveFor, waveBonus, waveSummary, hpScale, ENEMY_TYPES, SPEED_STEPS, MAX_SUBSTEP } from '../src/config.js';
 
 import { run, freeTileNearPath, mockCtx, recordEnemy } from './helpers.js';
 
@@ -361,19 +361,19 @@ test('Simulation: Fortschrittsmessung ändert den Spielverlauf nicht (gleiches E
   assert.equal(run.progress.length, MAX_WAVES);
 });
 
-// Mehrere vernünftige Reihenfolgen müssen Welle 20 mit Reserve gewinnen (kein Münzwurf), robust gegen den Zeitschritt
-// (echtes Spiel läuft meist mit 1/60). Ersetzt die früheren Einzeltests zu Gewinn-Strategien (siehe docs/LEDGER.md).
-test('Schwierigkeit: robuste Strategien gewinnen Welle 20 mit mindestens 2 Leben (dt 1/20, 1/30, 1/60, 1/120)', () => {
-  const cases = [
-    [MIX_CANNON, [1 / 30, 1 / 60, 1 / 20, 1 / 120]],
-    [MIX_ARROW, [1 / 30, 1 / 60, 1 / 120]],
-  ];
-  for (const [mix, dts] of cases) {
-    for (const dt of dts) {
-      const s = strategyRun(mix, dt).state;
-      assert.equal(s.status, 'won', `${mix.join(',')} dt=${dt}: Status ${s.status} in Welle ${s.wave}`);
-      assert.ok(s.lives >= 2, `${mix.join(',')} dt=${dt}: nur ${s.lives} Leben übrig`);
-    }
+// B-125 (Spätphase schwerer, vom Menschen freigegeben): Früher mussten beide robusten Reihenfolgen Welle 20 mit Reserve
+// gewinnen. Jetzt gilt: Welle 1-9 bleiben unverändert (kein Lebensverlust), der Kanonen-Mix schafft die Wiese weiter
+// (robust gegen den Zeitschritt), der Pfeil-Mix ohne Fähigkeiten scheitert erst in der Spätphase (ab Welle 15).
+test('Schwierigkeit (B-125): Kanonen-Mix gewinnt die Wiese, Pfeil-Mix verliert erst in der Spätphase (dt 1/20, 1/30, 1/60, 1/120)', () => {
+  for (const dt of [1 / 30, 1 / 60, 1 / 20, 1 / 120]) {
+    const s = strategyRun(MIX_CANNON, dt).state;
+    assert.equal(s.status, 'won', `Kanonen-Mix dt=${dt}: Status ${s.status} in Welle ${s.wave}`);
+  }
+  for (const dt of [1 / 30, 1 / 60, 1 / 120]) {
+    const { state, lost } = strategyRun(MIX_ARROW, dt);
+    assert.equal(state.status, 'lost', `Pfeil-Mix dt=${dt}: ${state.status} mit ${state.lives} Leben`);
+    assert.ok(state.wave >= 15, `Pfeil-Mix dt=${dt}: verloren schon in Welle ${state.wave}`);
+    assert.equal(lost.slice(0, 9).reduce((a, b) => a + b, 0), 0, `Pfeil-Mix dt=${dt}: Leben vor Welle 10 verloren`);
   }
 });
 
@@ -1124,12 +1124,15 @@ test('Eiswelt: Slowfaktor in (0,1), Upgrade-Stufen und Kanonen-Splash skalieren 
 const mapRun = (kind, dt, mapId = 'ice') =>
   strategyRun(kind === 'cannon' ? MIX_CANNON : kind === 'arrow' ? MIX_ARROW : kind, dt, mapId).state;
 
-test('Eiswelt: robuste Strategien gewinnen Welle 20 mit mindestens 1 Leben (dt 1/30, 1/60)', () => {
-  for (const kind of ['cannon', 'arrow']) {
+// B-125: Eiswelt bleibt fordernder als die Wiese. Ohne Fähigkeiten scheitern beide robusten Reihenfolgen,
+// aber erst in der Spätphase (ab Welle 15) und mit höchstens 1 verlorenen Leben vor Welle 10.
+test('Eiswelt (B-125): einfache Strategien ohne Fähigkeiten verlieren erst in der Spätphase (dt 1/30, 1/60)', () => {
+  for (const mix of [MIX_CANNON, MIX_ARROW]) {
     for (const dt of [1 / 30, 1 / 60]) {
-      const s = mapRun(kind, dt);
-      assert.equal(s.status, 'won', `${kind} dt=${dt}: Status ${s.status} in Welle ${s.wave}`);
-      assert.ok(s.lives >= 1, `${kind} dt=${dt}: ${s.lives} Leben`);
+      const { state, lost } = strategyRun(mix, dt, 'ice');
+      assert.equal(state.status, 'lost', `${mix.join(',')} dt=${dt}: ${state.status} mit ${state.lives} Leben`);
+      assert.ok(state.wave >= 15, `${mix.join(',')} dt=${dt}: verloren schon in Welle ${state.wave}`);
+      assert.ok(lost.slice(0, 9).reduce((a, b) => a + b, 0) <= 1, `${mix.join(',')} dt=${dt}: zu viele Leben vor Welle 10`);
     }
   }
 });
@@ -1142,12 +1145,11 @@ test('Eiswelt: nur Pfeiltürme verlieren vor Welle 12 (dt 1/30, 1/60)', () => {
   }
 });
 
-// B-046: Zangenangriff (fork): robuste Strategien schaffen Welle 20 mit mindestens 1 Leben.
-test('Zangenangriff: robuste Strategien gewinnen Welle 20 mit mindestens 1 Leben (dt 1/30)', () => {
-  for (const kind of ['cannon', 'arrow']) {
-    const s = mapRun(kind, 1 / 30, 'fork');
-    assert.equal(s.status, 'won', `${kind}: Status ${s.status} in Welle ${s.wave}`);
-    assert.ok(s.lives >= 1, `${kind}: ${s.lives} Leben`);
+// B-046/B-125: Zangenangriff (fork): der Kanonen-Mix schafft Welle 20 weiter (dt 1/30 und 1/60).
+test('Zangenangriff (B-125): Kanonen-Mix gewinnt Welle 20 (dt 1/30, 1/60)', () => {
+  for (const dt of [1 / 30, 1 / 60]) {
+    const s = mapRun('cannon', dt, 'fork');
+    assert.equal(s.status, 'won', `dt=${dt}: Status ${s.status} in Welle ${s.wave}`);
   }
 });
 
@@ -1165,13 +1167,14 @@ test('Modifikatoren: Wiese hat keine, Zangenangriff schwächere Kanone, Zwei Fro
   }
 });
 
-test('Zangenangriff: robuste Strategie (Kanone zuerst) gewinnt Welle 20 mit mindestens 1 Leben (dt 1/30, 1/60)', () => {
-  for (const mapId of ['fork']) {
-    for (const dt of [1 / 30, 1 / 60]) {
-      const s = mapRun('arrow', dt, mapId);
-      assert.equal(s.status, 'won', `${mapId} dt=${dt}: Status ${s.status} in Welle ${s.wave}`);
-      assert.ok(s.lives >= 1 && s.lives < 10, `${mapId} dt=${dt}: ${s.lives} Leben`);
-    }
+// B-125: Die Reihenfolge „Kanone zuerst“ gewann früher mit 1-9 Leben; jetzt scheitert sie ohne Fähigkeiten in der
+// Spätphase (ab Welle 15), ohne vor Welle 10 Leben zu verlieren.
+test('Zangenangriff (B-125): Strategie Kanone zuerst verliert erst in der Spätphase (dt 1/30, 1/60)', () => {
+  for (const dt of [1 / 30, 1 / 60]) {
+    const { state, lost } = strategyRun(MIX_ARROW, dt, 'fork');
+    assert.equal(state.status, 'lost', `dt=${dt}: ${state.status} mit ${state.lives} Leben`);
+    assert.ok(state.wave >= 15, `dt=${dt}: verloren schon in Welle ${state.wave}`);
+    assert.equal(lost.slice(0, 9).reduce((a, b) => a + b, 0), 0, `dt=${dt}: Leben vor Welle 10 verloren`);
   }
 });
 
@@ -1383,11 +1386,14 @@ test('Karte Zwei Fronten: Wege gültig, getrennt bis auf ein kurzes Endstück, B
   }
 });
 
-test('Zwei Fronten: Kanonen-Mix über beide Wege gewinnt Welle 20 mit 1 bis 9 Leben (dt 1/30, 1/60)', () => {
+// B-124: Seit den asynchronen Schüben reicht der Kanonen-Mix ohne Fähigkeiten auf Zwei Fronten nicht mehr
+// (früher: Sieg mit 1-9 Leben); er hält aber bis Welle 9. Mit Meteor und Kälteschock gewinnt er ohne Lebensverlust
+// (siehe „Perfektes Spiel möglich“).
+test('Zwei Fronten (B-124): Kanonen-Mix ohne Fähigkeiten verliert, aber nicht vor Welle 9 (dt 1/30, 1/60)', () => {
   for (const dt of [1 / 30, 1 / 60]) {
     const s = mapRun('cannon', dt, 'twin');
-    assert.equal(s.status, 'won', `dt=${dt}: Status ${s.status} in Welle ${s.wave}`);
-    assert.ok(s.lives >= 1 && s.lives < 10, `dt=${dt}: ${s.lives} Leben`);
+    assert.equal(s.status, 'lost', `dt=${dt}: Status ${s.status} mit ${s.lives} Leben`);
+    assert.ok(s.wave >= 9, `dt=${dt}: verloren schon in Welle ${s.wave}`);
   }
 });
 
@@ -1767,12 +1773,13 @@ test('Blitzturm-Rolle: gegen Flitzer- und Goblin-Schwärme besser als Kanonen, g
 
 // Blitz-Mix (Kanone, Pfeil, Blitz, Frost): gewinnt Welle 20 auf Wiese und Eiswelt mit mindestens 1 Leben, unabhängig vom Zeitschritt.
 const MIX_LIGHTNING = ['cannon', 'arrow', 'lightning', 'frost'];
-test('Strategie: Blitz-Mix gewinnt Welle 20 auf Wiese und Eiswelt (dt 1/30, 1/60), nicht deutlich leichter als der Kanonen-Mix', () => {
+// B-125: Der Blitz-Mix gewann früher Wiese und Eiswelt; seit der stärkeren Spätphase hält er ohne Fähigkeiten
+// bis mindestens Welle 15 und ist weiterhin nicht leichter als der Kanonen-Mix.
+test('Strategie (B-125): Blitz-Mix hält auf Wiese und Eiswelt bis zur Spätphase (dt 1/30, 1/60), nicht leichter als der Kanonen-Mix', () => {
   for (const mapId of ['meadow', 'ice']) {
     for (const dt of [1 / 30, 1 / 60]) {
       const s = strategyRun(MIX_LIGHTNING, dt, mapId).state;
-      assert.equal(s.status, 'won', `${mapId} dt=${dt}: Status ${s.status} in Welle ${s.wave}`);
-      assert.ok(s.lives >= 1, `${mapId} dt=${dt}: ${s.lives} Leben`);
+      assert.ok(s.status === 'won' || s.wave >= 15, `${mapId} dt=${dt}: verloren schon in Welle ${s.wave}`);
     }
   }
   for (const dt of [1 / 30, 1 / 60]) {
@@ -2277,6 +2284,9 @@ test('Vulkan: ohne Lava-Schaden verliert auch der Kanonen-Mix ohne Überhitzung 
 // (der erste Boss in Welle 5 ist schneller), sonst die zweite Kanone (Zwei Fronten: viele Flitzer in Welle 4).
 const PERFECT_ORDER = ['cannon', 'arrow', 'cannon', 'sniper', 'sniper', 'frost', 'sniper', 'lightning'];
 const PERFECT_ORDER_VOLCANO = ['cannon', 'arrow', 'sniper', 'cannon', 'sniper', 'frost', 'sniper', 'lightning'];
+// B-125: Auf Zwei Fronten reicht seit der stärkeren Spätphase der Kanonen-Mix (mit Fähigkeiten) für ein perfektes Spiel,
+// die Scharfschützen-Reihenfolge verliert dort Leben.
+const PERFECT_ORDER_TWIN = ['arrow', 'cannon', 'cannon', 'frost'];
 
 function bestCoolSpot(state, rangeTiles) {
   return rankedSpots(state, rangeTiles, true)[0] || null;
@@ -2284,7 +2294,7 @@ function bestCoolSpot(state, rangeTiles) {
 
 function perfectRun(mapId, dt) {
   const s = createGame({ mapId });
-  const order = mapId === 'volcano' ? PERFECT_ORDER_VOLCANO : PERFECT_ORDER;
+  const order = mapId === 'volcano' ? PERFECT_ORDER_VOLCANO : mapId === 'twin' ? PERFECT_ORDER_TWIN : PERFECT_ORDER;
   let lost = 0;
   while (s.status === 'playing' && s.wave < MAX_WAVES) {
     for (let again = true; again;) {
@@ -3045,4 +3055,73 @@ test('B-123: mehr Gegner auf dem Feld = mehr Frühstart-Gold, besiegte Gegner se
   const a = startWave(full).bonus;
   const b = startWave(few).bonus;
   assert.ok(a > b, `volles Feld ${a} > fast leeres Feld ${b}`);
+});
+
+// --- B-124: asynchrone Eingänge (Schübe und Versatz) ---
+
+test('B-124: planLanes ändert Karten mit einem Weg nicht', () => {
+  const s = createGame({ mapId: 'meadow' });
+  const list = waveFor(12);
+  assert.equal(planLanes(s, list, 12), list);
+});
+
+test('B-124: freie Typen kommen in Schüben je Seite, der erste auf der frühen Seite (wechselt je Welle), feste Typen bleiben auf ihrer Seite', () => {
+  for (const mapId of ['fork', 'twin']) {
+    const s = createGame({ mapId });
+    const fixed = MAPS[mapId].lanes;
+    for (const wave of [1, 2, 12]) {
+      const raw = waveFor(wave);
+      const planned = planLanes(s, raw, wave);
+      assert.equal(planned.length, raw.length);
+      for (const e of planned) if (fixed[e.type] !== undefined) assert.equal(e.lane, fixed[e.type], `${mapId} W${wave} ${e.type}`);
+      // Reihenfolge der freien Typen in der Rohliste -> Seiten in Blöcken von burst
+      const free = raw.map((e, i) => ({ ...e, i })).filter((e) => fixed[e.type] === undefined);
+      const byIndex = new Map();
+      // planned ist umsortiert: über (type, at ohne Versatz) zuordnen ist mehrdeutig, daher Seiten in Rohreihenfolge neu berechnen
+      const lanes = planLanes(s, raw.map((e, i) => ({ ...e, i })), wave).filter((e) => fixed[e.type] === undefined).sort((a, b) => a.i - b.i).map((e) => e.lane);
+      for (let k = 0; k < free.length; k++) byIndex.set(k, lanes[k]);
+      for (let k = 0; k < free.length; k++) {
+        const expected = (Math.floor(k / LANE_ASYNC.burst) + (wave % 2) + 1) % 2; // erster Schub auf der frühen Seite
+        assert.equal(byIndex.get(k), expected, `${mapId} W${wave} freier Gegner ${k}`);
+      }
+      // Seiten nicht streng abwechselnd: mindestens ein Schub mit burst Gegnern hintereinander auf einer Seite
+      if (free.length >= LANE_ASYNC.burst) assert.ok(lanes.slice(0, LANE_ASYNC.burst).every((l) => l === lanes[0]));
+    }
+  }
+});
+
+test('B-124: je Welle startet eine Seite um LANE_ASYNC.offset später, die Seite wechselt; Liste bleibt nach Zeit sortiert', () => {
+  const s = createGame({ mapId: 'fork' });
+  for (const wave of [3, 4]) {
+    const raw = waveFor(wave).map((e, i) => ({ ...e, i }));
+    const planned = planLanes(s, raw, wave);
+    const late = wave % 2;
+    for (const e of planned) {
+      const base = raw[e.i].at;
+      assert.equal(e.at, base + (e.lane === late ? LANE_ASYNC.offset : 0), `W${wave} Eintrag ${e.i}`);
+    }
+    for (let k = 1; k < planned.length; k++) assert.ok(planned[k].at >= planned[k - 1].at);
+    const first = (lane) => Math.min(...planned.filter((e) => e.lane === lane).map((e) => e.at));
+    assert.ok(first(late) >= first(1 - late) + LANE_ASYNC.offset - 1e-9, `W${wave}: späte Seite startet später`);
+  }
+  assert.ok(LANE_ASYNC.burst >= 2 && LANE_ASYNC.offset > 0);
+});
+
+test('B-124: gespawnte Gegner laufen auf der geplanten Seite, auch beim Frühstart', () => {
+  const s = createGame({ mapId: 'twin' });
+  startWave(s);
+  const plannedLanes = s.spawnQueue.map((e) => e.lane);
+  assert.ok(plannedLanes.every((l) => l === 0 || l === 1));
+  spawnAll(s);
+  assert.deepEqual(s.enemies.map((e) => e.lane).sort(), [...plannedLanes].sort());
+  const n = s.enemies.length;
+  assert.ok(startWave(s).ok);
+  assert.ok(s.spawnQueue.every((e) => e.lane === 0 || e.lane === 1 ), 'Frühstart-Welle geplant');
+  spawnAll(s);
+  for (const e of s.enemies.slice(n)) assert.equal(e.path ?? enemyPath(s, e), s.paths[e.lane]);
+  // Direkter Aufruf ohne Seite: Wechsel wie bisher (B-099)
+  const d = createGame({ mapId: 'fork' });
+  assert.deepEqual([spawnEnemy(d, 'grunt', 1).lane, spawnEnemy(d, 'grunt', 1).lane], [0, 1]);
+  assert.equal(spawnEnemy(d, 'grunt', 1, 1).lane, 1);
+  assert.equal(spawnEnemy(d, 'grunt', 1, 7).lane, 0, 'ungültige Seite -> Wechsel');
 });

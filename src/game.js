@@ -1,7 +1,7 @@
 // Spiel-Logik: kompletter Zustand + update(). Kein DOM, kein Canvas -> in Node testbar.
 import {
   TILE, COLS, ROWS, START_GOLD, START_LIVES, MAX_WAVES, SELL_RATIO, MAX_LEVEL, MAX_SUBSTEP, TARGET_MODES,
-  MAPS, DEFAULT_MAP_ID, TOWER_TYPES, ABILITIES, WIDTH, HEIGHT, ENEMY_TYPES, LAVA, FX_STYLE, AUTO_WAVE_DELAY, earlyStartBonus, waveFor, waveBonus, hpScale, meteorDamage,
+  MAPS, DEFAULT_MAP_ID, LANE_ASYNC, TOWER_TYPES, ABILITIES, WIDTH, HEIGHT, ENEMY_TYPES, LAVA, FX_STYLE, AUTO_WAVE_DELAY, earlyStartBonus, waveFor, waveBonus, hpScale, meteorDamage,
 } from './config.js';
 import { buildPath, pointAt, pathTiles } from './path.js';
 
@@ -207,11 +207,11 @@ export function startWave(state) {
   if (!early) {
     state.waveActive = true;
     state.waveTime = 0;
-    state.spawnQueue = waveFor(wave).map((e) => ({ ...e, wave }));
+    state.spawnQueue = planLanes(state, waveFor(wave), wave).map((e) => ({ ...e, wave }));
     return { ok: true, wave, bonus: 0 };
   }
   const offset = state.waveTime;
-  const added = waveFor(wave).map((e) => ({ ...e, at: e.at + offset, wave }));
+  const added = planLanes(state, waveFor(wave), wave).map((e) => ({ ...e, at: e.at + offset, wave }));
   // Stabil nach Zeit sortieren: spawnStep arbeitet die Liste von vorne ab
   state.spawnQueue = [...state.spawnQueue, ...added].sort((a, b) => a.at - b.at);
   const bonus = earlyStartBonus(wave, risk);
@@ -231,11 +231,33 @@ export function laneFor(state, type, count) {
   return lane;
 }
 
-export function spawnEnemy(state, type, wave = state.wave) {
+// B-124: Spawn-Liste einer Welle für Karten mit mehreren Eingängen: jeder Eintrag bekommt seine Seite.
+// Feste Typen (MAPS[mapId].lanes) bleiben auf ihrer Seite, die übrigen kommen in Schüben von LANE_ASYNC.burst
+// (der erste Schub kommt auf der frühen Seite). Eine Seite startet LANE_ASYNC.offset Sekunden später, ebenfalls je Welle wechselnd.
+// Mit nur einem Weg bleibt die Liste unverändert.
+export function planLanes(state, list, wave) {
+  const count = (state.paths || [state.path]).length;
+  if (count < 2) return list;
+  const fixedLanes = MAPS[state.mapId]?.lanes || {};
+  const late = wave % count; // diese Seite startet später
+  let n = 0;
+  const out = list.map((e) => {
+    const fixed = fixedLanes[e.type];
+    let lane;
+    if (Number.isInteger(fixed) && fixed >= 0 && fixed < count) lane = fixed;
+    else lane = (Math.floor(n++ / LANE_ASYNC.burst) + late + 1) % count; // erster Schub auf der frühen Seite
+    return { ...e, lane, at: e.at + (lane === late ? LANE_ASYNC.offset : 0) };
+  });
+  // Stabil nach Zeit sortieren: spawnStep arbeitet die Liste von vorne ab
+  return out.sort((a, b) => a.at - b.at);
+}
+
+export function spawnEnemy(state, type, wave = state.wave, lane = null) {
   const def = ENEMY_TYPES[type];
   const hp = Math.round(def.hp * hpScale(Math.max(1, wave)));
   const paths = state.paths || [state.path];
-  const lane = laneFor(state, type, paths.length);
+  // B-124: vorgeplante Seite aus der Spawn-Liste, sonst Wechsel wie bisher
+  if (!(Number.isInteger(lane) && lane >= 0 && lane < paths.length)) lane = laneFor(state, type, paths.length);
   const path = paths[lane];
   const pos = pointAt(path, 0);
   const enemy = {
@@ -358,7 +380,7 @@ function spawnStep(state, dt) {
   state.waveTime += dt;
   while (state.spawnQueue.length && state.spawnQueue[0].at <= state.waveTime) {
     const next = state.spawnQueue.shift();
-    spawnEnemy(state, next.type, next.wave ?? state.wave); // HP-Skalierung der eigenen Welle
+    spawnEnemy(state, next.type, next.wave ?? state.wave, next.lane ?? null); // HP-Skalierung der eigenen Welle, B-124: geplante Seite
   }
 }
 
