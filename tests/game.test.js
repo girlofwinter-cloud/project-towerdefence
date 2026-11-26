@@ -1850,3 +1850,22 @@ test('B-069: heartStates liefert die Herzreihe als Liste (gefüllt/leer), nie ne
   assert.deepEqual(heartStates(2.7, 3), [true, true, false]);
   assert.equal(heartStates(START_LIVES).length, START_LIVES);
 });
+
+test('B-058: abilityView liefert Zustand, Füllanteil, Abzeichen und zugänglichen Namen', async () => {
+  const { abilityView } = await import('../src/hud.js');
+  const { ABILITIES } = await import('../src/config.js');
+  const m = ABILITIES.meteor;
+  assert.deepEqual(abilityView(m, 0, 0), { state: 'ready', fill: 1, badge: '', aria: 'Meteor, bereit' });
+  const c = abilityView(m, 1, m.cooldown * 0.25);
+  assert.equal(c.state, 'charging');
+  assert.ok(Math.abs(c.fill - 0.75) < 1e-9);
+  assert.equal(c.aria, `Meteor, lädt noch ${Math.ceil(m.cooldown * 0.25)} s`);
+  assert.equal(abilityView(m, 1, m.cooldown).fill, 0, 'frisch ausgelöst = leerer Balken');
+  assert.equal(abilityView(m, 1, m.cooldown * 2).fill, 0, 'gekappt nach unten');
+  assert.equal(abilityView(m, 1, -3).state, 'ready', 'negative Restzeit = bereit');
+  const r = ABILITIES.repair;
+  assert.deepEqual(abilityView(r, 0, 0), { state: 'ready', fill: 1, badge: `${r.maxUses}×`, aria: `Notfall-Reparatur, bereit, noch ${r.maxUses} Ladungen` });
+  assert.equal(abilityView(r, r.maxUses - 1, 0).aria, 'Notfall-Reparatur, bereit, noch 1 Ladung');
+  assert.deepEqual(abilityView(r, r.maxUses, 10), { state: 'used', fill: 0, badge: '', aria: 'Notfall-Reparatur, aufgebraucht' });
+  for (const def of Object.values(ABILITIES)) assert.ok(def.short && def.short.length <= 10, `${def.name}: Kurzname vorhanden und kurz`);
+});

@@ -5,7 +5,7 @@ import {
   useAbility, abilityCooldownLeft, canBuild, towerAt, towerStats, upgradeCost, sellValue,
 } from './game.js';
 import { render, drawTower } from './render.js';
-import { heartStates } from './hud.js';
+import { heartStates, abilityView } from './hud.js';
 import { drawIcon } from './render-icons.js';
 import { buildTapStep, aimStep } from './input.js';
 import { loadProgress, saveProgress, recordResult, isUnlocked, mapProgress, starText, resultLines, MAP_ORDER } from './progress.js';
@@ -121,7 +121,9 @@ for (const [id, def] of Object.entries(ABILITIES)) {
   btn.className = 'ability-btn';
   btn.dataset.ability = id;
   btn.title = def.text;
-  btn.innerHTML = `${iconHtml(id, 'ability')}<span class="ab-label"></span>`;
+  // Großes Symbol, Kurzname mit Tastenkürzel, Ladungs-Abzeichen, Abklingbalken (B-058)
+  btn.innerHTML = `${iconHtml(id, 'ability')}<span class="ab-label">${def.short} <span class="key">${def.key.toUpperCase()}</span></span>`
+    + '<span class="ab-badge"></span><span class="ab-bar"><span class="ab-fill"></span></span>';
   btn.addEventListener('click', () => doAbility(id));
   $('abilities').appendChild(btn);
   abilityBtns[id] = btn;
@@ -328,16 +330,17 @@ function refreshUI() {
   renderHearts($('hearts'), state.lives);
   $('lives-box').classList.toggle('low', state.status === 'playing' && state.lives <= LOW_LIVES);
   $('wave').textContent = `${state.wave} / ${MAX_WAVES}`;
-  $('speed').textContent = `Tempo ×${ui.speed} (F)`;
+  $('speed-label').textContent = `Tempo ×${ui.speed}`;
   $('pause-hint').hidden = !state.paused;
   // Deutliches Banner über dem Spielfeld (nur Anzeige, Bauen bleibt möglich)
   $('pause-banner').hidden = !state.paused;
-  $('pause-label').textContent = state.paused ? 'Weiter (P)' : 'Pause (P)';
+  $('pause-label').textContent = state.paused ? 'Weiter' : 'Pause';
   if ($('pause-icon').dataset.icon !== (state.paused ? 'play' : 'pause')) setIcon($('pause-icon'), state.paused ? 'play' : 'pause');
   mapSelect.disabled = state.wave !== 0 || state.waveActive;
   mapSelect.value = state.mapId;
   $('start-wave').disabled = state.waveActive || state.status !== 'playing';
-  $('start-wave').textContent = state.waveActive ? 'Welle läuft…' : `Welle ${state.wave + 1} starten (Leertaste)`;
+  $('start-label').textContent = state.waveActive ? 'Welle läuft…' : `Welle ${state.wave + 1} starten`;
+  $('start-key').hidden = state.waveActive;
 
   // Vorschau der nächsten Welle (nur solange keine Welle läuft)
   const showPreview = !state.waveActive && state.status === 'playing' && state.wave < MAX_WAVES;
@@ -349,13 +352,14 @@ function refreshUI() {
   }
 
   for (const [id, def] of Object.entries(ABILITIES)) {
-    const a = state.abilities[id];
-    const left = abilityCooldownLeft(state, id);
-    const used = def.maxUses !== undefined && a.uses >= def.maxUses;
-    const status = used ? 'aufgebraucht' : left > 0 ? `${Math.ceil(left)} s` : def.maxUses !== undefined ? `bereit (${def.maxUses - a.uses}×)` : 'bereit';
-    abilityBtns[id].lastChild.textContent = `${def.name} (${def.key.toUpperCase()}) ${status}`;
-    abilityBtns[id].disabled = used || left > 0 || state.status !== 'playing';
-    abilityBtns[id].classList.toggle('aiming', id === 'meteor' && ui.aiming);
+    const btn = abilityBtns[id];
+    const v = abilityView(def, state.abilities[id].uses, abilityCooldownLeft(state, id));
+    btn.setAttribute('aria-label', v.aria);
+    btn.dataset.state = v.state;
+    btn.style.setProperty('--fill', v.fill.toFixed(3));
+    btn.querySelector('.ab-badge').textContent = v.badge;
+    btn.disabled = v.state !== 'ready' || state.status !== 'playing';
+    btn.classList.toggle('aiming', id === 'meteor' && ui.aiming);
   }
 
   for (const btn of shop.children) {
