@@ -92,7 +92,7 @@ function meteorEvents(tr, e, running, out) {
 // ---------- Begrenzung ----------
 // Je Art (Schuss je Turmtyp, Tod, Boss, Meteor) höchstens perWindow Töne pro window Sekunden Echtzeit.
 // overrides: eigene Grenzen je Art (Warnton beim Lebensverlust seltener)
-export function createLimiter(limit = SOUND.limit, overrides = { lifeLost: SOUND.lifeLost.limit }) {
+export function createLimiter(limit = SOUND.limit, overrides = { ...SOUND.limitOverrides, lifeLost: SOUND.lifeLost.limit }) {
   return { limit, overrides, slots: new Map() };
 }
 
@@ -113,21 +113,21 @@ export function allowSound(lim, key, now) {
   return true;
 }
 
-// Gemeinsame Obergrenze aller Töne (Schlüssel '*'): erst prüfen, dann je Art, dann zählen.
+// Gemeinsame Obergrenze aller Schuss-Töne (Schlüssel '*'): erst prüfen, dann je Art, dann zählen.
 const TOTAL = '*';
 function totalSlot(lim, now) {
   let s = lim.slots.get(TOTAL);
-  if (!s || !(now >= s.start) || now - s.start >= lim.limit.window) {
+  if (!s || !(now >= s.start) || now - s.start >= (lim.limit.totalWindow ?? lim.limit.window)) {
     s = { start: now, count: 0 };
     lim.slots.set(TOTAL, s);
   }
   return s;
 }
 
-// true = Ton darf spielen (Grenze je Art und, außer bei SOUND.totalExempt, die gemeinsame Grenze)
+// true = Ton darf spielen (Grenze je Art; Schüsse zusätzlich die gemeinsame Grenze)
 export function allowEvent(lim, ev, now) {
   const key = soundKey(ev);
-  if (SOUND.totalExempt.includes(ev.kind)) return allowSound(lim, key, now);
+  if (ev.kind !== 'shot' || SOUND.totalExempt.includes(ev.kind)) return allowSound(lim, key, now);
   const total = totalSlot(lim, now);
   if (total.count >= lim.limit.total) return false;
   if (!allowSound(lim, key, now)) return false;

@@ -1101,50 +1101,57 @@ export const FX_STYLE = {
 
 // B-113: Töne (Web Audio, synthetisiert, keine Dateien). Jeder Ton besteht aus Lagen:
 // osc = Oszillator (wave, freq -> endFreq in Hz), noise = gefiltertes Rauschen (filter, cutoff in Hz, q).
-// duration in s, gain = Spitzenlautstärke der Lage (0..1), attack = Anstiegszeit in s, delay = Start nach s (optional).
+// duration in s, gain = Spitzenlautstärke der Lage (0..1), attack = Anstiegszeit in s, delay = Start nach s (optional),
+// endCutoff = Filterfrequenz am Ende (optional, Rauschen gleitet exponentiell von cutoff dorthin).
 // Die Hüllkurve fällt exponentiell bis SOUND.floorGain ab.
 export const SOUND = {
-  masterGain: 0.16,     // Gesamtlautstärke (leise)
+  masterGain: 0.12,     // Gesamtlautstärke (leise)
+  masterLowpass: 4500,  // Tiefpass am Master in Hz (nimmt Schärfe)
+  masterLowpassQ: 0.7,
   floorGain: 0.0001,    // Endwert der Hüllkurve (exponentiell, darf nicht 0 sein)
   attack: 0.005,        // Standard-Anstiegszeit in s
   noiseLength: 0.5,     // Länge des gemeinsamen Rauschen-Buffers in s
   storageKey: 'td-sound', // localStorage-Schlüssel für Ton an/aus
   defaultOn: true,
   // Begrenzung: höchstens perWindow Töne je Art (Schuss je Turmtyp, Tod, Boss) pro window Sekunden Echtzeit
-  // Zusätzlich alle Töne zusammen höchstens total pro window; Warnton und Meteor zählen nie dagegen.
-  limit: { window: 0.1, perWindow: 3, total: 6 },
+  // Schuss-Töne zusammen höchstens total pro totalWindow (Tode, Boss, Warnton und Meteor zählen nie dagegen).
+  limit: { window: 0.12, perWindow: 1, total: 3, totalWindow: 0.15 },
+  limitOverrides: { death: { window: 0.1, perWindow: 2 } }, // eigene Grenzen je Art (Warnton: lifeLost.limit)
   totalExempt: ['lifeLost', 'meteorFlight', 'meteorImpact'],
+  // Tonhöhen-Variation je Schuss (Anteil, ±), damit Salven nicht maschinell klingen
+  shotPitchVar: { arrow: 0.06, cannon: 0.04, frost: 0.05, sniper: 0.05, lightning: 0.05 },
   shots: {
-    // Pfeil: kurzes Zupfen/Sirren
+    // Pfeil: tiefer Sehnen-"Twang" mit leisem Oberton, dann Flug-"Wusch" (Bandpass gleitet nach oben)
     arrow: [
-      { type: 'osc', wave: 'triangle', freq: 1250, endFreq: 620, duration: 0.09, gain: 0.35 },
-      { type: 'noise', filter: 'bandpass', cutoff: 3200, q: 2, duration: 0.04, gain: 0.12 },
+      { type: 'osc', wave: 'triangle', freq: 230, endFreq: 185, duration: 0.12, gain: 0.2, attack: 0.002 },
+      { type: 'osc', wave: 'sine', freq: 460, endFreq: 370, duration: 0.06, gain: 0.06, attack: 0.002 },
+      { type: 'noise', filter: 'bandpass', cutoff: 900, endCutoff: 2600, q: 1.5, duration: 0.18, gain: 0.11, attack: 0.055, delay: 0.02 },
     ],
     // Kanone: dumpfer Knall mit Rauschen
     cannon: [
-      { type: 'osc', wave: 'sine', freq: 140, endFreq: 42, duration: 0.3, gain: 0.8 },
-      { type: 'noise', filter: 'lowpass', cutoff: 700, q: 0.7, duration: 0.22, gain: 0.55 },
+      { type: 'osc', wave: 'sine', freq: 140, endFreq: 42, duration: 0.3, gain: 0.4 },
+      { type: 'noise', filter: 'lowpass', cutoff: 700, q: 0.7, duration: 0.22, gain: 0.28 },
     ],
-    // Frost: heller, glasiger Ton (zwei Sinus im nicht-ganzzahligen Verhältnis)
+    // Frost: sanftes, glasiges "Kling" (zwei Sinus zwischen 1200 und 1800 Hz)
     frost: [
-      { type: 'osc', wave: 'sine', freq: 1900, endFreq: 2300, duration: 0.2, gain: 0.18 },
-      { type: 'osc', wave: 'sine', freq: 4750, endFreq: 5600, duration: 0.12, gain: 0.07 },
+      { type: 'osc', wave: 'sine', freq: 1500, endFreq: 1420, duration: 0.22, gain: 0.1 },
+      { type: 'osc', wave: 'sine', freq: 1790, endFreq: 1760, duration: 0.12, gain: 0.04 },
     ],
-    // Scharfschütze: scharfer, kurzer Knall
+    // Scharfschütze: kurzes, tieferes "Tock" (Rauschen im Bandpass plus Sinus)
     sniper: [
-      { type: 'noise', filter: 'highpass', cutoff: 1800, q: 0.7, duration: 0.07, gain: 0.5 },
-      { type: 'osc', wave: 'square', freq: 520, endFreq: 140, duration: 0.08, gain: 0.12 },
+      { type: 'noise', filter: 'bandpass', cutoff: 1500, q: 2, duration: 0.06, gain: 0.25 },
+      { type: 'osc', wave: 'sine', freq: 420, endFreq: 220, duration: 0.07, gain: 0.15 },
     ],
-    // Blitz: Zischen/Knistern
+    // Blitz: kurzes Zischen
     lightning: [
-      { type: 'noise', filter: 'bandpass', cutoff: 5200, q: 1.2, duration: 0.18, gain: 0.35 },
-      { type: 'osc', wave: 'sawtooth', freq: 95, endFreq: 70, duration: 0.14, gain: 0.06 },
+      { type: 'noise', filter: 'bandpass', cutoff: 2500, q: 1.2, duration: 0.11, gain: 0.18 },
+      { type: 'osc', wave: 'triangle', freq: 95, endFreq: 70, duration: 0.09, gain: 0.03 },
     ],
   },
   // Besiegter Gegner: kurzer "Plopp", Tonhöhe zufällig um ±pitchVar (Anteil) variiert
   death: {
-    pitchVar: 0.18,
-    layers: [{ type: 'osc', wave: 'sine', freq: 520, endFreq: 210, duration: 0.11, gain: 0.4 }],
+    pitchVar: 0.25,
+    layers: [{ type: 'osc', wave: 'sine', freq: 440, endFreq: 170, duration: 0.1, gain: 0.3, attack: 0.008 }],
   },
   // Boss besiegt: tiefer, größerer Ton
   boss: {

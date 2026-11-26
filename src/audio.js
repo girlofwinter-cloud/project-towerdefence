@@ -19,7 +19,13 @@ export function unlockAudio() {
       audio.ctx = new Ctor();
       audio.master = audio.ctx.createGain();
       audio.master.gain.value = SOUND.masterGain;
-      audio.master.connect(audio.ctx.destination);
+      // Tiefpass am Master gegen Schärfe
+      const soft = audio.ctx.createBiquadFilter();
+      soft.type = 'lowpass';
+      soft.frequency.value = SOUND.masterLowpass;
+      soft.Q.value = SOUND.masterLowpassQ;
+      audio.master.connect(soft);
+      soft.connect(audio.ctx.destination);
       audio.noise = makeNoise(audio.ctx);
     }
     if (audio.ctx.state === 'suspended') audio.ctx.resume().catch(() => {});
@@ -62,7 +68,9 @@ function playLayer(ctx, t0, layer, pitch) {
     src.loop = true;
     const f = ctx.createBiquadFilter();
     f.type = layer.filter;
-    f.frequency.value = layer.cutoff * pitch;
+    f.frequency.setValueAtTime(layer.cutoff * pitch, t);
+    // optional: Filter gleitet zum Endwert (z. B. Pfeil-Flug)
+    if (layer.endCutoff) f.frequency.exponentialRampToValueAtTime(layer.endCutoff * pitch, end);
     f.Q.value = layer.q;
     src.connect(f);
     f.connect(env);
@@ -80,7 +88,7 @@ function playLayer(ctx, t0, layer, pitch) {
 }
 
 function layersFor(ev) {
-  if (ev.kind === 'shot') return { layers: SOUND.shots[ev.tower], pitchVar: 0 };
+  if (ev.kind === 'shot') return { layers: SOUND.shots[ev.tower], pitchVar: SOUND.shotPitchVar[ev.tower] || 0 };
   if (ev.kind === 'death') return SOUND.death;
   if (ev.kind === 'boss') return SOUND.boss;
   if (ev.kind === 'lifeLost') return SOUND.lifeLost;

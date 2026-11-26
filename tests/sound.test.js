@@ -275,12 +275,15 @@ test('B-113 Rand: Tempo x3 -> Begrenzung nach Echtzeit, je Art höchstens perWin
     real += 1 / 60;
     stepGame(state, 1 / 60, 3);
     for (const ev of collectSounds(tr, state, real)) {
-      const k = `${soundKey(ev)}@${Math.floor(real / SOUND.limit.window)}`;
+      const key = soundKey(ev);
+      const w = (key === 'lifeLost' ? SOUND.lifeLost.limit : SOUND.limitOverrides[key] ?? SOUND.limit).window;
+      const k = `${key}@${Math.floor(real / w)}`;
       perKey.set(k, (perKey.get(k) || 0) + 1);
     }
   }
   for (const [k, n] of perKey) {
-    const lim = k.startsWith('lifeLost') ? SOUND.lifeLost.limit.perWindow : SOUND.limit.perWindow;
+    const key = k.split('@')[0];
+    const lim = (key === 'lifeLost' ? SOUND.lifeLost.limit : SOUND.limitOverrides[key] ?? SOUND.limit).perWindow;
     // Fenster gleiten (Start beim ersten Ton), daher höchstens 2x je festem Raster-Fenster
     assert.ok(n <= 2 * lim, `${k}: ${n}`);
   }
@@ -293,14 +296,15 @@ test('B-113 Review: gemeinsame Obergrenze aller Töne; Warnton und Meteor fallen
   const types = ['arrow', 'cannon', 'frost', 'sniper', 'lightning'];
   let n = 0;
   for (const tower of types) for (let i = 0; i < L.perWindow; i++) if (allowEvent(lim, { kind: 'shot', tower }, 0)) n++;
-  if (allowEvent(lim, { kind: 'death' }, 0.01)) n++;
-  if (allowEvent(lim, { kind: 'boss' }, 0.01)) n++;
   assert.equal(n, L.total);
+  // Tode und Boss zählen nicht gegen die Schuss-Obergrenze: trotz voller Grenze erlaubt
+  assert.equal(allowEvent(lim, { kind: 'death' }, 0.01), true);
+  assert.equal(allowEvent(lim, { kind: 'boss' }, 0.01), true);
   // ausgenommen: trotz voller Obergrenze erlaubt
   for (const kind of SOUND.totalExempt) assert.equal(allowEvent(lim, { kind }, 0.02), true, kind);
   assert.deepEqual([...SOUND.totalExempt].sort(), ['lifeLost', 'meteorFlight', 'meteorImpact']);
   // neues Fenster: wieder frei
-  assert.equal(allowEvent(lim, { kind: 'shot', tower: 'arrow' }, L.window + 0.05), true);
+  assert.equal(allowEvent(lim, { kind: 'shot', tower: 'arrow' }, Math.max(L.window, L.totalWindow) + 0.01), true);
   // collectSounds: viele Türme bei Tempo x3 in einem Frame -> höchstens total, Warnton trotzdem dabei
   const state = createGame();
   const tr = createSoundTracker();
@@ -311,4 +315,89 @@ test('B-113 Review: gemeinsame Obergrenze aller Töne; Warnton und Meteor fallen
   const evs = collectSounds(tr, state, 5);
   assert.equal(evs.filter((e) => e.kind === 'shot').length, L.total);
   assert.ok(evs.some((e) => e.kind === 'lifeLost'));
+});
+
+test('B-113: Pfeil-Ton = tiefe Sehne plus Flug-Rauschen mit steigendem Bandpass, leichte Variation nur beim Pfeil', () => {
+  const arrow = SOUND.shots.arrow;
+  const twang = arrow.find((l) => l.type === 'osc');
+  assert.ok(twang.freq < 400 && twang.endFreq < twang.freq, 'tiefer, fallender Sehnenton');
+  const whoosh = arrow.find((l) => l.type === 'noise');
+  assert.equal(whoosh.filter, 'bandpass');
+  assert.ok(whoosh.endCutoff > whoosh.cutoff, 'Mittenfrequenz gleitet nach oben');
+  assert.ok(whoosh.delay > 0 && whoosh.attack > twang.attack);
+  assert.deepEqual(Object.keys(SOUND.shotPitchVar).sort(), Object.keys(TOWER_TYPES).sort());
+  assert.ok(SOUND.shotPitchVar.arrow > 0 && SOUND.shotPitchVar.arrow <= 0.1);
+  for (const [t, v] of Object.entries(SOUND.shotPitchVar)) assert.ok(v >= 0.04 && v <= 0.06, t);
+  // endCutoff nur bei Rauschen und immer > 0 (exponentielle Rampe)
+  const all = [...Object.values(SOUND.shots), SOUND.death.layers, SOUND.boss.layers, SOUND.lifeLost.layers, SOUND.meteor.flight, SOUND.meteor.impact];
+  for (const l of all.flat()) if ('endCutoff' in l) assert.ok(l.type === 'noise' && l.endCutoff > 0);
+});
+
+test('B-113: audio.js setzt endCutoff als Filter-Rampe und variiert die Pfeil-Tonhöhe (Web Audio nachgebaut)', async () => {
+  const calls = [];
+  const param = (name) => ({ value: 0, setValueAtTime: (v, t) => calls.push([name, 'set', v, t]), exponentialRampToValueAtTime: (v, t) => calls.push([name, 'ramp', v, t]) });
+  const node = () => ({ connect() {}, start() {}, stop() {} });
+  class FakeCtx {
+    constructor() { this.state = 'running'; this.currentTime = 1; this.sampleRate = 100; this.destination = {}; }
+    createGain() { return { ...node(), gain: param('gain') }; }
+    createBuffer(_c, len) { return { getChannelData: () => new Float32Array(len) }; }
+    createBufferSource() { return node(); }
+    createBiquadFilter() { return { ...node(), frequency: param('filter'), Q: { value: 0 } }; }
+    createOscillator() { return { ...node(), frequency: param('osc') }; }
+    resume() { return Promise.resolve(); }
+    suspend() { return Promise.resolve(); }
+  }
+  const hadWindow = 'window' in globalThis;
+  globalThis.window = { AudioContext: FakeCtx };
+  const origRandom = Math.random;
+  try {
+    const { unlockAudio, setSoundOn, playSound } = await import(`../src/audio.js?fake=${Date.now()}`);
+    setSoundOn(true);
+    unlockAudio();
+    Math.random = () => 1; // höchste Variation: pitch = 1 + pitchVar
+    playSound({ kind: 'shot', tower: 'arrow' });
+    const k = 1 + SOUND.shotPitchVar.arrow;
+    const w = SOUND.shots.arrow.find((l) => l.endCutoff);
+    const f = calls.filter((c) => c[0] === 'filter');
+    assert.ok(Math.abs(f[0][2] - w.cutoff * k) < 1e-9 && f[0][1] === 'set');
+    assert.ok(Math.abs(f[1][2] - w.endCutoff * k) < 1e-9 && f[1][1] === 'ramp');
+    assert.ok(Math.abs(f[1][3] - (1 + w.delay + w.duration)) < 1e-9, 'Rampe endet am Lagenende');
+    const o = calls.find((c) => c[0] === 'osc' && c[1] === 'set');
+    assert.ok(Math.abs(o[2] - SOUND.shots.arrow[0].freq * k) < 1e-9, 'Sehne mitvariiert');
+    // Kanone: ohne endCutoff kein Filter-Ramp; Math.random = 0,5 -> keine Variation
+    calls.length = 0;
+    Math.random = () => 0.5;
+    playSound({ kind: 'shot', tower: 'cannon' });
+    assert.ok(!calls.some((c) => c[0] === 'filter' && c[1] === 'ramp'));
+    assert.equal(calls.find((c) => c[0] === 'osc' && c[1] === 'set')[2], SOUND.shots.cannon[0].freq);
+  } finally {
+    Math.random = origRandom;
+    if (hadWindow) globalThis.window = undefined; else delete globalThis.window;
+  }
+});
+
+test('B-113: Töne weicher und seltener (Grenzen, Lautstärken, Klangfarbe aus SOUND)', () => {
+  const L = SOUND.limit;
+  assert.ok(L.perWindow === 1 && L.window >= 0.1, 'je Turmtyp höchstens 1 Ton pro ~0,12 s');
+  assert.ok(L.total <= 3 && L.totalWindow >= 0.15, 'alle Schüsse zusammen höchstens ~3 pro 0,15 s');
+  assert.ok(SOUND.limitOverrides.death.perWindow <= 2);
+  // Tode: höchstens 2 pro Fenster
+  const lim = createLimiter();
+  const d = [0, 0.01, 0.02, 0.03].filter((t) => allowEvent(lim, { kind: 'death' }, t)).length;
+  assert.equal(d, SOUND.limitOverrides.death.perWindow);
+  // Schüsse: über alle Typen höchstens total im Fenster, auch über mehrere Frames verteilt
+  let s = 0;
+  for (let i = 0; i < 10; i++) for (const tower of Object.keys(TOWER_TYPES)) if (allowEvent(lim, { kind: 'shot', tower }, i * 0.01)) s++;
+  assert.equal(s, L.total);
+  // weich: Master-Tiefpass, kein Rechteck/Sägezahn, Frost ohne hohen Oberton
+  assert.ok(SOUND.masterLowpass >= 3000 && SOUND.masterLowpass <= 6000);
+  assert.ok(SOUND.masterGain <= 0.12);
+  for (const layers of Object.values(SOUND.shots)) for (const l of layers) assert.ok(l.wave !== 'square' && l.wave !== 'sawtooth');
+  for (const l of SOUND.shots.frost) assert.ok(l.freq <= 1800 && l.endFreq <= 1800);
+  assert.ok(SOUND.shots.lightning.every((l) => l.type !== 'noise' || l.cutoff <= 3000));
+  // Schüsse leiser als Meteor, Boss und Warnton
+  const peak = (ls) => Math.max(...ls.map((l) => l.gain));
+  const loudestShot = Math.max(...Object.values(SOUND.shots).map(peak));
+  for (const ls of [SOUND.meteor.impact, SOUND.boss.layers, SOUND.lifeLost.layers]) assert.ok(peak(ls) > loudestShot);
+  assert.equal(SOUND.death.layers[0].wave, 'sine');
 });
