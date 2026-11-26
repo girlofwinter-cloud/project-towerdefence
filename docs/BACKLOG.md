@@ -154,16 +154,15 @@ Erledigte Einträge (`fertig`) liegen in `docs/archiv/BACKLOG-fertig.md`. Beim A
   - Je Punkt einzeln bewertbar, nur CSS/UI, keine Spiel-Logik.
   - `npm test` und `npm run test:e2e` bleiben grün.
 
-### B-030: Welt Vulkan (Lava-Felder)
-- Status: vorschlag
+### B-030: Welt Vulkan (Lava-Felder und Lavafluss)
+- Status: offen
 - Aufwand: L
-- Idee: Lava-Felder neben dem Weg schaden Gegnern in Reichweite; Türme zu nah an Lava überhitzen und schießen langsamer. Hängt von B-027 ab. Risiko: Balancing.
+- Idee: Fünfte Karte `volcano`, freigeschaltet nach Zwei Fronten, die schwerste Karte. Lava-Kacheln (Lavafluss quer über die Karte plus einzelne Lava-Felder) sind nicht bebaubar. Gegner auf Weg-Kacheln direkt neben Lava nehmen leichten Schaden pro Sekunde; Türme direkt neben Lava überhitzen und schießen langsamer. Entscheidung des Menschen am 2026-11-26: Schaden + Überhitzung, 5. Karte, etwas schwerer als Zwei Fronten.
 - Akzeptanzkriterien:
-  - Map `volcano` mit `hazards` (Lava-Kacheln, Schaden pro Sekunde, Überhitzungsradius).
-  - Test: Gegner neben Lava nehmen Schaden; Turm in Lava-Nähe hat längere Schussrate.
-  - Lavafluss gleich mit einplanen: nicht bebaubare Lava-Kacheln quer über die Karte (Technik wie Wasser aus B-104, Brücke wo der Weg kreuzt), optisch mit Glühen. Ob der Fluss auch Gegner oder Türme in der Nähe beeinflusst, entscheidet der Mensch.
-  - Beide robusten Strategien aus den Balancing-Tests können Welle 20 noch schaffen.
-
+  - `MAPS.volcano` mit `lava` (Kacheln), Brücke wo der Weg den Lavafluss kreuzt (Technik wie Wasser aus B-104); Werte (Schaden/s, Überhitzungs-Faktor, Nachbarschaft) in `src/config.js`.
+  - Tests: Gegner neben Lava nehmen Schaden, weiter weg nicht; Turm neben Lava hat längere Schussrate; Lava ist nicht bebaubar; Freischaltung nach Zwei Fronten.
+  - Optik im Flat-Pop-Stil: dunkles Vulkangestein, glühende Lava mit Kontur, Brücke aus Stein oder dunklem Holz; Desktop und Handy per Screenshot.
+  - Balancing per Simulation (dt 1/30 und 1/60): mindestens eine robuste Strategie gewinnt Welle 20, mit weniger Reserve als auf Zwei Fronten; eine schwache Strategie verliert.
 ### B-031: Welt Wüste (Sandsturm)
 - Status: vorschlag
 - Aufwand: M
