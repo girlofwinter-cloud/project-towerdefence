@@ -1206,4 +1206,84 @@ export const SOUND = {
       meteorImpact:     { files: ['meteor-impact-1', 'meteor-impact-2'], gain: 1.4, pitchVar: 0.04 },
     },
   },
+  // B-115: Ereignis-Töne (Bauen, Ausbauen, Verkaufen, Wellenstart, Sieg, Niederlage). Deutlich lauter als Schüsse,
+  // zählen nicht gegen die gemeinsame Schuss-Grenze; je Art eigene Grenze (limit). layers = Synthese-Ersatz.
+  events: {
+    // Bauen: drei dumpfe Holzschläge
+    build: {
+      pitchVar: 0.04,
+      limit: { window: 0.25, perWindow: 1 },
+      layers: [
+        { type: 'noise', filter: 'lowpass', cutoff: 900, q: 0.8, duration: 0.07, gain: 0.5 },
+        { type: 'osc', wave: 'triangle', freq: 190, endFreq: 120, duration: 0.08, gain: 0.5 },
+        { type: 'noise', filter: 'lowpass', cutoff: 900, q: 0.8, duration: 0.07, gain: 0.4, delay: 0.16 },
+        { type: 'osc', wave: 'triangle', freq: 180, endFreq: 115, duration: 0.08, gain: 0.4, delay: 0.16 },
+        { type: 'noise', filter: 'lowpass', cutoff: 900, q: 0.8, duration: 0.1, gain: 0.5, delay: 0.32 },
+        { type: 'osc', wave: 'triangle', freq: 170, endFreq: 105, duration: 0.12, gain: 0.5, delay: 0.32 },
+      ],
+    },
+    // Ausbauen: aufsteigender Dreiklang
+    upgrade: {
+      pitchVar: 0,
+      limit: { window: 0.2, perWindow: 1 },
+      layers: [
+        { type: 'osc', wave: 'triangle', freq: 523, endFreq: 523, duration: 0.1, gain: 0.35 },
+        { type: 'osc', wave: 'triangle', freq: 659, endFreq: 659, duration: 0.1, gain: 0.35, delay: 0.08 },
+        { type: 'osc', wave: 'triangle', freq: 784, endFreq: 784, duration: 0.2, gain: 0.35, delay: 0.16 },
+      ],
+    },
+    // Verkaufen: zwei helle Münz-Klänge
+    sell: {
+      pitchVar: 0.03,
+      limit: { window: 0.2, perWindow: 1 },
+      layers: [
+        { type: 'osc', wave: 'sine', freq: 1900, endFreq: 1850, duration: 0.12, gain: 0.25 },
+        { type: 'osc', wave: 'sine', freq: 2300, endFreq: 2250, duration: 0.18, gain: 0.25, delay: 0.07 },
+      ],
+    },
+    // Wellenstart: kurzes Horn (Quinte aufwärts)
+    waveStart: {
+      pitchVar: 0,
+      limit: { window: 1, perWindow: 1 },
+      layers: [
+        { type: 'osc', wave: 'sawtooth', freq: 233, endFreq: 233, duration: 0.16, gain: 0.25, attack: 0.03 },
+        { type: 'osc', wave: 'sawtooth', freq: 349, endFreq: 349, duration: 0.35, gain: 0.25, attack: 0.03, delay: 0.15 },
+      ],
+    },
+    // Sieg: kurze aufsteigende Fanfare
+    won: {
+      pitchVar: 0,
+      limit: { window: 2, perWindow: 1 },
+      layers: [
+        { type: 'osc', wave: 'triangle', freq: 392, endFreq: 392, duration: 0.14, gain: 0.4 },
+        { type: 'osc', wave: 'triangle', freq: 523, endFreq: 523, duration: 0.14, gain: 0.4, delay: 0.13 },
+        { type: 'osc', wave: 'triangle', freq: 659, endFreq: 659, duration: 0.14, gain: 0.4, delay: 0.26 },
+        { type: 'osc', wave: 'triangle', freq: 784, endFreq: 784, duration: 0.6, gain: 0.45, delay: 0.39 },
+      ],
+    },
+    // Niederlage: dumpfer, absteigender Jingle
+    lost: {
+      pitchVar: 0,
+      limit: { window: 2, perWindow: 1 },
+      layers: [
+        { type: 'osc', wave: 'triangle', freq: 349, endFreq: 345, duration: 0.3, gain: 0.4 },
+        { type: 'osc', wave: 'triangle', freq: 330, endFreq: 326, duration: 0.3, gain: 0.4, delay: 0.3 },
+        { type: 'osc', wave: 'triangle', freq: 311, endFreq: 307, duration: 0.3, gain: 0.4, delay: 0.6 },
+        { type: 'osc', wave: 'triangle', freq: 294, endFreq: 270, duration: 0.9, gain: 0.45, delay: 0.9 },
+        { type: 'osc', wave: 'sine', freq: 147, endFreq: 135, duration: 1.2, gain: 0.3, delay: 0.6 },
+      ],
+    },
+  },
+  // B-115: Aufnahmen der Ereignis-Töne (Kenney, CC0, siehe LIZENZ.md). Aufbau wie samples, Schlüssel = Ereignis-Art.
+  eventSamples: {
+    base: 'assets/sounds/',
+    sounds: {
+      build:     { files: ['build-1', 'build-2'], gain: 0.8, pitchVar: 0.04 },
+      upgrade:   { files: ['upgrade-1', 'upgrade-2'], gain: 0.6, pitchVar: 0 },
+      sell:      { files: ['sell-1', 'sell-2'], gain: 0.7, pitchVar: 0.03 },
+      waveStart: { files: ['wave-start'], gain: 0.8, pitchVar: 0 },
+      won:       { files: ['won'], gain: 0.9, pitchVar: 0 },
+      lost:      { files: ['lost'], gain: 0.9, pitchVar: 0 },
+    },
+  },
 };

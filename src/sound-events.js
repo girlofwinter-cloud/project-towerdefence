@@ -14,6 +14,9 @@ export function createSoundTracker() {
     meteorFlights: new WeakSet(), // Meteore, deren Anflug schon zu hören war (oder verpasst ist)
     meteorImpacts: new WeakSet(), // Meteore, deren Einschlag schon ausgewertet ist
     enemies: [],                  // Gegner im letzten Frame (für Tode)
+    towers: new Map(),            // B-115: Turm -> Stufe im letzten Frame (Bauen, Ausbauen, Verkaufen)
+    waveActive: false,            // B-115: Welle lief im letzten Frame (Wellenstart)
+    status: 'playing',            // B-115: Status im letzten Frame (Sieg, Niederlage)
     limiter: createLimiter(),
   };
 }
@@ -33,6 +36,15 @@ function absorb(tr, state) {
   }
   tr.enemies = (state.enemies || []).slice();
   tr.lives = state.lives;
+  tr.towers = towerLevels(state);
+  tr.waveActive = !!state.waveActive;
+  tr.status = state.status;
+}
+
+function towerLevels(state) {
+  const m = new Map();
+  for (const t of state.towers || []) if (t && typeof t === 'object') m.set(t, t.level);
+  return m;
 }
 
 // Ereignisse seit dem letzten Aufruf (ohne Begrenzung):
@@ -77,6 +89,39 @@ export function detectSoundEvents(tr, state) {
   return out;
 }
 
+// B-115: Ereignis-Töne aus Zustandswechseln, je Art höchstens einmal pro Frame:
+// { kind: 'build' }, { kind: 'upgrade' }, { kind: 'sell' }, { kind: 'waveStart' }, { kind: 'won' }, { kind: 'lost' }
+// Abgelehnte Aktionen ändern nichts und bleiben still. Neues Spiel oder Zeit rückwärts -> nur merken (wie oben).
+export function detectStateEvents(tr, state) {
+  const out = [];
+  if (!state) return out;
+  const time = Number.isFinite(state.time) ? state.time : 0;
+  if (tr.state !== state || time < tr.lastTime) {
+    tr.state = state;
+    tr.lastTime = time;
+    absorb(tr, state);
+    return out;
+  }
+  tr.lastTime = time;
+  const now = towerLevels(state);
+  let built = false, upgraded = false, sold = false;
+  for (const [t, level] of now) {
+    if (!tr.towers.has(t)) built = true;
+    else if (level > tr.towers.get(t)) upgraded = true;
+  }
+  for (const t of tr.towers.keys()) if (!now.has(t)) sold = true;
+  tr.towers = now;
+  if (built) out.push({ kind: 'build' });
+  if (upgraded) out.push({ kind: 'upgrade' });
+  if (sold) out.push({ kind: 'sell' });
+  const active = !!state.waveActive;
+  if (active && !tr.waveActive && state.status === 'playing') out.push({ kind: 'waveStart' });
+  tr.waveActive = active;
+  if (state.status !== tr.status && (state.status === 'won' || state.status === 'lost')) out.push({ kind: state.status });
+  tr.status = state.status;
+  return out;
+}
+
 // Meteor: Anflug-Ton einmal, solange er noch fliegt; Einschlag einmal, nur wenn er frisch ist (wie fx-system meteorStep).
 function meteorEvents(tr, e, running, out) {
   const p = meteorPhase(e);
@@ -92,7 +137,14 @@ function meteorEvents(tr, e, running, out) {
 // ---------- Begrenzung ----------
 // Je Art (Schuss je Turmtyp, Tod, Boss, Meteor) höchstens perWindow Töne pro window Sekunden Echtzeit.
 // overrides: eigene Grenzen je Art (Warnton beim Lebensverlust seltener)
-export function createLimiter(limit = SOUND.limit, overrides = { ...SOUND.limitOverrides, lifeLost: SOUND.lifeLost.limit }) {
+// B-115: Ereignis-Töne mit eigener Grenze aus SOUND.events (zählen nie gegen die gemeinsame Schuss-Grenze)
+function eventLimits() {
+  const o = {};
+  for (const [k, def] of Object.entries(SOUND.events)) o[k] = def.limit;
+  return o;
+}
+
+export function createLimiter(limit = SOUND.limit, overrides = { ...SOUND.limitOverrides, lifeLost: SOUND.lifeLost.limit, ...eventLimits() }) {
   return { limit, overrides, slots: new Map() };
 }
 
@@ -137,7 +189,8 @@ export function allowEvent(lim, ev, now) {
 
 // Erkennen und begrenzen in einem Schritt (Aufruf pro Frame aus main.js).
 export function collectSounds(tr, state, now) {
-  return detectSoundEvents(tr, state).filter((ev) => allowEvent(tr.limiter, ev, now));
+  const evs = [...detectSoundEvents(tr, state), ...detectStateEvents(tr, state)];
+  return evs.filter((ev) => allowEvent(tr.limiter, ev, now));
 }
 
 // ---------- Ton an/aus (localStorage, Speicher wird übergeben) ----------
@@ -155,20 +208,27 @@ export function saveSoundOn(storage, on) {
 }
 
 // ---------- B-114: Aufnahmen (Zuordnung, Variante, Ersatz) ----------
+// Standard: Aufnahmen der Schüsse usw. (B-114) und der Ereignis-Töne (B-115). Einzelne Gruppe oder Liste erlaubt.
+const SAMPLE_GROUPS = [SOUND.samples, SOUND.eventSamples];
+const groupsOf = (samples) => (Array.isArray(samples) ? samples : [samples]);
+
 // Alle zu ladenden Dateien: [{ key, url }] (key wie soundKey, url relativ zur Seite)
-export function sampleUrls(samples = SOUND.samples) {
+export function sampleUrls(samples = SAMPLE_GROUPS) {
   const out = [];
-  for (const [key, def] of Object.entries(samples.sounds)) {
-    for (const f of def.files || []) out.push({ key, url: `${samples.base}${f}.m4a` });
+  for (const group of groupsOf(samples)) {
+    for (const [key, def] of Object.entries(group.sounds)) {
+      for (const f of def.files || []) out.push({ key, url: `${group.base}${f}.m4a` });
+    }
   }
   return out;
 }
 
 // Wahl für ein Ereignis. buffers: Map key -> geladene Varianten. rnd() liefert [0, 1).
 // { type: 'sample', buffer, gain, rate } oder { type: 'synth' } (keine Aufnahme geladen: Synthese als Ersatz)
-export function planSound(ev, buffers, rnd = Math.random, samples = SOUND.samples) {
+export function planSound(ev, buffers, rnd = Math.random, samples = SAMPLE_GROUPS) {
   const key = soundKey(ev);
-  const def = samples.sounds[key];
+  const group = groupsOf(samples).find((g) => Object.hasOwn(g.sounds, key));
+  const def = group && group.sounds[key];
   const list = def && buffers && typeof buffers.get === 'function' ? buffers.get(key) : null;
   if (!list || list.length === 0) return { type: 'synth' };
   const i = Math.min(list.length - 1, Math.floor(rnd() * list.length));

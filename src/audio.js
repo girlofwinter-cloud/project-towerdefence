@@ -133,6 +133,7 @@ function layersFor(ev) {
   if (ev.kind === 'lifeLost') return SOUND.lifeLost;
   if (ev.kind === 'meteorFlight') return { layers: SOUND.meteor.flight, pitchVar: 0 };
   if (ev.kind === 'meteorImpact') return { layers: SOUND.meteor.impact, pitchVar: 0 };
+  if (Object.hasOwn(SOUND.events, ev.kind)) return SOUND.events[ev.kind]; // B-115
   return null;
 }
 

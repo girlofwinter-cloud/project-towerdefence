@@ -552,3 +552,183 @@ test('B-114: serve.mjs liefert .m4a als audio/mp4', async () => {
     server.close();
   }
 });
+
+// ---------- B-115: Ereignis-Töne (Bauen, Ausbauen, Verkaufen, Wellenstart, Sieg, Niederlage) ----------
+import { upgradeTower, sellTower } from '../src/game.js';
+import { detectStateEvents } from '../src/sound-events.js';
+import { prepareWave, applyCheats, forceEnd, clearEnemies } from '../src/test-tools.js';
+import { MAX_WAVES } from '../src/config.js';
+
+const EVENT_KINDS = ['build', 'upgrade', 'sell', 'waveStart', 'won', 'lost'];
+
+test('B-115: jede Ereignis-Art hat Synthese, Grenze und Aufnahmen; lauter als Schüsse; Lizenz und Größe', () => {
+  assert.deepEqual(Object.keys(SOUND.events).sort(), [...EVENT_KINDS].sort());
+  assert.deepEqual(Object.keys(SOUND.eventSamples.sounds).sort(), [...EVENT_KINDS].sort());
+  const lic = fs.readFileSync(`${ROOT}assets/sounds/LIZENZ.md`, 'utf8');
+  const shotMax = Math.max(...Object.keys(TOWER_TYPES).map((t) => SOUND.samples.sounds[`shot:${t}`].gain));
+  for (const k of EVENT_KINDS) {
+    const ev = SOUND.events[k];
+    assert.ok(ev.limit.window > 0 && ev.limit.perWindow >= 1, k);
+    assert.ok(ev.pitchVar >= 0 && ev.pitchVar < 0.3);
+    assert.ok(ev.layers.length > 0);
+    for (const l of ev.layers) {
+      assert.ok(l.type === 'osc' || l.type === 'noise');
+      assert.ok(l.duration > 0 && l.duration <= 2 && l.gain > 0 && l.gain <= 1);
+      if (l.type === 'osc') assert.ok(l.freq > 0 && l.endFreq > 0);
+      else assert.ok(l.cutoff > 0 && l.q > 0);
+    }
+    const s = SOUND.eventSamples.sounds[k];
+    assert.ok(s.files.length >= 1 && s.gain > shotMax, `${k} lauter als Schüsse`);
+  }
+  // Ausbauen steigt auf, Niederlage fällt ab (Synthese-Ersatz)
+  const up = SOUND.events.upgrade.layers.map((l) => l.freq);
+  assert.ok(up.every((f, i) => i === 0 || f > up[i - 1]));
+  const lost = SOUND.events.lost.layers.filter((l) => l.wave === 'triangle').map((l) => l.freq);
+  assert.ok(lost.every((f, i) => i === 0 || f < lost[i - 1]));
+  const urls = sampleUrls().map((u) => u.url);
+  let total = 0;
+  for (const k of EVENT_KINDS) {
+    for (const f of SOUND.eventSamples.sounds[k].files) {
+      const url = `assets/sounds/${f}.m4a`;
+      assert.ok(urls.includes(url), `${url} wird geladen`);
+      assert.ok(lic.includes(`${f}.m4a`), `${f} fehlt in LIZENZ.md`);
+    }
+  }
+  for (const f of fs.readdirSync(`${ROOT}assets/sounds`)) total += fs.statSync(`${ROOT}assets/sounds/${f}`).size;
+  assert.ok(total <= 400 * 1024, `assets/sounds zu groß: ${total}`);
+});
+
+test('B-115: Bauen, Ausbauen, Verkaufen je einmal; abgelehnte Aktionen sind still', () => {
+  const state = createGame({ gold: 10000 });
+  const tr = createSoundTracker();
+  assert.deepEqual(detectStateEvents(tr, state), []);
+  const [c, r] = freeTileNearPath(state);
+  const { tower } = buildTower(state, 'arrow', c, r);
+  assert.deepEqual(kinds(detectStateEvents(tr, state)), ['build']);
+  assert.deepEqual(detectStateEvents(tr, state), [], 'nicht doppelt');
+  assert.equal(buildTower(state, 'arrow', c, r).ok, false);
+  assert.deepEqual(detectStateEvents(tr, state), [], 'besetztes Feld');
+  assert.ok(upgradeTower(state, tower.id).ok);
+  assert.deepEqual(kinds(detectStateEvents(tr, state)), ['upgrade']);
+  while (upgradeTower(state, tower.id).ok);
+  detectStateEvents(tr, state);
+  assert.equal(upgradeTower(state, tower.id).ok, false);
+  assert.deepEqual(detectStateEvents(tr, state), [], 'Höchststufe');
+  state.gold = 0;
+  assert.equal(buildTower(state, 'cannon', ...freeTileNearPath(state)).ok, false);
+  assert.deepEqual(detectStateEvents(tr, state), [], 'kein Gold');
+  assert.ok(sellTower(state, tower.id).ok);
+  assert.deepEqual(kinds(detectStateEvents(tr, state)), ['sell']);
+  assert.equal(sellTower(state, tower.id).ok, false);
+  assert.deepEqual(detectStateEvents(tr, state), []);
+  // Mehrere Türme in einem Frame: ein Ton
+  state.gold = 10000;
+  for (let i = 0; i < 3; i++) buildTower(state, 'arrow', ...freeTileNearPath(state));
+  assert.deepEqual(kinds(detectStateEvents(tr, state)), ['build']);
+});
+
+test('B-115: Wellenstart einmal je Welle, nicht bei abgelehntem Start; Sieg und Niederlage einmal', () => {
+  const state = createGame();
+  const tr = createSoundTracker();
+  detectStateEvents(tr, state);
+  assert.ok(startWave(state).ok);
+  assert.deepEqual(kinds(detectStateEvents(tr, state)), ['waveStart']);
+  assert.equal(startWave(state).ok, false);
+  const seen = [];
+  for (let t = 0; t < 2; t += 1 / 60) { update(state, 1 / 60); seen.push(...kinds(detectStateEvents(tr, state))); }
+  assert.ok(!seen.includes('waveStart'));
+  // Letzte Welle wirklich gewinnen
+  prepareWave(state, MAX_WAVES);
+  assert.deepEqual(detectStateEvents(tr, state), [], 'prepareWave ist still');
+  assert.ok(startWave(state).ok);
+  assert.deepEqual(kinds(detectStateEvents(tr, state)), ['waveStart']);
+  clearEnemies(state);
+  update(state, 1 / 60);
+  assert.equal(state.status, 'won');
+  assert.deepEqual(kinds(detectStateEvents(tr, state)), ['won']);
+  assert.deepEqual(detectStateEvents(tr, state), []);
+  // Niederlage durch Leck
+  const s2 = createGame();
+  const tr2 = createSoundTracker();
+  detectStateEvents(tr2, s2);
+  s2.lives = 1;
+  startWave(s2);
+  const evs = [];
+  for (let t = 0; t < 120 && s2.status === 'playing'; t += 1 / 30) { update(s2, 1 / 30); evs.push(...kinds(detectStateEvents(tr2, s2))); }
+  assert.equal(s2.status, 'lost');
+  assert.deepEqual(evs.filter((k) => k === 'lost' || k === 'won'), ['lost']);
+});
+
+test('B-115: neues Spiel, Kartenwechsel, Zeitsprung und Testseiten-Cheats lösen keinen Schwall aus', () => {
+  const a = createGame({ gold: 10000 });
+  const tr = createSoundTracker();
+  detectStateEvents(tr, a);
+  // Neues Spiel mit Türmen, laufender Welle und Spielende: still
+  const b = createGame({ gold: 10000 });
+  for (let i = 0; i < 4; i++) buildTower(b, 'arrow', ...freeTileNearPath(b));
+  startWave(b);
+  b.status = 'lost';
+  assert.deepEqual(collectSounds(tr, b, 0), []);
+  // Zeitsprung rückwärts mit Änderungen: still
+  b.status = 'playing';
+  update(b, 0.5);
+  detectStateEvents(tr, b);
+  b.time = 0;
+  b.towers.pop();
+  buildTower(b, 'cannon', ...freeTileNearPath(b));
+  assert.deepEqual(detectStateEvents(tr, b), []);
+  // Cheats der Testseite (Gold/Leben auffüllen, Welle vorspulen) sind still; erzwungenes Ende genau ein Ton
+  const c = createGame();
+  const tc = createSoundTracker();
+  detectStateEvents(tc, c);
+  for (let i = 0; i < 30; i++) {
+    applyCheats(c, { infiniteGold: true, invincible: true });
+    prepareWave(c, 5 + (i % 3));
+    assert.deepEqual(detectStateEvents(tc, c), []);
+  }
+  forceEnd(c, 'won');
+  assert.deepEqual(kinds(detectStateEvents(tc, c)), ['won']);
+  prepareWave(c, 3);
+  assert.deepEqual(detectStateEvents(tc, c), []);
+});
+
+test('B-115: Ereignis-Töne zählen nicht gegen die Schuss-Grenze, eigene Grenze je Art', () => {
+  const lim = createLimiter();
+  for (let i = 0; i < 10; i++) allowEvent(lim, { kind: 'shot', tower: Object.keys(TOWER_TYPES)[i % 5] }, 0);
+  assert.equal(allowEvent(lim, { kind: 'shot', tower: 'arrow' }, 0.01), false, 'Schüsse voll');
+  for (const k of EVENT_KINDS) {
+    assert.equal(allowEvent(lim, { kind: k }, 0.01), true, k);
+    assert.equal(allowEvent(lim, { kind: k }, 0.02), false, `${k}: eigene Grenze`);
+    assert.equal(allowEvent(lim, { kind: k }, 0.011 + SOUND.events[k].limit.window), true, `${k}: nach dem Fenster wieder`);
+  }
+  // collectSounds liefert Spiel- und Zustands-Ereignisse zusammen
+  const state = createGame({ gold: 10000 });
+  const tr = createSoundTracker();
+  collectSounds(tr, state, 0);
+  buildTower(state, 'arrow', ...freeTileNearPath(state));
+  startWave(state);
+  assert.deepEqual(kinds(collectSounds(tr, state, 1)).sort(), ['build', 'waveStart']);
+});
+
+test('B-115: planSound findet Ereignis-Aufnahmen; audio.js spielt sie oder die Synthese als Ersatz', async () => {
+  const bufs = new Map([['won', ['w']]]);
+  const p = planSound({ kind: 'won' }, bufs, () => 0);
+  assert.equal(p.type, 'sample');
+  assert.equal(p.buffer, 'w');
+  assert.equal(p.gain, SOUND.eventSamples.sounds.won.gain);
+  assert.deepEqual(planSound({ kind: 'lost' }, bufs), { type: 'synth' });
+  await withFakeAudio({
+    fetchImpl: async (url) => (url.includes('build') ? { ok: true, arrayBuffer: async () => ({ url }) } : { ok: false, status: 404 }),
+    decode: async (data) => ({ decoded: data.url }),
+  }, async ({ playSound }, log) => {
+    log.length = 0;
+    playSound({ kind: 'build' });
+    const src = log.find((l) => l[1] === 'source')?.[2];
+    assert.match(src?.buffer?.decoded || '', /build-\d\.m4a$/);
+    for (const k of EVENT_KINDS.filter((x) => x !== 'build')) {
+      log.length = 0;
+      assert.doesNotThrow(() => playSound({ kind: k }));
+      assert.equal(log.filter((l) => l[1] === 'osc').length, SOUND.events[k].layers.filter((l) => l.type === 'osc').length, `${k}: Synthese`);
+    }
+  });
+});
