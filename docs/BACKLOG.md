@@ -232,7 +232,6 @@ Erledigte Einträge (`fertig`) liegen in `docs/archiv/BACKLOG-fertig.md`. Beim A
   - `npm test` bleibt grün, kein Test abgeschwächt.
 
 
-
 ### B-047: Zwei Eingänge: Feinschliff und Balancing
 - Status: vorschlag
 - Teilweise erledigt (agent/aufraeumen-2): Punkte (1) und (2); (3) Balancing-Test für `fork` kam mit B-046. Offen: (4) doppelt gezeichneter Ausgang (harmlos).
@@ -360,23 +359,6 @@ Reihenfolge ist Abhängigkeit: B-062 und B-063 zuerst, dann gemeinsame Sichtprü
 - Akzeptanzkriterien:
   - Je Typ ein Screenshot-Beleg, keine reine Farbunterscheidung.
 
-### B-067: Boss Oger-König (Design-Overhaul)
-- Hinweis: In `tests/fx.test.js` ("Boss ist am groessten") entfiel der Zeichenspur-Vergleich Boss > Schamane (mit B-066 auf Wunsch des Menschen entfernt); mit dem neuen Boss einen Vergleich wieder ergänzen.
-- Status: vorschlag
-- Aufwand: M
-- Idee: 1,6x Größe, Krone, Keule, Aura, Auftritts-Effekt (Bodenschlag, Wackeln unter 3 px).
-- Akzeptanzkriterien:
-  - Boss auf dem Handy sofort erkennbar.
-  - `prefers-reduced-motion` schaltet das Wackeln aus.
-
-### B-068: Projektile und Effekte (Design-Overhaul)
-- Status: vorschlag
-- Aufwand: M
-- Idee: Pfeile, Kanonenkugel, Frostsplitter, Blitz, Explosion, Treffer-Funken, Münzen-Hopser beim Tod.
-- Akzeptanzkriterien:
-  - Maximale Partikelzahl wie vorher.
-  - Effekte verdecken Gegner nicht (Screenshot einer Welle mit vielen Gegnern).
-  - Reduzierte Bewegung wird respektiert.
 
 ### B-069: HUD-Icons (Design-Overhaul)
 - Status: vorschlag
@@ -392,12 +374,6 @@ Reihenfolge ist Abhängigkeit: B-062 und B-063 zuerst, dann gemeinsame Sichtprü
 - Akzeptanzkriterien:
   - Kartenhöhe nicht größer als jetzt, alle Karten ohne Scrollen erreichbar.
   - Kontrast Text/Hintergrund mindestens 4,5:1.
-
-
-
-
-
-
 
 
 ### B-083: Feste Bauplätze wie im Referenzbild (Spiel-Änderung, nur nach Freigabe)
@@ -498,3 +474,10 @@ Reihenfolge ist Abhängigkeit: B-062 und B-063 zuerst, dann gemeinsame Sichtprü
 - Idee: (1) `TOP_ALLOWED` in `tests/render.test.js` auf den gemessenen Maximalüberstand plus kleine Reserve setzen und im Kommentar nennen; Scharfschütze (3,5 auf 20 px) ist am großzügigsten, Kanone im Weltkoordinaten-Test (vorher 0, jetzt 4) prüfen. (2) Zeichen-Geometriezahlen in `src/render-towers.js` und `src/render-enemies-flat.js` schrittweise in die Style-Tabellen in `config.js` ziehen. (3) Mit B-067 den Vergleich Boss gegen andere Typen in `tests/fx.test.js` wieder ergänzen.
 - Akzeptanzkriterien:
   - Grenzen belegt, Zahlen in `config.js`, `npm test` grün.
+
+### B-095: Boss und Effekte: Feinschliff (Hinweise aus dem Block-Review B-067/B-068)
+- Status: vorschlag
+- Aufwand: S
+- Idee: (1) Restliche Zeichenzahlen in `src/render-fx.js` (`drawSniperShot` lineWidth 3, Blitz-Faktoren 0.6/0.3, Eis `/1.5`, Chill-Farbe in `drawEffectOver`) nach `FX_STYLE` in `config.js`. (2) Treffer-Blitz 0,14 s gegen 0,08 s aus `docs/STIL.md` abstimmen. (3) Boss-Auftritt wiederholt sich nach Zeitsprung/Reset (Testseite, `syncTime` → `resetFx` leert `seenEnemies`). (4) Staub-Partikel beim Boss-Auftritt, ohne den globalAlpha-Test zu verletzen.
+- Akzeptanzkriterien:
+  - Keine Magic Numbers in `render-fx.js`, `npm test` grün.
