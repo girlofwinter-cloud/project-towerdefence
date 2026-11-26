@@ -267,3 +267,27 @@ test('recordResult (B-098): Freischalten löscht lastMap, nächster Start auf de
   assert.equal('lastMap' in p, false);
   assert.equal(startMap(p), 'forest');
 });
+
+// ---------- Tester Block D: Randfälle B-098 ----------
+test('sanitizeProgress (B-098 Randfall): __proto__, Objekt-lastMap und Arrays als raw', () => {
+  const evil = JSON.parse('{"maps":{},"lastMap":"__proto__","__proto__":{"lastMap":"ice"}}');
+  const p = sanitizeProgress(evil);
+  assert.equal('lastMap' in p, false);
+  assert.equal({}.lastMap, undefined, 'kein Prototyp verschmutzt');
+  assert.equal('lastMap' in sanitizeProgress({ maps: {}, lastMap: { toString: () => 'ice' } }), false);
+  assert.equal('lastMap' in sanitizeProgress([{ lastMap: 'ice' }]), false);
+  assert.equal('lastMap' in sanitizeProgress('ice'), false);
+  // gesperrte Karte bleibt gespeichert, startMap fällt aber zurück
+  const locked = sanitizeProgress({ maps: {}, lastMap: MAP_ORDER.at(-1) });
+  assert.equal(locked.lastMap, MAP_ORDER.at(-1));
+  assert.equal(startMap(locked), MAP_ORDER[0]);
+});
+
+test('startMap (B-098 Randfall): Ergebnis ist immer freigeschaltet, auch wenn Sterne Lücken haben', () => {
+  // Eis geschafft, Wald nicht: Lücke in der Kette
+  const p = { maps: { meadow: { bestWave: MAX_WAVES, stars: 1 }, ice: { bestWave: MAX_WAVES, stars: 3 } }, lastMap: 'ice' };
+  const m = startMap(p);
+  assert.ok(isUnlocked(p, m), m);
+  assert.equal(isUnlocked(p, 'ice'), false, 'gemerkte Karte ist gesperrt');
+  assert.notEqual(m, 'ice');
+});

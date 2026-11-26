@@ -1244,3 +1244,46 @@ test('Boss-Auftritt B-095: Staub wird ohne globalAlpha in der Staubfarbe gezeich
   assert.equal(props.globalAlpha, undefined);
   assert.equal(depth, 0);
 });
+
+// ---------- Tester Block D: Randfälle B-095 ----------
+test('B-095 Randfall: Zeitsprung vorwaerts setzt nicht zurueck, Boss wird nicht erneut ausgeloest, timeJump bleibt aus', () => {
+  const fx = createFx();
+  const path = { points: [] };
+  const boss = { type: 'boss', x: 10, y: 10, radius: 18 };
+  const s = { time: 5, path, enemies: [boss] };
+  syncFx(fx, s);
+  assert.equal(fx.entryStart, 5);
+  s.time = 500; syncFx(fx, s);
+  assert.equal(fx.timeJump, false);
+  assert.equal(fx.entryStart, 5, 'kein neuer Auftritt nach Sprung vorwaerts');
+});
+
+test('B-095 Randfall: timeJump gilt nur einen Frame, neues Spiel (neuer Weg) zeigt den Auftritt wieder', () => {
+  const fx = createFx();
+  const path = { points: [] };
+  const boss = { type: 'boss', x: 10, y: 10, radius: 18 };
+  const s = { time: 5, path, enemies: [boss] };
+  syncFx(fx, s);
+  s.time = 1; syncFx(fx, s);
+  assert.equal(fx.timeJump, true);
+  s.time = 1.05; syncFx(fx, s);
+  assert.equal(fx.timeJump, false, 'Merker nur im Sprung-Frame');
+  // neuer Weg = neues Spiel: kein Zeitsprung, Boss loest aus
+  const s2 = { time: 0.5, path: { points: [] }, enemies: [boss] };
+  syncFx(fx, s2);
+  assert.equal(fx.timeJump, false);
+  assert.equal(fx.entryStart, 0.5);
+});
+
+test('B-095 Randfall: Staub bei vollem Partikel-Pool ueberschreibt nur, Pool bleibt begrenzt, kein Absturz', async () => {
+  const { BOSS_ENTRY } = await import('../src/config.js');
+  const { K_DUST, spawnBossDust } = await import('../src/fx-system.js');
+  const fx = createFx();
+  for (let i = 0; i < MAX_PARTICLES; i++) spawnParticle(fx, K_SPARK, 0, 0, 0, 0, 10, 1);
+  assert.equal(liveParticles(fx), MAX_PARTICLES);
+  for (let k = 0; k < 50; k++) spawnBossDust(fx, 100, 80, 18);
+  assert.equal(liveParticles(fx), MAX_PARTICLES);
+  const dust = Array.from(fx.pkind).filter((k) => k === K_DUST).length;
+  assert.equal(dust, Math.min(MAX_PARTICLES, 50 * BOSS_ENTRY.dustCount));
+  for (let i = 0; i < MAX_PARTICLES; i++) assert.ok(Number.isFinite(fx.px[i]) && Number.isFinite(fx.py[i]));
+});

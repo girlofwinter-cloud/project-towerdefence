@@ -75,3 +75,52 @@ test('Startkarte (B-098): neueste freigeschaltete Karte, gewählte Karte bleibt 
   assert.deepEqual(errs, []);
   await p2.context().close();
 });
+
+test('Startkarte (B-098 Randfall): Kartenwechsel während laufender Welle wird abgelehnt und nicht gespeichert', async () => {
+  const p3 = await (await browser.newContext()).newPage();
+  const errs = [];
+  p3.on('pageerror', (e) => errs.push(e.message));
+  await p3.goto(url);
+  await p3.waitForSelector('#shop .tower-btn');
+  await p3.evaluate((k) => localStorage.setItem(k, JSON.stringify({ maps: { meadow: { bestWave: 20, stars: 2 } }, lastMap: 'forest' })), PROGRESS_KEY);
+  await p3.reload();
+  await p3.waitForSelector('#shop .tower-btn');
+  assert.equal(await p3.evaluate(() => window.__game().mapId), 'forest');
+  await p3.locator('#start-wave').click();
+  assert.equal(await p3.evaluate(() => window.__game().waveActive), true);
+  assert.equal(await p3.locator('#map-select').isDisabled(), true, 'Auswahl im Kampf gesperrt');
+  // Auch ein erzwungenes change-Ereignis (Sperre umgangen) darf nicht wechseln oder speichern
+  await p3.evaluate(() => {
+    const sel = document.getElementById('map-select');
+    sel.value = 'meadow';
+    sel.dispatchEvent(new Event('change'));
+  });
+  assert.equal(await p3.evaluate(() => window.__game().mapId), 'forest', 'Karte bleibt');
+  assert.equal(await p3.locator('#map-select').inputValue(), 'forest');
+  const saved = await p3.evaluate((k) => JSON.parse(localStorage.getItem(k)), PROGRESS_KEY);
+  assert.equal(saved.lastMap, 'forest', 'nichts gespeichert');
+  assert.deepEqual(errs, []);
+  await p3.context().close();
+});
+
+test('Ohne ResizeObserver (ältere Browser): Seite startet ohne Fehler, Turm-Panel lässt sich öffnen', async () => {
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  await ctx.addInitScript(() => { delete window.ResizeObserver; });
+  const p4 = await ctx.newPage();
+  const errs = [];
+  p4.on('pageerror', (e) => errs.push(e.message));
+  await p4.goto(`${url}?test`);
+  await p4.waitForSelector('#test-panel');
+  assert.equal(await p4.evaluate(() => typeof window.ResizeObserver), 'undefined');
+  await p4.locator('.tower-btn[data-type="frost"]').click();
+  await p4.evaluate(() => window.scrollTo(0, 0));
+  const box = await p4.locator('#game').boundingBox();
+  const at = [box.x + 20 * box.width / 800, box.y + 20 * box.width / 800];
+  await p4.mouse.click(...at);
+  await p4.mouse.click(...at);
+  await p4.keyboard.press('Escape');
+  await p4.mouse.click(...at);
+  await p4.waitForSelector('#tower-info:not([hidden])');
+  assert.deepEqual(errs, []);
+  await ctx.close();
+});
