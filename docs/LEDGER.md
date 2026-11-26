@@ -691,3 +691,9 @@ Neue Einträge werden unten angehängt. Bestehende Einträge werden nie geänder
 - Balancing (gemessen, dt 1/30 und 1/60): Kanonen-Mix ohne Türme neben Lava W4; Abdeckung ohne Rücksicht auf Lava L10, Pfeil L6–7, Blitz L6, schwach L6. Lava-Schaden allein senkt Durchbrüche stark, Überhitzung allein erhöht sie stark. Neue Vorgabe des Menschen: Auf jeder Karte muss ein perfektes Spiel (Welle 20 mit 10 Leben) möglich sein. Eine optimierte Strategie (kühle Plätze, Turm-Mix, Upgrades, Meteor/Kälteschock) schafft das auf allen fünf Karten schon mit den heutigen Werten, daher keine Werte anderer Karten geändert; per Test abgesichert.
 - Tests: 360 Unit-Tests, 37 Browser-Tests. Tester: PASS (4 Tests ergänzt). Review: APPROVE (Hinweise hotPath und Optik-Zahlen in Runde 2 umgesetzt). Geänderte Assertions nur in `tests/progress.test.js` (5 Karten, Zwei Fronten schaltet den Vulkan frei).
 - Offen: Der Vulkan ist nur gegen naive Strategien härter als Zwei Fronten; mit der richtigen Strategie ist er perfekt schaffbar.
+
+## 2026-11-26 · B-105 bis B-111 · Neue Ideen (ideator)
+- Rolle(n): orchestrator, ideator
+- Branch: agent/ideen-2026-11-26
+- Ergebnis: sieben Vorschläge eingetragen (Status `vorschlag`): Statistik je Turm, Saboteur, Bau rückgängig, alle Reichweiten anzeigen, Herausforderungen je Karte, Tagesherausforderung, Held-Einheit.
+- Entscheidungen: Ideator empfiehlt B-105 und B-106 zusammen als ersten Block (Statistik zeigt die Wirkung des Saboteurs). Kein Code geändert; Freigabe durch den Menschen.

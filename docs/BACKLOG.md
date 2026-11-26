@@ -17,6 +17,62 @@ Erledigte Einträge (`fertig`) liegen in `docs/archiv/BACKLOG-fertig.md`. Beim A
 
 ---
 
+### B-105: Statistik je Turm im Panel
+- Status: vorschlag
+- Aufwand: S
+- Idee: Jeder Turm zählt verursachten Schaden und Kills; das Turm-Panel zeigt beides, die Endübersicht nennt den „MVP-Turm“. Kein Balancing-Einfluss, liefert aber Daten, welcher Turm wirklich trägt. (Ideator, Spaß 3/5, Empfehlung zuerst)
+- Akzeptanzkriterien:
+  - `tower.damageDealt` und `tower.kills` in `game.js`; Splash- und Kettenschaden zählen beim auslösenden Turm; Test: Summe gegen verlorene HP.
+  - Werte verschwinden beim Verkauf; Panel auf Desktop und Handy lesbar (Screenshot).
+
+### B-106: Neuer Gegner „Saboteur“
+- Status: vorschlag
+- Aufwand: M
+- Idee: Mittelschneller Gegner, der einen Turm in seiner Nähe für ein paar Sekunden lahmlegt (ein Turm gleichzeitig, mit Abklingzeit). Bestraft Klumpenbau, macht das Spiel schwerer. Kommt erst ab etwa Welle 8. Risiko: Balancing, perfektes Spiel muss auf allen 5 Karten möglich bleiben. (Ideator, Spaß 4/5, Empfehlung zuerst)
+- Akzeptanzkriterien:
+  - `ENEMY_TYPES.saboteur` mit `jamRadius`, `jamTime`, `jamCooldown` in `config.js`; Test: lahmgelegter Turm schießt in der Zeit nicht; Boss-Türme/Boss unbeeinflusst.
+  - Test „perfektes Spiel möglich“ bleibt auf allen Karten grün; Standard-Strategien per Simulation gemessen.
+
+### B-107: Bau rückgängig in der Bauphase
+- Status: vorschlag
+- Aufwand: S
+- Idee: Türme, die seit dem letzten Wellenstart gebaut oder aufgerüstet wurden, lassen sich zu 100 % statt zu `SELL_RATIO` (70 %) zurücknehmen. Gegen Frust bei Fehlklicks; während einer Welle gilt weiter 70 %, also kein Exploit. (Ideator, Spaß 3/5)
+- Akzeptanzkriterien:
+  - Volle Erstattung nur ohne laufende Welle und für Türme/Upgrades derselben Bauphase (Test).
+  - Während einer laufenden Welle nur `SELL_RATIO` (Test).
+
+### B-108: Alle Reichweiten anzeigen (Taste R halten)
+- Status: vorschlag
+- Aufwand: S
+- Idee: Solange R gedrückt ist bzw. ein Handy-Knopf aktiv ist, zeichnet das Spiel die Reichweiten aller Türme halbtransparent. Zeigt Lücken in der Abdeckung; reine Anzeige. (Ideator, Spaß 2/5)
+- Akzeptanzkriterien:
+  - Zustand in `main.js`, ausgewertet nur in `render.js`; `game.js` unverändert.
+  - Render-Test: N Kreise bei N Türmen; auf dem Handy per Knopf erreichbar (Screenshot).
+
+### B-109: Herausforderungen je Karte (Abzeichen)
+- Status: vorschlag
+- Aufwand: M
+- Idee: Je Karte 2 bis 3 optionale Bedingungen mit Abzeichen, z. B. „ohne Fähigkeiten“, „höchstens 2 Turmtypen“, „ohne Verkaufen“; gespeichert im Fortschritt. Wiederspielwert ohne neue Inhalte, macht nichts leichter. Risiko: jede Herausforderung per Simulation als schaffbar belegen. (Ideator, Spaß 4/5)
+- Akzeptanzkriterien:
+  - `CHALLENGES` in `config.js`; reiner Prüfer `checkChallenge(state, id)` in Node getestet (erfüllt/verletzt).
+  - Abzeichen im Fortschritt gespeichert und in der Kartenauswahl sichtbar; alte Speicherstände laden (Test).
+
+### B-110: Tagesherausforderung mit Zufalls-Modifikatoren
+- Status: vorschlag
+- Aufwand: M
+- Idee: Ein Seed aus dem Datum wählt Karte und 1 bis 2 Erschwernisse (z. B. Gegner +10 % Tempo, Kanone −15 %, Start-Gold −20), dazu ein lokaler Tagesrekord. Nur Erschwernisse, also nie leichter. Risiko: unschaffbare Kombinationen, daher feste, per Simulation geprüfte Liste. (Ideator, Spaß 4/5)
+- Akzeptanzkriterien:
+  - `dailySetup(dateString)` deterministisch (Test: gleiches Datum gleich, anderes Datum anders).
+  - Modifikatoren über den vorhandenen `modifiers`-Mechanismus; Rekord je Datum gespeichert.
+
+### B-111: Held-Einheit
+- Status: vorschlag
+- Aufwand: L
+- Idee: Ein steuerbarer Held neben dem Weg, per Klick/Tippen versetzbar (mit Laufzeit), kämpft im Nahkampf, hält Gegner kurz auf und steigt pro Welle auf. Neue Mechanik mit großem Risiko für Balancing (stopft Lücken) und Handy-Bedienung; Ausgleich z. B. über Gold-Abzug pro Welle. (Ideator, Spaß 5/5)
+- Akzeptanzkriterien:
+  - Reine Logik in `game.js`: Bewegung, Blocken (max. 1 Gegner, Boss nicht blockbar), Tod und Wiederbelebung nach `respawnTime`, getestet.
+  - Simulation: Bestrategie mit Held nicht leichter als ohne (Gold- und Lebensbilanz je Karte).
+
 ### B-100: Seitenhinweis für feste Gegner-Seiten
 - Status: vorschlag
 - Aufwand: S
