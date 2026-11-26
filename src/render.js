@@ -9,7 +9,6 @@ import { drawEnemy, drawHealAura } from './render-enemies.js';
 import { updateFx, shakeX, shakeY, drawProjectileFx, drawParticles, drawBossEntry, drawEffectUnder, drawEffectOver } from './render-fx.js';
 import { drawTreeFrame } from './render-trees.js';
 import * as flat from './render-decor.js';
-import { drawIsland } from './render-island.js';
 import { drawAccents } from './render-accents.js';
 import { drawTreeShadows, drawLight } from './render-light.js';
 import { drawGround as drawGroundFill, drawGroundTufts } from './render-ground.js';
@@ -34,8 +33,6 @@ export function render(ctx, state, ui) {
     drawGround(ctx, state);
   }
   drawHover(ctx, state, ui);
-  // Wiese (theme.islands): Inseln aller Türme zuerst, damit sie keinen Nachbarturm überdecken
-  if (MAPS[state.mapId]?.theme?.islands) drawIslands(ctx, state);
   for (const t of state.towers) drawTower(ctx, t, ui.selectedTowerId === t.id);
   for (const e of state.enemies) drawHealAura(ctx, e, state.time);
   drawBossEntry(ctx);
@@ -47,24 +44,6 @@ export function render(ctx, state, ui) {
   drawParticles(ctx);
   for (const fx of state.effects) drawEffectOver(ctx, fx, reduced);
   if (shaking) ctx.restore();
-}
-
-// Inseln der Türme; B-104: nie über Wasserkacheln (Clip spart sie aus, evenodd)
-function drawIslands(ctx, state) {
-  if (!state.towers.length) return;
-  const water = state.water && state.water.size ? state.water : null;
-  if (water) {
-    ctx.save();
-    ctx.beginPath();
-    ctx.rect(0, 0, WIDTH, HEIGHT);
-    for (const k of water) {
-      const [c, r] = k.split(',').map(Number);
-      ctx.rect(c * TILE, r * TILE, TILE, TILE);
-    }
-    ctx.clip('evenodd');
-  }
-  for (const t of state.towers) drawIsland(ctx, t.x, t.y);
-  if (water) ctx.restore();
 }
 
 // ---------- Hintergrund (Gelaende, Weg, Dekoration) ----------
@@ -338,7 +317,6 @@ function drawHover(ctx, state, ui) {
   const { col, row, ok } = ui.hover;
   const x = (col + 0.5) * TILE;
   const y = (row + 0.5) * TILE;
-  if (MAPS[state.mapId]?.theme?.islands) drawIsland(ctx, x, y, ok ? 'ghost' : 'bad');
   ctx.fillStyle = ok ? 'rgba(255,255,255,0.25)' : 'rgba(255,60,60,0.35)';
   ctx.fillRect(col * TILE, row * TILE, TILE, TILE);
   if (ok) rangeCircle(ctx, x, y, TOWER_TYPES[ui.buildType].range * TILE, `rgba(255,255,255,${RANGE_STYLE.fillAlpha})`);
