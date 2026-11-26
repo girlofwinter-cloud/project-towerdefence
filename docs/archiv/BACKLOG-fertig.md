@@ -348,3 +348,17 @@ Agents lesen diese Datei nur bei konkretem Bedarf.
   - Wegfarbe der Eiskarte ist nicht braun und deutlich verschieden von der Wiese; Deko-Sets unterscheiden sich je Welt.
   - Zahlen nur in `src/config.js`; Frame-Zeit bleibt unter 16 ms.
   - Tests in `tests/decor` und `tests/render` laufen weiter, neue Test für Deko-Set je Welt.
+
+### B-093: Fortschritt speichern: Rekorde, Sterne, Karten freischalten
+- Status: fertig
+- Aufwand: M
+- Freigabe: Mensch am 2026-11-26 (neue Mechanik "Karten freischalten" ausdrücklich gewünscht)
+- Idee: Fortschritt bleibt über Neuladen erhalten, ohne Backend (`localStorage`). Pro Karte bester Wellenrekord und Sterne (nach übrigen Leben bei Sieg). Karten werden in der Reihenfolge von `MAPS` freigeschaltet: die erste ist immer offen, jede weitere nach einem Sieg auf der vorherigen.
+- Akzeptanzkriterien:
+  - Neues reines Modul `src/progress.js` (kein DOM, kein `window`): Speicher wird als Objekt mit `getItem`/`setItem` übergeben, damit es in Node testbar ist. Funktionen etwa `loadProgress(storage)`, `saveProgress(storage, progress)`, `recordResult(progress, { mapId, status, wave, lives })` (liefert auch `newRecord`, `newStars`, `unlockedMap`), `starsFor(status, lives)`, `isUnlocked(progress, mapId)`.
+  - Zahlen in `src/config.js`: `PROGRESS_KEY = 'td-progress-v1'`, `STAR_LIVES_SHARE = [0, 0.5, 1]` (1 Stern: gewonnen; 2 Sterne: mindestens die Hälfte von `START_LIVES` übrig; 3 Sterne: keine Leben verloren). Bei Niederlage 0 Sterne.
+  - Rekorde und Sterne werden nie schlechter (Maximum bleibt erhalten).
+  - Kaputter, fehlender oder fremder Speicherinhalt (ungültiges JSON, falscher Typ, unbekannte Karten-IDs) und ein werfender Speicher (privater Modus) führen nie zum Absturz, sondern zu leerem Fortschritt bzw. stillem Nicht-Speichern.
+  - `src/main.js`: Ergebnis wird genau einmal pro Spielende gespeichert (nicht in jedem Frame). Overlay zeigt Rekord und Sterne der Karte, „Neuer Rekord!“ und ggf. „Neue Karte freigeschaltet: <Name>“. Kartenauswahl zeigt Sterne je Karte, gesperrte Karten mit 🔒 und `disabled`.
+  - `src/game.js` bleibt unverändert; Browser-Tests laufen unverändert.
+  - Tests in neuer Datei `tests/progress.test.js`: Sterne-Grenzen, Rekord-Maximum, Freischalt-Reihenfolge, Laden/Speichern mit Fake-Speicher, Robustheit gegen kaputte Daten und werfenden Speicher.

@@ -1,0 +1,94 @@
+// Fortschritt (B-093): Rekorde, Sterne und freigeschaltete Karten.
+// Reine Logik ohne DOM und ohne window: der Speicher wird als Objekt mit getItem/setItem übergeben.
+import { MAPS, START_LIVES, PROGRESS_KEY, STAR_LIVES_SHARE } from './config.js';
+
+// Freischalt-Reihenfolge = Reihenfolge der Karten in MAPS.
+export const MAP_ORDER = Object.keys(MAPS);
+
+export function emptyProgress() {
+  return { maps: {} };
+}
+
+const isCount = (v) => Number.isFinite(v) && v >= 0;
+
+// Bereinigt beliebige Daten zu gültigem Fortschritt: unbekannte Karten und falsche Typen fallen weg.
+export function sanitizeProgress(raw) {
+  const progress = emptyProgress();
+  const maps = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw.maps : null;
+  if (!maps || typeof maps !== 'object' || Array.isArray(maps)) return progress;
+  for (const id of MAP_ORDER) {
+    const entry = Object.prototype.hasOwnProperty.call(maps, id) ? maps[id] : null;
+    if (!entry || typeof entry !== 'object') continue;
+    const bestWave = isCount(entry.bestWave) ? Math.floor(entry.bestWave) : 0;
+    const stars = isCount(entry.stars) ? Math.min(STAR_LIVES_SHARE.length, Math.floor(entry.stars)) : 0;
+    progress.maps[id] = { bestWave, stars };
+  }
+  return progress;
+}
+
+// Lädt den Fortschritt; jeder Fehler (kein Speicher, werfender Speicher, kaputtes JSON) ergibt leeren Fortschritt.
+export function loadProgress(storage) {
+  try {
+    const text = storage?.getItem(PROGRESS_KEY);
+    if (typeof text !== 'string') return emptyProgress();
+    return sanitizeProgress(JSON.parse(text));
+  } catch {
+    return emptyProgress();
+  }
+}
+
+// Speichert still: liefert true bei Erfolg, false wenn der Speicher fehlt oder wirft (z. B. privater Modus).
+export function saveProgress(storage, progress) {
+  try {
+    if (!storage) return false;
+    storage.setItem(PROGRESS_KEY, JSON.stringify(sanitizeProgress(progress)));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// Sterne für ein Spielende: nur bei Sieg, abhängig vom Anteil übriger Leben.
+export function starsFor(status, lives) {
+  if (status !== 'won') return 0;
+  const share = Math.max(0, lives) / START_LIVES;
+  return STAR_LIVES_SHARE.filter((min) => share >= min).length;
+}
+
+export function mapProgress(progress, mapId) {
+  return progress.maps[mapId] ?? { bestWave: 0, stars: 0 };
+}
+
+// Erste Karte ist immer offen, jede weitere nach einem Sieg (mind. 1 Stern) auf der vorherigen.
+export function isUnlocked(progress, mapId) {
+  const i = MAP_ORDER.indexOf(mapId);
+  if (i < 0) return false;
+  if (i === 0) return true;
+  return mapProgress(progress, MAP_ORDER[i - 1]).stars > 0;
+}
+
+// Trägt ein Spielende ein (verändert progress). Rekord und Sterne werden nie schlechter.
+// Rückgabe: newRecord (Wellenrekord verbessert), newStars (Sterne verbessert), unlockedMap (neu freigeschaltete Karten-ID oder null).
+export function recordResult(progress, { mapId, status, wave, lives }) {
+  const none = { newRecord: false, newStars: false, unlockedMap: null };
+  if (!MAP_ORDER.includes(mapId)) return none;
+  const old = mapProgress(progress, mapId);
+  const next = MAP_ORDER[MAP_ORDER.indexOf(mapId) + 1] ?? null;
+  const wasUnlocked = next !== null && isUnlocked(progress, next);
+  const stars = starsFor(status, lives);
+  const reached = isCount(wave) ? Math.floor(wave) : 0;
+  const entry = { bestWave: Math.max(old.bestWave, reached), stars: Math.max(old.stars, stars) };
+  progress.maps[mapId] = entry;
+  return {
+    newRecord: entry.bestWave > old.bestWave,
+    newStars: entry.stars > old.stars,
+    unlockedMap: next !== null && !wasUnlocked && isUnlocked(progress, next) ? next : null,
+  };
+}
+
+// Sterne als Text, z. B. "★★☆" (volle und leere Sterne).
+export function starText(stars) {
+  const max = STAR_LIVES_SHARE.length;
+  const n = Math.max(0, Math.min(max, stars));
+  return '★'.repeat(n) + '☆'.repeat(max - n);
+}

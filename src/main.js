@@ -7,6 +7,7 @@ import {
 import { render, drawTower } from './render.js';
 import { livesText } from './hud.js';
 import { buildTapStep, aimStep } from './input.js';
+import { loadProgress, saveProgress, recordResult, isUnlocked, mapProgress, starText, MAP_ORDER } from './progress.js';
 
 const canvas = document.getElementById('game');
 canvas.width = WIDTH;
@@ -17,6 +18,16 @@ const $ = (id) => document.getElementById(id);
 const ui = { buildType: null, selectedTowerId: null, hover: null, pending: null, aiming: false, hoverPx: null, speed: SPEED_STEPS[0], message: '', messageKind: 'error', messageTtl: 0 };
 let mapId;
 let state = createGame();
+
+// ---------- Fortschritt (B-093) ----------
+// Schon der Zugriff auf window.localStorage kann werfen (privater Modus): dann ohne Speicher weiter.
+function getStorage() {
+  try { return window.localStorage; } catch { return null; }
+}
+const progress = loadProgress(getStorage());
+// Merker: Ergebnis dieses Spiels schon gespeichert? (refreshUI läuft alle 0,1 s)
+let resultSaved = false;
+let resultText = '';
 
 // Für Tests und Neugierige: im Browser-Konsole `__game` eintippen.
 window.__game = () => state;
@@ -160,15 +171,24 @@ $('start-wave').addEventListener('click', doStartWave);
 
 // Kartenauswahl: nur vor Welle 1 möglich
 const mapSelect = $('map-select');
-for (const [id, def] of Object.entries(MAPS)) {
+for (const id of Object.keys(MAPS)) {
   const opt = document.createElement('option');
   opt.value = id;
-  opt.textContent = def.name;
   mapSelect.appendChild(opt);
 }
+// Beschriftung mit Sternen, gesperrte Karten mit Schloss und nicht wählbar.
+function refreshMapOptions() {
+  for (const opt of mapSelect.options) {
+    const name = MAPS[opt.value].name;
+    const open = isUnlocked(progress, opt.value);
+    opt.disabled = !open;
+    opt.textContent = open ? `${name} ${starText(mapProgress(progress, opt.value).stars)}` : `🔒 ${name}`;
+  }
+}
+refreshMapOptions();
 mapSelect.value = state.mapId;
 mapSelect.addEventListener('change', () => {
-  if (state.wave !== 0 || state.waveActive) { mapSelect.value = state.mapId; return; }
+  if (state.wave !== 0 || state.waveActive || !isUnlocked(progress, mapSelect.value)) { mapSelect.value = state.mapId; return; }
   mapId = mapSelect.value;
   restart();
 });
@@ -221,7 +241,11 @@ function doSell() {
   refreshUI();
 }
 function restart() {
+  // Gesperrte Karte: auf die erste Karte zurückfallen.
+  if (mapId !== undefined && !isUnlocked(progress, mapId)) mapId = MAP_ORDER[0];
   state = createGame({ mapId });
+  resultSaved = false;
+  resultText = '';
   Object.assign(ui, { buildType: null, selectedTowerId: null, pending: null, aiming: false, hoverPx: null, speed: SPEED_STEPS[0] });
   refreshUI();
 }
@@ -306,6 +330,23 @@ function refreshUI() {
   if (state.status === 'won') $('overlay-title').textContent = '🏆 Gewonnen!';
   if (state.status === 'lost') $('overlay-title').textContent = '💀 Verloren';
   $('overlay-stats').textContent = `Welle ${state.wave} · ${state.kills} Gegner besiegt`;
+  if (state.status !== 'playing' && !resultSaved) saveResult();
+  $('overlay-progress').textContent = resultText;
+}
+
+// Genau einmal pro Spielende: Ergebnis eintragen, speichern und Overlay-Text bauen.
+function saveResult() {
+  resultSaved = true;
+  const res = recordResult(progress, { mapId: state.mapId, status: state.status, wave: state.wave, lives: state.lives });
+  saveProgress(getStorage(), progress);
+  const p = mapProgress(progress, state.mapId);
+  const parts = [`Rekord: Welle ${p.bestWave} · ${starText(p.stars)}`];
+  if (res.newRecord) parts.push('Neuer Rekord!');
+  if (res.unlockedMap) {
+    parts.push(`Neue Karte freigeschaltet: ${MAPS[res.unlockedMap].name}`);
+  }
+  refreshMapOptions();
+  resultText = parts.join(' · ');
 }
 
 // ---------- Game Loop ----------
