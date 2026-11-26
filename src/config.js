@@ -477,10 +477,11 @@ export const ICON = {
   half: 13,          // halbe Motivgröße (26 px Motiv, 3 px Rand)
   outline: 2,        // Kontur im Raster (bei 16 px noch 1 px)
   maxDpr: 3,         // höchste Pixeldichte der vorgerenderten Bilder
-  sizes: { hud: 22, heart: 16, inline: 16, button: 20, ability: 26 }, // Anzeigegröße in CSS-px
+  sizes: { hud: 22, heart: 16, inline: 16, button: 20, ability: 26, title: 26, result: 40 }, // Anzeigegröße in CSS-px (title: Überschrift, result: Sieg/Niederlage)
   colors: {
     heartEmpty: '#5b4a5e', flag: '#d4503f', meteorRock: '#7a6a64', meteorCrater: '#55474a', flame: '#ff7a1f', flameCore: '#ffc23a',
-    glass: '#bff0ff', pause: '#fff3c9', play: '#7fd24a', paper: '#e2c88f', mapMark: '#d4503f',
+    glass: '#bff0ff', glassShine: '#ffffff', pause: '#fff3c9', play: '#7fd24a', paper: '#e2c88f', mapMark: '#d4503f',
+    bone: '#f1e8d2', boneDark: '#4a3030', castleGate: '#4a3030', castleRoof: '#d4503f', // B-096: Totenkopf, Burg
   },
 };
 
@@ -805,20 +806,38 @@ export const BOSS_ENTRY = {
   ringStart: 0.5,      // Startradius in Boss-Radien
   ringWidth: 3.5,      // Linienbreite in px (wird zum Ende dünner)
   ringColor: 'rgba(244,197,66,0.85)',
+  ringDrop: 0.7,       // Ring-Mitte unterhalb der Boss-Mitte in Boss-Radien (am Boden)
+  ringFlat: 0.4,       // Höhe der Ring-Ellipse relativ zur Breite (Draufsicht)
+  // Staub beim Aufstampfen (B-095): wenige Wölkchen am Boden, bei reduzierter Bewegung keine
+  dustCount: 8,        // Anzahl Staubpartikel (klein halten, Pool hat 256 Plätze)
+  dustColor: 'rgba(245,236,214,0.7)', // heller, halbdurchsichtiger Staub (hebt sich vom Sandweg ab)
+  dustLife: 0.6,       // Lebensdauer in Sekunden Spielzeit
+  dustSpeed: 90,       // Startgeschwindigkeit nach außen in px/s
+  dustStart: 0.9,      // Startabstand von der Ring-Mitte in Boss-Radien (am Rand der Figur)
+  dustSize: 4,         // Grundgröße in px (plus bis zu dustSizeVar)
+  dustSizeVar: 2,
+  dustGrow: 0.8,       // Aufblähen über die Lebensdauer (Anteil der Größe), schrumpft zum Ende auf 0
 };
 
 // Projektile und Effekte im Flat-Pop-Stil (B-068, nur Darstellung). Maße in px bei 1x, Zeiten in Sekunden Spielzeit.
 // Konturen werden aus der Eigenfarbe abgeleitet (outlineOf). Bei prefers-reduced-motion: kein Hopsen, kein Drehen.
 export const FX_STYLE = {
-  arrow: { shaft: '#c58f55', head: '#b3adaa', fletch: '#d4503f', length: 12, headLen: 4.5, headHalf: 2.6, fletchLen: 3.5, fletchHalf: 2.2, shaftWidth: 1.6 },
-  trail: { color: '#fff3c9', points: 4, spacing: 4, size: 1.6, alpha: 0.6 }, // Schweif aus 3 bis 5 Punkten
-  cannon: { color: '#4a3f55', radius: 4.5, shine: '#fff3c9', shineR: 1.4 },
-  frost: { color: '#7fd8f4', light: '#bff0ff', len: 5.5, half: 2.8, glowColor: '#bff0ff', glowR: 5.5, glowAlpha: 0.25 },
-  sniper: { beam: '#efe2ff', core: '#ffffff', bullet: '#e6d1ff', beamLen: 38, beamAlpha: 0.4, bulletR: 2.2 },
+  arrow: { shaft: '#c58f55', head: '#b3adaa', fletch: '#d4503f', length: 12, headLen: 4.5, headHalf: 2.6, fletchLen: 3.5, fletchHalf: 2.2, shaftWidth: 1.6, fletchBack: 1, fletchNotch: 0.5 }, // fletchBack/-Notch: Federende und Kerbe in px
+  trail: { color: '#fff3c9', points: 4, spacing: 4, size: 1.6, alpha: 0.6, minSize: 0.5 }, // Schweif aus 3 bis 5 Punkten, minSize: Anteil am Ende
+  cannon: { color: '#4a3f55', radius: 4.5, shine: '#fff3c9', shineR: 1.4, shineOffset: 0.35 }, // Glanzpunkt-Versatz in Radien
+  frost: { color: '#7fd8f4', light: '#bff0ff', len: 5.5, half: 2.8, glowColor: '#bff0ff', glowR: 5.5, glowAlpha: 0.25, back: 0.6 }, // back: Heck der Raute in Längen
+  sniper: { beam: '#efe2ff', core: '#ffffff', bullet: '#e6d1ff', beamLen: 38, beamAlpha: 0.4, bulletR: 2.2, beamWidth: 3, coreWidth: 1, inner: 0.7 }, // inner: Anteil des hellen Kerns am Strahl
   bolt: { outer: '#4f7fc8', outerWidth: 4.5, outerAlpha: 0.55, mid: '#f4c542', midWidth: 2.4, core: '#fff3c9', coreWidth: 1 },
-  explosion: { fill: '#ff9a3c', fillAlpha: 0.3, ring: '#f4c542', ringWidth: 3, grow: 0.5 }, // unter den Gegnern
-  hit: { flash: '#fff3c9', flashSize: 4, flashAlpha: 0.8, spark: '#f4c542', sparkWidth: 1.5, ice: '#bff0ff', iceSize: 1.6 },
+  explosion: { fill: '#ff9a3c', fillAlpha: 0.3, ring: '#f4c542', ringWidth: 3, grow: 0.5, endScale: 1.2 }, // unter den Gegnern; endScale: Endradius in Splash-Radien
+  // Treffer: Blitz (Vierzack-Stern) 0,08 s laut STIL.md; Funken als kurze Striche, Eis als kleine Rauten.
+  hit: {
+    flash: '#fff3c9', flashSize: 4, flashAlpha: 0.8, flashLife: 0.08, flashStart: 0.6, flashGrow: 0.6, flashWaist: 0.3,
+    spark: '#f4c542', sparkWidth: 1.5, sparkTail: 0.04, // sparkTail: Strichlänge in Sekunden Flugweg
+    ice: '#bff0ff', iceSize: 1.6, iceBase: 1.5, iceStretch: 1.4, iceLine: 1, // iceBase: Partikelgröße ohne Vergrößerung
+  },
   smoke: { color: '#9a8fa6', alpha: 0.45, grow: 0.6 }, // unter den Gegnern
-  coin: { color: '#f4c542', dark: '#b07a14', shine: '#fff3c9', hop: 12, bounce: 0.3, split: 0.55, end: 0.85, spins: 1.5, minWidth: 0.3, fadeFrom: 0.6, drift: 20 },
-  coinText: { color: '#f4c542', outline: '#3b2415', outlineWidth: 3, rise: 10, font: 'bold 13px system-ui, sans-serif' },
+  coin: { color: '#f4c542', dark: '#b07a14', shine: '#fff3c9', hop: 12, bounce: 0.3, split: 0.55, end: 0.85, spins: 1.5, minWidth: 0.3, fadeFrom: 0.6, drift: 20,
+    edgeWidth: 1, inner: 0.72, shineMin: 0.6, shineOffset: 0.3, shineR: 0.22 }, // Rand, Innenfläche und Glanz relativ zur Größe
+  coinText: { color: '#f4c542', outline: '#3b2415', outlineWidth: 3, rise: 10, lift: 20, font: 'bold 13px system-ui, sans-serif' }, // lift: Start über dem Gegner in px
+  chill: { rgb: '120,200,255', alpha: 0.25 }, // Frost-Schimmer über dem ganzen Feld
 };

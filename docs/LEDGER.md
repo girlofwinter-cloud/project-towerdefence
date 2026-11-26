@@ -665,3 +665,11 @@ Neue Einträge werden unten angehängt. Bestehende Einträge werden nie geänder
 - Balancing (gemessen, dt 1/30 und 1/60): Zangenangriff `enemySpeed` 1,03 → 1,0, Pfeil-Abzug 0,97 entfällt (Kanone 0,92 bleibt): Pfeil-Mix über beide Wege 2/8 Leben, nur oben bauen verliert in Welle 13–14. Zwei Fronten `enemySpeed` 0,9: Kanonen-Mix 4 Leben, nur oben bauen verliert in Welle 2; bei 1,0 verliert jede Strategie, bei 0,85 bleiben 10 Leben.
 - Tests: 308 Unit-Tests, 26 Browser-Tests. Geändert statt nur ergänzt (vom Menschen per Auftrag gedeckt): Wald-Tests entfernt bzw. auf Hindernis-Override/andere Karten umgestellt; `rankedSpots` der Strategie-Tests zählt alle Wege (für Ein-Weg-Karten identisch); Fork-Modifikator-Test prüft nicht mehr „schnellere Gegner“. Neu: Seiten-Tests, Karte Zwei Fronten, „nur eine Seite verliert“, alter Spielstand mit Wald.
 - Offen: B-100 (Seitenhinweis in der Wellenvorschau) als Vorschlag.
+
+## 2026-11-26 · B-095 bis B-097 und B-101 · Feinschliff Boss/Effekte, HUD, Turm-Panel; Startkarte merken (Block)
+- Rolle(n): orchestrator, developer (je Eintrag, B-095 und B-101 parallel in eigenen Worktrees), danach einmal tester und reviewer über den Block
+- Branch: agent/feinschliff-095-097
+- Runden: 1 von max. 2 (plus Nachtrag nach Entscheidung des Menschen)
+- Ergebnis: fertig. B-095: Zahlen nach `FX_STYLE`, Treffer-Blitz 0,08 s, kein erneuter Boss-Auftritt nach Zeitsprung, Staub beim Auftritt. B-096: keine Emoji mehr in der Spiel-UI (neue Icons Trophäe, Totenkopf, Burg), Kürzel auf Touch aus, `abilityView` gehärtet. B-097: Fokus nach ×, Klammerabstand, Leistenhöhe per ResizeObserver, gleiche Kartenhöhe, `#rgb`. B-101 (neu, Wunsch des Menschen): Start auf zuletzt gewählter bzw. neuester freigeschalteter Karte.
+- Tests: 319 Unit-Tests, 37 Browser-Tests. Tester: PASS (5 Unit-, 2 e2e-Tests ergänzt). Review: APPROVE, Hinweise als B-102.
+- Entscheidungen: **Zwei Test-Zusicherungen mit ausdrücklicher Freigabe des Menschen geändert:** `tests/fx.test.js` Boss-Auftritt erzeugt wenige Staubpartikel statt keine; `tests/render.test.js` 14 statt 11 Icons. B-101: `lastMap` wird nur beim Kartenwechsel gespeichert und bei neuer Freischaltung gelöscht, damit man nach einem Sieg auf der neuen Karte startet.

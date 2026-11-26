@@ -1330,7 +1330,7 @@ test('B-069: Fähigkeiten-Icons heißen wie die ABILITIES-Schlüssel, unbekannte
 test('B-069 Randfälle (Tester): alle Icons zeichnen in jeder Anzeigegröße mit ausgeglichenem save/restore', async () => {
   const { drawIcon, ICON_NAMES } = await import('../src/render-icons.js');
   const { ICON } = await import('../src/config.js');
-  assert.equal(ICON_NAMES.length, 11);
+  assert.equal(ICON_NAMES.length, 14);
   for (const size of Object.values(ICON.sizes)) {
     for (const name of ICON_NAMES) {
       const m = mockCtx();
@@ -1376,4 +1376,17 @@ test('B-070 Randfälle (Tester): SHOP_CARD-Farben im Format #rrggbb, Groß-/Klei
     if (typeof v === 'string') assert.match(v, /^#[0-9a-f]{6}$/i, `${k}: ${v}`);
   }
   assert.equal(contrastRatio('#FFFFFF', '#000000'), contrastRatio('#ffffff', '#000000'));
+});
+
+test('B-097: contrastRatio versteht auch die Kurzform #rgb, ungültige Farben ergeben NaN', async () => {
+  const { contrastRatio, relativeLuminance } = await import('../src/hud.js');
+  assert.equal(relativeLuminance('#fff'), 1);
+  assert.equal(relativeLuminance('#000'), 0);
+  assert.equal(relativeLuminance('#a3C'), relativeLuminance('#aa33cc'));
+  assert.equal(contrastRatio('#fff', '#000'), contrastRatio('#ffffff', '#000000'));
+  assert.equal(contrastRatio('#777', '#FFF'), contrastRatio('#777777', '#ffffff'));
+  for (const bad of ['red', '#ff', '#ffff', '#fffffff', '#ggg', 'ffffff', '', null, undefined]) {
+    assert.ok(Number.isNaN(relativeLuminance(bad)), `relativeLuminance(${bad})`);
+    assert.ok(Number.isNaN(contrastRatio(bad, '#000')), `contrastRatio(${bad})`);
+  }
 });

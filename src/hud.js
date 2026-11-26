@@ -16,9 +16,13 @@ export function livesText(lives, max = START_LIVES) {
 // und zugänglicher Name. def = Eintrag aus ABILITIES, uses = bisherige Einsätze, left = Rest-Abklingzeit in s.
 // fill: 1 = voll geladen (bereit), 0 = gerade ausgelöst; wächst während des Ladens.
 export function abilityView(def, uses, left) {
-  const remaining = def.maxUses !== undefined ? Math.max(0, def.maxUses - uses) : null;
+  // Härtung (B-096): fehlende/ungültige Einsätze zählen wie 0 (sonst Abzeichen "NaN×").
+  const n = Number.isFinite(uses) ? uses : 0;
+  const remaining = def.maxUses !== undefined ? Math.max(0, def.maxUses - n) : null;
   const used = remaining === 0;
-  const wait = Math.max(0, left);
+  // Ungültige Restzeit (NaN, undefined, ±Infinity) nicht als "bereit" werten (sonst voller Balken):
+  // Rückfall auf die volle Abklingzeit, also "lädt" mit leerem Balken.
+  const wait = Math.max(0, Number.isFinite(left) ? left : def.cooldown);
   const charging = !used && wait > 0;
   const fill = used ? 0 : charging ? Math.max(0, Math.min(1, 1 - wait / def.cooldown)) : 1;
   const state = used ? 'used' : charging ? 'charging' : 'ready';
@@ -28,8 +32,11 @@ export function abilityView(def, uses, left) {
   return { state, fill, badge, aria: `${def.name}, ${status}${charges}` };
 }
 
-// Relative Leuchtdichte einer Hex-Farbe (#rrggbb) nach WCAG 2.x.
+// Relative Leuchtdichte einer Hex-Farbe (#rrggbb oder #rgb) nach WCAG 2.x. Ungültige Eingaben ergeben NaN.
 export function relativeLuminance(hex) {
+  // Kurzform #rgb auf #rrggbb erweitern
+  if (typeof hex === 'string' && /^#[0-9a-f]{3}$/i.test(hex)) hex = `#${[...hex.slice(1)].map((c) => c + c).join('')}`;
+  if (typeof hex !== 'string' || !/^#[0-9a-f]{6}$/i.test(hex)) return NaN;
   const lin = (i) => {
     const v = parseInt(hex.slice(i, i + 2), 16) / 255;
     return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
@@ -37,7 +44,7 @@ export function relativeLuminance(hex) {
   return 0.2126 * lin(1) + 0.7152 * lin(3) + 0.0722 * lin(5);
 }
 
-// Kontrastverhältnis zweier Hex-Farben (1 bis 21), Reihenfolge egal.
+// Kontrastverhältnis zweier Hex-Farben (1 bis 21), Reihenfolge egal; NaN bei ungültiger Farbe.
 export function contrastRatio(a, b) {
   const la = relativeLuminance(a);
   const lb = relativeLuminance(b);

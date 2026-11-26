@@ -439,23 +439,10 @@ Reihenfolge ist Abhängigkeit: B-062 und B-063 zuerst, dann gemeinsame Sichtprü
 - Akzeptanzkriterien:
   - Grenzen belegt, Zahlen in `config.js`, `npm test` grün.
 
-### B-095: Boss und Effekte: Feinschliff (Hinweise aus dem Block-Review B-067/B-068)
+### B-102: Feinschliff aus dem Block-Review B-095 bis B-097 und B-101
 - Status: vorschlag
 - Aufwand: S
-- Idee: (1) Restliche Zeichenzahlen in `src/render-fx.js` (`drawSniperShot` lineWidth 3, Blitz-Faktoren 0.6/0.3, Eis `/1.5`, Chill-Farbe in `drawEffectOver`) nach `FX_STYLE` in `config.js`. (2) Treffer-Blitz 0,14 s gegen 0,08 s aus `docs/STIL.md` abstimmen. (3) Boss-Auftritt wiederholt sich nach Zeitsprung/Reset (Testseite, `syncTime` → `resetFx` leert `seenEnemies`). (4) Staub-Partikel beim Boss-Auftritt, ohne den globalAlpha-Test zu verletzen.
+- Idee: (1) Gravitation und Dämpfung des Boss-Staubs (`src/fx-system.js`, -10 und 3) als `dustGravity`/`dustDrag` nach `BOSS_ENTRY`. (2) Bei 200 % Schrift läuft auf dem Handy die rechte Spalte des Shop-Rasters aus dem Bild („Scharfschü…“ abgeschnitten; bestand schon vorher).
 - Akzeptanzkriterien:
-  - Keine Magic Numbers in `render-fx.js`, `npm test` grün.
-
-### B-096: HUD und Knöpfe: Feinschliff (Hinweise aus dem Block-Review B-058/B-069)
-- Status: vorschlag
-- Aufwand: S
-- Idee: (1) Restliche Emoji außerhalb von HUD/Knöpfen: 🔒 in den Kartenoptionen, 🏆/💀 im Overlay-Titel, 🏰 in der Überschrift. (2) Tastenkürzel auch bei „Ziel: … (T)“ und `<kbd>` auf den Turmkarten über `.key` auf dem Handy ausblenden; Pause-Banner zeigt auf dem Handy noch „P drücken“. (3) `#ffffff` in `src/render-icons.js` (Zoom-Glanzpunkt) nach `ICON.colors`. (4) `abilityView` gegen `uses` undefined („NaN×“) und `left` NaN (meldet „bereit“) härten.
-- Akzeptanzkriterien:
-  - Keine Emoji mehr in sichtbarer Spiel-UI außer wo technisch nötig; Randfälle mit Test; `npm test` grün.
-
-### B-097: Turm-Panel: Feinschliff (Hinweise aus dem Block-Review B-056/B-057/B-070)
-- Status: vorschlag
-- Aufwand: S
-- Idee: (1) Nach Klick auf × (`#ti-close`) geht der Tastaturfokus verloren; Fokus auf `#game` oder die letzte Turmkarte setzen. (2) aria-label „Schließen“ → „Turm-Panel schließen“. (3) Desktop: Leerzeichen vor der schließenden Klammer in „Verbessern (38 [Münze] )“ (`actionHtml` in `src/main.js`). (4) `main { padding-bottom: 140px }` im Handy-Block aus der echten Leistenhöhe ableiten (safe-area, große Schrift). (5) „Scharfschütze“ bricht am Desktop mit Tasten-Badge um (Karte 78 statt ~58 px). (6) `contrastRatio` versteht nur `#rrggbb`.
-- Akzeptanzkriterien:
-  - Fokus bleibt nach dem Schließen sinnvoll, keine Lücke vor der Klammer, Leiste verdeckt bei 200 % Schrift nichts; `npm test` grün.
+  - (3) `startMap` gegen unsanitisierte Eingabe ohne `maps` härten (wirft heute TypeError; in der Praxis nicht erreichbar).
+  - Keine festen Zahlen im Staub-Code; Shop bei 390x844 und 200 % Schrift ohne horizontales Abschneiden; `npm test` grün.

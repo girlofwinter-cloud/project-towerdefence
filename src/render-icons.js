@@ -90,7 +90,7 @@ const DRAW = {
     stroke2(ctx, [[4, 4], [11, 11]], P.woodDark, 4.5);
     ell(ctx, -3, -3, 9, 9, P.stone, W);
     ell(ctx, -3, -3, 6, 6, C.glass, W);
-    disc(ctx, '#ffffff', -5, -5, 1.8);
+    disc(ctx, C.glassShine, -5, -5, 1.8);
   },
   pause(ctx) {
     rr(ctx, -8, -10, 6, 20, 1.5, C.pause, W);
@@ -105,6 +105,50 @@ const DRAW = {
     line(ctx, [[4, -9], [4, 12]], P.woodDark, 1.2);
     line(ctx, [[5.5, -3], [10, 1.5]], C.mapMark, 2.4); // Ziel-Kreuz
     line(ctx, [[10, -3], [5.5, 1.5]], C.mapMark, 2.4);
+  },
+  // B-096: Sieg, Niederlage, Titel
+  trophy(ctx) {
+    stroke2(ctx, [[-8, -9], [-12, -9], [-12, -4], [-6, 0]], P.gold, 2.6); // Henkel
+    stroke2(ctx, [[8, -9], [12, -9], [12, -4], [6, 0]], P.gold, 2.6);
+    rr(ctx, -2.5, 1, 5, 7, 1, P.goldDark, W);                    // Stiel
+    rr(ctx, -8, 7, 16, 5.5, 1.5, P.goldDark, W);                  // Sockel
+    part(ctx, (c) => {                                            // Becher
+      c.moveTo(-9.5, -12);
+      c.lineTo(9.5, -12);
+      c.bezierCurveTo(9.5, -2, 5, 3, 0, 3);
+      c.bezierCurveTo(-5, 3, -9.5, -2, -9.5, -12);
+      c.closePath();
+    }, P.gold, W);
+    disc(ctx, STYLE.lightTone, -5, -8, 2); // Glanzpunkt
+  },
+  skull(ctx) {
+    rr(ctx, -6.5, 2, 13, 10, 3, C.bone, W);   // Kiefer
+    ell(ctx, 0, -2.5, 11, 10, C.bone, W);     // Schädel
+    ctx.fillStyle = C.boneDark;               // Augenhöhlen (flach, ohne Kontur)
+    ctx.beginPath();
+    ctx.ellipse(-5, -2, 3.6, 4, 0, 0, Math.PI * 2);
+    ctx.moveTo(8.6, -2);
+    ctx.ellipse(5, -2, 3.6, 4, 0, 0, Math.PI * 2);
+    ctx.fill();
+    tri(ctx, C.boneDark, 0, 2.5, -2, 6, 2, 6); // Nase
+    line(ctx, [[-2.5, 8], [-2.5, 12]], C.boneDark, 1.6); // Zähne
+    line(ctx, [[2.5, 8], [2.5, 12]], C.boneDark, 1.6);
+  },
+  castle(ctx) {
+    rr(ctx, -9, -4, 18, 16, 1, P.stone, W);    // Mauer
+    rr(ctx, -13, -8, 7, 20, 1, P.stone, W);    // Türme
+    rr(ctx, 6, -8, 7, 20, 1, P.stone, W);
+    tri(ctx, C.castleRoof, -14, -8, -5, -8, -9.5, -13); // Turmdächer
+    tri(ctx, C.castleRoof, 5, -8, 14, -8, 9.5, -13);
+    rr(ctx, -4.5, -8, 3, 4.5, 0.5, P.stone, W); // Zinnen
+    rr(ctx, 1.5, -8, 3, 4.5, 0.5, P.stone, W);
+    part(ctx, (c) => {                         // Tor mit Rundbogen
+      c.moveTo(-4, 12);
+      c.lineTo(-4, 4);
+      c.arc(0, 4, 4, Math.PI, 0);
+      c.lineTo(4, 12);
+      c.closePath();
+    }, C.castleGate, W);
   },
 };
 export const ICON_NAMES = Object.keys(DRAW);

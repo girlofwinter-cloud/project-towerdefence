@@ -8,7 +8,7 @@ import { render, drawTower } from './render.js';
 import { heartStates, abilityView } from './hud.js';
 import { drawIcon } from './render-icons.js';
 import { buildTapStep, aimStep } from './input.js';
-import { loadProgress, saveProgress, recordResult, isUnlocked, mapProgress, starText, resultLines, MAP_ORDER } from './progress.js';
+import { loadProgress, saveProgress, recordResult, isUnlocked, mapProgress, starText, resultLines, startMap, MAP_ORDER } from './progress.js';
 
 const canvas = document.getElementById('game');
 canvas.width = WIDTH;
@@ -36,6 +36,11 @@ function getStorage() {
 }
 const progress = loadProgress(getStorage());
 const mapOpen = (id) => TEST_MODE || isUnlocked(progress, id);
+// Startkarte merken (B-101): zuletzt gewählte bzw. neueste freigeschaltete Karte. Testmodus bleibt bei der ersten.
+if (!TEST_MODE) {
+  mapId = startMap(progress);
+  state = createGame({ mapId });
+}
 // Merker: Ergebnis dieses Spiels schon gespeichert? (refreshUI läuft alle 0,1 s)
 let resultSaved = false;
 let resultText = []; // Zeilen fürs Overlay (resultLines)
@@ -111,7 +116,7 @@ for (const [type, def] of Object.entries(TOWER_TYPES)) {
   btn.className = 'tower-btn';
   btn.dataset.type = type;
   btn.innerHTML = `<canvas class="t-icon" width="${ICON_SIZE}" height="${ICON_SIZE}"></canvas>
-    <span class="t-name">${def.name} <kbd>${def.key}</kbd></span>
+    <span class="t-name">${def.name} <kbd class="key">${def.key}</kbd></span>
     <span class="t-cost">${def.cost} ${COIN()}</span>
     <span class="t-desc">${def.description}</span>`;
   // Fähigkeiten-Text: als Tooltip der Karte (und im Turm-Info-Panel des gewählten Turms)
@@ -240,13 +245,14 @@ for (const id of Object.keys(MAPS)) {
   opt.value = id;
   mapSelect.appendChild(opt);
 }
-// Beschriftung mit Sternen, gesperrte Karten mit Schloss und nicht wählbar.
+// Beschriftung mit Sternen, gesperrte Karten mit Zusatz "(gesperrt)" und nicht wählbar.
+// <option> kann kein Bild zeigen, darum Text statt Schloss-Emoji (B-096).
 function refreshMapOptions() {
   for (const opt of mapSelect.options) {
     const name = MAPS[opt.value].name;
     const open = mapOpen(opt.value);
     opt.disabled = !open;
-    opt.textContent = open ? `${name} ${starText(mapProgress(progress, opt.value).stars)}` : `🔒 ${name}`;
+    opt.textContent = open ? `${name} ${starText(mapProgress(progress, opt.value).stars)}` : `${name} (gesperrt)`;
   }
 }
 refreshMapOptions();
@@ -254,6 +260,9 @@ mapSelect.value = state.mapId;
 mapSelect.addEventListener('change', () => {
   if (state.wave !== 0 || state.waveActive || !mapOpen(mapSelect.value)) { mapSelect.value = state.mapId; return; }
   mapId = mapSelect.value;
+  // Gewählte Karte merken (B-101); im Testmodus gibt es keinen Speicher.
+  progress.lastMap = mapId;
+  saveProgress(getStorage(), progress);
   restart();
 });
 $('speed').addEventListener('click', toggleSpeed);
@@ -261,7 +270,23 @@ $('pause').addEventListener('click', doTogglePause);
 $('upgrade').addEventListener('click', doUpgrade);
 $('sell').addEventListener('click', doSell);
 $('target-mode').addEventListener('click', doCycleTarget);
-$('ti-close').addEventListener('click', () => { ui.selectedTowerId = null; refreshUI(); });
+// Nach dem Schließen geht der Fokus auf die Shop-Karte des eben gezeigten Turmtyps: der ×-Knopf verschwindet,
+// sonst fiele der Fokus auf <body> und Tab begänne wieder oben. Die Karte gehört zum Turm und liegt in der
+// Tab-Reihenfolge. Das Spielfeld (Canvas) wäre nur mit tabindex fokussierbar und zeigte dann bei jedem
+// Tastendruck einen Fokusrahmen.
+$('ti-close').addEventListener('click', () => {
+  const type = state.towers.find((t) => t.id === ui.selectedTowerId)?.type;
+  ui.selectedTowerId = null;
+  refreshUI();
+  shop.querySelector(`.tower-btn[data-type="${type}"]`)?.focus({ preventScroll: true });
+});
+// Handy-Leiste (fest unten): echte Höhe als --tower-info-h, damit main genug Platz darunter lässt (auch bei großer Schrift)
+const towerInfo = $('tower-info');
+if (typeof ResizeObserver === 'function') {
+  new ResizeObserver(() => {
+    document.documentElement.style.setProperty('--tower-info-h', `${Math.ceil(towerInfo.getBoundingClientRect().height)}px`);
+  }).observe(towerInfo);
+}
 $('restart').addEventListener('click', restart);
 $('zoom').addEventListener('click', toggleZoom);
 
@@ -402,8 +427,9 @@ function refreshUI() {
 
   const over = $('overlay');
   over.hidden = state.status === 'playing';
-  if (state.status === 'won') $('overlay-title').textContent = '🏆 Gewonnen!';
-  if (state.status === 'lost') $('overlay-title').textContent = '💀 Verloren';
+  // B-096: Trophäe bzw. Totenkopf vor dem Text (nur Schmuck, alt leer)
+  if (state.status === 'won') setHtml($('overlay-title'), `${iconHtml('trophy', 'result')} Gewonnen!`);
+  if (state.status === 'lost') setHtml($('overlay-title'), `${iconHtml('skull', 'result')} Verloren`);
   $('overlay-stats').textContent = `Welle ${state.wave} · ${state.kills} Gegner besiegt`;
   if (state.status !== 'playing' && !resultSaved) saveResult();
   renderResultLines($('overlay-progress'), resultText);

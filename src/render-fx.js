@@ -2,7 +2,7 @@
 // Transparenz nur ueber globalAlpha innerhalb von save/restore. Keine Allokation pro Frame.
 import {
   createFx, syncFx, shakeOffset, bossEntryProgress, MAX_PARTICLES,
-  K_NONE, K_SMOKE, K_ICE, K_SPARK, K_FLASH, K_COIN, coinHop, coinSpin,
+  K_NONE, K_SMOKE, K_ICE, K_SPARK, K_FLASH, K_COIN, K_DUST, coinHop, coinSpin,
   T_ARROW, T_CANNON, T_FROST, T_SNIPER,
 } from './fx-system.js';
 import { BOSS_ENTRY, FX_STYLE, STYLE, WIDTH, HEIGHT } from './config.js';
@@ -36,7 +36,7 @@ const OUT_FROST = outlineOf(FR.color);
 const OUT_EXPLOSION = outlineOf(EX.ring);
 const OUT_ICE = outlineOf(HI.ice);
 const COIN_EDGE = outlineOf(CO.dark);
-const SNIPER_INNER = 0.7; // Anteil des hellen Kerns am Strahl
+const CHILL = FX_STYLE.chill;
 
 // Pro Frame einmal aufrufen (vor dem Zeichnen): leitet Partikel aus dem Zustand ab.
 // reducedMotion: prefers-reduced-motion (aus main.js ueber ui), schaltet das Boss-Wackeln aus.
@@ -46,7 +46,9 @@ export function updateFx(state, reducedMotion = false) {
 
 // Bodenschlag beim Boss-Auftritt (B-067): goldener Ring am Boden, waechst und wird duenner.
 // Bei reduzierter Bewegung waechst er nicht, sondern wird nur duenner.
+// Dazu der Staub (B-095, eigene Partikelart, unter den Gegnern).
 export function drawBossEntry(ctx) {
+  drawBossDust(ctx);
   const u = bossEntryProgress(fx.lastTime, fx.entryStart);
   if (u < 0) return;
   const k = fx.entryReduced ? 1 : BOSS_ENTRY.ringStart + (BOSS_ENTRY.ringRadius - BOSS_ENTRY.ringStart) * (1 - (1 - u) * (1 - u));
@@ -54,8 +56,27 @@ export function drawBossEntry(ctx) {
   ctx.strokeStyle = BOSS_ENTRY.ringColor;
   ctx.lineWidth = BOSS_ENTRY.ringWidth * (1 - u); // verblasst ueber die Linienbreite (kein globalAlpha noetig)
   ctx.beginPath();
-  ctx.ellipse(fx.entryX, fx.entryY + fx.entryR * 0.7, fx.entryR * k, fx.entryR * k * 0.4, 0, 0, TWO_PI);
+  ctx.ellipse(fx.entryX, fx.entryY + fx.entryR * BOSS_ENTRY.ringDrop, fx.entryR * k, fx.entryR * k * BOSS_ENTRY.ringFlat, 0, 0, TWO_PI);
   ctx.stroke();
+  ctx.restore();
+}
+
+// Staubwoelkchen: Deckkraft steckt in der Farbe, sie vergehen ueber die Groesse (kein globalAlpha noetig).
+function drawBossDust(ctx) {
+  let any = false;
+  for (let i = 0; i < MAX_PARTICLES; i++) if (fx.pkind[i] === K_DUST) { any = true; break; }
+  if (!any) return;
+  ctx.save();
+  ctx.fillStyle = BOSS_ENTRY.dustColor;
+  for (let i = 0; i < MAX_PARTICLES; i++) {
+    if (fx.pkind[i] !== K_DUST) continue;
+    const u = fx.page[i] / fx.plife[i];
+    const r = fx.psize[i] * (1 + u * BOSS_ENTRY.dustGrow) * (1 - u);
+    if (!(r > 0)) continue;
+    ctx.beginPath();
+    ctx.arc(fx.px[i], fx.py[i], r, 0, TWO_PI);
+    ctx.fill();
+  }
   ctx.restore();
 }
 
@@ -99,7 +120,7 @@ function drawArrow(ctx, x, y, dx, dy) {
     const d = h + (i + 1) * TR.spacing;
     ctx.globalAlpha = TR.alpha * k;
     ctx.beginPath();
-    ctx.arc(x - dx * d, y - dy * d, TR.size * (0.5 + 0.5 * k), 0, TWO_PI);
+    ctx.arc(x - dx * d, y - dy * d, TR.size * (TR.minSize + (1 - TR.minSize) * k), 0, TWO_PI);
     ctx.fill();
   }
   ctx.globalAlpha = 1;
@@ -120,10 +141,10 @@ function drawArrow(ctx, x, y, dx, dy) {
   ctx.fillStyle = A.fletch;
   ctx.strokeStyle = OUT_FLETCH;
   ctx.beginPath();
-  ctx.moveTo(-h - 1, -A.fletchHalf);
+  ctx.moveTo(-h - A.fletchBack, -A.fletchHalf);
   ctx.lineTo(-h + A.fletchLen, 0);
-  ctx.lineTo(-h - 1, A.fletchHalf);
-  ctx.lineTo(-h + 0.5, 0);
+  ctx.lineTo(-h - A.fletchBack, A.fletchHalf);
+  ctx.lineTo(-h + A.fletchNotch, 0);
   ctx.closePath();
   ctx.fill();
   ctx.stroke();
@@ -150,7 +171,7 @@ function drawCannonball(ctx, x, y) {
   ctx.stroke();
   ctx.fillStyle = CN.shine;
   ctx.beginPath();
-  ctx.arc(x - CN.radius * 0.35, y - CN.radius * 0.35, CN.shineR, 0, TWO_PI);
+  ctx.arc(x - CN.radius * CN.shineOffset, y - CN.radius * CN.shineOffset, CN.shineR, 0, TWO_PI);
   ctx.fill();
 }
 
@@ -164,7 +185,7 @@ function drawFrostShard(ctx, x, y, dx, dy) {
   ctx.globalAlpha = 1;
   ctx.translate(x, y);
   ctx.transform(dx, dy, -dy, dx, 0, 0);
-  const back = -FR.len * 0.6;
+  const back = -FR.len * FR.back;
   ctx.fillStyle = FR.color;
   ctx.beginPath();
   ctx.moveTo(FR.len, 0);
@@ -195,17 +216,17 @@ function drawFrostShard(ctx, x, y, dx, dy) {
 function drawSniperShot(ctx, x, y, dx, dy) {
   ctx.strokeStyle = SN.beam;
   ctx.globalAlpha = SN.beamAlpha;
-  ctx.lineWidth = 3;
+  ctx.lineWidth = SN.beamWidth;
   ctx.beginPath();
   ctx.moveTo(x, y);
   ctx.lineTo(x - dx * SN.beamLen, y - dy * SN.beamLen);
   ctx.stroke();
   ctx.globalAlpha = 1;
   ctx.strokeStyle = SN.core;
-  ctx.lineWidth = 1;
+  ctx.lineWidth = SN.coreWidth;
   ctx.beginPath();
   ctx.moveTo(x, y);
-  ctx.lineTo(x - dx * SN.beamLen * SNIPER_INNER, y - dy * SN.beamLen * SNIPER_INNER);
+  ctx.lineTo(x - dx * SN.beamLen * SN.inner, y - dy * SN.beamLen * SN.inner);
   ctx.stroke();
   ctx.fillStyle = SN.bullet;
   ctx.beginPath();
@@ -219,7 +240,7 @@ export function drawParticles(ctx, under = false) {
   let any = false;
   for (let i = 0; i < MAX_PARTICLES; i++) {
     const k = fx.pkind[i];
-    if (k !== K_NONE && (k === K_SMOKE) === under) { any = true; break; }
+    if (k !== K_NONE && k !== K_DUST && (k === K_SMOKE) === under) { any = true; break; }
   }
   if (!any) return;
   ctx.save();
@@ -227,7 +248,7 @@ export function drawParticles(ctx, under = false) {
   ctx.lineJoin = 'round';
   for (let i = 0; i < MAX_PARTICLES; i++) {
     const k = fx.pkind[i];
-    if (k === K_NONE || (k === K_SMOKE) !== under) continue;
+    if (k === K_NONE || k === K_DUST || (k === K_SMOKE) !== under) continue;
     const u = fx.page[i] / fx.plife[i]; // 0 neu .. 1 fast weg
     const x = fx.px[i];
     const y = fx.py[i];
@@ -240,15 +261,15 @@ export function drawParticles(ctx, under = false) {
       ctx.fill();
     } else if (k === K_ICE) {
       // kleine Eisraute mit Kontur
-      const r = HI.iceSize * (size > 1 ? size / 1.5 : 1);
+      const r = HI.iceSize * (size > 1 ? size / HI.iceBase : 1);
       ctx.globalAlpha = 1 - u;
       ctx.fillStyle = HI.ice;
       ctx.strokeStyle = OUT_ICE;
-      ctx.lineWidth = 1;
+      ctx.lineWidth = HI.iceLine;
       ctx.beginPath();
-      ctx.moveTo(x, y - r * 1.4);
+      ctx.moveTo(x, y - r * HI.iceStretch);
       ctx.lineTo(x + r, y);
-      ctx.lineTo(x, y + r * 1.4);
+      ctx.lineTo(x, y + r * HI.iceStretch);
       ctx.lineTo(x - r, y);
       ctx.closePath();
       ctx.fill();
@@ -259,12 +280,12 @@ export function drawParticles(ctx, under = false) {
       ctx.lineWidth = HI.sparkWidth;
       ctx.beginPath();
       ctx.moveTo(x, y);
-      ctx.lineTo(x - fx.pvx[i] * 0.04, y - fx.pvy[i] * 0.04);
+      ctx.lineTo(x - fx.pvx[i] * HI.sparkTail, y - fx.pvy[i] * HI.sparkTail);
       ctx.stroke();
     } else if (k === K_FLASH) {
       // kleiner Vierzack-Stern statt grosser Scheibe
-      const r = HI.flashSize * (0.6 + u * 0.6);
-      const q = r * 0.3;
+      const r = HI.flashSize * (HI.flashStart + u * HI.flashGrow);
+      const q = r * HI.flashWaist;
       ctx.globalAlpha = HI.flashAlpha * (1 - u);
       ctx.fillStyle = HI.flash;
       ctx.beginPath();
@@ -284,19 +305,19 @@ export function drawParticles(ctx, under = false) {
       ctx.globalAlpha = u < CO.fadeFrom ? 1 : 1 - (u - CO.fadeFrom) / (1 - CO.fadeFrom);
       ctx.fillStyle = CO.dark;
       ctx.strokeStyle = COIN_EDGE;
-      ctx.lineWidth = 1;
+      ctx.lineWidth = CO.edgeWidth;
       ctx.beginPath();
       ctx.ellipse(x, cy, w, size, 0, 0, TWO_PI);
       ctx.fill();
       ctx.stroke();
       ctx.fillStyle = CO.color;
       ctx.beginPath();
-      ctx.ellipse(x, cy, w * 0.72, size * 0.72, 0, 0, TWO_PI);
+      ctx.ellipse(x, cy, w * CO.inner, size * CO.inner, 0, 0, TWO_PI);
       ctx.fill();
-      if (w > size * 0.6) {
+      if (w > size * CO.shineMin) {
         ctx.fillStyle = CO.shine;
         ctx.beginPath();
-        ctx.arc(x - w * 0.3, cy - size * 0.3, size * 0.22, 0, TWO_PI);
+        ctx.arc(x - w * CO.shineOffset, cy - size * CO.shineOffset, size * CO.shineR, 0, TWO_PI);
         ctx.fill();
       }
     }
@@ -309,7 +330,7 @@ export function drawParticles(ctx, under = false) {
 export function drawEffectUnder(ctx, e) {
   if (!e || e.kind !== 'explosion') return;
   const a = e.ttl / e.max;
-  const r = e.r * (1.2 - a * EX.grow);
+  const r = e.r * (EX.endScale - a * EX.grow);
   if (!(r > 0) || !(a > 0)) return;
   ctx.save();
   ctx.globalAlpha = EX.fillAlpha * a;
@@ -333,12 +354,12 @@ export function drawEffectOver(ctx, e, reducedMotion = false) {
   if (!e) return;
   const a = e.ttl / e.max;
   if (e.kind === 'chill') {
-    ctx.fillStyle = `rgba(120,200,255,${0.25 * a})`;
+    ctx.fillStyle = `rgba(${CHILL.rgb},${CHILL.alpha * a})`;
     ctx.fillRect(0, 0, WIDTH, HEIGHT);
   } else if (e.kind === 'bolt') {
     drawBolt(ctx, e, a);
   } else if (e.kind === 'coin') {
-    const ty = e.y - 20 + (reducedMotion ? 0 : a * CT.rise);
+    const ty = e.y - CT.lift + (reducedMotion ? 0 : a * CT.rise);
     ctx.save();
     ctx.globalAlpha = a > 0 ? (a < 1 ? a : 1) : 0;
     ctx.font = CT.font;

@@ -44,6 +44,7 @@ h1 { font-size: 1.5rem; margin: 0; color: var(--gold); text-shadow: 0 2px 0 var(
 .ico { display: inline-block; vertical-align: middle; flex: none; }
 #hearts { display: inline-flex; gap: 1px; }
 #pause-banner .ico { margin-right: 4px; }
+h1 .ico, #overlay-title .ico { vertical-align: -4px; } /* B-096: Burg, Trophäe, Totenkopf auf Schrifthöhe */
 #lives-box.low { color: #ff5a5a; animation: pulse 1s ease-in-out infinite; }
 @keyframes pulse { 50% { opacity: 0.45; } }
 #pause-hint { color: var(--gold); }
@@ -182,7 +183,9 @@ button.primary {
 .abilities button[data-state="used"]:disabled { opacity: .8; }
 /* Tastenkürzel-Hinweise nur mit Tastatur (auf Touch-Geräten und schmalen Bildschirmen aus) */
 .key[hidden] { display: none; }
-@media (hover: none), (pointer: coarse), (max-width: 700px) { .key { display: none; } }
+/* Gegenstück: Hinweise nur für Touch/schmale Bildschirme (z. B. "Tippe auf Weiter" im Pause-Banner) */
+.touch-hint { display: none; }
+@media (hover: none), (pointer: coarse), (max-width: 700px) { .key { display: none; } .touch-hint { display: inline; } #pause-banner .touch-hint { display: block; font-size: 1.1rem; } }
 .map-pick { flex: 1 1 100%; display: flex; align-items: center; gap: 8px; }
 .map-pick select { flex: 1; padding: 6px; }
 #wave-preview { margin: 8px 0 0; padding: 4px 8px; font-size: .8rem; color: var(--muted); background: rgba(0,0,0,.25); border-radius: 6px; }
@@ -192,7 +195,7 @@ button.primary {
   display: grid;
   grid-template-columns: 44px 1fr auto;
   grid-template-areas: 'icon name cost' 'icon desc desc';
-  gap: 0 10px;
+  gap: 0 8px;
   text-align: left;
   align-items: center;
   padding: 4px 10px 4px 5px;
@@ -207,9 +210,11 @@ button.primary {
 .tower-btn.poor .t-cost { color: var(--card-cost-poor); }
 .tower-btn kbd { color: var(--card-key-text); background: var(--card-key-bg); }
 .t-icon { grid-area: icon; width: 44px; height: 44px; border-radius: 8px; background: var(--card-icon-bg); border: 2px solid var(--panel-edge); }
-.t-name { grid-area: name; font-weight: 700; }
+/* Name und Tasten-Badge einzeilig (sonst bricht "Scharfschütze 4" um und die Karte wird höher, B-097) */
+.t-name { grid-area: name; font-weight: 700; white-space: nowrap; }
+.tower-btn kbd { padding: 0 4px; }
 .t-cost { grid-area: cost; display: inline-flex; align-items: center; gap: 3px; white-space: nowrap; color: var(--card-cost); font-weight: 700; }
-.t-desc { grid-area: desc; font-size: 0.74rem; line-height: 1.2; font-weight: 400; color: var(--card-desc); display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; }
+.t-desc { grid-area: desc; font-size: 0.74rem; line-height: 1.2; font-weight: 400; color: var(--card-desc); display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; min-height: 2.4em; } /* immer zwei Zeilen hoch: alle Karten gleich hoch */
 /* Turm-Panel (B-057): flache Holzleiste direkt unter dem Spielfeld.
    Links Name und Werte, rechts die drei Knöpfe, darunter der Spezialtext über die volle Breite. */
 #tower-info {
@@ -234,7 +239,8 @@ button.primary {
 .ti-actions { grid-area: actions; display: flex; gap: 6px; }
 .ti-actions button { padding: 6px 10px; font-size: .85rem; white-space: nowrap; display: inline-flex; align-items: center; justify-content: center; gap: 4px; }
 .ti-actions .act-cost { display: inline-flex; align-items: center; white-space: nowrap; }
-.ti-actions .act-cost .ico { margin: 0 1px 0 3px; }
+/* Rechts leicht negativ: das Münzbild hat transparenten Rand, sonst wirkt es wie ein Leerzeichen vor ")" (B-097) */
+.ti-actions .act-cost .ico { margin: 0 -1px 0 3px; }
 .ti-actions .key { font-weight: 400; color: var(--muted); }
 kbd {
   font-size: 0.72rem;
@@ -293,7 +299,8 @@ footer { text-align: center; color: var(--muted); font-size: 0.8rem; padding: 16
   /* Zweizeilig: "Verbessern" / "38 Münze", ohne Klammern (B-056) */
   .ti-actions .paren { display: none; }
   /* Platz unter der Seite, damit die Leiste nichts endgültig verdeckt */
-  body:has(#tower-info:not([hidden])) main { padding-bottom: 140px; }
+  /* Höhe aus main.js (ResizeObserver auf #tower-info, enthält schon env(safe-area-inset-bottom) im Padding); 140px als Rückfall */
+  body:has(#tower-info:not([hidden])) main { padding-bottom: calc(var(--tower-info-h, 140px) + 8px); }
   #shop { order: 4; display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 8px; }
   .tower-btn { grid-template-columns: 40px 1fr; grid-template-areas: 'icon name' 'icon cost'; gap: 0 6px; padding: 4px 6px 4px 4px; }
   .t-icon { width: 40px; height: 40px; }

@@ -897,7 +897,7 @@ test('Boss-Auftritt B-067: Wackeln unter 3 px, reduced motion schaltet es aus, R
   };
   const normal = run(false);
   assert.ok(normal.maxOff > 0 && normal.maxOff < 3, `Wackeln ${normal.maxOff}`);
-  assert.equal(normal.dust, 0, 'Auftritt erzeugt keine Partikel (nur Ring und Wackeln)');
+  assert.ok(normal.dust > 0 && normal.dust <= BOSS_ENTRY.dustCount, `Auftritt erzeugt wenige Staubpartikel (${normal.dust})`);
   assert.equal(normal.fx.entryStart, 1.02);
   assert.equal(normal.fx.entryX, 100);
   const calm = run(true);
@@ -1148,4 +1148,142 @@ test('B-068 Tester: coinHop stetig an split und end, coinSpin an Grenzen', async
   assert.equal(coinSpin(0), 1);
   assert.equal(coinSpin(-Infinity), 1);
   assert.ok(coinSpin(1 / (2 * c.spins)) === c.minWidth, 'Kante: Mindestbreite');
+});
+
+// ---------- B-095: Boss und Effekte Feinschliff ----------
+test('B-095: Zeitsprung rueckwaerts im selben Spiel loest den Boss-Auftritt nicht erneut aus, neuer Boss schon', () => {
+  const fx = createFx();
+  const path = { points: [] };
+  const boss = { type: 'boss', x: 10, y: 10, radius: 18 };
+  const s = { time: 5, path, enemies: [boss] };
+  syncFx(fx, s);
+  assert.equal(fx.entryStart, 5);
+  // Zeitsprung zurueck (Reset), Boss steht noch auf dem Feld: kein Ring, kein Wackeln
+  s.time = 2; syncFx(fx, s);
+  assert.equal(fx.entryStart, -Infinity, 'kein erneuter Auftritt');
+  assert.equal(fx.shakeStrength, 0, 'kein Wackeln');
+  s.time = 2.5; syncFx(fx, s);
+  assert.equal(fx.entryStart, -Infinity, 'auch im naechsten Frame nicht');
+  // ein spaeter erscheinender Boss loest normal aus
+  const boss2 = { type: 'boss', x: 40, y: 10, radius: 18 };
+  s.time = 3; s.enemies = [boss, boss2, null]; syncFx(fx, s);
+  assert.equal(fx.entryStart, 3);
+  assert.equal(fx.entryX, 40);
+});
+
+test('B-095: Treffer-Blitz dauert laut STIL.md 0,08 s', async () => {
+  const { spawnHit, T_ARROW, K_FLASH } = await import('../src/fx-system.js');
+  const { FX_STYLE } = await import('../src/config.js');
+  assert.equal(FX_STYLE.hit.flashLife, 0.08);
+  const fx = createFx();
+  spawnHit(fx, T_ARROW, 10, 10);
+  const i = fx.pkind.indexOf(K_FLASH);
+  assert.ok(i >= 0);
+  assert.ok(Math.abs(fx.plife[i] - 0.08) < 1e-6);
+  updateParticles(fx, 0.09);
+  assert.equal(fx.pkind.indexOf(K_FLASH), -1, 'nach 0,09 s verschwunden');
+});
+
+test('Boss-Auftritt B-095: Staub aus BOSS_ENTRY, bei reduzierter Bewegung keiner, Pool-Grenze bleibt', async () => {
+  const { BOSS_ENTRY } = await import('../src/config.js');
+  const { K_DUST } = await import('../src/fx-system.js');
+  const path = { points: [] };
+  const run = (reduced, extra = 0) => {
+    const fx = createFx();
+    const s = { time: 1, path, projectiles: [], effects: [], enemies: [] };
+    syncFx(fx, s, reduced);
+    for (let i = 0; i < extra; i++) spawnParticle(fx, K_SPARK, 0, 0, 0, 0, 10, 1);
+    s.time = 1.02;
+    s.enemies.push({ type: 'boss', x: 100, y: 80, radius: 18 });
+    syncFx(fx, s, reduced);
+    return fx;
+  };
+  const fx = run(false);
+  const dust = [];
+  for (let i = 0; i < MAX_PARTICLES; i++) if (fx.pkind[i] === K_DUST) dust.push(i);
+  assert.equal(dust.length, BOSS_ENTRY.dustCount);
+  for (const i of dust) {
+    assert.equal(fx.plife[i], Math.fround(BOSS_ENTRY.dustLife));
+    assert.ok(Math.hypot(fx.pvx[i], fx.pvy[i]) <= BOSS_ENTRY.dustSpeed + 1e-3, 'Tempo aus Config');
+    assert.ok(Math.hypot(fx.pvx[i], fx.pvy[i]) > 0, 'Staub bewegt sich');
+  }
+  // Staub verschwindet nach seiner Lebensdauer
+  updateParticles(fx, BOSS_ENTRY.dustLife / 2);
+  updateParticles(fx, BOSS_ENTRY.dustLife / 2 + 0.01);
+  assert.equal(fx.pkind.filter((k) => k === K_DUST).length, 0);
+  // reduzierte Bewegung: kein Staub
+  assert.equal(liveParticles(run(true)), 0, 'reduced motion: kein Staub');
+  // voller Pool: Obergrenze MAX_PARTICLES bleibt
+  assert.equal(liveParticles(run(false, MAX_PARTICLES)), MAX_PARTICLES);
+});
+
+test('Boss-Auftritt B-095: Staub wird ohne globalAlpha in der Staubfarbe gezeichnet', async () => {
+  const { updateFx, drawBossEntry } = await import('../src/render-fx.js');
+  const { BOSS_ENTRY } = await import('../src/config.js');
+  const state = createGame();
+  updateFx(state, false);
+  state.time += 0.05;
+  state.enemies.push(testEnemy({ type: 'boss', radius: ENEMY_TYPES.boss.radius }));
+  updateFx(state, false);
+  const fills = [];
+  const props = {};
+  let depth = 0;
+  const ctx = new Proxy({}, {
+    get(_, k) {
+      if (k in props) return props[k];
+      return () => {
+        if (k === 'save') depth++;
+        if (k === 'restore') depth--;
+        if (k === 'fill') fills.push(props.fillStyle);
+      };
+    },
+    set(_, k, v) { props[k] = v; return true; },
+  });
+  drawBossEntry(ctx);
+  assert.equal(fills.filter((c) => c === BOSS_ENTRY.dustColor).length, BOSS_ENTRY.dustCount);
+  assert.equal(props.globalAlpha, undefined);
+  assert.equal(depth, 0);
+});
+
+// ---------- Tester Block D: Randfälle B-095 ----------
+test('B-095 Randfall: Zeitsprung vorwaerts setzt nicht zurueck, Boss wird nicht erneut ausgeloest, timeJump bleibt aus', () => {
+  const fx = createFx();
+  const path = { points: [] };
+  const boss = { type: 'boss', x: 10, y: 10, radius: 18 };
+  const s = { time: 5, path, enemies: [boss] };
+  syncFx(fx, s);
+  assert.equal(fx.entryStart, 5);
+  s.time = 500; syncFx(fx, s);
+  assert.equal(fx.timeJump, false);
+  assert.equal(fx.entryStart, 5, 'kein neuer Auftritt nach Sprung vorwaerts');
+});
+
+test('B-095 Randfall: timeJump gilt nur einen Frame, neues Spiel (neuer Weg) zeigt den Auftritt wieder', () => {
+  const fx = createFx();
+  const path = { points: [] };
+  const boss = { type: 'boss', x: 10, y: 10, radius: 18 };
+  const s = { time: 5, path, enemies: [boss] };
+  syncFx(fx, s);
+  s.time = 1; syncFx(fx, s);
+  assert.equal(fx.timeJump, true);
+  s.time = 1.05; syncFx(fx, s);
+  assert.equal(fx.timeJump, false, 'Merker nur im Sprung-Frame');
+  // neuer Weg = neues Spiel: kein Zeitsprung, Boss loest aus
+  const s2 = { time: 0.5, path: { points: [] }, enemies: [boss] };
+  syncFx(fx, s2);
+  assert.equal(fx.timeJump, false);
+  assert.equal(fx.entryStart, 0.5);
+});
+
+test('B-095 Randfall: Staub bei vollem Partikel-Pool ueberschreibt nur, Pool bleibt begrenzt, kein Absturz', async () => {
+  const { BOSS_ENTRY } = await import('../src/config.js');
+  const { K_DUST, spawnBossDust } = await import('../src/fx-system.js');
+  const fx = createFx();
+  for (let i = 0; i < MAX_PARTICLES; i++) spawnParticle(fx, K_SPARK, 0, 0, 0, 0, 10, 1);
+  assert.equal(liveParticles(fx), MAX_PARTICLES);
+  for (let k = 0; k < 50; k++) spawnBossDust(fx, 100, 80, 18);
+  assert.equal(liveParticles(fx), MAX_PARTICLES);
+  const dust = Array.from(fx.pkind).filter((k) => k === K_DUST).length;
+  assert.equal(dust, Math.min(MAX_PARTICLES, 50 * BOSS_ENTRY.dustCount));
+  for (let i = 0; i < MAX_PARTICLES; i++) assert.ok(Number.isFinite(fx.px[i]) && Number.isFinite(fx.py[i]));
 });

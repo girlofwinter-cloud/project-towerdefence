@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { START_LIVES, PROGRESS_KEY, STAR_LIVES_SHARE, MAX_WAVES } from '../src/config.js';
 import {
-  emptyProgress, loadProgress, saveProgress, recordResult, starsFor, isUnlocked, mapProgress, starText, resultLines, MAP_ORDER,
+  emptyProgress, loadProgress, saveProgress, recordResult, starsFor, isUnlocked, mapProgress, starText, resultLines, MAP_ORDER, startMap, sanitizeProgress,
 } from '../src/progress.js';
 
 // Einfacher Fake-Speicher mit getItem/setItem wie localStorage.
@@ -219,4 +219,87 @@ test('resultLines: Niederlage nach Rekord aus früherem Spiel meldet Rekord, ohn
   play(p, { mapId: 'ice', status: 'lost', wave: 3, lives: 0 });
   const res = recordResult(p, { mapId: 'ice', status: 'lost', wave: 9, lives: 0 });
   assert.deepEqual(resultLines(p, 'ice', res), ['Rekord: Welle 9 · ☆☆☆']);
+});
+
+// ---------- B-101: Startkarte merken ----------
+// Karten über MAP_ORDER-Indizes, damit Änderungen an der Kartenliste die Tests nicht brechen.
+const [M0, M1, M2] = MAP_ORDER;
+const won = (...ids) => ({ maps: Object.fromEntries(ids.map((id) => [id, { bestWave: MAX_WAVES, stars: 1 }])) });
+
+test('startMap: leer und erste Karte nur gespielt → erste Karte', () => {
+  assert.equal(startMap(emptyProgress()), M0);
+  assert.equal(startMap({ maps: { [M0]: { bestWave: 5, stars: 0 } } }), M0);
+  assert.equal(startMap(null), M0);
+});
+
+test('startMap: erste und zweite Karte geschafft → neueste freigeschaltete Karte', () => {
+  assert.equal(startMap(won(M0)), M1);
+  assert.equal(startMap(won(M0, M1)), M2);
+  assert.equal(startMap(won(...MAP_ORDER)), MAP_ORDER.at(-1));
+});
+
+test('startMap: freigeschaltete lastMap wird genommen', () => {
+  assert.equal(startMap({ ...won(M0, M1), lastMap: M0 }), M0);
+  assert.equal(startMap({ ...won(M0, M1), lastMap: M1 }), M1);
+});
+
+test('startMap: gesperrte, unbekannte oder kaputte lastMap → Rückfall', () => {
+  assert.equal(startMap({ ...won(M0), lastMap: M2 }), M1);
+  assert.equal(startMap({ ...emptyProgress(), lastMap: M1 }), M0);
+  for (const bad of ['mars', 'forest', '', 42, null, {}, [M1], '__proto__']) {
+    assert.equal(startMap({ ...won(M0), lastMap: bad }), M1, String(bad));
+  }
+});
+
+test('sanitizeProgress/Laden: lastMap bleibt nur bei bekannter Karte, alte Stände laden weiter', () => {
+  assert.equal(sanitizeProgress({ maps: {}, lastMap: M1 }).lastMap, M1);
+  for (const bad of ['mars', 7, null, [M1], 'toString']) {
+    assert.equal('lastMap' in sanitizeProgress({ maps: {}, lastMap: bad }), false, String(bad));
+  }
+  // Alter Stand ohne lastMap (B-093): unverändert, Start auf der neuesten freigeschalteten Karte
+  const old = fakeStorage({ [PROGRESS_KEY]: JSON.stringify({ maps: { [M0]: { bestWave: MAX_WAVES, stars: 2 } } }) });
+  const p = loadProgress(old);
+  assert.deepEqual(p, { maps: { [M0]: { bestWave: MAX_WAVES, stars: 2 } } });
+  assert.equal(startMap(p), M1);
+  // Rundreise mit lastMap
+  const s = fakeStorage();
+  assert.equal(saveProgress(s, { ...p, lastMap: M0 }), true);
+  assert.equal(loadProgress(s).lastMap, M0);
+  assert.equal(startMap(loadProgress(s)), M0);
+});
+
+test('recordResult (B-101): Freischalten löscht lastMap, nächster Start auf der neuen Karte', () => {
+  const p = { ...emptyProgress(), lastMap: M0 };
+  assert.equal(startMap(p), M0);
+  // Niederlage schaltet nichts frei: lastMap bleibt
+  recordResult(p, { mapId: M0, status: 'lost', wave: 3, lives: 0 });
+  assert.equal(p.lastMap, M0);
+  const r = recordResult(p, { mapId: M0, status: 'won', wave: MAX_WAVES, lives: START_LIVES });
+  assert.equal(r.unlockedMap, M1);
+  assert.equal('lastMap' in p, false);
+  assert.equal(startMap(p), M1);
+});
+
+// ---------- Tester Block D: Randfälle B-101 ----------
+test('sanitizeProgress (B-101 Randfall): __proto__, Objekt-lastMap und Arrays als raw', () => {
+  const evil = JSON.parse(`{"maps":{},"lastMap":"__proto__","__proto__":{"lastMap":"${M1}"}}`);
+  const p = sanitizeProgress(evil);
+  assert.equal('lastMap' in p, false);
+  assert.equal({}.lastMap, undefined, 'kein Prototyp verschmutzt');
+  assert.equal('lastMap' in sanitizeProgress({ maps: {}, lastMap: { toString: () => M1 } }), false);
+  assert.equal('lastMap' in sanitizeProgress([{ lastMap: M1 }]), false);
+  assert.equal('lastMap' in sanitizeProgress(M1), false);
+  // gesperrte Karte bleibt gespeichert, startMap fällt aber zurück
+  const locked = sanitizeProgress({ maps: {}, lastMap: MAP_ORDER.at(-1) });
+  assert.equal(locked.lastMap, MAP_ORDER.at(-1));
+  assert.equal(startMap(locked), MAP_ORDER[0]);
+});
+
+test('startMap (B-101 Randfall): Ergebnis ist immer freigeschaltet, auch wenn Sterne Lücken haben', () => {
+  // Dritte Karte geschafft, zweite nicht: Lücke in der Kette
+  const p = { maps: { [M0]: { bestWave: MAX_WAVES, stars: 1 }, [M2]: { bestWave: MAX_WAVES, stars: 3 } }, lastMap: M2 };
+  const m = startMap(p);
+  assert.ok(isUnlocked(p, m), m);
+  assert.equal(isUnlocked(p, M2), false, 'gemerkte Karte ist gesperrt');
+  assert.notEqual(m, M2);
 });

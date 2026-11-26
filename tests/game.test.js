@@ -1980,6 +1980,24 @@ test('B-058 Randfälle (Tester): abilityView bei Überbuchung, Restzeit knapp ü
   assert.equal(abilityView(m, 0, 0).badge, '', 'unbegrenzte Fähigkeit ohne Abzeichen');
 });
 
+test('B-096: abilityView ist robust gegen uses undefined/NaN und Restzeit NaN/undefined', async () => {
+  const { abilityView } = await import('../src/hud.js');
+  const m = ABILITIES.meteor, r = ABILITIES.repair;
+  // uses fehlt -> wie 0 Einsätze, kein "NaN×"
+  assert.deepEqual(abilityView(r, undefined, 0), abilityView(r, 0, 0));
+  assert.equal(abilityView(r, NaN, 0).badge, `${r.maxUses}×`);
+  for (const v of [abilityView(r, undefined, 0), abilityView(m, undefined, 0)]) assert.ok(!/NaN|undefined/.test(v.badge + v.aria));
+  // Restzeit ungültig -> nicht bereit, leerer Balken, lesbarer Text
+  for (const left of [NaN, undefined]) {
+    const v = abilityView(m, 0, left);
+    assert.equal(v.state, 'charging', `left=${left}`);
+    assert.equal(v.fill, 0, `left=${left}`);
+    assert.equal(v.aria, `Meteor, lädt noch ${m.cooldown} s`);
+  }
+  // aufgebraucht bleibt aufgebraucht, auch mit ungültiger Restzeit
+  assert.equal(abilityView(r, r.maxUses, NaN).state, 'used');
+});
+
 test('B-069 Randfälle (Tester): heartStates bei 0 Leben, NaN und max 0', async () => {
   const { heartStates, livesText } = await import('../src/hud.js');
   assert.deepEqual(heartStates(0, 3), [false, false, false]);

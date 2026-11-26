@@ -61,3 +61,44 @@ test('Desktop 1280x800: Fähigkeitsknöpfe kompakt (44-60 px), Tastenkürzel sic
   assert.match(await btn.getAttribute('aria-label'), /^Meteor, lädt noch \d+ s$/);
   await ctx.close();
 });
+
+// B-096: Pause-Banner und Turmkarten-Kürzel je nach Gerät
+async function pauseBannerTexts(page) {
+  await page.locator('#pause').click();
+  await page.waitForSelector('#pause-banner:not([hidden])');
+  return {
+    text: await page.locator('#pause-banner').innerText(),
+    kbdVisible: await page.$$eval('.tower-btn kbd', (els) => els.filter((e) => e.offsetParent !== null).length),
+  };
+}
+
+test('B-096 Handy 390x844: Turmkarten-Kürzel und "P drücken" unsichtbar, Banner nennt Weiter', async () => {
+  const { ctx, page } = await openPage({ width: 390, height: 844 }, true);
+  const { text, kbdVisible } = await pauseBannerTexts(page);
+  assert.equal(kbdVisible, 0, 'keine Kürzel auf den Turmkarten');
+  assert.doesNotMatch(text, /P drücken/);
+  assert.match(text, /Tippe auf Weiter/);
+  await ctx.close();
+});
+
+test('B-096 Tablet mit Touch 1024x768: Turmkarten-Kürzel ausgeblendet', async () => {
+  const { ctx, page } = await openPage({ width: 1024, height: 768 }, true);
+  const { text, kbdVisible } = await pauseBannerTexts(page);
+  assert.equal(kbdVisible, 0);
+  assert.doesNotMatch(text, /P drücken/);
+  await ctx.close();
+});
+
+test('B-096 Desktop 1280x800: Turmkarten-Kürzel und "P drücken" sichtbar, kein Touch-Hinweis, keine Emoji', async () => {
+  const { ctx, page } = await openPage({ width: 1280, height: 800 }, false);
+  const { text, kbdVisible } = await pauseBannerTexts(page);
+  assert.equal(kbdVisible, await page.locator('.tower-btn').count());
+  assert.match(text, /P drücken/);
+  assert.doesNotMatch(text, /Tippe/);
+  // Sichtbare Spiel-UI ohne Emoji (Fußzeile ausgenommen); Kartenliste inkl. gesperrter Karten
+  const ui = await page.evaluate(() => document.querySelector('header').innerText + document.querySelector('main').innerText
+    + [...document.querySelectorAll('#map-select option')].map((o) => o.textContent).join(' '));
+  assert.doesNotMatch(ui, /\p{Extended_Pictographic}/u);
+  assert.match(ui, /\(gesperrt\)/);
+  await ctx.close();
+});
