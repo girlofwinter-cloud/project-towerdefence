@@ -1,5 +1,5 @@
 // Reine Darstellungs-Helfer fürs HUD (kein DOM).
-import { START_LIVES, MAX_WAVES, EARLY_START_BONUS, waveBonus } from './config.js';
+import { START_LIVES, MAX_WAVES, earlyStartBonus } from './config.js';
 
 // Herzreihe als Liste: true = verbleibendes Leben, false = verlorenes (nie negativ, gekappt).
 export function heartStates(lives, max = START_LIVES) {
@@ -63,6 +63,6 @@ export function startButtonView(state) {
   const canStart = state.status === 'playing' && state.wave < MAX_WAVES;
   const next = state.wave + 1;
   let label = `Welle ${next} starten`;
-  if (state.waveActive) label = canStart ? `Nächste Welle +${Math.floor(waveBonus(next) * EARLY_START_BONUS)}` : 'Letzte Welle läuft…';
+  if (state.waveActive) label = canStart ? `Nächste Welle +${earlyStartBonus(next)}` : 'Letzte Welle läuft…';
   return { disabled: !canStart, label, showKey: canStart };
 }

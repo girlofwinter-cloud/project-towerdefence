@@ -72,6 +72,17 @@ test('Welle starten bringt Gegner aufs Feld', async () => {
   assert.deepEqual(errors, []);
 });
 
+test('B-005: Leertaste startet früh, gehaltene Taste (Wiederholung) startet nicht mehrfach', async () => {
+  const before = await page.evaluate(() => window.__game().wave);
+  await page.evaluate(() => {
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: ' ' }));
+    for (let i = 0; i < 5; i++) window.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', repeat: true }));
+  });
+  assert.equal(await page.evaluate(() => window.__game().wave), before + 1);
+  assert.match(await page.locator('#start-label').textContent(), /^Nächste Welle \+\d+$/);
+  assert.deepEqual(errors, []);
+});
+
 test('Handy: Bauen per Touch in zwei Schritten, Zoom vergrößert das Spielfeld', async () => {
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, deviceScaleFactor: 2 });
   const m = await ctx.newPage();

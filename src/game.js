@@ -1,7 +1,7 @@
 // Spiel-Logik: kompletter Zustand + update(). Kein DOM, kein Canvas -> in Node testbar.
 import {
   TILE, COLS, ROWS, START_GOLD, START_LIVES, MAX_WAVES, SELL_RATIO, MAX_LEVEL, MAX_SUBSTEP, TARGET_MODES,
-  MAPS, DEFAULT_MAP_ID, TOWER_TYPES, ABILITIES, WIDTH, HEIGHT, ENEMY_TYPES, LAVA, FX_STYLE, EARLY_START_BONUS, waveFor, waveBonus, hpScale, meteorDamage,
+  MAPS, DEFAULT_MAP_ID, TOWER_TYPES, ABILITIES, WIDTH, HEIGHT, ENEMY_TYPES, LAVA, FX_STYLE, earlyStartBonus, waveFor, waveBonus, hpScale, meteorDamage,
 } from './config.js';
 import { buildPath, pointAt, pathTiles } from './path.js';
 
@@ -165,10 +165,8 @@ export function sellTower(state, id) {
 
 // ---------- Wellen ----------
 
-// B-005: Bonus für den vorzeitigen Start der Welle `wave` (nur während eine Welle läuft).
-export function earlyStartBonus(wave) {
-  return Math.floor(waveBonus(wave) * EARLY_START_BONUS);
-}
+// B-005: Bonus für den vorzeitigen Start (Formel in config.js), hier weiter exportiert.
+export { earlyStartBonus };
 
 // Startet die nächste Welle. Läuft schon eine, startet sie vorzeitig (B-005): ihre Gegner kommen zusätzlich in die
 // Spawn-Liste (Zeiten relativ zu ihrem eigenen Start, jeder Eintrag trägt seine Wellennummer). Die laufende Welle

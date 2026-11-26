@@ -369,7 +369,7 @@ window.addEventListener('keydown', (ev) => {
   const ability = Object.keys(ABILITIES).find((a) => ABILITIES[a].key === key);
   if (type) selectBuild(type);
   else if (ability) doAbility(ability);
-  else if (key === ' ') { ev.preventDefault(); doStartWave(); }
+  else if (key === ' ') { ev.preventDefault(); if (!ev.repeat) doStartWave(); } // B-005: gehaltene Taste startet nicht mehrfach
   else if (key === 'escape') { ui.aiming = false; ui.buildType = null; ui.selectedTowerId = null; ui.pending = null; refreshUI(); }
   else if (key === 'u') doUpgrade();
   else if (key === 's') doSell();
