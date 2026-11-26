@@ -734,7 +734,7 @@ test('B-115: planSound findet Ereignis-Aufnahmen; audio.js spielt sie oder die S
 });
 
 // ---------- B-116: Hintergrundmusik ----------
-import { musicUrl, musicLevel, musicRamp, findLoopPoints } from '../src/sound-events.js';
+import { musicUrl, pickMusicUrl, musicGainFactor, musicLevel, musicRamp, findLoopPoints } from '../src/sound-events.js';
 
 test('B-116: Musik-Datei, Lizenz, Größe und Zahlen in SOUND.music; leiser als die Effekte', () => {
   const M = SOUND.music;
@@ -800,7 +800,7 @@ test('B-116: findLoopPoints schneidet Stille an den Rändern ab', () => {
 });
 
 // Web Audio nachgebaut mit Rampen-Protokoll; Laden der Effekte steuerbar (release)
-async function withFakeMusic({ musicFails = false } = {}, fn) {
+async function withFakeMusic({ musicFails = false, failUrls = [] } = {}, fn) {
   const log = [];
   const fetched = [];
   let release;
@@ -812,7 +812,7 @@ async function withFakeMusic({ musicFails = false } = {}, fn) {
     exponentialRampToValueAtTime() {},
     cancelScheduledValues(t) { log.push([name, 'cancel', t]); },
   });
-  const node = (kind) => ({ kind, outs: [], connect(n) { this.outs.push(n); }, start(...a) { log.push(['start', kind, this, a]); }, stop() {} });
+  const node = (kind) => ({ kind, outs: [], connect(n) { this.outs.push(n); }, start(...a) { log.push(['start', kind, this, a]); }, stop(...a) { log.push(['stop', kind, this, a]); } });
   const sr = 100;
   const musicBuf = {
     numberOfChannels: 2, sampleRate: sr, length: 1000,
@@ -836,7 +836,7 @@ async function withFakeMusic({ musicFails = false } = {}, fn) {
   globalThis.fetch = async (url) => {
     fetched.push(url);
     if (url.includes('music')) {
-      if (musicFails) return { ok: false, status: 404 };
+      if (musicFails || failUrls.includes(url)) return { ok: false, status: 404 };
       return { ok: true, arrayBuffer: async () => ({ url }) };
     }
     await effectsDone;
@@ -919,6 +919,105 @@ test('B-116: Fehler beim Laden der Musik bleibt still, Effekte spielen weiter', 
     mod.playSound({ kind: 'won' });
     assert.ok(log.some((l) => l[0] === 'start' && l[1] === 'source'), 'Effekt spielt');
   });
+});
+
+test('B-118: musicUrl je Karte, Rückfall auf file bei unbekannter Karte', () => {
+  const M = SOUND.music;
+  assert.equal(musicUrl(M, 'meadow'), `${M.base}${M.byMap.meadow.file}.m4a`);
+  assert.equal(musicUrl(M, 'volcano'), 'assets/music/music-volcano.m4a');
+  assert.equal(musicUrl(M, 'gibtsnicht'), `${M.base}${M.file}.m4a`);
+  assert.equal(musicUrl(M, undefined), musicUrl());
+  assert.equal(musicUrl(M, 'toString'), `${M.base}${M.file}.m4a`, 'keine geerbten Eigenschaften');
+  // jede Zuordnung gehört zu einer echten Karte, jede eingetragene Datei existiert
+  assert.deepEqual(Object.keys(M.byMap).sort(), [...MAP_ORDER].sort(), 'jede Karte hat einen eigenen Titel');
+  for (const [id, { file: name }] of Object.entries(M.byMap)) {
+    assert.ok(MAP_ORDER.includes(id), id);
+    assert.ok(fs.existsSync(new URL(`../${M.base}${name}.m4a`, import.meta.url)), name);
+  }
+  for (const id of MAP_ORDER) assert.match(musicUrl(M, id), /^assets\/music\/.+\.m4a$/);
+  const cfg = { ...M, byMap: { ice: { file: 'music-ice', gain: 2 } } };
+  assert.equal(musicUrl(cfg, 'ice'), 'assets/music/music-ice.m4a');
+  assert.equal(musicUrl(cfg, 'fork'), `assets/music/${M.file}.m4a`);
+});
+
+test('B-118: pickMusicUrl wählt Kartentitel, bei Ladefehler Rückfall, sonst keine Musik', () => {
+  const cfg = { ...SOUND.music, byMap: { ice: { file: 'music-ice', gain: 2 } } };
+  const ice = 'assets/music/music-ice.m4a';
+  const fallback = musicUrl(cfg);
+  assert.equal(pickMusicUrl('ice', [], cfg), ice);
+  assert.equal(pickMusicUrl('ice', [ice], cfg), fallback);
+  assert.equal(pickMusicUrl('ice', [ice, fallback], cfg), null);
+  assert.equal(pickMusicUrl('fork', [], cfg), fallback);
+  assert.equal(pickMusicUrl('fork', [fallback], cfg), null);
+  assert.equal(pickMusicUrl(undefined, undefined, cfg), fallback);
+});
+
+test('B-118: Lautstärkefaktor je Titel wirkt auf musicLevel, Rückfall behält eigenen Faktor', () => {
+  const M = SOUND.music;
+  for (const [id, e] of Object.entries(M.byMap)) {
+    assert.ok(Number.isFinite(e.gain) && e.gain > 0 && e.gain <= 3, id);
+    assert.equal(musicGainFactor(musicUrl(M, id)), e.gain, id);
+  }
+  // lautere Titel leiser, leisere lauter
+  assert.ok(M.byMap.twin.gain < 1 && M.byMap.volcano.gain < 1 && M.byMap.ice.gain > 1 && M.byMap.fork.gain > 1);
+  const twin = musicUrl(M, 'twin');
+  assert.ok(Math.abs(musicLevel({ soundOn: true, status: 'playing', paused: false, url: twin }) - M.gain * M.byMap.twin.gain) < 1e-12);
+  assert.ok(Math.abs(musicLevel({ soundOn: true, status: 'playing', paused: true, url: twin }) - M.gain * M.byMap.twin.gain * M.pausedFactor) < 1e-12);
+  assert.equal(musicLevel({ soundOn: true, status: 'won', paused: false, url: twin }), 0);
+  // unbekannter oder fehlender Titel: Faktor 1; Rückfall (file) hat den Faktor seines Eintrags
+  assert.equal(musicGainFactor('assets/music/gibtsnicht.m4a'), 1);
+  assert.equal(musicGainFactor(undefined), 1);
+  assert.equal(musicGainFactor(musicUrl()), M.byMap.meadow.gain);
+  assert.equal(musicGainFactor(`${M.base}x.m4a`, { ...M, byMap: { a: { file: 'x', gain: NaN } } }), 1);
+});
+
+test('B-118: Kartenwechsel blendet aus und wieder ein, Cache je Titel, Ladefehler -> Rückfalltitel', async () => {
+  const M = SOUND.music;
+  const saved = M.byMap;
+  M.byMap = { ...saved, ice: { file: 'music-test-ice', gain: 1 }, fork: { file: 'music-test-fork', gain: 1 } };
+  const iceUrl = musicUrl(M, 'ice');
+  const forkUrl = musicUrl(M, 'fork');
+  const meadowUrl = musicUrl(M, 'meadow');
+  try {
+    await withFakeMusic({ failUrls: [forkUrl] }, async ({ mod, log, fetched, release, tick }) => {
+      const play = (mapId) => mod.updateMusic({ status: 'playing', paused: false, mapId });
+      const loops = () => log.filter((l) => l[0] === 'start' && l[1] === 'source' && l[2].loop).map((l) => l[2]);
+      const settle = async (mapId) => { for (let i = 0; i < 3; i++) { play(mapId); await tick(); } play(mapId); };
+      mod.setSoundOn(true);
+      mod.unlockAudio();
+      release();
+      await tick();
+      await settle('meadow');
+      assert.equal(loops().length, 1);
+      const first = loops()[0];
+      // Wechsel zur Eiswelt: neuer Titel wird geladen, dann alter mit fadeOut ausgeblendet und gestoppt
+      log.length = 0;
+      play('ice');
+      assert.ok(!log.some((l) => l[0] === 'stop'), 'alter läuft weiter, solange der neue lädt');
+      await tick();
+      play('ice');
+      assert.ok(log.some((l) => l[0] === 'gain' && l[1] === 'ramp' && l[2] === 0 && l[3] === 10 + M.fadeOut), 'ausblenden');
+      assert.ok(log.some((l) => l[0] === 'stop' && l[2] === first && l[3][0] === 10 + M.fadeOut), 'danach stoppen');
+      await settle('ice');
+      assert.equal(loops().length, 1);
+      assert.equal(log.filter((l) => l[0] === 'gain' && l[1] === 'ramp').at(-1)[2], M.gain, 'neuer Titel eingeblendet');
+      // zurück zur Wiese: kein neues Laden (Cache)
+      await settle('meadow');
+      assert.equal(loops().length, 2);
+      assert.equal(fetched.filter((u) => u === meadowUrl).length, 1);
+      assert.equal(fetched.filter((u) => u === iceUrl).length, 1);
+      // Zangenangriff: eigener Titel fehlt -> still Rückfalltitel (aus dem Cache), kein erneuter Versuch
+      log.length = 0;
+      await settle('fork');
+      await settle('fork');
+      assert.equal(fetched.filter((u) => u === forkUrl).length, 1);
+      assert.equal(fetched.filter((u) => u === meadowUrl).length, 1);
+      assert.ok(!log.some((l) => l[0] === 'stop'), 'Rückfall = laufender Wiesen-Titel, kein Wechsel');
+      assert.equal(loops().length, 0);
+    });
+  } finally {
+    M.byMap = saved;
+  }
 });
 
 test('Kanone: Abschussknall lauter als andere Schüsse, aber leiser als Boss und Meteor', () => {
@@ -1146,8 +1245,17 @@ test('Rand Tod: enemyRate deckt alle Gegnertypen (außer Boss) ab, keine unbekan
   }
 });
 
-test('Rand: Gesamtgröße assets (Effekte und Musik) höchstens 2 MB', () => {
+// B-118: Grenze vom Menschen am 2026-11-26 von 2 MB auf 10 MB angehoben (fünf Musiktitel, je Spiel wird nur
+// der Titel der gewählten Karte geladen). Dafür neu: jede Musikdatei höchstens 3 MB.
+test('Rand: Gesamtgröße assets (Effekte und Musik) höchstens 10 MB', () => {
   const sum = (dir) => fs.readdirSync(`${ROOT}${dir}`).reduce((a, f) => a + fs.statSync(`${ROOT}${dir}/${f}`).size, 0);
   const total = sum('assets/sounds') + sum('assets/music');
-  assert.ok(total <= 2 * 1024 * 1024, `assets ${total} B`);
+  assert.ok(total <= 10 * 1024 * 1024, `assets ${total} B`);
+});
+
+test('Rand: jede Musikdatei höchstens 3 MB (B-118)', () => {
+  for (const f of fs.readdirSync(`${ROOT}assets/music`)) {
+    const size = fs.statSync(`${ROOT}assets/music/${f}`).size;
+    assert.ok(size <= 3 * 1024 * 1024, `${f}: ${size} B`);
+  }
 });

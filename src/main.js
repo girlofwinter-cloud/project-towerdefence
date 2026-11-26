@@ -509,8 +509,8 @@ function frame(now) {
   stepGame(state, dt, ui.speed);
   // Töne: Ereignisse immer erkennen (sonst käme nach dem Einschalten ein Schwall), nur bei Ton an abspielen
   for (const ev of collectSounds(soundTracker, state, now / 1000)) if (ui.soundOn) playSound(ev);
-  // B-116: Musik laden/starten und je nach Spielstatus ein- oder ausblenden
-  updateMusic({ status: state.status, paused: state.paused });
+  // B-116/B-118: Musik der Karte laden/starten und je nach Spielstatus ein- oder ausblenden
+  updateMusic({ status: state.status, paused: state.paused, mapId: state.mapId });
   ui.messageTtl -= dt;
   render(ctx, state, ui);
   hudTimer -= dt;
