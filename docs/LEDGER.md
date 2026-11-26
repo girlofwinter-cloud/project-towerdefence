@@ -589,3 +589,10 @@ Neue Einträge werden unten angehängt. Bestehende Einträge werden nie geänder
 - Ergebnis: fertig. Neues reines Modul `src/progress.js` (`localStorage`, kein Backend), Sterne nach übrigen Leben, Freischaltung in `MAPS`-Reihenfolge, Anzeige im Overlay und in der Kartenauswahl (🔒, Sterne)
 - Tests: 264 Unit-Tests (12 neu in `tests/progress.test.js`, davon 4 vom Tester), e2e 6/6 laut Developer. Tester: PASS. Review: APPROVE, Hinweise als B-094
 - Entscheidungen: Mechanik „Karten freischalten“ vom Menschen am 2026-11-26 freigegeben. `src/game.js` unverändert; gespeichert werden je Karte nur `bestWave` und `stars`; zuletzt gewählte Karte wird nicht gespeichert.
+
+## 2026-11-26 · Testseite für manuelles Testen (ohne Backlog-Nr., direkter Auftrag des Menschen)
+- Rolle(n): Claude (interaktiv), reviewer
+- Branch: agent/testseite
+- Ergebnis: fertig. `test.html` leitet auf `index.html?test`; dort Werkzeug-Panel (`src/test-page.js`): Karte und Startwelle frei wählen, unbegrenztes Gold, Unverwundbar, Tempo ×1–×10, Gegner entfernen, Fähigkeiten laden, Sieg/Niederlage erzwingen. Logik rein in `src/test-tools.js`, Zahlen in `TEST_TOOLS`.
+- Tests: 274 Unit-Tests (10 neu in `tests/test-tools.test.js`), 10 Browser-Tests (4 neu in `tests/e2e/testpage.test.mjs`)
+- Entscheidungen: Kein eigenes Markup-Duplikat, dasselbe Spiel mit Parameter `?test`. Im Testmodus alle Karten offen und `getStorage()` liefert `null`, der echte Fortschritt bleibt unberührt. `src/game.js` unverändert. Die Seite ist über GitHub Pages ebenfalls erreichbar (nur Test-Werkzeug, kein Einfluss aufs normale Spiel).
