@@ -617,3 +617,14 @@ Agents lesen diese Datei nur bei konkretem Bedarf.
   - Tests: Schild schluckt Schaden bis zur Grenze, Restschaden geht auf HP; kein Stapeln; Magier schützt sich nicht selbst; Schild auch gegen Splash.
   - Test „perfektes Spiel möglich“ bleibt auf allen Karten grün; Standard-Strategien gemessen, Messwerte im Ledger.
   - Darstellung: eigene Figur im Flat-Pop-Stil (Robe, Hut, Stab) und gut sichtbare Schild-Blase um geschützte Gegner; Wellenvorschau und Sounds kennen den neuen Typ.
+
+### B-127: Zweiter Boss „Nekromantin“
+- Status: fertig
+- Aufwand: L
+- Idee: Neuer Boss, der sich mit dem Oger-König abwechselt: Wellen 5 und 15 Oger-König, Wellen 10 und 20 Nekromantin (gleiche Anzahl wie bisher). Die Nekromantin beschwört alle `summonInterval` Sekunden `summonCount` Skelette (schwach, langsam, kaum Gold), die etwas vor ihr auf ihrem Weg erscheinen. Fordert Flächenschaden. Vom Menschen freigegeben am 2026-11-26, Vorgabe: Spiel etwas schwerer.
+- Akzeptanzkriterien:
+  - `ENEMY_TYPES.necro` und `ENEMY_TYPES.skeleton` in `config.js`; Boss-Eigenschaften über ein Merkmal (z. B. `boss: true`) statt `type === 'boss'`, damit Immunitäten (Einfrieren, Rückstoß-Faktor), Boss-Auftritt und Boss-Sound für beide Bosse gelten.
+  - Skelette bekommen die HP-Skalierung der Welle des Bosses, erscheinen auf demselben Weg und zählen zum Wellenende (Welle endet erst, wenn alle tot oder durch sind). Beschwörung hört mit dem Tod der Nekromantin auf.
+  - Tests: Beschwörung im Takt, Position auf dem Weg, Boss-Immunitäten für die Nekromantin, Wellenplan 5/10/15/20.
+  - Test „perfektes Spiel möglich“ bleibt auf allen Karten grün; Standard-Strategien gemessen, Messwerte im Ledger.
+  - Darstellung: eigene Boss-Figur (Kapuze, Stab mit grünem Licht) und Skelett-Figur im Flat-Pop-Stil, Beschwörungs-Effekt; Wellenvorschau und Sounds kennen beide Typen.

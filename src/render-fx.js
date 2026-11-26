@@ -2,7 +2,7 @@
 // Transparenz nur ueber globalAlpha innerhalb von save/restore. Keine Allokation pro Frame.
 import {
   createFx, syncFx, shakeOffset, bossEntryProgress, MAX_PARTICLES,
-  K_NONE, K_SMOKE, K_ICE, K_SPARK, K_FLASH, K_COIN, K_DUST, K_ROCK, coinHop, coinSpin, meteorPhase,
+  K_NONE, K_SMOKE, K_ICE, K_SPARK, K_FLASH, K_COIN, K_DUST, K_ROCK, K_SUMMON, coinHop, coinSpin, meteorPhase,
   T_ARROW, T_CANNON, T_FROST, T_SNIPER,
 } from './fx-system.js';
 import { BOSS_ENTRY, FX_STYLE, STYLE, WIDTH, HEIGHT } from './config.js';
@@ -320,6 +320,13 @@ export function drawParticles(ctx, under = false) {
       ctx.closePath();
       ctx.fill();
       ctx.stroke();
+    } else if (k === K_SUMMON) {
+      // B-127: grüner Lichtfunke der Beschwörung, schrumpft und verblasst
+      ctx.globalAlpha = FX_STYLE.summon.alpha * (1 - u);
+      ctx.fillStyle = FX_STYLE.summon.color;
+      ctx.beginPath();
+      ctx.arc(x, y, size * (1 - u * 0.5), 0, TWO_PI);
+      ctx.fill();
     } else if (k === K_COIN) {
       const cy = y + coinHop(u, fx.reduced);
       const w = size * coinSpin(u, fx.reduced);

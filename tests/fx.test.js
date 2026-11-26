@@ -1411,3 +1411,71 @@ test('B-112 Tester: Einschlag über syncFx genau einmal, nach resetFx kein Nachh
   assert.equal(liveParticles(fx), 0, 'Krater nach Reset löst keinen Einschlag aus');
   assert.equal(fx.shakeStrength, 0);
 });
+
+// ---------- B-127: Nekromantin und Skelett ----------
+
+import { observeEnemy, observeEffect, K_SUMMON } from '../src/fx-system.js';
+
+test('B-127: Nekromantin/Skelett zeichnen ausgewogen, bleiben im Kreis radius*1,3, Phasen verschieden, Licht pulsiert', async () => {
+  const paths = [buildPath([[0, 0], [5, 0]], TILE), buildPath([[5, 0], [0, 0]], TILE)];
+  for (const type of ['necro', 'skeleton']) {
+    for (const slow of [false, true]) for (const time of [0, 0.2, 0.45, 0.7]) for (const path of paths) {
+      const r = await recordEnemy({ type, slowUntil: slow ? 99 : 0 }, time, path);
+      assert.equal(r.depth, 0, `${type}: save/restore`);
+      for (const p of r.figure.filter((q) => q.depth > 0)) {
+        assert.ok(Math.hypot(p.x - r.e.x, p.y - r.e.y) + p.ext <= 1.3 * r.e.radius + 1e-9, `${type}: ${(Math.hypot(p.x - r.e.x, p.y - r.e.y) + p.ext) / r.e.radius}`);
+      }
+    }
+    const seen = new Set();
+    for (const time of [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6]) seen.add((await recordEnemy({ type }, time)).print);
+    assert.ok(seen.size >= 4, `${type}: Phasen unterscheiden sich`);
+  }
+  const { ENEMY_STYLE } = await import('../src/config.js');
+  const r = await recordEnemy({ type: 'necro' });
+  for (const col of [ENEMY_STYLE.necro.orb, ENEMY_STYLE.necro.halo, ENEMY_STYLE.necro.staff]) assert.ok(r.print.includes('|' + col), `Farbe ${col} fehlt`);
+  const { drawNecroFlat, NECRO_REF, BOSS_REF } = await import('../src/render-enemies-flat.js');
+  assert.equal(NECRO_REF, BOSS_REF, 'so groß wie der Oger-König');
+  const orb = (time) => {
+    const arcs = [];
+    drawNecroFlat(new Proxy({}, { get: (_, k) => (...a) => { if (k === 'arc') arcs.push(a[2]); }, set: () => true }), 0, time);
+    return arcs[0];
+  };
+  assert.notEqual(orb(0), orb(0.4));
+});
+
+test('B-127: Nekromantin/Skelett (B-085): Hauptfarben >= 0,25 Helligkeitsabstand zum Weg, skin == ENEMY_TYPES.color', async () => {
+  const { ENEMY_STYLE, MAPS, PATH_STYLE } = await import('../src/config.js');
+  const { brightness, outlineOf } = await import('../src/draw-utils.js');
+  const roads = new Set();
+  for (const id of ['meadow', 'ice']) roads.add({ ...PATH_STYLE.colors, ...(MAPS[id].theme.path || {}) }.mid);
+  for (const type of ['necro', 'skeleton']) {
+    const c = ENEMY_STYLE[type];
+    let mean = 0, sum = 0;
+    for (const [name, w] of Object.entries(c.main)) { mean += w * brightness(c[name]); sum += w; }
+    assert.ok(Math.abs(sum - 1) < 1e-9, `${type}: Anteile summieren auf 1`);
+    const printed = (await recordEnemy({ type })).print;
+    for (const name of Object.keys(c.main)) assert.ok(printed.includes('fill:|' + c[name]), `${type}: ${name} wird gezeichnet`);
+    for (const road of roads) {
+      assert.ok(Math.abs(mean - brightness(road)) >= 0.25, `${type}: Koerper ${mean.toFixed(2)} gegen Weg ${road}`);
+      assert.ok(Math.abs(brightness(outlineOf(c.skin)) - brightness(road)) >= 0.25, `${type}: Kontur gegen ${road}`);
+    }
+    assert.equal(c.skin, ENEMY_TYPES[type].color, `${type}: skin == ENEMY_TYPES.color`);
+  }
+});
+
+test('B-127: Boss-Auftritt auch für die Nekromantin, nicht für Skelette; Beschwörung erzeugt grüne Funken', () => {
+  const fx = createFx();
+  observeEnemy(fx, { type: 'skeleton', x: 10, y: 10, radius: 10 }, 1, false);
+  assert.equal(bossEntryProgress(1, fx.entryStart ?? -99), -1);
+  observeEnemy(fx, { type: 'necro', x: 50, y: 60, radius: 18 }, 2, false);
+  assert.equal(fx.entryStart, 2);
+  assert.equal(fx.entryX, 50);
+  const g = createFx();
+  observeEffect(g, { kind: 'summon', x: 30, y: 40, ttl: 0.6, max: 0.6 }, 0, false);
+  const n = Array.from(g.pkind).filter((k) => k === K_SUMMON).length;
+  assert.equal(n, FX_STYLE_B127.summon.count);
+  const calm = createFx();
+  observeEffect(calm, { kind: 'summon', x: 30, y: 40, ttl: 0.6, max: 0.6 }, 0, true);
+  for (let i = 0; i < MAX_PARTICLES; i++) if (calm.pkind[i] === K_SUMMON) assert.equal(calm.pvy[i], 0, 'reduzierte Bewegung: steigt nicht');
+});
+import { FX_STYLE as FX_STYLE_B127 } from '../src/config.js';

@@ -181,3 +181,47 @@ export function drawBossFlat(ctx, phase, time = 0) {
   ell(ctx, 2.4, -9.6, 0.9, 0.9, c.jewel, W * 0.5);                          // Edelstein
   ctx.restore();
 }
+
+// Nekromantin (B-127): Maßstab wie der Oger-König (sizeFactor), Blick nach +x
+export const NECRO_REF = ENEMY_TYPES.necro.radius / (ES.necro.sizeFactor * ENEMY_TYPES.grunt.radius / ES.grunt.ref);
+
+// Nekromantin: Kapuze, dunkle Robe, Stab mit pulsierendem grünem Licht
+export function drawNecroFlat(ctx, phase, time = 0) {
+  const c = ES.necro;
+  beginFigure(ctx, NECRO_REF, phase, 0.6);
+  line(ctx, [[6.5, 8.5], [6.5, -5.5]], c.staff, 1.6);                                // Stab hinter der Hand
+  stub(ctx, -3, 6.5, 3.8, 3, phase + Math.PI, c.robeDark);
+  stub(ctx, 3, 6.5, 3.8, 3, phase, c.robeDark);
+  poly(ctx, [[-7.5, 8.5], [6, 8.5], [4, -2.5], [-5, -2.5]], c.robe, W);     // Robe (unten breiter)
+  poly(ctx, [[-2.5, 8.5], [1.5, 8.5], [0.6, 0], [-1.6, 0]], c.robeDark, 0); // Falte
+  poly(ctx, [[-4.2, -7], [-7.2, -9.4], [-2, -9.4]], c.skin, W);            // Kapuzenzipfel
+  ell(ctx, 0, -4.8, 5.6, 5.6, c.skin, W);                                   // Kapuze
+  ell(ctx, 2.6, -4.4, 3.2, 3.6, c.face, W * 0.6);                           // dunkles Gesicht
+  ell(ctx, 3.8, -4.8, 0.9, 0.7, c.glow, 0);                                 // leuchtende Augen
+  ell(ctx, 2.2, -4.8, 0.8, 0.7, c.glow, 0);
+  ell(ctx, 6.5, 0, 1.7, 1.7, c.hand, W * 0.6);                                // Hand am Stab
+  const r = c.orbRadius + Math.sin(time * c.orbSpeed) * c.orbPulse;
+  ctx.fillStyle = c.halo;                                                   // Lichthof
+  ctx.beginPath();
+  ctx.arc(6.5, -7.5, r * c.haloScale, 0, Math.PI * 2);
+  ctx.fill();
+  ell(ctx, 6.5, -7.5, r, r, c.orb, W * 0.7);                                  // grünes Licht
+  ctx.restore();
+}
+
+// Skelett: Schädel mit Augenhöhlen, Rippen unter zerlumptem Umhang, dünne Knochenbeine
+export function drawSkeletonFlat(ctx, phase) {
+  const c = ES.skeleton;
+  beginFigure(ctx, c.ref, phase);
+  stub(ctx, -2.4, 4, 2, 5, phase + Math.PI, c.bone);
+  stub(ctx, 2.4, 4, 2, 5, phase, c.skin);
+  poly(ctx, [[-5.5, 5.5], [4.5, 5.5], [3, -1.5], [-4, -1.5]], c.rag, W);   // zerlumpter Umhang
+  line(ctx, [[-2, 0.8], [2, 0.8]], c.skin, 1.1);                            // Rippen
+  line(ctx, [[-2.2, 2.6], [2.2, 2.6]], c.skin, 1.1);
+  line(ctx, [[4, 0], [7, -1.5]], c.skin, 1.2);                               // Knochenarm
+  ell(ctx, 1.5, -5, 4.4, 4, c.skin, W);                                     // Schädel
+  rr(ctx, 1.4, -2.4, 3.6, 2, 0.6, c.bone, W * 0.6);                         // Kiefer
+  ell(ctx, 3.2, -5.2, 1.1, 1.3, c.socket, 0);                               // Augenhöhlen
+  ell(ctx, 0.6, -5.2, 0.9, 1.2, c.socket, 0);
+  ctx.restore();
+}
