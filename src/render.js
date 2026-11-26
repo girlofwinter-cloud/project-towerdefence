@@ -14,6 +14,7 @@ import { drawAccents } from './render-accents.js';
 import { drawTreeShadows, drawLight } from './render-light.js';
 import { drawGround as drawGroundFill, drawGroundTufts } from './render-ground.js';
 import { waterGeometry, drawWater, drawBridges } from './render-water.js';
+import { lavaGeometry, drawLava, drawLavaBridges } from './render-lava.js';
 import { tileHash, tileRand, decorFor, obstacleKind, treeFrame, groundPatches, accentsFor, coveredByCrown, scatterFor, LARGE_DECOR_RADIUS } from './decor.js';
 
 export function render(ctx, state, ui) {
@@ -115,8 +116,11 @@ function paintBackground(ctx, state) {
   else drawGrass(ctx, MAPS[id]?.theme);
   const water = waterGeometry(id, state.blocked); // B-104: Ebenen Boden, Wasser, Weg, Brücke
   drawWater(ctx, water);
+  const lava = lavaGeometry(id, state.blocked); // B-030: Lava wie Wasser zwischen Boden und Weg, Steinbrücke darüber
+  drawLava(ctx, lava);
   drawPath(ctx, state);
   drawBridges(ctx, water);
+  drawLavaBridges(ctx, lava);
   if (ground) drawGroundTufts(ctx, ground, groundStyle);
   const crowns = MAPS[id]?.theme?.treeFrame ? treeFrame(id) : null;
   drawDecor(ctx, state, crowns);
@@ -170,6 +174,7 @@ function drawDecor(ctx, state, crowns) {
   const style = themed(state.mapId, 'decor', DECOR_STYLE);
   const flatTrees = flatpop && style.flatTrees; // B-072: Bäume und Hindernisse im neuen Stil
   const firShare = style.firShare;
+  const terrain = new Set([...(state.water || []), ...(state.lava || [])]); // B-030: nie Deko auf Wasser oder Lava
   for (let r = 0; r < ROWS; r++) {
     for (let c = 0; c < COLS; c++) {
       if (state.obstacles && state.obstacles.has(`${c},${r}`)) {
@@ -177,7 +182,7 @@ function drawDecor(ctx, state, crowns) {
         else drawObstacle(ctx, c, r);
         continue;
       }
-      const d = decorFor(c, r, state.blocked, state.obstacles, state.water);
+      const d = decorFor(c, r, state.blocked, state.obstacles, terrain);
       if (!d) {
         const sc = flatpop && scatterFor(c, r, state.blocked, state.obstacles, state.mapId);
         if (sc) flat.drawScatter(ctx, sc, c * TILE + sc.ox * TILE, r * TILE + sc.oy * TILE);

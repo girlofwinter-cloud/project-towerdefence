@@ -38,6 +38,16 @@ export function waterTiles(mapId) {
   return new Set((MAPS[mapId]?.water || []).map(([c, r]) => `${c},${r}`));
 }
 
+// Lavakacheln einer Karte (B-030) als Set; ohne MAPS.<id>.lava leer.
+export function lavaTiles(mapId) {
+  return new Set((MAPS[mapId]?.lava || []).map(([c, r]) => `${c},${r}`));
+}
+
+// Wasser und Lava zusammen (B-030): dort liegt nie Dekoration, Plateaus und Büschel halten Abstand.
+export function terrainTiles(mapId) {
+  return new Set([...waterTiles(mapId), ...lavaTiles(mapId)]);
+}
+
 // Liegt der Punkt (px) naeher als m an einer Wasserkachel (oder darin)?
 export function nearWater(water, x, y, m = 0) {
   for (const k of water) {
@@ -173,7 +183,7 @@ export function groundPatches(mapId = 'meadow') {
   const out = { patches: [], plateaus: [], tufts: [] };
   if (!MAPS[mapId]?.theme?.ground) return out;
   const paths = mapPoints(mapId);
-  const water = waterTiles(mapId); // B-104: Plateaus und Büschel meiden Fluss und See
+  const water = terrainTiles(mapId); // B-104/B-030: Plateaus und Büschel meiden Fluss, See und Lava
   const wm = WATER_STYLE.groundMargin;
   const lerp = (r, u) => r[0] + u * (r[1] - r[0]);
   const total = G.lightPatches + G.darkPatches;
@@ -209,7 +219,7 @@ export function scatterFor(col, row, blocked, obstacles, mapId = 'meadow') {
   if (col < 0 || row < 0 || col >= COLS || row >= ROWS) return null;
   if (isPathTile(blocked, col, row)) return null;
   if (obstacles && obstacles.has(`${col},${row}`)) return null;
-  const water = waterTiles(mapId); // B-104: nie auf Fluss oder See
+  const water = terrainTiles(mapId); // B-104/B-030: nie auf Fluss, See oder Lava
   if (water.has(`${col},${row}`)) return null;
   if (decorFor(col, row, blocked, obstacles, water)) return null;
   const D = themed(mapId, 'decor', DECOR_STYLE);

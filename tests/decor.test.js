@@ -537,3 +537,40 @@ test('B-103/B-104 Randfälle (Tester): auf allen Karten keine Deko/Streu-Deko au
     }
   }
 });
+
+// ---------- Lava (B-030, Vulkan) ----------
+test('B-030: Deko, Streu-Deko, Plateaus und Büschel liegen nie auf Lava; Karten ohne Lava unverändert', async () => {
+  const { scatterFor, groundPatches, lavaTiles, terrainTiles, nearWater } = await import('../src/decor.js');
+  const { WATER_STYLE } = await import('../src/config.js');
+  const s = createGame({ mapId: 'volcano' });
+  assert.deepEqual([...lavaTiles('volcano')].sort(), [...s.lava].sort());
+  assert.equal(terrainTiles('volcano').size, s.lava.size);
+  assert.equal(terrainTiles('meadow').size, createGame({ mapId: 'meadow' }).water.size);
+  let free = 0;
+  for (const k of s.lava) {
+    const [c, r] = k.split(',').map(Number);
+    assert.equal(decorFor(c, r, s.blocked, s.obstacles, terrainTiles('volcano')), null, `Deko auf Lava ${k}`);
+    assert.equal(scatterFor(c, r, s.blocked, s.obstacles, 'volcano'), null, `Streu-Deko auf Lava ${k}`);
+    if (decorFor(c, r, s.blocked, s.obstacles) || scatterFor(c, r, s.blocked, s.obstacles, 'meadow')) free++;
+  }
+  assert.ok(free > 0, 'mindestens eine Lavakachel hätte sonst Deko');
+  const g = groundPatches('volcano');
+  assert.ok(g.plateaus.length > 0 && g.tufts.length > 0);
+  for (const t of g.tufts) assert.ok(!nearWater(s.lava, t.x, t.y, WATER_STYLE.groundMargin), `Büschel an Lava ${t.x},${t.y}`);
+  for (const p of g.plateaus) assert.ok(!nearWater(s.lava, p.x, p.y, WATER_STYLE.groundMargin), `Plateau an Lava ${p.x},${p.y}`);
+  for (const id of Object.keys(MAPS)) if (id !== 'volcano') assert.equal(lavaTiles(id).size, 0, id);
+});
+
+test('B-030: Vulkan-Palette aus STIL.md (Boden, Weg, Lava), klar verschieden von den anderen Welten, Streu-Deko mit Glut und Asche', async () => {
+  const { themed, GROUND_STYLE, LAVA_STYLE, DECOR_STYLE } = await import('../src/config.js');
+  const t = MAPS.volcano.theme;
+  assert.equal(t.ground.base, '#4d3c3e');
+  assert.equal(t.path.main, '#8b7468');
+  assert.equal(t.path.edge, '#2d1f20');
+  assert.equal(LAVA_STYLE.lava, '#ff7a1f');
+  assert.equal(LAVA_STYLE.core, '#ffc23a');
+  assert.equal(new Set(Object.keys(MAPS).map((id) => themed(id, 'ground', GROUND_STYLE).base)).size, Object.keys(MAPS).length);
+  const kinds = themed('volcano', 'decor', DECOR_STYLE).scatterKinds.map(([k]) => k);
+  for (const k of ['ember', 'ash']) assert.ok(kinds.includes(k), k);
+  for (const id of Object.keys(MAPS)) if (id !== 'volcano') assert.ok(!themed(id, 'decor', DECOR_STYLE).scatterKinds.some(([k]) => k === 'ember' || k === 'ash'), id);
+});

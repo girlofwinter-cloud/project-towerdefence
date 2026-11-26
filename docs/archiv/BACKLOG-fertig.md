@@ -493,3 +493,13 @@ Agents lesen diese Datei nur bei konkretem Bedarf.
   - `MAPS.<id>.water` (Kachel-Liste) in `config.js`; `canBuild` lehnt Wasser ab; Deko meidet Wasser; Brücke auf Weg-Kacheln im Fluss.
   - Wasser im Flat-Pop-Stil (`docs/STIL.md`), Desktop und Handy per Screenshot geprüft.
   - Schwierigkeit per Simulation vorher/nachher gemessen, Werte im Ledger; die Strategien bleiben gewinnbar.
+
+### B-030: Welt Vulkan (Lava-Felder und Lavafluss)
+- Status: fertig
+- Aufwand: L
+- Idee: Fünfte Karte `volcano`, freigeschaltet nach Zwei Fronten, die schwerste Karte. Lava-Kacheln (Lavafluss quer über die Karte plus einzelne Lava-Felder) sind nicht bebaubar. Gegner auf Weg-Kacheln direkt neben Lava nehmen leichten Schaden pro Sekunde; Türme direkt neben Lava überhitzen und schießen langsamer. Entscheidung des Menschen am 2026-11-26: Schaden + Überhitzung, 5. Karte, etwas schwerer als Zwei Fronten.
+- Akzeptanzkriterien:
+  - `MAPS.volcano` mit `lava` (Kacheln), Brücke wo der Weg den Lavafluss kreuzt (Technik wie Wasser aus B-104); Werte (Schaden/s, Überhitzungs-Faktor, Nachbarschaft) in `src/config.js`.
+  - Tests: Gegner neben Lava nehmen Schaden, weiter weg nicht; Turm neben Lava hat längere Schussrate; Lava ist nicht bebaubar; Freischaltung nach Zwei Fronten.
+  - Optik im Flat-Pop-Stil: dunkles Vulkangestein, glühende Lava mit Kontur, Brücke aus Stein oder dunklem Holz; Desktop und Handy per Screenshot.
+  - Balancing per Simulation (dt 1/30 und 1/60): mindestens eine robuste Strategie gewinnt Welle 20, mit weniger Reserve als auf Zwei Fronten; eine schwache Strategie verliert.

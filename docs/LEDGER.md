@@ -682,3 +682,12 @@ Neue Einträge werden unten angehängt. Bestehende Einträge werden nie geänder
 - Balancing (gemessen, dt 1/30 und 1/60): End-Leben aller Strategien auf allen Karten vorher = nachher (Wiese Kanone 10, Pfeil 6, Blitz 4). Die Pfeil-Strategie wich auf der Wiese von den Wasserkacheln [1,1]/[1,3] automatisch aus.
 - Tests: 335 Unit-Tests, 37 Browser-Tests. Tester: PASS (3 Tests ergänzt). Review: APPROVE. Reine Datenanpassungen bestehender Tests: Eis-Hindernisse (keine → Liste/3), Scharfschütze und Frostturm (e2e panel-edge) von [1,0] auf [2,0] (dort ist jetzt Fluss), zwei Fork-Render-Tests mit `obstacles: new Set()`.
 - Offen: Uferdeko nur mit einfacher Kontur statt drei Flächentönen (Test erlaubt beim Wasser nur einen `clip`). Lavafluss für den Vulkan in B-030 vorgemerkt.
+
+## 2026-11-26 · B-030 · Welt Vulkan (Lava-Felder und Lavafluss)
+- Rolle(n): orchestrator, developer, tester, reviewer
+- Branch: agent/vulkan
+- Runden: 2 von max. 2 (Runde 2: Vorgabe des Menschen „perfektes Spiel muss möglich sein“, Tümpel-Form, Reviewer-Hinweise)
+- Ergebnis: fertig. 5. Karte `volcano` nach Zwei Fronten: Lavafluss mit Steinbrücke [13,11], drei Lavatümpel; Lava nicht bebaubar („Hier ist Lava“). Gegner auf Weg-Kacheln neben Lava nehmen `LAVA.dps` 7,5 × hpScale pro Sekunde (ohne Rüstung, auch auf der Brücke); Türme neben Lava überhitzen (Intervall × 1,5, Hinweis im Turm-Panel). `enemySpeed` 1,15. Optik in `src/render-lava.js`, Helfer mit `render-water.js` geteilt (Wiese unverändert).
+- Balancing (gemessen, dt 1/30 und 1/60): Kanonen-Mix ohne Türme neben Lava W4; Abdeckung ohne Rücksicht auf Lava L10, Pfeil L6–7, Blitz L6, schwach L6. Lava-Schaden allein senkt Durchbrüche stark, Überhitzung allein erhöht sie stark. Neue Vorgabe des Menschen: Auf jeder Karte muss ein perfektes Spiel (Welle 20 mit 10 Leben) möglich sein. Eine optimierte Strategie (kühle Plätze, Turm-Mix, Upgrades, Meteor/Kälteschock) schafft das auf allen fünf Karten schon mit den heutigen Werten, daher keine Werte anderer Karten geändert; per Test abgesichert.
+- Tests: 360 Unit-Tests, 37 Browser-Tests. Tester: PASS (4 Tests ergänzt). Review: APPROVE (Hinweise hotPath und Optik-Zahlen in Runde 2 umgesetzt). Geänderte Assertions nur in `tests/progress.test.js` (5 Karten, Zwei Fronten schaltet den Vulkan frei).
+- Offen: Der Vulkan ist nur gegen naive Strategien härter als Zwei Fronten; mit der richtigen Strategie ist er perfekt schaffbar.

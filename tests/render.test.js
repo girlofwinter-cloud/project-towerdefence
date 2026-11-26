@@ -1491,3 +1491,82 @@ test('B-104 Randfall (Tester): Render ohne water-Set (undefined/null) wirft auf 
     }
   } finally { delete globalThis.document; }
 });
+
+// ---------- Vulkan (B-030): Lava, Steinbrücke, Palette ----------
+test('B-030: lavaGeometry nur auf dem Vulkan; Fluss über die Feldränder verlängert, drei Tümpel, eine Brücke quer zum Fluss', async () => {
+  const { lavaGeometry, lavaDetails } = await import('../src/render-lava.js');
+  const { HEIGHT } = await import('../src/config.js');
+  for (const id of Object.keys(MAPS)) if (id !== 'volcano') assert.equal(lavaGeometry(id, createGame({ mapId: id }).blocked), null, id);
+  const s = createGame({ mapId: 'volcano' });
+  const g = lavaGeometry('volcano', s.blocked);
+  assert.deepEqual(g, lavaGeometry('volcano', s.blocked), 'deterministisch');
+  assert.ok(g.river[0][1] < 0 && g.river.at(-1)[1] > HEIGHT, 'Fluss läuft unter den Rahmen');
+  assert.equal(g.pools.length, 3);
+  assert.equal(g.bridges.length, 1);
+  assert.equal(g.bridges[0].horizontal, true, 'Weg läuft waagrecht über die Brücke');
+  const d = lavaDetails(g);
+  assert.deepEqual(d, lavaDetails(g));
+  assert.ok(d.some((p) => p.kind === 'plate') && d.some((p) => p.kind === 'spark'));
+  assert.deepEqual(lavaDetails(null), []);
+});
+
+test('B-030: Tümpel sind ruhige Ovale (keine Acht), Einzeltümpel Kreise, alle vom Weg abgerückt', async () => {
+  const { lavaGeometry, poolOutline } = await import('../src/render-lava.js');
+  const { LAVA_STYLE: L } = await import('../src/config.js');
+  const s = createGame({ mapId: 'volcano' });
+  const g = lavaGeometry('volcano', s.blocked);
+  for (const p of g.pools) {
+    const pts = poolOutline(p, L.poolRadius);
+    assert.equal(pts.length, L.poolPoints);
+    // Oval: Abstand zur Mitte ändert sich monoton zwischen Längs- und Querachse (eine Acht hätte eine Taille)
+    const d = pts.map(([x, y]) => Math.hypot(x - p.cx, y - p.cy));
+    const q = L.poolPoints / 4;
+    const long = p.hy >= p.hx;
+    for (let i = 1; i <= q; i++) assert.ok(long ? d[i] >= d[i - 1] - 1e-9 : d[i] <= d[i - 1] + 1e-9, `Umriss ${i}`);
+    if (p.discs.length === 1) assert.ok(d.every((v) => Math.abs(v - L.poolRadius) < 1e-9), 'Einzeltümpel ist ein Kreis');
+    else assert.ok(Math.max(...d) > Math.min(...d) * 1.3, 'Mehrkachel-Tümpel ist länglich');
+    // Kruste bleibt außerhalb der Wegkacheln (Wegrand verdeckt den Tümpel nicht)
+    for (const [x, y] of poolOutline(p, L.poolRadius + L.crustWidth)) {
+      assert.ok(!s.blocked.has(`${Math.floor(x / TILE)},${Math.floor(y / TILE)}`), `Tümpelrand auf dem Weg bei ${x.toFixed(1)},${y.toFixed(1)}`);
+    }
+  }
+});
+
+test('B-030: Lava und Steinbrücke zeichnen ohne arc/ellipse, save/restore ausgewogen, ohne Lava nichts', async () => {
+  const { lavaGeometry, drawLava, drawLavaBridges } = await import('../src/render-lava.js');
+  const g = lavaGeometry('volcano', createGame({ mapId: 'volcano' }).blocked);
+  const m = mockCtx();
+  drawLava(m.ctx, g);
+  drawLavaBridges(m.ctx, g);
+  assert.equal(m.depth, 0);
+  assert.ok(!m.counts.arc && !m.counts.ellipse);
+  assert.equal(m.counts.clip, 1, 'ein Clip je Brücke');
+  const n = mockCtx();
+  drawLava(n.ctx, null);
+  drawLavaBridges(n.ctx, null);
+  assert.equal(Object.keys(n.counts).length, 0);
+});
+
+test('B-030: Render Vulkan wirft nicht, Lava-Palette nur im Hintergrund-Cache, Turm neben Lava wird gezeichnet', async () => {
+  const { render } = await import('../src/render.js?vulkan');
+  const { LAVA_STYLE } = await import('../src/config.js');
+  const seen = () => {
+    const set = new Set();
+    const ctx = new Proxy({}, { get: (_, k) => (k === 'createLinearGradient' || k === 'createRadialGradient' ? () => ({ addColorStop() {} }) : () => {}), set(_, k, v) { if (k === 'fillStyle' || k === 'strokeStyle') set.add(v); return true; } });
+    return { set, ctx };
+  };
+  const offscreen = [];
+  globalThis.document = { createElement() { const o = seen(); offscreen.push(o); return { width: 0, height: 0, getContext: () => o.ctx }; } };
+  try {
+    const s = createGame({ mapId: 'volcano', gold: 1000 });
+    assert.ok(buildTower(s, 'cannon', 11, 8).tower.overheated);
+    const main = mockCtx();
+    assert.doesNotThrow(() => render(main.ctx, s, { buildType: 'arrow', hover: { col: 4, row: 6, ok: false } }));
+    assert.equal(main.depth, 0);
+    const bg = offscreen.at(-1).set;
+    for (const c of [LAVA_STYLE.lava, LAVA_STYLE.core, LAVA_STYLE.crust, LAVA_STYLE.bridge.stone, MAPS.volcano.theme.ground.base, MAPS.volcano.theme.path.main]) assert.ok(bg.has(c), `Cache zeichnet ${c}`);
+    const frame = seen();
+    render(frame.ctx, s, {});
+    assert.ok(!frame.set.has(LAVA_STYLE.lava) && !frame.set.has(LAVA_STYLE.crust), 'Frame-Pfad zeichnet keine Lava');
+  } finally { delete globalThis.document; }
+});

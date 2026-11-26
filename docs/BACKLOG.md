@@ -154,16 +154,6 @@ Erledigte Einträge (`fertig`) liegen in `docs/archiv/BACKLOG-fertig.md`. Beim A
   - Je Punkt einzeln bewertbar, nur CSS/UI, keine Spiel-Logik.
   - `npm test` und `npm run test:e2e` bleiben grün.
 
-### B-030: Welt Vulkan (Lava-Felder)
-- Status: vorschlag
-- Aufwand: L
-- Idee: Lava-Felder neben dem Weg schaden Gegnern in Reichweite; Türme zu nah an Lava überhitzen und schießen langsamer. Hängt von B-027 ab. Risiko: Balancing.
-- Akzeptanzkriterien:
-  - Map `volcano` mit `hazards` (Lava-Kacheln, Schaden pro Sekunde, Überhitzungsradius).
-  - Test: Gegner neben Lava nehmen Schaden; Turm in Lava-Nähe hat längere Schussrate.
-  - Lavafluss gleich mit einplanen: nicht bebaubare Lava-Kacheln quer über die Karte (Technik wie Wasser aus B-104, Brücke wo der Weg kreuzt), optisch mit Glühen. Ob der Fluss auch Gegner oder Türme in der Nähe beeinflusst, entscheidet der Mensch.
-  - Beide robusten Strategien aus den Balancing-Tests können Welle 20 noch schaffen.
-
 ### B-031: Welt Wüste (Sandsturm)
 - Status: vorschlag
 - Aufwand: M
@@ -354,7 +344,7 @@ Reihenfolge ist Abhängigkeit: B-062 und B-063 zuerst, dann gemeinsame Sichtprü
 ### B-074: Vulkan und Wüste (Design-Overhaul)
 - Status: vorschlag
 - Aufwand: L
-- Idee: Erst wenn die Welten existieren (B-030/B-031): Lava-Risse, Dünen, Kakteen.
+- Idee: Vulkan hat mit B-030 schon seinen Flat-Pop-Stil. Offen: Wüste (B-031) mit Dünen und Kakteen.
 - Akzeptanzkriterien:
   - Eigene Palette gemäß `docs/STIL.md`, Spielbarkeit unverändert.
 

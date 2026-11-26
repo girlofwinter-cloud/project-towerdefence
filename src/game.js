@@ -1,7 +1,7 @@
 // Spiel-Logik: kompletter Zustand + update(). Kein DOM, kein Canvas -> in Node testbar.
 import {
   TILE, COLS, ROWS, START_GOLD, START_LIVES, MAX_WAVES, SELL_RATIO, MAX_LEVEL, MAX_SUBSTEP, TARGET_MODES,
-  MAPS, DEFAULT_MAP_ID, TOWER_TYPES, ABILITIES, WIDTH, HEIGHT, ENEMY_TYPES, waveFor, waveBonus, hpScale,
+  MAPS, DEFAULT_MAP_ID, TOWER_TYPES, ABILITIES, WIDTH, HEIGHT, ENEMY_TYPES, LAVA, waveFor, waveBonus, hpScale,
 } from './config.js';
 import { buildPath, pointAt, pathTiles } from './path.js';
 
@@ -41,11 +41,23 @@ export function createGame({ mapId, ...overrides } = {}) {
     nextLane: 0, // Zähler für die abwechselnde Wegwahl neuer Gegner
     obstacles: new Set((MAPS[id].obstacles || []).map(([c, r]) => `${c},${r}`)), // Bäume/Felsen (kein Weg)
     water: new Set((MAPS[id].water || []).map(([c, r]) => `${c},${r}`)), // B-104: Fluss und See (nicht bebaubar)
+    lava: new Set((MAPS[id].lava || []).map(([c, r]) => `${c},${r}`)), // B-030: Lavafluss und Lavatümpel (nicht bebaubar)
     ...overrides,
   };
   // Alle Wege: Hauptweg (state.path, auch per override) plus extraPaths; ohne extraPaths genau ein Weg.
   if (!overrides.paths) state.paths = [state.path, ...(overrides.path ? [] : extraPaths.map((w) => buildPath(w, TILE)))];
+  // B-030: Wegkacheln direkt neben Lava, einmal berechnet (lavaStep schlägt pro Gegner nur nach)
+  if (!overrides.hotPath) state.hotPath = new Set([...state.blocked].filter((k) => nearLava(state.lava, ...k.split(',').map(Number))));
   return state;
+}
+
+// B-030: Liegt die Kachel direkt neben Lava (8er-Nachbarschaft, die Kachel selbst zählt nicht)?
+export function nearLava(lava, col, row) {
+  if (!lava || !lava.size) return false;
+  for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) {
+    if ((dc || dr) && lava.has(`${col + dc},${row + dr}`)) return true;
+  }
+  return false;
 }
 
 // Weg, auf dem der Gegner läuft (Fallback: Hauptweg).
@@ -65,7 +77,8 @@ export function towerStats(tower, modifiers) {
     ...(base.slow ? { slow: base.slow * slowMod } : {}),
     damage: base.damage * Math.pow(1.5, lvl) * dmgMod,
     range: base.range * Math.pow(1.1, lvl),
-    rate: base.rate * Math.pow(0.92, lvl),
+    // B-030: überhitzter Turm (neben Lava) schießt langsamer
+    rate: base.rate * Math.pow(0.92, lvl) * (tower.overheated ? LAVA.overheat : 1),
   };
 }
 
@@ -87,6 +100,7 @@ export function canBuild(state, col, row) {
   if (state.blocked.has(`${col},${row}`)) return { ok: false, reason: 'Auf dem Weg kann nicht gebaut werden' };
   if (state.obstacles && state.obstacles.has(`${col},${row}`)) return { ok: false, reason: 'Hier wächst ein Baum oder liegt ein Fels' };
   if (state.water && state.water.has(`${col},${row}`)) return { ok: false, reason: 'Hier ist Wasser' };
+  if (state.lava && state.lava.has(`${col},${row}`)) return { ok: false, reason: 'Hier ist Lava' };
   if (towerAt(state, col, row)) return { ok: false, reason: 'Hier steht schon ein Turm' };
   return { ok: true };
 }
@@ -114,6 +128,7 @@ export function buildTower(state, type, col, row) {
     focusId: null, // Pfeilturm: aktuelles Ziel für Aufwärmen
     focusStacks: 0, // Pfeilturm: Folgeschüsse auf dasselbe Ziel
     hitCount: 0, // Frostturm: Treffer-Zähler
+    overheated: nearLava(state.lava, col, row), // B-030: neben Lava, Feuerintervall mal LAVA.overheat
   };
   state.towers.push(tower);
   return { ok: true, tower };
@@ -264,6 +279,7 @@ export function update(state, dt) {
   spawnStep(state, dt);
   moveEnemies(state, dt);
   if (state.status !== 'playing') return;
+  lavaStep(state, dt);
   healStep(state);
   towersStep(state, dt);
   projectilesStep(state, dt);
@@ -297,6 +313,23 @@ function moveEnemies(state, dt) {
     state.lives = 0;
     state.status = 'lost';
   }
+}
+
+// B-030: Lava-Schaden. Gegner auf einer Wegkachel direkt neben Lava verlieren LAVA.dps * hpScale(Welle) pro Sekunde
+// (Rate mal dt, also unabhängig vom Zeitschritt), auch der Boss. Wie Kanonen-Splash ignoriert die Lava die Rüstung
+// (kein Direkttreffer). Wer daran stirbt, bringt die normale Belohnung.
+function lavaStep(state, dt) {
+  if (!state.hotPath || !state.hotPath.size || !state.enemies.length) return;
+  const amount = LAVA.dps * hpScale(Math.max(1, state.wave)) * dt;
+  let hit = false;
+  for (const e of state.enemies) {
+    const col = Math.floor(e.x / TILE);
+    const row = Math.floor(e.y / TILE);
+    if (!state.hotPath.has(`${col},${row}`)) continue;
+    damage(state, e, { damage: amount });
+    hit = true;
+  }
+  if (hit) removeDead(state);
 }
 
 // Heilimpuls: Nur alle healInterval Sekunden (state.time), nicht jedes Frame.

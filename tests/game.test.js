@@ -1,7 +1,7 @@
 // Unit-Tests der Spiel-Logik (game.js, path.js, config.js). Ausführen: npm test
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createGame, mapModifiers, update, buildTower, upgradeTower, sellTower, startWave, spawnEnemy, canBuild, towerStats, upgradeCost, togglePause, stepGame, setTargetMode, pickTarget, enemyPath, chainTargets, laneFor } from '../src/game.js';
+import { createGame, mapModifiers, update, buildTower, upgradeTower, sellTower, startWave, spawnEnemy, canBuild, towerStats, upgradeCost, togglePause, stepGame, setTargetMode, pickTarget, enemyPath, chainTargets, laneFor, nearLava } from '../src/game.js';
 
 import { livesText } from '../src/hud.js';
 
@@ -209,10 +209,12 @@ test('Schwierigkeit: hpScale steigt streng, Wellen werden nie kleiner', () => {
 
 // Freie Felder neben dem Weg, sortiert nach Anzahl Wegpunkte in Reichweite (deterministisch).
 // Zählt über alle Wege (B-099); bei Karten mit einem Weg ist das genau der Hauptweg.
-function rankedSpots(state, rangeTiles) {
+// cool (B-030): nur Plätze, die nicht neben Lava liegen (Türme dort überhitzen nicht)
+function rankedSpots(state, rangeTiles, cool = false) {
   const spots = [];
   for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
     if (!canBuild(state, c, r).ok) continue;
+    if (cool && nearLava(state.lava, c, r)) continue;
     const x = (c + 0.5) * TILE;
     const y = (r + 0.5) * TILE;
     let n = 0;
@@ -299,10 +301,10 @@ const MIX_ARROW = ['cannon', 'arrow', 'arrow', 'frost'];
 // (jede Runde so viele Pfeiltürme wie möglich, nie aufrüsten). Liefert zusätzlich pro Welle den größten
 // Wegfortschritt (dist / Weglänge, 0..1) eines Gegners und die verlorenen Leben.
 // Jeder Lauf (Schlüssel `mapId:mix@dt`) wird nur einmal simuliert, alle Tests lesen aus demselben Cache.
-function playTracked(mix, dt, mapId = 'meadow') {
+function playTracked(mix, dt, mapId = 'meadow', cool = false) {
   const s = createGame({ mapId });
   const arrowOnly = mix === 'arrowOnly';
-  const spots = rankedSpots(s, TOWER_TYPES[arrowOnly ? 'arrow' : 'cannon'].range);
+  const spots = rankedSpots(s, TOWER_TYPES[arrowOnly ? 'arrow' : 'cannon'].range, cool);
   const progress = [];
   const lost = [];
   let i = 0;
@@ -344,9 +346,9 @@ function playTracked(mix, dt, mapId = 'meadow') {
 }
 
 const strategyCache = new Map();
-function strategyRun(mix, dt, mapId = 'meadow') {
-  const key = `${mapId}:${mix === 'arrowOnly' ? mix : mix.join(',')}@${dt}`;
-  if (!strategyCache.has(key)) strategyCache.set(key, playTracked(mix, dt, mapId));
+function strategyRun(mix, dt, mapId = 'meadow', cool = false) {
+  const key = `${mapId}:${mix === 'arrowOnly' ? mix : mix.join(',')}@${dt}${cool ? ':kühl' : ''}`;
+  if (!strategyCache.has(key)) strategyCache.set(key, playTracked(mix, dt, mapId, cool));
   return strategyCache.get(key);
 }
 
@@ -2094,3 +2096,320 @@ test('B-103/B-104 Randfälle (Tester): canBuild-Reihenfolge Weg > Hindernis > Wa
     assert.ok(!g.water.has(`${c},${r}`) && !canBuild(g, c, r).ok, `${id} Brücke ${c},${r}`);
   }
 });
+
+// ---------- Vulkan (B-030): Lava, Lava-Schaden, Überhitzung ----------
+import { LAVA } from '../src/config.js';
+
+const keyOf = ([c, r]) => `${c},${r}`;
+const V = MAPS.volcano;
+
+test('B-030 Vulkan: Lava im Feld, nie auf Weg oder Hindernis; Brücke ist Weg im Lavafluss, keine Lava', () => {
+  const s = createGame({ mapId: 'volcano' });
+  assert.equal(s.lava.size, V.lava.length, 'keine Duplikate');
+  assert.equal(s.lava.size, V.lavaRiver.length - V.bridges.length + V.lavaPools.length);
+  for (const k of s.lava) {
+    const [c, r] = k.split(',').map(Number);
+    assert.ok(c >= 0 && r >= 0 && c < COLS && r < ROWS, `${k} im Feld`);
+    assert.ok(!s.blocked.has(k), `${k} nicht auf dem Weg`);
+    assert.ok(!s.obstacles.has(k), `${k} nicht auf einem Hindernis`);
+  }
+  // Lavafluss: zusammenhängende Kette von Rand zu Rand, kreuzt den Weg genau an den Brücken (1 bis 2 Mal)
+  const river = V.lavaRiver;
+  for (let i = 1; i < river.length; i++) assert.equal(Math.abs(river[i][0] - river[i - 1][0]) + Math.abs(river[i][1] - river[i - 1][1]), 1);
+  assert.equal(river[0][1], 0);
+  assert.equal(river.at(-1)[1], ROWS - 1);
+  const crossings = river.filter((t) => s.blocked.has(keyOf(t)));
+  assert.deepEqual(crossings, V.bridges);
+  assert.ok(V.bridges.length >= 1 && V.bridges.length <= 2);
+  for (const b of V.bridges) {
+    assert.ok(s.blocked.has(keyOf(b)) && !s.lava.has(keyOf(b)), 'Brücke ist Weg, keine Lava');
+    assert.equal(canBuild(s, ...b).reason, 'Auf dem Weg kann nicht gebaut werden');
+  }
+  // 2 bis 4 Lavatümpel (zusammenhängende Gruppen), jeder direkt neben dem Weg
+  const pools = [];
+  for (const t of V.lavaPools) {
+    const g = pools.find((p) => p.some(([c, r]) => Math.abs(c - t[0]) + Math.abs(r - t[1]) === 1));
+    if (g) g.push(t); else pools.push([t]);
+  }
+  assert.ok(pools.length >= 2 && pools.length <= 4, `${pools.length} Tümpel`);
+  for (const p of pools) assert.ok(p.some(([c, r]) => [...s.blocked].some((k) => { const [pc, pr] = k.split(',').map(Number); return Math.max(Math.abs(pc - c), Math.abs(pr - r)) === 1; })), 'Tümpel neben dem Weg');
+  // Andere Karten ohne Lava, Vulkan ohne Wasser
+  for (const id of Object.keys(MAPS)) if (id !== 'volcano') assert.equal(createGame({ mapId: id }).lava.size, 0, id);
+  assert.equal(s.water.size, 0);
+});
+
+test('B-030 Vulkan: canBuild lehnt Lava ab ("Hier ist Lava"), kein Gold weg; Nachbarkachel bebaubar', () => {
+  const s = createGame({ mapId: 'volcano' });
+  for (const k of s.lava) assert.deepEqual(canBuild(s, ...k.split(',').map(Number)), { ok: false, reason: 'Hier ist Lava' });
+  const g0 = s.gold;
+  assert.equal(buildTower(s, 'arrow', 4, 6).reason, 'Hier ist Lava');
+  assert.equal(s.gold, g0);
+  assert.equal(canBuild(s, 5, 6).ok, true);
+  assert.equal(canBuild(createGame({ mapId: 'volcano', lava: undefined }), 4, 6).ok, true, 'override ohne lava');
+});
+
+test('B-030 nearLava: 8er-Nachbarschaft, die Lavakachel selbst zählt nicht, fehlendes Set ist false', () => {
+  const lava = new Set(['5,5']);
+  for (const [c, r] of [[4, 4], [5, 4], [6, 6], [4, 5]]) assert.equal(nearLava(lava, c, r), true, `${c},${r}`);
+  for (const [c, r] of [[5, 5], [7, 5], [3, 3], [5, 7]]) assert.equal(nearLava(lava, c, r), false, `${c},${r}`);
+  assert.equal(nearLava(null, 4, 4), false);
+  assert.equal(nearLava(new Set(), 4, 4), false);
+});
+
+// Gegner steht still auf einer Kachel (Mitte); liefert verlorene HP nach t Sekunden mit Zeitschritt dt.
+function lavaBurn(type, col, row, t, dt, wave = 1) {
+  const s = createGame({ mapId: 'volcano' });
+  s.wave = wave;
+  const e = spawnEnemy(s, type, wave);
+  e.speed = 0;
+  e.hp = e.maxHp = 1e6;
+  s.paths = [buildPath([[col, row], [col + 1, row]], TILE)]; // Weg beginnt in der Kachelmitte
+  e.dist = 0;
+  run(s, t, dt);
+  return { lost: 1e6 - e.hp, s, e };
+}
+
+test('B-030 Lava-Schaden: Gegner auf Wegkachel neben Lava verliert dps * hpScale pro Sekunde, dt-unabhängig, auch Boss; Rüstung zählt nicht', () => {
+  const hot = [10, 8]; // Wegkachel neben dem Lavatümpel [9, 8]
+  const cold = [6, 2]; // Wegkachel weit weg von Lava
+  const s = createGame({ mapId: 'volcano' });
+  assert.ok(s.blocked.has(keyOf(hot)) && nearLava(s.lava, ...hot));
+  assert.ok(s.blocked.has(keyOf(cold)) && !nearLava(s.lava, ...cold));
+  const a = lavaBurn('grunt', ...hot, 1, 1 / 30);
+  const b = lavaBurn('grunt', ...hot, 1, 1 / 60);
+  assert.ok(Math.abs(a.lost - LAVA.dps) < LAVA.dps * 0.05, `1/30: ${a.lost}`);
+  assert.ok(Math.abs(a.lost - b.lost) < LAVA.dps * 0.05, `dt-unabhängig: ${a.lost} vs ${b.lost}`);
+  assert.equal(lavaBurn('grunt', ...cold, 1, 1 / 60).lost, 0, 'weiter weg kein Schaden');
+  // Skaliert mit der Welle, trifft Boss und Schildträger (Rüstung wirkt nur bei Direkttreffern) voll
+  const w10 = lavaBurn('boss', ...hot, 1, 1 / 60, 10).lost;
+  assert.ok(Math.abs(w10 - LAVA.dps * hpScale(10)) < LAVA.dps * hpScale(10) * 0.05, `Boss Welle 10: ${w10}`);
+  const sh = lavaBurn('shielded', ...hot, 1, 1 / 60).lost;
+  assert.ok(Math.abs(sh - b.lost) < 1e-6, 'Schildträger voller Schaden');
+  // Andere Karten: kein Lava-Schaden
+  const m = createGame({ mapId: 'meadow' });
+  const e = spawnEnemy(m, 'grunt', 1);
+  run(m, 2);
+  assert.equal(e.hp, e.maxHp);
+});
+
+test('B-030 Lava-Schaden: Tod durch Lava bringt die normale Belohnung und zählt als Abschuss', () => {
+  const { s, e } = lavaBurn('grunt', 10, 8, 0.01, 1 / 60);
+  e.hp = 0.01;
+  const g0 = s.gold;
+  run(s, 0.1);
+  assert.equal(s.enemies.length, 0);
+  assert.equal(s.gold, g0 + ENEMY_TYPES.grunt.reward);
+  assert.equal(s.kills, 1);
+});
+
+test('B-030 Überhitzung: Turm neben Lava schießt mit LAVA.overheat-fachem Intervall, sonst unverändert', () => {
+  const s = createGame({ mapId: 'volcano', gold: 1e6 });
+  const hot = buildTower(s, 'cannon', 11, 8).tower; // neben dem Lavafluss
+  const cool = buildTower(s, 'cannon', 6, 6).tower;
+  assert.equal(hot.overheated, true);
+  assert.equal(cool.overheated, false);
+  assert.ok(LAVA.overheat > 1);
+  const rh = towerStats(hot, s.modifiers).rate;
+  const rc = towerStats(cool, s.modifiers).rate;
+  assert.ok(Math.abs(rc - TOWER_TYPES.cannon.rate) < 1e-9);
+  assert.ok(Math.abs(rh - TOWER_TYPES.cannon.rate * LAVA.overheat) < 1e-9);
+  // gilt für alle Turmtypen und jede Stufe; im Spiel: Schuss setzt die Abklingzeit auf das längere Intervall
+  for (const type of Object.keys(TOWER_TYPES)) {
+    for (const level of [1, 3]) {
+      const t = { type, level, overheated: true };
+      assert.ok(Math.abs(towerStats(t).rate - towerStats({ type, level }).rate * LAVA.overheat) < 1e-9, `${type} ${level}`);
+    }
+  }
+  s.paths = [buildPath([[11, 9], [11, 10]], TILE)]; // Gegner steht direkt unter dem überhitzten Turm
+  const e = spawnEnemy(s, 'tank', 1);
+  e.speed = 0; e.hp = e.maxHp = 1e9;
+  update(s, 1 / 60);
+  assert.ok(Math.abs(hot.cooldown - rh) < 1e-9, `Abklingzeit ${hot.cooldown}`);
+  // Auf anderen Karten überhitzt nichts
+  const m = createGame({ mapId: 'meadow', gold: 1e6 });
+  const [c, r] = freeTileNearPath(m);
+  assert.equal(buildTower(m, 'arrow', c, r).tower.overheated, false);
+});
+
+test('B-030 Vulkan: Wege gültig (Eingang links, Ausgang rechts), Modifikator schnellere Gegner, Freischaltung nach Zwei Fronten', async () => {
+  const w = V.waypoints;
+  assert.ok(w[0][0] < 0 && w.at(-1)[0] >= COLS, 'links rein, rechts raus');
+  assert.equal(V.name, 'Vulkan');
+  assert.deepEqual(V.modifiers, { enemySpeed: 1.15 });
+  const { MAP_ORDER } = await import('../src/progress.js');
+  assert.equal(MAP_ORDER[MAP_ORDER.indexOf('twin') + 1], 'volcano');
+});
+
+// Balancing (B-030, gemessen per Strategie-Simulation): Wer Türme nicht neben die Lava stellt,
+// gewinnt mit dem Kanonen-Mix mit 4 Leben (ein Boss bricht durch). Die Platzwahl nur nach Abdeckung (viele beste Plätze
+// liegen neben Lava) verliert mit allen Mischungen, ebenso nur Pfeiltürme.
+test('Vulkan: Kanonen-Mix auf Plätzen ohne Überhitzung gewinnt Welle 20 mit 1 bis 4 Leben (dt 1/30, 1/60)', () => {
+  for (const dt of [1 / 30, 1 / 60]) {
+    const s = strategyRun(MIX_CANNON, dt, 'volcano', true).state;
+    assert.equal(s.status, 'won', `dt=${dt}: Status ${s.status} in Welle ${s.wave}`);
+    assert.ok(s.lives >= 1 && s.lives <= 4, `dt=${dt}: ${s.lives} Leben`);
+  }
+});
+
+test('Vulkan: Platzwahl nur nach Abdeckung (Kanonen-Mix, schwache Strategie) und nur Pfeiltürme verlieren (dt 1/30, 1/60)', () => {
+  for (const dt of [1 / 30, 1 / 60]) {
+    for (const mix of [MIX_CANNON, MIX_WEAK, 'arrowOnly']) {
+      const s = strategyRun(mix, dt, 'volcano').state;
+      assert.equal(s.status, 'lost', `${mix} dt=${dt}: ${s.status} mit ${s.lives} Leben`);
+    }
+  }
+});
+
+test('Vulkan: ohne Lava-Schaden verliert auch der Kanonen-Mix ohne Überhitzung (Lava hilft dem Spieler)', () => {
+  const before = LAVA.dps;
+  LAVA.dps = 0;
+  try {
+    const s = playTracked(MIX_CANNON, 1 / 30, 'volcano', true).state;
+    assert.equal(s.status, 'lost', `Status ${s.status} mit ${s.lives} Leben`);
+  } finally { LAVA.dps = before; }
+});
+
+// Perfektes Spiel (Vorgabe: auf jeder Karte muss ein ganzer Durchlauf ohne Lebensverlust möglich sein).
+// Optimierte, aber nachvollziehbare Strategie: Türme nur auf Plätze ohne Überhitzung, jeweils der Platz mit der besten
+// Wegabdeckung für den Turmtyp; erst Kanone und Pfeil, dann früh Scharfschützen gegen Bosse und Trolle, dazu Frost und
+// Blitz; mit Restgold das billigste Upgrade. Meteor auf den vordersten Gegner, sobald er die letzten 12 Kacheln erreicht,
+// Kälteschock in den letzten 6 Kacheln; keine Reparatur. Auf dem Vulkan kommt der Scharfschütze als dritter Turm
+// (der erste Boss in Welle 5 ist schneller), sonst die zweite Kanone (Zwei Fronten: viele Flitzer in Welle 4).
+const PERFECT_ORDER = ['cannon', 'arrow', 'cannon', 'sniper', 'sniper', 'frost', 'sniper', 'lightning'];
+const PERFECT_ORDER_VOLCANO = ['cannon', 'arrow', 'sniper', 'cannon', 'sniper', 'frost', 'sniper', 'lightning'];
+
+function bestCoolSpot(state, rangeTiles) {
+  return rankedSpots(state, rangeTiles, true)[0] || null;
+}
+
+function perfectRun(mapId, dt) {
+  const s = createGame({ mapId });
+  const order = mapId === 'volcano' ? PERFECT_ORDER_VOLCANO : PERFECT_ORDER;
+  let lost = 0;
+  while (s.status === 'playing' && s.wave < MAX_WAVES) {
+    for (let again = true; again;) {
+      again = false;
+      const type = order[s.towers.length % order.length];
+      const spot = s.gold >= TOWER_TYPES[type].cost ? bestCoolSpot(s, TOWER_TYPES[type].range) : null;
+      if (spot) { buildTower(s, type, spot.c, spot.r); again = true; continue; }
+      let best = null;
+      for (const t of s.towers) {
+        const c = upgradeCost(t);
+        if (c !== null && (!best || c < best.c)) best = { id: t.id, c };
+      }
+      if (best && s.gold >= best.c) { upgradeTower(s, best.id); again = true; }
+    }
+    const before = s.lives;
+    startWave(s);
+    for (let k = 0; k < Math.round(600 / dt) && s.waveActive && s.status === 'playing'; k++) {
+      update(s, dt);
+      let front = null;
+      for (const e of s.enemies) {
+        const rest = enemyPath(s, e).length - e.dist;
+        if (!front || rest < front.rest) front = { e, rest };
+      }
+      if (front && front.rest < 12 * TILE) {
+        useAbility(s, 'meteor', front.e.x, front.e.y);
+        if (front.rest < 6 * TILE) useAbility(s, 'freeze');
+      }
+    }
+    lost += before - s.lives;
+  }
+  assert.equal(s.abilities.repair.uses, 0, 'keine Reparatur');
+  return { state: s, lost };
+}
+
+test('Perfektes Spiel möglich: optimierte Strategie gewinnt Welle 20 auf jeder Karte ohne Lebensverlust (dt 1/30, 1/60)', async () => {
+  const { MAP_ORDER } = await import('../src/progress.js');
+  assert.deepEqual([...MAP_ORDER].sort(), Object.keys(MAPS).sort(), 'alle Karten');
+  for (const mapId of MAP_ORDER) {
+    for (const dt of [1 / 30, 1 / 60]) {
+      const { state, lost } = perfectRun(mapId, dt);
+      assert.equal(state.status, 'won', `${mapId} dt=${dt}: Status ${state.status} in Welle ${state.wave}`);
+      assert.equal(state.lives, START_LIVES, `${mapId} dt=${dt}: ${state.lives} von ${START_LIVES} Leben`);
+      assert.equal(lost, 0, `${mapId} dt=${dt}: ${lost} Leben verloren`);
+    }
+  }
+});
+
+test('Vulkan: perfektes Spiel möglich, die Strategie stellt keinen Turm neben die Lava', () => {
+  for (const dt of [1 / 30, 1 / 60]) {
+    const { state } = perfectRun('volcano', dt);
+    assert.equal(state.status, 'won');
+    assert.equal(state.lives, START_LIVES);
+    assert.ok(state.towers.length > 0 && state.towers.every((t) => !t.overheated), 'nur kühle Plätze');
+  }
+});
+
+test('B-030 hotPath: genau die Wegkacheln neben Lava, einmal in createGame; ohne Lava leer', () => {
+  const s = createGame({ mapId: 'volcano' });
+  const expected = [...s.blocked].filter((k) => nearLava(s.lava, ...k.split(',').map(Number)));
+  assert.deepEqual([...s.hotPath].sort(), expected.sort());
+  assert.ok(s.hotPath.has('10,8') && !s.hotPath.has('6,2'));
+  for (const k of s.hotPath) assert.ok(s.blocked.has(k) && !s.lava.has(k));
+  for (const id of Object.keys(MAPS)) if (id !== 'volcano') assert.equal(createGame({ mapId: id }).hotPath.size, 0, id);
+  assert.equal(createGame({ mapId: 'volcano', lava: undefined }).hotPath.size, 0, 'override ohne Lava');
+});
+
+test('B-030 HUD: overheatNote nennt die Überhitzung nur für überhitzte Türme', async () => {
+  const { overheatNote, OVERHEAT_NOTE } = await import('../src/hud.js');
+  assert.equal(OVERHEAT_NOTE, 'Überhitzt: schießt langsamer');
+  const s = createGame({ mapId: 'volcano', gold: 1e6 });
+  assert.equal(overheatNote(buildTower(s, 'arrow', 11, 8).tower), OVERHEAT_NOTE);
+  assert.equal(overheatNote(buildTower(s, 'arrow', 6, 6).tower), '');
+  assert.equal(overheatNote(null), '');
+});
+
+// ---------- B-030 Randfälle (Tester) ----------
+test('B-030 Randfall (Tester): Brücke liegt zwischen Lava, Gegner auf der Brücke und davor/danach brennt', () => {
+  const s = createGame({ mapId: 'volcano' });
+  for (const b of V.bridges) {
+    assert.ok(nearLava(s.lava, ...b), 'Brücke grenzt an Lava');
+    assert.ok(lavaBurn('grunt', ...b, 1, 1 / 60).lost > 0, 'Schaden auf der Brücke');
+    assert.ok(lavaBurn('grunt', b[0] - 1, b[1], 1, 1 / 60).lost > 0, 'Schaden vor der Brücke');
+  }
+});
+
+test('B-030 Randfall (Tester): Lava-Schaden bei Tempo x3 gleich, in der Pause und nach Spielende keiner', () => {
+  const mk = () => {
+    const s = createGame({ mapId: 'volcano' });
+    s.wave = 1;
+    const e = spawnEnemy(s, 'grunt', 1);
+    e.speed = 0; e.hp = e.maxHp = 1e6;
+    s.paths = [buildPath([[10, 8], [11, 8]], TILE)];
+    e.dist = 0;
+    return { s, e };
+  };
+  const a = mk(), b = mk();
+  for (let i = 0; i < 60; i++) stepGame(a.s, 1 / 60, 1);
+  for (let i = 0; i < 20; i++) stepGame(b.s, 1 / 60, 3);
+  assert.ok(Math.abs((1e6 - a.e.hp) - (1e6 - b.e.hp)) < LAVA.dps * 0.05, `x1 ${1e6 - a.e.hp} vs x3 ${1e6 - b.e.hp}`);
+  const p = mk();
+  togglePause(p.s);
+  stepGame(p.s, 1, 1);
+  assert.equal(p.e.hp, 1e6, 'Pause: kein Schaden');
+  const l = mk();
+  l.s.status = 'lost';
+  stepGame(l.s, 1, 1);
+  assert.equal(l.e.hp, 1e6, 'nach Spielende kein Schaden');
+});
+
+test('B-030 Randfall (Tester): Überhitzung bleibt beim Upgrade, Verkauf unverändert, Neubau am Platz entscheidet neu', () => {
+  const s = createGame({ mapId: 'volcano', gold: 1e6 });
+  const hot = buildTower(s, 'cannon', 11, 8).tower;
+  upgradeTower(s, hot.id);
+  upgradeTower(s, hot.id);
+  assert.equal(hot.overheated, true, 'nach Upgrade weiter überhitzt');
+  assert.ok(Math.abs(towerStats(hot, s.modifiers).rate - towerStats({ type: 'cannon', level: hot.level }, s.modifiers).rate * LAVA.overheat) < 1e-9);
+  const cool = buildTower(s, 'cannon', 6, 6).tower;
+  upgradeTower(s, cool.id); upgradeTower(s, cool.id);
+  assert.equal(sellValue(hot), sellValue(cool), 'Verkaufswert unabhängig von Überhitzung');
+  // Turmtausch: verkaufen und anderen Typ an derselben Stelle bauen
+  assert.equal(sellTower(s, hot.id).ok, true);
+  const swapped = buildTower(s, 'arrow', 11, 8).tower;
+  assert.equal(swapped.overheated, true, 'neuer Turm neben Lava wieder überhitzt');
+  assert.equal(swapped.level, 1);
+  assert.equal(sellTower(s, cool.id).ok, true);
+  assert.equal(buildTower(s, 'frost', 6, 6).tower.overheated, false, 'Neubau weg von Lava normal');
+});
+import { sellValue } from '../src/game.js';

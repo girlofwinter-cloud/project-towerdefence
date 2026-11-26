@@ -32,6 +32,12 @@ export function abilityView(def, uses, left) {
   return { state, fill, badge, aria: `${def.name}, ${status}${charges}` };
 }
 
+// B-030: Hinweis für überhitzte Türme (neben Lava auf der Karte Vulkan); leer, wenn der Turm normal schießt.
+export const OVERHEAT_NOTE = 'Überhitzt: schießt langsamer';
+export function overheatNote(tower) {
+  return tower && tower.overheated ? OVERHEAT_NOTE : '';
+}
+
 // Relative Leuchtdichte einer Hex-Farbe (#rrggbb oder #rgb) nach WCAG 2.x. Ungültige Eingaben ergeben NaN.
 export function relativeLuminance(hex) {
   // Kurzform #rgb auf #rrggbb erweitern
