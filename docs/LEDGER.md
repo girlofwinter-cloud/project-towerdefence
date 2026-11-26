@@ -615,3 +615,9 @@ Neue Einträge werden unten angehängt. Bestehende Einträge werden nie geänder
 - Branch: agent/neue-sterne-text
 - Ergebnis: fertig. „Neue Sterne: ★★☆“ heißt jetzt „Neue Sterne!“ (die Sterne stehen schon in der Rekordzeile).
 - Tests: Erwartete Texte in zwei `resultLines`-Tests angepasst (vom Menschen gewünscht, nicht abgeschwächt); kein Reviewer wegen reiner Textänderung.
+
+## 2026-11-26 · Doku · LERNEN.md: Grundlagen (npm, Git, Branches, Pull Requests)
+- Rolle(n): Claude (interaktiv, auf Wunsch des Menschen)
+- Branch: agent/lernen-grundlagen (eigener Worktree, da im Hauptordner parallel unfertige B-067-Arbeit liegt)
+- Ergebnis: fertig. Neuer Abschnitt 9 in `docs/LERNEN.md`: `npm start`/Server, zwei Arten von Pipeline, Commits, Branches, Pull Requests, Lehre aus PR #57, Git-Befehle.
+- Tests: nur Doku, keine Code-Änderung.
