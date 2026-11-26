@@ -3,7 +3,7 @@
 import { MAPS, MAX_WAVES, TEST_TOOLS } from './config.js';
 import { prepareWave, clearEnemies, applyCheats, resetCooldowns, forceEnd, clampWave } from './test-tools.js';
 
-// api: { getState, ui, restartOn(mapId), refresh }
+// api: { getState, ui, restartOn(mapId), resume(), refresh }
 export function mountTestPanel(api) {
   const opts = { infiniteGold: true, invincible: false };
   document.body.classList.add('test-mode');
@@ -64,7 +64,7 @@ export function mountTestPanel(api) {
     prepareWave(api.getState(), w);
     api.refresh();
   });
-  $('tp-jump').addEventListener('click', act((s) => prepareWave(s, wave())));
+  $('tp-jump').addEventListener('click', act((s) => { prepareWave(s, wave()); api.resume(); }));
   $('tp-clear').addEventListener('click', act(clearEnemies));
   $('tp-cool').addEventListener('click', act(resetCooldowns));
   $('tp-win').addEventListener('click', act((s) => forceEnd(s, 'won')));

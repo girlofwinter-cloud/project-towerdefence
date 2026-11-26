@@ -56,9 +56,20 @@ test('Testseite: gesperrte Karte und Welle 15 wählen, Start ist Welle 15', asyn
   assert.equal(await page.evaluate(() => window.__ui.speed), 10);
 });
 
-test('Testseite: Sieg erzwingen zeigt Overlay und speichert nichts', async () => {
+test('Testseite: Sieg erzwingen zeigt Overlay und lässt echten Fortschritt unverändert', async () => {
+  // Vorhandener echter Fortschritt darf durch die Testseite weder überschrieben noch gelöscht werden.
+  const real = JSON.stringify({ maps: { meadow: { bestWave: 7, stars: 0 } } });
+  await page.evaluate(([k, v]) => localStorage.setItem(k, v), [PROGRESS_KEY, real]);
   await page.click('#tp-win');
   await page.waitForSelector('#overlay:not([hidden])');
-  assert.equal(await page.evaluate((k) => localStorage.getItem(k), PROGRESS_KEY), null);
+  assert.equal(await page.evaluate((k) => localStorage.getItem(k), PROGRESS_KEY), real);
   assert.deepEqual(errors, []);
+});
+
+test('Testseite: nach Spielende weiterspielen, Overlay verschwindet', async () => {
+  await page.fill('#tp-wave', '4');
+  await page.click('#tp-jump');
+  await page.waitForSelector('#overlay', { state: 'hidden' });
+  assert.deepEqual(await page.evaluate(() => [window.__game().status, window.__game().wave]), ['playing', 3]);
+  assert.equal(await page.locator('#overlay-progress').textContent(), '');
 });

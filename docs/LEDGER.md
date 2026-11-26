@@ -594,5 +594,5 @@ Neue Einträge werden unten angehängt. Bestehende Einträge werden nie geänder
 - Rolle(n): Claude (interaktiv), reviewer
 - Branch: agent/testseite
 - Ergebnis: fertig. `test.html` leitet auf `index.html?test`; dort Werkzeug-Panel (`src/test-page.js`): Karte und Startwelle frei wählen, unbegrenztes Gold, Unverwundbar, Tempo ×1–×10, Gegner entfernen, Fähigkeiten laden, Sieg/Niederlage erzwingen. Logik rein in `src/test-tools.js`, Zahlen in `TEST_TOOLS`.
-- Tests: 274 Unit-Tests (10 neu in `tests/test-tools.test.js`), 10 Browser-Tests (4 neu in `tests/e2e/testpage.test.mjs`)
+- Tests: 274 Unit-Tests (10 neu in `tests/test-tools.test.js`), 11 Browser-Tests (5 neu in `tests/e2e/testpage.test.mjs`). Review: APPROVE; drei Hinweise sofort behoben (volle Leben nach Spielende, Overlay-Text beim Weiterspielen, stärkerer Speicher-Test)
 - Entscheidungen: Kein eigenes Markup-Duplikat, dasselbe Spiel mit Parameter `?test`. Im Testmodus alle Karten offen und `getStorage()` liefert `null`, der echte Fortschritt bleibt unberührt. `src/game.js` unverändert. Die Seite ist über GitHub Pages ebenfalls erreichbar (nur Test-Werkzeug, kein Einfluss aufs normale Spiel).

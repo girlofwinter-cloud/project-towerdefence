@@ -23,6 +23,8 @@ export function prepareWave(state, n) {
   state.wave = wave - 1;
   state.waveActive = false;
   state.waveTime = 0;
+  // Nach einem Spielende mit vollen Leben weiterspielen (sonst endet das Spiel beim ersten Leck).
+  if (state.status !== 'playing') state.lives = START_LIVES;
   state.status = 'playing';
   return wave;
 }

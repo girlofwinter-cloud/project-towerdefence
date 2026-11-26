@@ -48,8 +48,10 @@ test('Testseite: prepareWave auf letzte Welle, Sieg danach möglich', () => {
 test('Testseite: prepareWave nach Spielende macht das Spiel wieder spielbar', () => {
   const s = createGame();
   forceEnd(s, 'lost');
+  s.lives = 0;
   prepareWave(s, 3);
   assert.equal(s.status, 'playing');
+  assert.equal(s.lives, START_LIVES);
   assert.equal(startWave(s).wave, 3);
 });
 

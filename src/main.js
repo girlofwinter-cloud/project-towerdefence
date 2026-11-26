@@ -376,6 +376,8 @@ if (TEST_MODE) {
     getState: () => state,
     ui,
     restartOn: (id) => { mapId = id; restart(); },
+    // Weiterspielen nach erzwungenem Spielende: Overlay-Text des alten Ergebnisses verwerfen.
+    resume: () => { resultSaved = false; resultText = ''; },
     refresh: refreshUI,
   }));
 }
