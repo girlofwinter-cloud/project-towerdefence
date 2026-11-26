@@ -40,6 +40,7 @@ export function createGame({ mapId, ...overrides } = {}) {
     blocked: new Set([waypoints, ...extraPaths].flatMap((w) => [...pathTiles(w)])), // alle Wege
     nextLane: 0, // Zähler für die abwechselnde Wegwahl neuer Gegner
     obstacles: new Set((MAPS[id].obstacles || []).map(([c, r]) => `${c},${r}`)), // Bäume/Felsen (kein Weg)
+    water: new Set((MAPS[id].water || []).map(([c, r]) => `${c},${r}`)), // B-104: Fluss und See (nicht bebaubar)
     ...overrides,
   };
   // Alle Wege: Hauptweg (state.path, auch per override) plus extraPaths; ohne extraPaths genau ein Weg.
@@ -85,6 +86,7 @@ export function canBuild(state, col, row) {
   if (col < 0 || row < 0 || col >= COLS || row >= ROWS) return { ok: false, reason: 'Außerhalb des Spielfelds' };
   if (state.blocked.has(`${col},${row}`)) return { ok: false, reason: 'Auf dem Weg kann nicht gebaut werden' };
   if (state.obstacles && state.obstacles.has(`${col},${row}`)) return { ok: false, reason: 'Hier wächst ein Baum oder liegt ein Fels' };
+  if (state.water && state.water.has(`${col},${row}`)) return { ok: false, reason: 'Hier ist Wasser' };
   if (towerAt(state, col, row)) return { ok: false, reason: 'Hier steht schon ein Turm' };
   return { ok: true };
 }

@@ -5,7 +5,7 @@
 //  - Grosse Dekoration (Baum, Busch, Fels) nur auf Randkacheln des Spielfelds.
 //  - Im Inneren nur kleine Dekoration (Blumen, Grasbuschel, Kiesel), die flach bleibt.
 //  - Die Dekoration wird in den Hintergrund gezeichnet; gebaute Tuerme liegen darueber.
-import { COLS, ROWS, TILE, WIDTH, HEIGHT, OBSTACLE_TREE_SHARE, MAPS, TREE_FRAME, GROUND_STYLE, DECOR_STYLE, ACCENT_STYLE, themed } from './config.js';
+import { COLS, ROWS, TILE, WIDTH, HEIGHT, OBSTACLE_TREE_SHARE, MAPS, TREE_FRAME, GROUND_STYLE, DECOR_STYLE, ACCENT_STYLE, WATER_STYLE, themed } from './config.js';
 import { buildPath } from './path.js';
 
 // Dichten (Wahrscheinlichkeit pro Kachel, 0..1)
@@ -33,12 +33,29 @@ export function isBorderTile(col, row) {
   return col === 0 || row === 0 || col === COLS - 1 || row === ROWS - 1;
 }
 
+// Wasserkacheln einer Karte (B-104) als Set "spalte,zeile"; ohne MAPS.<id>.water leer.
+export function waterTiles(mapId) {
+  return new Set((MAPS[mapId]?.water || []).map(([c, r]) => `${c},${r}`));
+}
+
+// Liegt der Punkt (px) naeher als m an einer Wasserkachel (oder darin)?
+export function nearWater(water, x, y, m = 0) {
+  for (const k of water) {
+    const [c, r] = k.split(',').map(Number);
+    const dx = Math.max(c * TILE - x, 0, x - (c + 1) * TILE), dy = Math.max(r * TILE - y, 0, y - (r + 1) * TILE);
+    if (Math.hypot(dx, dy) < m || (dx === 0 && dy === 0)) return true;
+  }
+  return false;
+}
+
 // Entscheidet, welche Dekoration auf einer Kachel liegt.
 // Rueckgabe: null oder { kind, variant, ox, oy } (ox/oy = Versatz 0..1 innerhalb der Kachel).
-export function decorFor(col, row, blocked, obstacles) {
+// water: optionales Set der Wasserkacheln (B-104), dort liegt nie Dekoration.
+export function decorFor(col, row, blocked, obstacles, water) {
   if (col < 0 || row < 0 || col >= COLS || row >= ROWS) return null;
   if (isPathTile(blocked, col, row)) return null;
   if (obstacles && obstacles.has(`${col},${row}`)) return null; // dort zeichnet render.js das Hindernis
+  if (water && water.has(`${col},${row}`)) return null; // dort zeichnet render-water.js Fluss oder See
   const border = isBorderTile(col, row);
   const chance = border ? BORDER_DECOR_CHANCE : INNER_DECOR_CHANCE;
   if (tileRand(col, row, 1) >= chance) return null;
@@ -156,6 +173,8 @@ export function groundPatches(mapId = 'meadow') {
   const out = { patches: [], plateaus: [], tufts: [] };
   if (!MAPS[mapId]?.theme?.ground) return out;
   const paths = mapPoints(mapId);
+  const water = waterTiles(mapId); // B-104: Plateaus und Büschel meiden Fluss und See
+  const wm = WATER_STYLE.groundMargin;
   const lerp = (r, u) => r[0] + u * (r[1] - r[0]);
   const total = G.lightPatches + G.darkPatches;
   for (let i = 0; i < total; i++) {
@@ -169,11 +188,13 @@ export function groundPatches(mapId = 'meadow') {
     if (distToPaths(paths, x, y) < G.plateauCenterMargin) continue;
     const edge = blobPoints(x, y, rx, ry, seed, G.plateauPoints).map((p) => [p[0] + (p[0] - x) * 0.3, p[1] + (p[1] - y) * 0.3 + G.plateauDrop]);
     if (edge.some((p) => distToPaths(paths, p[0], p[1]) < G.plateauEdgeMargin)) continue;
+    if (water.size && edge.some((p) => [0, 0.5, 1].some((f) => nearWater(water, x + (p[0] - x) * f, y + (p[1] - y) * f, wm)))) continue;
     out.plateaus.push({ x, y, rx, ry, seed });
   }
   for (let i = 0; i < G.tufts; i++) {
     const x = 4 + tileRand(i, 0, 80) * (WIDTH - 8), y = 6 + tileRand(i, 0, 81) * (HEIGHT - 8);
     if (distToPaths(paths, x, y) < G.tuftPathMargin) continue;
+    if (nearWater(water, x, y, wm)) continue;
     out.tufts.push({ x, y, s: lerp(G.tuftScale, tileRand(i, 0, 82)), dark: i % 3 === 0, seed: tileHash(i, 0, 83) });
   }
   return out;
@@ -188,7 +209,9 @@ export function scatterFor(col, row, blocked, obstacles, mapId = 'meadow') {
   if (col < 0 || row < 0 || col >= COLS || row >= ROWS) return null;
   if (isPathTile(blocked, col, row)) return null;
   if (obstacles && obstacles.has(`${col},${row}`)) return null;
-  if (decorFor(col, row, blocked, obstacles)) return null;
+  const water = waterTiles(mapId); // B-104: nie auf Fluss oder See
+  if (water.has(`${col},${row}`)) return null;
+  if (decorFor(col, row, blocked, obstacles, water)) return null;
   const D = themed(mapId, 'decor', DECOR_STYLE);
   for (const [wc, wr] of mapWaypoints(mapId).flatMap((wp) => [wp[0], wp[wp.length - 1]])) {
     const ec = Math.min(Math.max(wc, 0), COLS - 1), er = Math.min(Math.max(wr, 0), ROWS - 1);

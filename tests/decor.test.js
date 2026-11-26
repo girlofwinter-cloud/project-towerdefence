@@ -441,13 +441,13 @@ test('Eis: Palette aus config (Boden, Weg dunkler als Schnee, Tanne, Kristall), 
   assert.equal(themed('twin', 'treeFrame', TREE_FRAME).snow, null);
 });
 
-test('Eis: Balancing und Logik unveraendert (Modifikatoren, keine Hindernisse, alles bebaubar ausser Weg)', async () => {
+test('Eis: Balancing und Logik unveraendert (Modifikatoren, Hindernisse aus B-103, alles bebaubar ausser Weg und Hindernis)', async () => {
   const { canBuild } = await import('../src/game.js');
   assert.deepEqual(MAPS.ice.modifiers, { enemySpeed: 1.14, towerDamage: { cannon: 0.95, frost: 0.7 }, slowStrength: 0.85 });
-  assert.equal(MAPS.ice.obstacles, undefined);
+  assert.deepEqual(MAPS.ice.obstacles, [[2, 2], [9, 12], [16, 12]]); // B-103
   const g = createGame({ mapId: 'ice' });
-  assert.equal(g.obstacles.size, 0);
-  for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) assert.equal(canBuild(g, c, r).ok, !g.blocked.has(`${c},${r}`), `${c},${r}`);
+  assert.equal(g.obstacles.size, 3);
+  for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) assert.equal(canBuild(g, c, r).ok, !g.blocked.has(`${c},${r}`) && !g.obstacles.has(`${c},${r}`), `${c},${r}`);
 });
 
 test('treeFrame Eis: nur Tannen, deterministisch, in zwei Reihen, Kronen nie auf dem Weg', async () => {
@@ -498,4 +498,42 @@ test('Eis: Boden mit Schneeverwehungen, deterministisch, Plateaus und Buesche ni
   };
   for (const t of a.tufts) assert.ok(dist(t.x, t.y) >= gs.tuftPathMargin, 'Busch nicht auf dem Weg');
   for (const p of a.plateaus) assert.ok(dist(p.x, p.y) >= gs.plateauCenterMargin, 'Verwehung nicht auf dem Weg');
+});
+
+// ---------- Wasser (B-104) ----------
+test('B-104: Deko, Streu-Deko, Plateaus und Büschel liegen nie auf Wasser; Karten ohne Wasser unverändert', async () => {
+  const { scatterFor, groundPatches, waterTiles, nearWater } = await import('../src/decor.js');
+  const { WATER_STYLE } = await import('../src/config.js');
+  const s = createGame({ mapId: 'meadow' });
+  assert.equal(waterTiles('meadow').size, s.water.size);
+  let free = 0;
+  for (const k of s.water) {
+    const [c, r] = k.split(',').map(Number);
+    assert.equal(decorFor(c, r, s.blocked, s.obstacles, s.water), null, `Deko auf Wasser ${k}`);
+    assert.equal(scatterFor(c, r, s.blocked, s.obstacles, 'meadow'), null, `Streu-Deko auf Wasser ${k}`);
+    if (decorFor(c, r, s.blocked, s.obstacles)) free++; // ohne Wasser-Set läge hier Deko (Test greift wirklich)
+  }
+  assert.ok(free > 0, 'mindestens eine Wasserkachel hätte sonst Deko');
+  const g = groundPatches('meadow');
+  assert.ok(g.plateaus.length > 0 && g.tufts.length > 0);
+  for (const t of g.tufts) assert.ok(!nearWater(s.water, t.x, t.y, WATER_STYLE.groundMargin), `Büschel am Wasser ${t.x},${t.y}`);
+  for (const p of g.plateaus) assert.ok(!nearWater(s.water, p.x, p.y, WATER_STYLE.groundMargin), `Plateau am Wasser ${p.x},${p.y}`);
+  // nearWater: in der Kachel, mit Abstand, weit weg
+  assert.equal(nearWater(new Set(['1,1']), 60, 60), true);
+  assert.equal(nearWater(new Set(['1,1']), 85, 60, 6), true);
+  assert.equal(nearWater(new Set(['1,1']), 90, 60, 6), false);
+  for (const id of Object.keys(MAPS)) if (id !== 'meadow') assert.equal(waterTiles(id).size, 0, id);
+});
+
+test('B-103/B-104 Randfälle (Tester): auf allen Karten keine Deko/Streu-Deko auf Hindernis oder Wasser', async () => {
+  const { scatterFor } = await import('../src/decor.js');
+  const { MAPS: ALL } = await import('../src/config.js');
+  for (const id of Object.keys(ALL)) {
+    const s = createGame({ mapId: id });
+    for (const k of [...s.obstacles, ...s.water]) {
+      const [c, r] = k.split(',').map(Number);
+      assert.equal(decorFor(c, r, s.blocked, s.obstacles, s.water), null, `${id} Deko ${k}`);
+      assert.equal(scatterFor(c, r, s.blocked, s.obstacles, id), null, `${id} Streu ${k}`);
+    }
+  }
 });

@@ -31,6 +31,13 @@ export function themed(mapId, key, base) {
   return v && typeof v === 'object' ? { ...base, ...v } : base;
 }
 
+// B-104: Fluss und See der Wiese (Kacheln [spalte, zeile]). Der Fluss ist eine Kette von oben (unter dem Baumrahmen)
+// bis zum See, inklusive Brückenkachel; Wasser = Fluss + See ohne Brücken (Brücken liegen auf dem Weg).
+const MEADOW_RIVER = [[1, 0], [1, 1], [1, 2], [1, 3], [1, 4], [1, 5], [1, 6], [1, 7], [1, 8]];
+const MEADOW_LAKE = [[1, 9], [2, 9], [1, 10], [2, 10], [2, 11]];
+const MEADOW_BRIDGES = [[1, 2]];
+const notBridge = ([c, r]) => !MEADOW_BRIDGES.some(([bc, br]) => bc === c && br === r);
+
 // Karten: Wegpunkte in Kachel-Koordinaten [spalte, zeile].
 // Erster und letzter Punkt liegen außerhalb des Spielfelds (Ein-/Ausgang).
 export const MAPS = {
@@ -46,8 +53,16 @@ export const MAPS = {
       [16, 11],
       [20, 11],
     ],
+    // B-103: wenige Hindernisse (Art aus obstacleKind in decor.js): Fels, Baum
+    obstacles: [[8, 1], [12, 12]],
+    // B-104: Wasser ist nicht bebaubar (canBuild), Brücken sind Weg-Kacheln (nur Optik, Gegner laufen normal)
+    river: MEADOW_RIVER,
+    lake: MEADOW_LAKE,
+    bridges: MEADOW_BRIDGES,
+    water: [...MEADOW_RIVER.filter(notBridge), ...MEADOW_LAKE],
     // B-071: Wegpalette der Wiese (STIL.md); Eiswelt und Zangenangriff haben eigene Wegfarben (B-072, B-073).
-    theme: { treeFrame: true, ground: true, accents: true, light: true, islands: true, decorStyle: 'flatpop', path: { main: '#e2c88f', edge: '#8f6a3b', outline: '#4a3418', mid: '#ecd5a0', fringe: '#6fbf4e' } },
+    // B-103: decor.flatTrees, damit die Hindernisse im Flat-Pop-Stil erscheinen (Laubbaum, Fels mit Kontur)
+    theme: { treeFrame: true, ground: true, accents: true, light: true, islands: true, decorStyle: 'flatpop', decor: { flatTrees: true }, path: { main: '#e2c88f', edge: '#8f6a3b', outline: '#4a3418', mid: '#ecd5a0', fringe: '#6fbf4e' } },
   },
   // Eiswelt (B-029, Glatteis): Gegner rutschen schneller, Kanone und Frost sind schwächer. Modifikatoren (enemySpeed, towerDamage je Typ, slowStrength) und kühles Farbschema (theme).
   ice: {
@@ -66,7 +81,9 @@ export const MAPS = {
     ],
     modifiers: { enemySpeed: 1.14, towerDamage: { cannon: 0.95, frost: 0.7 }, slowStrength: 0.85 },
     // B-073: Eiswelt im Flat-Pop-Stil (STIL.md): Schneeboden mit Verwehungen, Tannen mit Schneekappe, glatter blaugrauer Weg
-    // (dunkler als der Schnee), Eiskristalle und Eisfelsen als Streu-Deko, kühles Licht. Keine Hindernisse.
+    // (dunkler als der Schnee), Eiskristalle und Eisfelsen als Streu-Deko, kühles Licht.
+    // B-103: wenige Hindernisse: Fels, zwei Tannen
+    obstacles: [[2, 2], [9, 12], [16, 12]],
     theme: {
       grass: ['#cfe6f2', '#d9edf6'], blade: '#9cc3d8',
       treeFrame: {
@@ -103,6 +120,7 @@ export const MAPS = {
         bush: '#eef7fd', berry: '#7fe0ff', rock: '#8aa6bd', moss: '#ffffff',
         flowers: ['#ffffff', '#bff0ff', '#7fe0ff'], flowerCore: '#4aa8d0', stem: '#8fb6cc', tuft: '#8fb6cc', tuftLight: '#c9e4f2',
         pebble: '#9db3c9', wood: '#b9c7d6', woodDark: '#6a7f96', crystal: '#7fe0ff',
+        obstacleGround: 'rgba(47,69,96,0.22)', // B-103: kühler Fleck unter Hindernissen statt Grün
         scatterChance: 0.1,
         scatterKinds: [['crystal', 0.28], ['snowpile', 0.3], ['rockgroup', 0.16], ['pebbles', 0.12], ['stakes', 0.08], ['sign', 0.06]],
       },
@@ -139,6 +157,8 @@ export const MAPS = {
     // Pfeil-Mix über beide Wege gewinnt mit 2 bis 8 Leben, nur die obere Seite verteidigt verliert in Welle 13 bis 14.
     // Bei enemySpeed 1,02 verliert auch die Strategie über beide Wege. Nicht ahnungslos ändern.
     modifiers: { towerDamage: { cannon: 0.92 } },
+    // B-103: wenige Hindernisse: Baum, Fels, Baum, Baum
+    obstacles: [[10, 1], [11, 2], [15, 11], [1, 6]],
     // B-072: Zangenangriff im Flat-Pop-Stil (STIL.md Hochland/Herbst): Herbstbäume, Felsgruppen, Laubhaufen.
     theme: {
       treeFrame: {
@@ -230,6 +250,8 @@ export const MAPS = {
     // Kanonen-Mix über beide Wege gewinnt mit 3 bis 4 Leben, eine Seite allein verliert in Welle 2. Bei 0,85 wird es
     // für gute Platzierung zu leicht (10 Leben), bei 1,0 verliert jede Strategie bis Welle 10.
     modifiers: { enemySpeed: 0.9 },
+    // B-103: wenige Hindernisse: Baum, Fels, Baum
+    obstacles: [[1, 6], [6, 1], [12, 12]],
     // Spätsommer im Flat-Pop-Stil: gemischter Baumrahmen, warmes Gras, Pilze, Baumstümpfe und Wegweiser.
     theme: {
       treeFrame: {
@@ -725,6 +747,72 @@ export const ACCENT_STYLE = {
   wood: '#c58f55', woodDark: '#8a5a34', gate: '#6b4a2b', wellRoof: '#d4503f',
   water: '#5aa9d6', bank: '#6a8a3e', mud: '#8a6a42', pad: '#4aa84a', padFlower: '#ff8fb1', padCenter: '#ffe07a', reed: '#4d8a3a', reedHead: '#7a4a2a',
   towerW: 14, towerBody: 22, towerRoof: 10, wallHeight: 16, merlon: [8, 5], merlonStep: 11, gateW: 16, gateH: 12,
+};
+
+// Fluss, See und Brücke der Wiese (B-104): nur Optik im Hintergrund-Cache, Maße in px bei 1x.
+// Gezeichnet nur auf Karten mit MAPS.<id>.water (Kacheln aus river/lake/bridges).
+export const WATER_STYLE = {
+  water: '#5aa9d6',        // Fläche wie ACCENT_STYLE.water (Teich)
+  channelShade: [0.1, 0.2], // Rinne zur Mitte hin: shd(water, t) je Stufe
+  channelScale: [0.7, 0.4], // Breite der Rinnen-Stufen als Anteil der Fläche
+  outline: '#28506a',
+  outlineWidth: 1.3,
+  bank: '#6a8a3e',         // Ufersaum
+  bankWidth: 3.5,
+  mud: '#8a6a42',          // Schlammflecken an Innenkurven
+  riverWidth: 28,
+  riverWiggle: 4,          // seitlicher Schwung je Kachel, höchstens (deterministisch)
+  riverTop: 6,             // y des oberen (runden) Endes, liegt unter den Baumkronen
+  lakeRadius: 21,          // Radius je Seekachel (Umriss = Hülle der Kreise um die Kachelmitten)
+  lakePoints: 24,          // Stützpunkte des Seeumrisses
+  lakeHarmonics: 2,        // Hülle geglättet: nur Radius-Harmonische bis zu dieser Ordnung (rund/oval, keine Zipfel)
+  lakeScale: 0.97,         // geglätteter Umriss etwas kleiner, damit er die Seekacheln nur knapp ausfüllt
+  mouthFlare: 7,           // Einmündung: Fluss weitet sich je Seite um so viel px zum See hin
+  mouthLength: 16,         // Länge der Aufweitung oberhalb des Seeufers
+  mudConcave: -40,         // Schlamm an Uferpunkten mit Kreuzprodukt unter dieser Schwelle (Innenkurve)
+  mudGap: 18,              // Mindestabstand zwischen Schlammflecken
+  mudMouth: [[4.5, 2.6], [4, 2.4]], // Halbachsen der Schlammflecken links/rechts der Einmündung
+  mudSpot: [4, 2.4],       // Halbachsen der Schlammflecken an Innenkurven
+  glint: 'rgba(255,243,201,0.5)', // Glanzstriche (#fff3c9, Alpha 0,5)
+  glintWidth: 1.6,
+  riverGlintAt: [0.45, 0.72],        // Glanzstriche auf dem Fluss (Anteil der Flusslänge)
+  riverGlint: [[-5, -6], [-4, 5]],   // Glanzstrich relativ zum Flusspunkt
+  lakeGlint: [[-14, -12], [-2, -13]], // Glanzstrich relativ zur Seemitte
+  pad: '#4aa84a', padFlower: '#ff8fb1', padCenter: '#ffe07a', reed: '#4d8a3a', reedHead: '#7a4a2a',
+  // Ufer des Sees (Nachbesserung B-104): Winkel in Grad um die Seemitte (0 = rechts, 90 = unten), d = Abstand zum Ufer
+  // (positiv = an Land, negativ = im Wasser). Alles rein Optik; Positionen aus shoreDecor (render-water.js).
+  shore: {
+    pads: [[18, -0.5, 1, true], [128, -0.45, 0.85, true], [-35, -0.55, 0.7, false]], // [Winkel, Anteil des Radius (negativ: nach innen), Größe, Blüte]
+    pad: [6.5, 3.4],       // Halbachsen eines Blatts bei Größe 1
+    padNotch: 0.5,         // Kerbe im Blatt (Bogenmaß)
+    padBloom: [2.6, 1.8, 1.1], // Blüte: Blatt-Halbachsen x/y, Mitte
+    reeds: [[8, -1, 4], [148, -1, 3], [-62, 0, 3]], // [Winkel, d, Halme]
+    reedHeights: [17, 13, 20, 11], // Halmhöhen der Reihe nach
+    reedStep: 3.2,         // Abstand der Halme
+    reedWidth: 1.4,
+    reedHead: [1.6, 3.6],  // Rohrkolben (Halbachsen)
+    reedLeaf: '#5da044',   // Blätter am Fuß der Halme
+    reedLeafLen: 8,
+    stones: [[55, 2, 1], [-15, 2, 0.8], [100, 3, 0.9], [180, 1, 0.8]], // [Winkel, d, Größe]
+    stone: '#a9a8ae', stoneTop: '#cfcdd0', stoneSize: [4.5, 2.6],
+    flowers: [[35, 7, 0], [78, 8, 1], [-88, 8, 2], [-40, 9, 1], [118, 8, 0]], // [Winkel, d, Farbe (Index in DECOR_STYLE.flowers)]
+    flowerPetal: 1.3,      // Blütenblatt-Radius
+    flowerRing: 1.7,       // Abstand der Blütenblätter von der Mitte
+    tufts: [[45, 4], [-28, 4], [92, 5], [162, 3], [-75, 3]], // [Winkel, d]
+    tuftHeights: [5, 7, 5.5],
+  },
+  groundMargin: 6,         // Plateaus und Büschel halten so viel Abstand zu Wasserkacheln
+  // Brücke: Holzbohlen quer zur Laufrichtung, Geländer an beiden Seiten, Schlagschatten auf dem Wasser
+  bridge: {
+    length: 46,            // entlang des Wegs
+    width: 30,             // quer zum Weg (Deck)
+    plank: 5.5,            // Bohlenbreite (Fugenabstand)
+    wood: '#c58f55', seam: '#8a5a34', outline: '#5a3a20', outlineWidth: 1.3,
+    rail: 3.5,             // Stärke des Geländerbalkens
+    post: 4,               // Pfostengröße
+    shadow: 'rgba(43,27,61,0.3)', shadowOffset: [2, 4],
+    waterReach: 0.75,      // Wasser wird unter der Brücke bis zu diesem Anteil einer Kachel quer zum Weg neu gemalt
+  },
 };
 
 // Bauplatz-Inseln der Wiese (B-082): Gras-Plateau mit Kontur und kurzer Wand unter jedem Turm, blasse Vorschau beim Hover.

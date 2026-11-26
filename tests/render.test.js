@@ -82,7 +82,7 @@ test('Render: gezeichnete Dekoration verlaesst ihre Kachel nicht und ragt nie au
     // (seit B-072 hat fork selbst einen Rahmen: dessen theme wird fuer diesen Test kurz entfernt)
     const forkTheme = MAPS.fork.theme;
     delete MAPS.fork.theme;
-    const s = createGame({ mapId: 'fork' });
+    const s = createGame({ mapId: 'fork', obstacles: new Set() }); // B-103: ohne Karten-Hindernisse (eigener Test)
     try { render({ drawImage() {} }, s, {}); } finally { MAPS.fork.theme = forkTheme; }
     const eps = 1e-9;
     const kinds = {};
@@ -1142,11 +1142,22 @@ test('B-072: Hindernisse im neuen Stil (Kontur), nur im Hintergrund-Cache; Wiese
     const plainBg = mockCtx(); // gleicher Hintergrund ohne Hindernisse zum Vergleich
     globalThis.document = { createElement() { const c = { width: 0, height: 0, getContext: () => plainBg.ctx }; return c; } };
     const { render: render2 } = await import('../src/render.js?welten-hindernis-ohne');
-    render2(mockCtx().ctx, createGame({ mapId: 'fork' }), {});
+    render2(mockCtx().ctx, createGame({ mapId: 'fork', obstacles: new Set() }), {}); // B-103: fork hat eigene Hindernisse
     assert.ok(n - (plainBg.counts.arcTo || 0) >= OBST_FORK.size * 4, `je Hindernis ein Bodenfleck (${n})`);
     render(main.ctx, s, {});
     assert.equal(main.counts.arcTo || 0, 0, 'Frame-Pfad zeichnet keine Hindernisse');
   } finally { delete globalThis.document; }
+});
+
+// B-103: Jede Karte mit Hindernissen zeichnet sie im Flat-Pop-Stil (drawObstacleFlat statt altem Quadrat).
+test('B-103: Karten mit Hindernissen nutzen flatpop mit flatTrees, Eis mit kühlem Bodenfleck', async () => {
+  const { themed, DECOR_STYLE } = await import('../src/config.js');
+  for (const [id, m] of Object.entries(MAPS)) {
+    if (!(m.obstacles || []).length) continue;
+    assert.equal(m.theme?.decorStyle, 'flatpop', id);
+    assert.equal(themed(id, 'decor', DECOR_STYLE).flatTrees, true, id);
+  }
+  assert.notEqual(themed('ice', 'decor', DECOR_STYLE).obstacleGround, DECOR_STYLE.obstacleGround);
 });
 
 // ---------- Eiswelt (B-073) ----------
@@ -1389,4 +1400,94 @@ test('B-097: contrastRatio versteht auch die Kurzform #rgb, ungültige Farben er
     assert.ok(Number.isNaN(relativeLuminance(bad)), `relativeLuminance(${bad})`);
     assert.ok(Number.isNaN(contrastRatio(bad, '#000')), `contrastRatio(${bad})`);
   }
+});
+
+// ---------- Wasser (B-104) ----------
+test('B-104: Render zeichnet mit und ohne Wasser ohne Fehler; Geometrie deterministisch, nur auf der Wiese', async () => {
+  const { waterGeometry, lakeOutline, mudSpots, drawWater, drawBridges } = await import('../src/render-water.js');
+  const s = createGame({ mapId: 'meadow' });
+  const g = waterGeometry('meadow', s.blocked);
+  assert.deepEqual(g, waterGeometry('meadow', s.blocked), 'deterministisch');
+  for (const id of Object.keys(MAPS)) if (id !== 'meadow') assert.equal(waterGeometry(id, createGame({ mapId: id }).blocked), null, id);
+  // Fluss beginnt oben unter dem Baumrahmen, Brücke liegt waagrecht (Weg läuft in Zeile 2 nach rechts), gerade über dem Fluss
+  assert.ok(g.river[0][1] < TILE / 2);
+  assert.deepEqual(g.bridges, [{ x: 1.5 * TILE, y: 2.5 * TILE, horizontal: true }]);
+  assert.ok(g.river.some(([x, y]) => x === 1.5 * TILE && y === 2.5 * TILE), 'Flusslinie läuft gerade unter der Brücke durch');
+  // Schwung höchstens riverWiggle, See-Umriss umschließt alle Seekacheln-Mitten
+  const { WATER_STYLE } = await import('../src/config.js');
+  for (const [x] of g.river) assert.ok(Math.abs(x - 1.5 * TILE) <= WATER_STYLE.riverWiggle + 1e-9);
+  assert.equal(lakeOutline(g.lake, WATER_STYLE.lakeRadius).length, WATER_STYLE.lakePoints);
+  assert.ok(mudSpots(g).length >= 2);
+  const m = mockCtx();
+  drawWater(m.ctx, g);
+  drawBridges(m.ctx, g);
+  assert.equal(m.depth, 0, 'save/restore ausgeglichen');
+  assert.ok(m.counts.quadraticCurveTo > 0 && m.counts.clip === 1 && m.counts.fillRect > 0);
+  const n = mockCtx();
+  drawWater(n.ctx, null);
+  drawBridges(n.ctx, null);
+  assert.equal(Object.keys(n.counts).length, 0, 'ohne Wasser nichts zeichnen');
+  // ganzer Render mit Turm neben dem Fluss (Insel ausgespart) und Vorschau über Wasser
+  const { render } = await import('../src/render.js?wasser');
+  globalThis.document = { createElement() { const c = mockCtx(); return { width: 0, height: 0, getContext: () => c.ctx }; } };
+  try {
+    for (const id of Object.keys(MAPS)) {
+      const st = createGame({ mapId: id, gold: 1000 });
+      if (id === 'meadow') assert.ok(buildTower(st, 'arrow', 2, 5).ok);
+      const main = mockCtx();
+      render(main.ctx, st, { buildType: 'arrow', hover: { col: 1, row: 5, ok: false } });
+      assert.equal(main.depth, 0, id);
+      if (id !== 'meadow') continue;
+      const dry = mockCtx(); // gleicher Zustand ohne Wasser: ein Clip weniger
+      render(dry.ctx, { ...st, water: new Set() }, { buildType: 'arrow', hover: { col: 1, row: 5, ok: false } });
+      assert.equal(main.counts.clip - (dry.counts.clip || 0), 1, 'Inseln sparen Wasser aus');
+    }
+  } finally { delete globalThis.document; }
+});
+
+test('B-104 Nachbesserung: See rund ohne Zipfel, Uferdeko deterministisch, nie auf Weg, Brunnen oder Baumrahmen', async () => {
+  const { waterGeometry, lakeOutline, shoreDecor, drawWater } = await import('../src/render-water.js');
+  const { WATER_STYLE } = await import('../src/config.js');
+  const s = createGame({ mapId: 'meadow' });
+  const g = waterGeometry('meadow', s.blocked);
+  // Umriss konvex (keine Zipfel/Knubbel) und umschließt alle Seekachel-Mitten
+  const pts = lakeOutline(g.lake, WATER_STYLE.lakeRadius);
+  const n = pts.length;
+  pts.forEach((p, i) => {
+    const a = pts[(i + n - 1) % n], c = pts[(i + 1) % n];
+    assert.ok((p[0] - a[0]) * (c[1] - p[1]) - (p[1] - a[1]) * (c[0] - p[0]) > 0, `Delle im Seeufer bei Punkt ${i}`);
+  });
+  const inside = ([x, y]) => pts.every((p, i) => { const q = pts[(i + 1) % n]; return (q[0] - p[0]) * (y - p[1]) - (q[1] - p[1]) * (x - p[0]) >= 0; });
+  for (const d of g.lake.discs) assert.ok(inside(d), `Seekachel-Mitte ${d} außerhalb`);
+  // Uferdeko: alle Arten vorhanden, deterministisch
+  const items = shoreDecor(g);
+  assert.deepEqual(items, shoreDecor(g));
+  assert.deepEqual(shoreDecor(null), []);
+  for (const k of ['pad', 'reed', 'stone', 'flower', 'tuft']) assert.ok(items.some((p) => p.kind === k), `Art ${k} fehlt`);
+  const tile = (p) => [Math.floor(p.x / TILE), Math.floor(p.y / TILE)];
+  for (const p of items) {
+    const [c, r] = tile(p);
+    assert.ok(!s.blocked.has(`${c},${r}`), `${p.kind} auf dem Weg ${c},${r}`);
+    assert.ok(!(c === 1 && r === 13), `${p.kind} über dem Brunnen`);
+    assert.ok(p.x >= TILE - 2, `${p.kind} im Baumrahmen links (x ${p.x})`);
+    if (p.kind === 'pad') assert.ok(inside([p.x, p.y]), 'Seerose liegt im See');
+  }
+  // Zeichnen ohne arc/ellipse (Kachel-Test der Kleindeko) und mit ausgeglichenem save/restore
+  const m = mockCtx();
+  drawWater(m.ctx, g);
+  assert.equal(m.depth, 0);
+  assert.ok(!m.counts.arc && !m.counts.ellipse, 'Wasser und Ufer zeichnen ohne arc/ellipse');
+});
+
+test('B-104 Randfall (Tester): Render ohne water-Set (undefined/null) wirft auf keiner Karte', async () => {
+  const { render } = await import('../src/render.js?ohne-wasser-set');
+  globalThis.document = { createElement() { const c = mockCtx(); return { width: 0, height: 0, getContext: () => c.ctx }; } };
+  try {
+    for (const id of Object.keys(MAPS)) for (const water of [undefined, null]) {
+      const st = createGame({ mapId: id, water, obstacles: undefined });
+      const m = mockCtx();
+      render(m.ctx, st, { buildType: 'arrow', hover: { col: 1, row: 5, ok: true } });
+      assert.equal(m.depth, 0, `${id} ${water}`);
+    }
+  } finally { delete globalThis.document; }
 });

@@ -161,6 +161,7 @@ Erledigte Einträge (`fertig`) liegen in `docs/archiv/BACKLOG-fertig.md`. Beim A
 - Akzeptanzkriterien:
   - Map `volcano` mit `hazards` (Lava-Kacheln, Schaden pro Sekunde, Überhitzungsradius).
   - Test: Gegner neben Lava nehmen Schaden; Turm in Lava-Nähe hat längere Schussrate.
+  - Lavafluss gleich mit einplanen: nicht bebaubare Lava-Kacheln quer über die Karte (Technik wie Wasser aus B-104, Brücke wo der Weg kreuzt), optisch mit Glühen. Ob der Fluss auch Gegner oder Türme in der Nähe beeinflusst, entscheidet der Mensch.
   - Beide robusten Strategien aus den Balancing-Tests können Welle 20 noch schaffen.
 
 ### B-031: Welt Wüste (Sandsturm)
@@ -390,7 +391,7 @@ Reihenfolge ist Abhängigkeit: B-062 und B-063 zuerst, dann gemeinsame Sichtprü
 ### B-086: Baumrahmen: Feinschliff (Hinweise aus dem Review von B-077)
 - Status: vorschlag
 - Aufwand: S
-- Idee: (1) Der Test "Dekoration verlässt ihre Kachel nicht" läuft seit B-077 auf `fork`; der Tester hat einen zusätzlichen Wiesen-Test ergänzt (Busch, Fels, Blume, Tuft, Kiesel). Ungeprüft bleiben nur nicht verdeckte Einzelbäume der Wiese (Eck-Tannen). (2) Die Ecken des Rahmens sind leicht unruhig (links oben abgeschnittene Tannen). (3) Kronen sind etwas kleiner und gleichförmiger als im Zielbild; mehr Größenvarianz und Stämme/Schatten zur Mitte hin sind optional. (4) Rahmen für Wald und Eis über `theme.treeFrame: true` folgt mit B-072/B-073.
+- Idee: (1) Der Test "Dekoration verlässt ihre Kachel nicht" läuft seit B-077 auf `fork`; der Tester hat einen zusätzlichen Wiesen-Test ergänzt (Busch, Fels, Blume, Tuft, Kiesel). Ungeprüft bleiben nur nicht verdeckte Einzelbäume der Wiese (Eck-Tannen). (2) Die Ecken des Rahmens sind leicht unruhig (links oben abgeschnittene Tannen). (3) Kronen sind etwas kleiner und gleichförmiger als im Zielbild; mehr Größenvarianz und Stämme/Schatten zur Mitte hin sind optional. (4) Rahmen für Eis über `theme.treeFrame: true` folgt mit B-073.
 - Akzeptanzkriterien:
   - Ecken im Screenshot ohne abgeschnittene Einzelbäume.
 
@@ -420,15 +421,15 @@ Reihenfolge ist Abhängigkeit: B-062 und B-063 zuerst, dann gemeinsame Sichtprü
 ### B-090: Wiesen-Licht und Inseln: Feinschliff (Hinweise aus dem Block-Review B-081/B-082)
 - Status: vorschlag
 - Aufwand: S
-- Idee: (1) Lichtstreifen sind sehr dezent (`LIGHT_STYLE.beamAlpha` 0,045, im Screenshot kaum sichtbar); auf ca. 0,07 anheben, die Gesamt-Aufhellung ist per Test bei 0,3 gedeckelt. (2) Der kräftigere Reichweiten-Ring (Alpha 0,75, 2 px) und die Fläche 0,08 gelten auf allen Karten und für den Meteor-Kreis; Lesbarkeit auf den hellen Wegen von Wald/Eis/Fork per Screenshot prüfen. (3) Baumschatten per `roundRect` mit `ellipse`-Fallback: nach B-089 zurück auf `ellipse`. (4) Inseln sind 60 px breit (`ISLAND_STYLE`), bei direkt benachbarten Türmen überlappen sie leicht. (5) Tests: Der Wald/Eis/Fork-Insel-Test ist grob (weniger als 20 zusätzliche Ellipsen); Reichweitenkreis mit r=0/NaN, Kartenwechsel mit Inseln und ungültiger `ui.buildType` in `drawHover` (wirft schon vor B-082) sind ungetestet; die frühere Fläche 0,15/0,12 ist in `RANGE_STYLE` zu 0,08 zusammengefallen.
+- Idee: (1) Lichtstreifen sind sehr dezent (`LIGHT_STYLE.beamAlpha` 0,045, im Screenshot kaum sichtbar); auf ca. 0,07 anheben, die Gesamt-Aufhellung ist per Test bei 0,3 gedeckelt. (2) Der kräftigere Reichweiten-Ring (Alpha 0,75, 2 px) und die Fläche 0,08 gelten auf allen Karten und für den Meteor-Kreis; Lesbarkeit auf den hellen Wegen von Eis/Fork/Zwei Fronten per Screenshot prüfen. (3) Baumschatten per `roundRect` mit `ellipse`-Fallback: nach B-089 zurück auf `ellipse`. (4) Inseln sind 60 px breit (`ISLAND_STYLE`), bei direkt benachbarten Türmen überlappen sie leicht. (5) Tests: Der Eis/Fork-Insel-Test ist grob (weniger als 20 zusätzliche Ellipsen); Reichweitenkreis mit r=0/NaN, Kartenwechsel mit Inseln und ungültiger `ui.buildType` in `drawHover` (wirft schon vor B-082) sind ungetestet; die frühere Fläche 0,15/0,12 ist in `RANGE_STYLE` zu 0,08 zusammengefallen.
 - Akzeptanzkriterien:
   - Lichtstreifen im Screenshot sichtbar, mittlere Helligkeit des Feldes mindestens 85 % von heute.
-  - Reichweitenkreis auf Eis, Wald und Fork im Screenshot lesbar.
+  - Reichweitenkreis auf Eis, Fork und Zwei Fronten im Screenshot lesbar.
 
 ### B-091: Welten: Feinschliff (Hinweise aus dem Block-Review B-072/B-073)
 - Status: vorschlag
 - Aufwand: S
-- Idee: (1) Test mit synthetischer Karte ohne `theme.ground`, damit der Schachbrett-Zweig (alte Zeichnung) nicht ungetestet bleibt: Alle vier Karten haben jetzt `theme.ground`. (2) Der Fork-Test in `tests/render.test.js` ("Dekoration verlässt ihre Kachel nicht") entfernt `MAPS.fork.theme` per `delete` und `createGame` vor dem `try`; beides in den `try`-Block verschieben, damit das Theme bei einem Fehler zurückgesetzt wird. (3) `path.edge` in `config.js` ist ein toter Wert (nur im Test geprüft, nicht gezeichnet); entfernen oder nutzen. (4) Der orange Saum auf Fork (`#e0803a`) ist laut, Deckkraft als Parameter. (5) Das Eis-Theme enthält noch die alten Felder `grass` und `blade`. (6) Der Fork-Test löscht `MAPS.fork.theme` und prüft damit den Pfad ohne Theme, nicht mehr die echte Fork-Deko (Tester: "leichte Schwächung", die echte Deko deckt `tests/scatter-bounds.test.js`); eine Prüfung der echten Fork-Deko gegen die Kachelgrenzen ergänzen. Test-Titel nennen noch "Wiese", obwohl sie alle Karten prüfen. (7) Wald und Fork haben noch keine `islands` und `accents` (Mauer, Teich, Brunnen), Eis auch nicht.
+- Idee: (1) Test mit synthetischer Karte ohne `theme.ground`, damit der Schachbrett-Zweig (alte Zeichnung) nicht ungetestet bleibt: Alle vier Karten haben jetzt `theme.ground`. (2) Der Fork-Test in `tests/render.test.js` ("Dekoration verlässt ihre Kachel nicht") entfernt `MAPS.fork.theme` per `delete` und `createGame` vor dem `try`; beides in den `try`-Block verschieben, damit das Theme bei einem Fehler zurückgesetzt wird. (3) `path.edge` in `config.js` ist ein toter Wert (nur im Test geprüft, nicht gezeichnet); entfernen oder nutzen. (4) Der orange Saum auf Fork (`#e0803a`) ist laut, Deckkraft als Parameter. (5) Das Eis-Theme enthält noch die alten Felder `grass` und `blade`. (6) Der Fork-Test löscht `MAPS.fork.theme` und prüft damit den Pfad ohne Theme, nicht mehr die echte Fork-Deko (Tester: "leichte Schwächung", die echte Deko deckt `tests/scatter-bounds.test.js`); eine Prüfung der echten Fork-Deko gegen die Kachelgrenzen ergänzen. Test-Titel nennen noch "Wiese", obwohl sie alle Karten prüfen. (7) Fork hat noch keine `islands` und `accents` (Mauer, Teich, Brunnen), Eis auch nicht.
 - Akzeptanzkriterien:
   - Schachbrett-Zweig getestet, Fork-Test räumt auch bei Fehlern auf, toter Wert entfernt, `npm test` grün.
 
