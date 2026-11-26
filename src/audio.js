@@ -2,11 +2,12 @@
 // Nutzeraktion), sonst Synthese (Oszillatoren, Rauschen-Buffer, Hüllkurven) als Ersatz.
 // Ohne Web Audio (Node, alte Browser) tun alle Funktionen nichts.
 import { SOUND } from './config.js';
-import { sampleUrls, planSound, musicUrl, musicLevel, musicRamp, findLoopPoints } from './sound-events.js';
+import { sampleUrls, planSound, pickMusicUrl, musicLevel, musicRamp, findLoopPoints } from './sound-events.js';
 
 const audio = { ctx: null, master: null, noise: null, on: SOUND.defaultOn, buffers: new Map(), samplesSettled: false };
-// B-116: Musik. state: 'idle' -> 'loading' -> 'ready' | 'failed'; level = zuletzt angesteuerte Lautstärke
-const music = { state: 'idle', buffer: null, loop: null, src: null, gain: null, level: 0 };
+// B-116/B-118: Musik. tracks: Cache je URL { state: 'loading' | 'ready' | 'failed', buffer, loop };
+// url/src/gain/level = laufender Titel (level = zuletzt angesteuerte Lautstärke); broken = Musik ganz aus.
+const music = { tracks: new Map(), url: null, src: null, gain: null, level: 0, broken: false };
 
 function AudioCtor() {
   if (typeof window === 'undefined') return null;
@@ -74,36 +75,61 @@ function loadBuffer(ctx, url) {
 }
 
 // ---------- B-116: Hintergrundmusik ----------
-// Musik laden (still bei Fehlern: dann eben keine Musik, keine Synthese-Musik)
-function loadMusic(ctx) {
-  music.state = 'loading';
-  if (typeof fetch !== 'function' || typeof ctx.decodeAudioData !== 'function') { music.state = 'failed'; return; }
-  loadBuffer(ctx, musicUrl())
+// Einen Titel laden, jede URL nur einmal (still bei Fehlern: Titel gilt als gescheitert, keine Synthese-Musik)
+function loadMusic(ctx, url) {
+  const track = { state: 'loading', buffer: null, loop: null };
+  music.tracks.set(url, track);
+  if (typeof fetch !== 'function' || typeof ctx.decodeAudioData !== 'function') { track.state = 'failed'; return; }
+  loadBuffer(ctx, url)
     .then((buf) => {
       if (!buf || typeof buf.getChannelData !== 'function') throw new Error('kein Buffer');
       const chans = [];
       for (let c = 0; c < buf.numberOfChannels; c++) chans.push(buf.getChannelData(c));
-      music.loop = findLoopPoints(chans, buf.sampleRate);
-      music.buffer = buf;
-      music.state = 'ready';
+      track.loop = findLoopPoints(chans, buf.sampleRate);
+      track.buffer = buf;
+      track.state = 'ready';
     })
-    .catch(() => { music.state = 'failed'; });
+    .catch(() => { track.state = 'failed'; });
+}
+
+// URLs, deren Laden gescheitert ist
+function failedMusicUrls() {
+  return [...music.tracks].filter(([, t]) => t.state === 'failed').map(([url]) => url);
 }
 
 // Schleife starten (Gain bei 0, eingeblendet wird über updateMusic). Eigener Gain direkt zum Ausgang.
-function startMusic(ctx) {
+function startMusic(ctx, url, track) {
   music.gain = ctx.createGain();
   music.gain.gain.value = 0;
   music.gain.connect(ctx.destination);
   const src = ctx.createBufferSource();
-  src.buffer = music.buffer;
+  src.buffer = track.buffer;
   src.loop = true;
-  src.loopStart = music.loop.start;
-  src.loopEnd = music.loop.end;
+  src.loopStart = track.loop.start;
+  src.loopEnd = track.loop.end;
   src.connect(music.gain);
-  src.start(ctx.currentTime, music.loop.start);
+  src.start(ctx.currentTime, track.loop.start);
+  music.url = url;
   music.src = src;
   music.level = 0;
+}
+
+// B-118: laufenden Titel mit fadeOut ausblenden und danach stoppen (Kartenwechsel)
+function stopMusic(ctx) {
+  const { src, gain, level } = music;
+  music.url = null;
+  music.src = null;
+  music.gain = null;
+  music.level = 0;
+  if (!src) return;
+  const r = musicRamp(level, 0);
+  const t = ctx.currentTime;
+  const p = gain.gain;
+  const from = Number.isFinite(p.value) ? p.value : level;
+  p.cancelScheduledValues(t);
+  p.setValueAtTime(from, t);
+  if (r) p.linearRampToValueAtTime(0, t + r.time);
+  src.stop(t + (r ? r.time : 0));
 }
 
 // Musik sofort stumm (Ton aus); nächstes updateMusic blendet wieder ein
@@ -117,15 +143,23 @@ function musicSilence() {
   music.level = 0;
 }
 
-// Pro Frame aus main.js: lädt die Musik (nach den Effekten), startet sie und blendet je nach Spielstatus.
-export function updateMusic({ status, paused } = {}) {
+// Pro Frame aus main.js: lädt den Titel der Karte (nach den Effekten), wechselt bei neuer Karte, sobald
+// der neue Titel geladen ist (alten aus-, neuen einblenden), und blendet je nach Spielstatus.
+export function updateMusic({ status, paused, mapId } = {}) {
   const ctx = audio.ctx;
-  if (!audio.on || !ctx || ctx.state !== 'running') return;
+  if (!audio.on || !ctx || ctx.state !== 'running' || music.broken || !audio.samplesSettled) return;
   try {
-    if (music.state === 'idle' && audio.samplesSettled) loadMusic(ctx);
-    if (music.state !== 'ready') return;
-    if (!music.src) startMusic(ctx);
-    const r = musicRamp(music.level, musicLevel({ soundOn: audio.on, status, paused }));
+    const url = pickMusicUrl(mapId, failedMusicUrls());
+    const track = url ? music.tracks.get(url) : null;
+    if (url && !track) loadMusic(ctx, url);
+    // Wechsel erst, wenn der neue Titel bereit ist (bis dahin läuft der alte weiter; scheitert das Laden,
+    // ist der Rückfall oft der laufende Titel, dann gibt es gar keinen Wechsel)
+    if (track?.state === 'ready') {
+      if (music.src && music.url !== url) stopMusic(ctx);
+      if (!music.src) startMusic(ctx, url, track);
+    } else if (!url && music.src) stopMusic(ctx);
+    if (!music.src) return;
+    const r = musicRamp(music.level, musicLevel({ soundOn: audio.on, status, paused, url: music.url }));
     if (!r) return;
     const p = music.gain.gain;
     const t = ctx.currentTime;
@@ -135,7 +169,7 @@ export function updateMusic({ status, paused } = {}) {
     p.setValueAtTime(from, t);
     p.linearRampToValueAtTime(r.target, t + r.time);
     music.level = r.target;
-  } catch { music.state = 'failed'; /* Musik ist Beiwerk: Fehler nie ins Spiel durchreichen */ }
+  } catch { music.broken = true; /* Musik ist Beiwerk: Fehler nie ins Spiel durchreichen */ }
 }
 
 // Aufnahme abspielen: Variante mit Tonhöhe (playbackRate) und Lautstärke über den Master (Tiefpass)

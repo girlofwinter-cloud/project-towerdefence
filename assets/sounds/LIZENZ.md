@@ -55,3 +55,14 @@ Bearbeitung: von Ogg Vorbis bzw. WAV nach AAC (.m4a, mono, 48 kbit/s) umgewandel
 | ../music/music-old-tower-inn.m4a | The Old Tower Inn (2018) | RandomMind (in den Datei-Tags RandomMynd) | https://opengameart.org/content/medieval-the-old-tower-inn | CC0 | Vollversion The_Old_Tower_Inn.mp3 (Stereo, 192 kbit/s) nach AAC (.m4a, Stereo, 96 kbit/s) umgewandelt |
 
 Laut OpenGameArt-Seite (veröffentlicht am 26.08.2018): „My CC0 track available in full and loop version, you can freely use for any purpose!“
+
+## Musik je Welt (B-118)
+
+Die Lizenz CC0 hat der Mensch am 26.11.2026 auf den jeweiligen OpenGameArt-Seiten geprüft. Bearbeitung bei allen: nach AAC (.m4a, Stereo, 96 kbit/s) umgewandelt. Unterschiedliche Lautstärken gleicht `SOUND.music.byMap[..].gain` in `src/config.js` aus, die Dateien selbst sind nicht verändert.
+
+| Datei | Karte | Titel | Autor | Quelle | Lizenz | Bearbeitung |
+|---|---|---|---|---|---|---|
+| ../music/music-ice.m4a | Eiswelt | Beyond the Frozen Veil (Loop) | Synth-thetic | https://opengameart.org/content/beyond-the-frozen-veil | CC0 | Loop-Fassung aus synth-thetic_-_beyond_the_frozen_veil_-_cc0.7z (FLAC, 48 kHz) umgewandelt |
+| ../music/music-fork.m4a | Zangenangriff | Medieval: Exploration | RandomMind | https://opengameart.org/content/medieval-exploration | CC0 | Exploration.mp3 (320 kbit/s) umgewandelt |
+| ../music/music-twin.m4a | Zwei Fronten | Medieval: Minstrel Dance | RandomMind | https://opengameart.org/content/medieval-minstrel-dance | CC0 | Minstrel_Dance.mp3 (320 kbit/s) umgewandelt |
+| ../music/music-volcano.m4a | Vulkan | Medieval: Battle | RandomMind | https://opengameart.org/content/medieval-battle | CC0 | battle.mp3 (320 kbit/s) umgewandelt |

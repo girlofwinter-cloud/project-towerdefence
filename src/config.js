@@ -1287,7 +1287,17 @@ export const SOUND = {
   // übersprungen; ist danach weniger als minLoop Sekunden übrig, läuft die ganze Datei.
   music: {
     base: 'assets/music/',
-    file: 'music-old-tower-inn',
+    file: 'music-old-tower-inn', // Rückfall für Karten ohne eigenen (oder ladbaren) Titel
+    // B-118: eigener Titel je Karte (file = Dateiname ohne Endung). gain = Lautstärkefaktor auf music.gain,
+    // gleicht die unterschiedliche Lautheit der Titel aus (RMS gegenüber old-tower-inn: ice -6,5 dB,
+    // fork -4,3 dB, twin +5,4 dB, volcano +4,1 dB).
+    byMap: {
+      meadow:  { file: 'music-old-tower-inn', gain: 1 },
+      ice:     { file: 'music-ice', gain: 2.0 },
+      fork:    { file: 'music-fork', gain: 1.6 },
+      twin:    { file: 'music-twin', gain: 0.55 },
+      volcano: { file: 'music-volcano', gain: 0.6 },
+    },
     gain: 0.025,         // Lautstärke im laufenden Spiel
     pausedFactor: 0.6,   // bei Pause etwas leiser (Anteil von gain)
     fadeIn: 2,           // Einblenden in s (Start, Ton wieder an, neues Spiel)

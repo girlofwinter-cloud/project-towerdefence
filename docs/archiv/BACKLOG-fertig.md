@@ -554,3 +554,13 @@ Agents lesen diese Datei nur bei konkretem Bedarf.
 - Idee: Wunsch des Menschen am 2026-11-26: Die Gras-Inseln unter den Türmen (B-082) gab es nur auf der Wiese; Türme sollen auf allen Karten gleich aussehen. Inseln ganz entfernen statt auf alle Karten ausweiten.
 - Akzeptanzkriterien:
   - Keine Insel unter gebauten Türmen und in der Bau-Vorschau, auf keiner Karte; `npm test` grün.
+
+### B-118: Eigene Hintergrundmusik je Welt
+- Status: fertig (Mensch hat am 2026-11-26 angefragt: "in jeder Welt eine andere Hintergrundmusik für mehr Abwechslung")
+- Aufwand: S
+- Idee: Jede Karte (Wiese, Eiswelt, Zangenangriff, Zwei Fronten, Vulkan) bekommt einen eigenen CC0-Titel. Die Titel lädt der Mensch selbst herunter; Lizenz-Nachweis in `assets/sounds/LIZENZ.md`.
+- Akzeptanzkriterien:
+  - `SOUND`-Config `music` erhält eine Zuordnung Karte -> Datei (`byMap`), `file` bleibt Rückfall für Karten ohne eigenen Titel.
+  - Beim Kartenwechsel wird der alte Titel ausgeblendet und der neue geladen und eingeblendet; jeder Titel wird nur einmal geladen (Cache).
+  - Scheitert das Laden eines Kartentitels, läuft der Rückfalltitel (still, ohne Fehler).
+  - Tests in `tests/sound.test.js` für die Auswahl der URL je Karte und den Rückfall.
