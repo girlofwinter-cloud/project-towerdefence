@@ -741,4 +741,41 @@ export const ENEMY_STYLE = {
     skin: '#6f86a8', body: '#4f607c', helm: '#9aa7ba', shield: '#7a5530', rim: '#c9ccd2', emblem: '#e8d27a',
     main: { skin: 0.3, body: 0.3, shield: 0.4 },
   },
+  // Boss Oger-König (B-067): ref wird aus sizeFactor berechnet (render-enemies-flat.js), damit ein Design-Pixel
+  // beim Boss sizeFactor-mal so groß ist wie beim Goblin.
+  boss: {
+    sizeFactor: 1.6,
+    skin: '#7a2e8e', belly: '#b77fc4', fur: '#8a5a34', club: '#c58f55', stud: '#b3adaa',
+    gold: '#f4c542', jewel: '#d4503f', tusk: '#f1e8d2',
+    aura: 'rgba(190,110,235,0.2)', auraRing: 'rgba(225,170,255,0.65)', auraWidth: 1.1,
+    auraRadius: 12.6, auraPulse: 0.7, auraSpeed: 3, // Aura: Grundradius, Pulsausschlag (Design-px), Tempo (rad/s)
+    main: { skin: 0.55, belly: 0.15, fur: 0.15, gold: 0.15 },
+  },
+};
+
+// Auftritt des Bosses (B-067, nur Darstellung): Bodenschlag-Ring plus leichtes Wackeln.
+// Bei prefers-reduced-motion entfällt das Wackeln, der Ring wächst nicht.
+export const BOSS_ENTRY = {
+  shake: 2.4,          // Wackel-Amplitude in px (unter 3 px, SHAKE_MAX begrenzt zusätzlich)
+  ringDuration: 0.55,  // Dauer des Bodenschlag-Rings in Sekunden Spielzeit
+  ringRadius: 2.2,     // Endradius des Rings in Boss-Radien
+  ringStart: 0.5,      // Startradius in Boss-Radien
+  ringWidth: 3.5,      // Linienbreite in px (wird zum Ende dünner)
+  ringColor: 'rgba(244,197,66,0.85)',
+};
+
+// Projektile und Effekte im Flat-Pop-Stil (B-068, nur Darstellung). Maße in px bei 1x, Zeiten in Sekunden Spielzeit.
+// Konturen werden aus der Eigenfarbe abgeleitet (outlineOf). Bei prefers-reduced-motion: kein Hopsen, kein Drehen.
+export const FX_STYLE = {
+  arrow: { shaft: '#c58f55', head: '#b3adaa', fletch: '#d4503f', length: 12, headLen: 4.5, headHalf: 2.6, fletchLen: 3.5, fletchHalf: 2.2, shaftWidth: 1.6 },
+  trail: { color: '#fff3c9', points: 4, spacing: 4, size: 1.6, alpha: 0.6 }, // Schweif aus 3 bis 5 Punkten
+  cannon: { color: '#4a3f55', radius: 4.5, shine: '#fff3c9', shineR: 1.4 },
+  frost: { color: '#7fd8f4', light: '#bff0ff', len: 5.5, half: 2.8, glowColor: '#bff0ff', glowR: 5.5, glowAlpha: 0.25 },
+  sniper: { beam: '#efe2ff', core: '#ffffff', bullet: '#e6d1ff', beamLen: 38, beamAlpha: 0.4, bulletR: 2.2 },
+  bolt: { outer: '#4f7fc8', outerWidth: 4.5, outerAlpha: 0.55, mid: '#f4c542', midWidth: 2.4, core: '#fff3c9', coreWidth: 1 },
+  explosion: { fill: '#ff9a3c', fillAlpha: 0.3, ring: '#f4c542', ringWidth: 3, grow: 0.5 }, // unter den Gegnern
+  hit: { flash: '#fff3c9', flashSize: 4, flashAlpha: 0.8, spark: '#f4c542', sparkWidth: 1.5, ice: '#bff0ff', iceSize: 1.6 },
+  smoke: { color: '#9a8fa6', alpha: 0.45, grow: 0.6 }, // unter den Gegnern
+  coin: { color: '#f4c542', dark: '#b07a14', shine: '#fff3c9', hop: 12, bounce: 0.3, split: 0.55, end: 0.85, spins: 1.5, minWidth: 0.3, fadeFrom: 0.6, drift: 20 },
+  coinText: { color: '#f4c542', outline: '#3b2415', outlineWidth: 3, rise: 10, font: 'bold 13px system-ui, sans-serif' },
 };

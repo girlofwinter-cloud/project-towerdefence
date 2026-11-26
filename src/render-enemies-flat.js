@@ -1,7 +1,7 @@
-// Gegner im Flat-Pop-Stil (B-065): Goblin, Flitzer, Panzer-Troll; B-066: Schamane, Schildträger. Nur Darstellung.
+// Gegner im Flat-Pop-Stil (B-065): Goblin, Flitzer, Panzer-Troll; B-066: Schamane, Schildträger; B-067: Oger-König. Nur Darstellung.
 // Gezeichnet wird in Design-Pixeln bei Radius `ref` (ENEMY_STYLE); der Aufrufer arbeitet in Radius-Einheiten,
 // daher skaliert beginFigure mit 1/ref. Blick nach +x, Boden bei y ~ +0.8 Radien.
-import { ENEMY_STYLE as ES } from './config.js';
+import { ENEMY_STYLE as ES, ENEMY_TYPES } from './config.js';
 import { poly, rr, ell, line, lit, shd } from './draw-utils.js';
 
 const W = ES.outlineWidth;
@@ -125,5 +125,41 @@ export function drawShieldedFlat(ctx, phase) {
   poly(ctx, [[3.6, -6.4], [9.9, -6.4], [9.9, 0.4], [6.8, 7.6], [3.6, 0.4]], c.shield, W * 0.5);
   line(ctx, [[6.8, -5], [6.8, 4.5]], c.emblem, 1.3);                       // Wappenkreuz
   line(ctx, [[4.6, -1.5], [9, -1.5]], c.emblem, 1.3);
+  ctx.restore();
+}
+
+// Boss: Design-Pixel sind sizeFactor-mal so groß wie beim Goblin (Weltpixel je Design-Pixel = radius / ref)
+export const BOSS_REF = ENEMY_TYPES.boss.radius / (ES.boss.sizeFactor * ENEMY_TYPES.grunt.radius / ES.grunt.ref);
+
+// Oger-König: violetter Riese mit goldener Krone, Keule und pulsierender Aura
+export function drawBossFlat(ctx, phase, time = 0) {
+  const c = ES.boss;
+  beginFigure(ctx, BOSS_REF, phase, 0.6);
+  const ar = c.auraRadius + Math.sin(time * c.auraSpeed) * c.auraPulse;
+  ctx.fillStyle = c.aura;                                                   // Aura hinter der Figur
+  ctx.beginPath();
+  ctx.arc(0, 0, ar, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = c.auraRing;
+  ctx.lineWidth = c.auraWidth;
+  ctx.stroke();
+  stub(ctx, -3.8, 5.5, 4.4, 4.5, phase + Math.PI, shd(c.skin, 0.25));
+  stub(ctx, 3.6, 5.5, 4.6, 4.5, phase, c.skin);
+  ell(ctx, -7.2, 0.5, 2.6, 3.6, shd(c.skin, 0.2), W);                       // Arm hinten
+  ell(ctx, -0.3, 1, 8.4, 7, c.skin, W);                                     // Körper
+  ell(ctx, 1.2, 2.6, 4.8, 3.8, c.belly, W * 0.6);                           // Bauch
+  poly(ctx, [[-7.4, 4.2], [6.8, 4.2], [5.4, 8], [-6, 8]], c.fur, W);        // Fellschurz
+  line(ctx, [[7.8, 2.4], [10.4, -3.6]], shd(c.club, 0.3), 2.2);                // Keulengriff
+  poly(ctx, [[9.2, -2.6], [12.8, -4.6], [12.6, -8.2], [10, -9.4], [8.2, -6]], c.club, W); // Keulenkopf
+  ell(ctx, 11, -6.6, 0.9, 0.9, c.stud, W * 0.5);                           // Nieten
+  ell(ctx, 9.8, -4.4, 0.8, 0.8, c.stud, W * 0.5);
+  ell(ctx, 7.6, 2.2, 2.8, 2.6, c.skin, W);                                  // Faust vorn
+  ell(ctx, 2.6, -5, 5.6, 4.4, lit(c.skin, 0.18), W);                        // Kopf (tief zwischen den Schultern)
+  poly(ctx, [[4.2, -2.2], [5, -4.8], [5.9, -2.2]], c.tusk, W * 0.6);        // Hauer
+  poly(ctx, [[6.6, -2.4], [7.5, -4.6], [8.1, -2.2]], c.tusk, W * 0.6);
+  eye(ctx, 5.4, -5.6, 1.8, 2);
+  line(ctx, [[3, -8.2], [7.8, -7]], ES.browColor, 1.5);                     // Braue (grimmig)
+  poly(ctx, [[-1.6, -8.4], [-1.8, -12], [0.4, -10.4], [2.4, -12.8], [4.2, -10.4], [6.2, -12], [6.4, -8.6]], c.gold, W); // Krone
+  ell(ctx, 2.4, -9.6, 0.9, 0.9, c.jewel, W * 0.5);                          // Edelstein
   ctx.restore();
 }

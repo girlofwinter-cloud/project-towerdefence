@@ -4,6 +4,7 @@
 // Alles ist vorab allokiert (feste Pools, Typed Arrays); im Hotpath entstehen keine Objekte.
 // Zufall ist deterministisch (tileRand mit Zaehler), niemals Math.random.
 import { tileRand } from './decor.js';
+import { BOSS_ENTRY, FX_STYLE } from './config.js';
 
 export const MAX_PARTICLES = 256; // feste Obergrenze, ist der Pool voll wird das Aelteste ueberschrieben
 export const MAX_TRACKED = 256; // gleichzeitig verfolgte Projektile (Schweif-Richtung, Treffer-Erkennung)
@@ -24,8 +25,9 @@ export const T_CANNON = 2;
 export const T_FROST = 3;
 export const T_SNIPER = 4;
 
-// Physik je Partikelart (Index = Art): Schwerkraft in px/s^2 (negativ = steigt), Daempfung pro Sekunde
-const GRAVITY = new Float32Array([0, -14, 40, 160, 0, -90]);
+// Physik je Partikelart (Index = Art): Schwerkraft in px/s^2 (negativ = steigt), Daempfung pro Sekunde.
+// Muenzen haben keine Schwerkraft: ihr Hopser kommt aus coinHop (B-068), die Physik treibt sie nur seitlich.
+const GRAVITY = new Float32Array([0, -14, 40, 160, 0, 0]);
 const DRAG = new Float32Array([0, 1.5, 2, 3, 0, 4]);
 
 // Screen-Shake
@@ -74,6 +76,15 @@ export function createFx() {
     shakeStart: 0,
     shakeStrength: 0,
     shakeLock: -Infinity, // Spielzeit des letzten ausgeloesten Shakes (fuer SHAKE_COOLDOWN)
+    // Boss-Auftritt (B-067): bereits gesehene Gegner, letzter Bodenschlag
+    seenEnemies: new WeakSet(),
+    entryStart: -Infinity,
+    entryX: 0,
+    entryY: 0,
+    entryR: 0,
+    entryReduced: false,
+    // reduzierte Bewegung (B-068): zuletzt von syncFx gesetzt, die Zeichnung liest es
+    reduced: false,
   };
 }
 
@@ -91,6 +102,9 @@ export function resetFx(fx) {
   fx.shakeStart = 0;
   fx.shakeStrength = 0;
   fx.shakeLock = -Infinity; // Sperre leeren
+  fx.seenEnemies = new WeakSet();
+  fx.entryStart = -Infinity;
+  fx.entryReduced = false;
 }
 
 // Gleicht mit der Spielzeit ab. Neuer Weg (= neues Spiel) oder Zeit rueckwaerts -> Reset.
@@ -232,8 +246,9 @@ export function spawnHit(fx, type, x, y) {
 }
 
 // ---------- Effekte aus dem Spielzustand ----------
-// Erkennt neue Effekte (Referenz-Merker) und leitet Partikel ab. Rueckgabe: 1 bei neuer grosser Explosion.
-export function observeEffect(fx, e, time) {
+// Erkennt neue Effekte (Referenz-Merker) und leitet Partikel ab.
+// reducedMotion (B-068): kein Wackeln bei Explosionen, Muenzen treiben nicht seitlich.
+export function observeEffect(fx, e, time, reducedMotion = false) {
   if (!e || fx.seenEffects.has(e)) return;
   fx.seenEffects.add(e);
   const x = Number.isFinite(e.x) ? e.x : 0;
@@ -249,19 +264,75 @@ export function observeEffect(fx, e, time) {
     for (let i = 0; i < 3; i++) {
       spawnParticle(fx, K_SMOKE, x + (nextRand(fx) - 0.5) * r * 0.6, y + (nextRand(fx) - 0.5) * r * 0.6, 0, 0, 0.5, 5 + nextRand(fx) * 3);
     }
-    if (r >= BIG_EXPLOSION_RADIUS && time - fx.shakeLock >= SHAKE_COOLDOWN) {
+    if (!reducedMotion && r >= BIG_EXPLOSION_RADIUS && time - fx.shakeLock >= SHAKE_COOLDOWN) {
       fx.shakeLock = time;
       triggerShake(fx, time, SHAKE_STRENGTH);
     }
   } else if (e.kind === 'coin') {
-    spawnParticle(fx, K_COIN, x, y - 6, (nextRand(fx) - 0.5) * 20, -45, 0.7, 3.5);
+    const drift = reducedMotion ? 0 : (nextRand(fx) - 0.5) * FX_STYLE.coin.drift;
+    spawnParticle(fx, K_COIN, x, y - 6, drift, 0, 0.7, 3.5);
   }
 }
 
+// ---------- Muenzen-Hopser (B-068) ----------
+// Hoehenversatz (px, <= 0 = nach oben) einer Muenze beim Lebensanteil u (0..1): ein Sprung bis
+// FX_STYLE.coin.hop, danach ein kleiner Nachhopser, dann liegt sie. Reduzierte Bewegung: immer 0.
+export function coinHop(u, reducedMotion = false) {
+  const c = FX_STYLE.coin;
+  if (reducedMotion || !(u > 0) || u >= c.end) return 0;
+  if (u < c.split) {
+    const t = u / c.split;
+    return 0 - c.hop * 4 * t * (1 - t); // 0 - ... vermeidet -0
+  }
+  const t = (u - c.split) / (c.end - c.split);
+  return 0 - c.hop * c.bounce * 4 * t * (1 - t);
+}
+
+// Breitenfaktor (minWidth..1) einer sich drehenden Muenze; reduzierte Bewegung: 1 (keine Drehung).
+export function coinSpin(u, reducedMotion = false) {
+  const c = FX_STYLE.coin;
+  if (reducedMotion || !Number.isFinite(u)) return 1;
+  const w = Math.abs(Math.cos(u * Math.PI * c.spins));
+  return w < c.minWidth ? c.minWidth : w;
+}
+
+// ---------- Boss-Auftritt (B-067) ----------
+// Wackel-Staerke beim Erscheinen des Bosses: 0 bei prefers-reduced-motion, sonst unter SHAKE_MAX.
+export function bossEntryShake(reducedMotion) {
+  return reducedMotion ? 0 : Math.min(BOSS_ENTRY.shake, SHAKE_MAX);
+}
+
+// Fortschritt des Bodenschlag-Rings: 0..1 waehrend der Dauer, sonst -1 (nichts zeichnen).
+export function bossEntryProgress(time, start) {
+  const el = time - start;
+  if (!(el >= 0) || el >= BOSS_ENTRY.ringDuration) return -1;
+  return el / BOSS_ENTRY.ringDuration;
+}
+
+// Erkennt neue Gegner (Referenz-Merker); ein neuer Boss loest Bodenschlag (Ring) und Wackeln aus.
+// reducedMotion: kein Wackeln, der Ring waechst nicht (bleibt als ruhiger Hinweis).
+export function observeEnemy(fx, e, time, reducedMotion) {
+  if (!e || fx.seenEnemies.has(e)) return;
+  fx.seenEnemies.add(e);
+  if (e.type !== 'boss') return;
+  const x = Number.isFinite(e.x) ? e.x : 0;
+  const y = Number.isFinite(e.y) ? e.y : 0;
+  const r = Number.isFinite(e.radius) ? e.radius : 0;
+  fx.entryStart = time;
+  fx.entryX = x;
+  fx.entryY = y;
+  fx.entryR = r;
+  fx.entryReduced = !!reducedMotion;
+  triggerShake(fx, time, bossEntryShake(reducedMotion));
+}
+
 // Gesamter Ablauf pro Frame. Liest den Spielzustand nur, veraendert ihn nie.
-export function syncFx(fx, state) {
+// reducedMotion (prefers-reduced-motion, kommt aus main.js) schaltet Boss- und Explosions-Wackeln
+// sowie Muenzen-Hopser aus.
+export function syncFx(fx, state, reducedMotion = false) {
   const dt = syncTime(fx, state.time, state.path && state.path.points);
   fx.frame++;
+  fx.reduced = !!reducedMotion;
   updateParticles(fx, dt);
   const projectiles = state.projectiles || [];
   for (let i = 0; i < projectiles.length; i++) {
@@ -270,7 +341,9 @@ export function syncFx(fx, state) {
   }
   sweepProjectiles(fx);
   const effects = state.effects || [];
-  for (let i = 0; i < effects.length; i++) observeEffect(fx, effects[i], fx.lastTime);
+  for (let i = 0; i < effects.length; i++) observeEffect(fx, effects[i], fx.lastTime, reducedMotion);
+  const enemies = state.enemies || [];
+  for (let i = 0; i < enemies.length; i++) observeEnemy(fx, enemies[i], fx.lastTime, reducedMotion);
 }
 
 // ---------- Screen-Shake ----------

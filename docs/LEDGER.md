@@ -633,3 +633,11 @@ Neue Einträge werden unten angehängt. Bestehende Einträge werden nie geänder
 - Branch: agent/lernen-merge (eigener Worktree)
 - Ergebnis: fertig. Abschnitt 2 (reviewer: keine Delegation pro PR mehr nötig), Abschnitt 6 (Orchestrator mergt unter Bedingungen, Rolle des Menschen), Abschnitt 7 Schritt 6 (PR anschauen statt selbst anlegen) an den schnellen Ablauf angepasst.
 - Tests: nur Doku.
+
+## 2026-11-26 · B-067 und B-068 · Boss Oger-König, Projektile und Effekte (Design-Overhaul, Block)
+- Rolle(n): orchestrator, developer (je Eintrag), danach einmal tester und reviewer über den Block (`src/main.js` berührt)
+- Branch: agent/boss-effekte
+- Runden: 1 von max. 2
+- Ergebnis: fertig. Boss im Flat-Pop-Stil (1,6x, Krone, Keule, Aura) mit Auftritt (goldener Bodenring, Wackeln 2,4 px); Pfeil, Kugel, Frostsplitter, Blitz, Funken, Münzen-Hopser neu; Explosion/Rauch unter den Gegnern. `prefers-reduced-motion` (`ui.reducedMotion`) schaltet Wackeln, Hopser und Drift ab.
+- Tests: 292 Unit-Tests (9 neu vom Developer, 4 vom Tester), 14 Browser-Tests. Tester: PASS. Review: APPROVE, Hinweise als B-095. Boss-Zeichenspurvergleich in `tests/fx.test.js` wieder ergänzt.
+- Entscheidungen: Einträge standen auf `vorschlag`, vom Menschen per Auftrag freigegeben. Münzen ohne Schwerkraft (nur Hopser, Stiländerung); bei reduzierter Bewegung wackeln auch Explosionen nicht. Gearbeitet im eigenen Worktree, weil parallel eine zweite Sitzung im Repo lief.

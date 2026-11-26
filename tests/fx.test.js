@@ -6,7 +6,7 @@ import { createGame, update, buildTower, startWave } from '../src/game.js';
 import { buildPath } from '../src/path.js';
 import { WAYPOINTS, TILE, ENEMY_TYPES } from '../src/config.js';
 import { walkPhase, animSpeedFactor, facingFor, facingFlip, facingTilt, WALK_RATE, TILT_MAX } from '../src/enemy-fx.js';
-import { createFx, syncTime, spawnParticle, updateParticles, liveParticles, syncFx, shakeAmplitude, shakeOffset, triggerShake, MAX_PARTICLES, MAX_STEP, SHAKE_COOLDOWN, SHAKE_MAX, SHAKE_DURATION, K_SPARK, K_SMOKE, K_COIN } from '../src/fx-system.js';
+import { createFx, syncTime, spawnParticle, updateParticles, liveParticles, syncFx, shakeAmplitude, shakeOffset, triggerShake, bossEntryShake, bossEntryProgress, MAX_PARTICLES, MAX_STEP, SHAKE_COOLDOWN, SHAKE_MAX, SHAKE_DURATION, K_SPARK, K_SMOKE, K_COIN } from '../src/fx-system.js';
 import { freeTileNearPath, recordEnemy, withoutRandom } from './helpers.js';
 
 // ---------- Gegner: Zeichnung und Animation (B-011) ----------
@@ -121,7 +121,8 @@ test('Gegner-Zeichnung: Typen unterscheiden sich, Boss ist am groessten', async 
   }
   const keys = Object.keys(prints);
   for (let i = 0; i < keys.length; i++) for (let j = i + 1; j < keys.length; j++) assert.notEqual(prints[keys[i]], prints[keys[j]], `${keys[i]} == ${keys[j]}`);
-  // Vergleich der Zeichenspur-Laenge Boss gegen andere entfaellt bis B-067 (Boss noch im alten Stil, Rest Flat-Pop)
+  // Boss (B-067, Flat-Pop) hat die laengste Zeichenspur (Krone, Keule, Aura)
+  for (const type of keys) if (type !== 'boss') assert.ok(prints.boss.length > prints[type].length, `Boss-Spur nicht laenger als ${type}`);
   assert.ok(extent.boss > extent.grunt && extent.boss > 1.15, `Boss-Ausdehnung ${extent.boss}`);
   // Unbekannter Typ nutzt den Rueckfall (weiter zeichnen, nicht crashen)
   assert.ok(prints.healer.length > 0);
@@ -813,4 +814,338 @@ test('Flat-Pop B-066 (B-085): Hauptfarbflaechen >= 0,25 Helligkeitsabstand zum W
     }
     assert.equal(c.skin, ENEMY_TYPES[type].color, `${type}: skin == ENEMY_TYPES.color`);
   }
+});
+
+
+// ---------- Boss Oger-Koenig im Flat-Pop-Stil (B-067) ----------
+
+test('Boss B-067: Massstab 1,6x des Goblins, Krone/Keule/Aura gezeichnet, Aura pulsiert, Phasen verschieden', async () => {
+  const { ENEMY_STYLE } = await import('../src/config.js');
+  const { BOSS_REF, drawBossFlat } = await import('../src/render-enemies-flat.js');
+  const px = (type, ref) => ENEMY_TYPES[type].radius / ref; // Weltpixel je Design-Pixel
+  assert.ok(Math.abs(px('boss', BOSS_REF) / px('grunt', ENEMY_STYLE.grunt.ref) - ENEMY_STYLE.boss.sizeFactor) < 1e-9);
+  assert.equal(ENEMY_STYLE.boss.sizeFactor, 1.6);
+  const r = await recordEnemy({ type: 'boss' });
+  for (const col of [ENEMY_STYLE.boss.gold, ENEMY_STYLE.boss.club, ENEMY_STYLE.boss.aura]) assert.ok(r.print.includes('|' + col), `Farbe ${col} fehlt`);
+  const aura = (time) => {
+    const arcs = [];
+    drawBossFlat(new Proxy({}, { get: (_, k) => (...a) => { if (k === 'arc') arcs.push(a[2]); }, set: () => true }), 0, time);
+    return arcs[0];
+  };
+  assert.notEqual(aura(0), aura(0.4));
+  const seen = new Set();
+  for (const time of [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6]) seen.add((await recordEnemy({ type: 'boss' }, time)).print);
+  assert.ok(seen.size >= 4, 'Boss: Phasen unterscheiden sich');
+});
+
+test('Boss B-067: Frost-Overlay/Ring unveraendert, HP-Balken ueber der Krone, Kontrast zum Weg, skin == ENEMY_TYPES.color', async () => {
+  const { ENEMY_STYLE, MAPS, PATH_STYLE } = await import('../src/config.js');
+  const { brightness, outlineOf } = await import('../src/draw-utils.js');
+  const r = await recordEnemy({ type: 'boss', slowUntil: 99, hp: 10, maxHp: 10 });
+  const tail = r.calls.slice(r.calls.findIndex((c) => c.startsWith('arc:0.00,0.00,0.95')));
+  assert.equal(tail[0].split('|')[1], 'rgba(150,220,255,0.4)');
+  assert.equal(tail.filter((c) => c.startsWith('moveTo')).length, 3, '3 Frost-Kristalle');
+  assert.ok(tail.find((c) => c.startsWith('arc:200.00,150.00')).endsWith('#bdf0ff'), 'Frost-Ring');
+  assert.deepEqual(r.calls.filter((c) => c.startsWith('fillRect')).map((c) => c.split('|')[1]), ['#300', '#4cd964']);
+  // Balken-Unterkante liegt ueber dem hoechsten Punkt der Figur (Krone)
+  for (const time of [0, 0.3, 0.7]) {
+    const q = await recordEnemy({ type: 'boss' }, time);
+    const top = Math.min(...q.figure.filter((p) => p.depth > 0 && !p.ext).map((p) => p.y));
+    const barBottom = Math.max(...q.world.filter((p) => p.hp).map((p) => p.y));
+    assert.ok(barBottom < top, `Balken ${barBottom} ueberdeckt Krone ${top}`);
+  }
+  const c = ENEMY_STYLE.boss;
+  let mean = 0, sum = 0;
+  for (const [name, w] of Object.entries(c.main)) { mean += w * brightness(c[name]); sum += w; }
+  assert.ok(Math.abs(sum - 1) < 1e-9);
+  for (const id of ['meadow', 'ice']) {
+    const road = { ...PATH_STYLE.colors, ...(MAPS[id].theme.path || {}) }.mid;
+    assert.ok(Math.abs(mean - brightness(road)) >= 0.25, `Boss gegen Weg ${road}: ${mean.toFixed(2)}`);
+    assert.ok(Math.abs(brightness(outlineOf(c.skin)) - brightness(road)) >= 0.25);
+  }
+  assert.equal(c.skin, ENEMY_TYPES.boss.color);
+});
+
+test('Boss-Auftritt B-067: Wackeln unter 3 px, reduced motion schaltet es aus, Ring-Fortschritt', async () => {
+  const { BOSS_ENTRY } = await import('../src/config.js');
+  assert.ok(bossEntryShake(false) > 0 && bossEntryShake(false) < 3);
+  assert.equal(bossEntryShake(true), 0);
+  assert.equal(bossEntryProgress(5, 5), 0);
+  assert.ok(Math.abs(bossEntryProgress(5 + BOSS_ENTRY.ringDuration / 2, 5) - 0.5) < 1e-9);
+  assert.equal(bossEntryProgress(5 + BOSS_ENTRY.ringDuration + 1e-6, 5), -1);
+  assert.equal(bossEntryProgress(BOSS_ENTRY.ringDuration, 0), -1);
+  assert.equal(bossEntryProgress(4.9, 5), -1);
+  assert.equal(bossEntryProgress(5, -Infinity), -1);
+  const path = { points: [] };
+  const boss = { type: 'boss', x: 100, y: 80, radius: 18 };
+  const run = (reduced) => {
+    const fx = createFx();
+    const s = { time: 1, path, projectiles: [], effects: [], enemies: [] };
+    syncFx(fx, s, reduced);
+    s.time = 1.02;
+    s.enemies.push(boss);
+    syncFx(fx, s, reduced);
+    const dust = liveParticles(fx);
+    let maxOff = 0;
+    for (let t = 1.02; t < 1.5; t += 0.005) maxOff = Math.max(maxOff, Math.abs(shakeOffset(t, fx.shakeStart, fx.shakeStrength, 0)), Math.abs(shakeOffset(t, fx.shakeStart, fx.shakeStrength, 1)));
+    // gleicher Boss im naechsten Frame: kein zweiter Auftritt
+    const start = fx.entryStart;
+    s.time = 1.2;
+    syncFx(fx, s, reduced);
+    assert.equal(fx.entryStart, start, 'nur einmal pro Boss');
+    return { fx, dust, maxOff };
+  };
+  const normal = run(false);
+  assert.ok(normal.maxOff > 0 && normal.maxOff < 3, `Wackeln ${normal.maxOff}`);
+  assert.equal(normal.dust, 0, 'Auftritt erzeugt keine Partikel (nur Ring und Wackeln)');
+  assert.equal(normal.fx.entryStart, 1.02);
+  assert.equal(normal.fx.entryX, 100);
+  const calm = run(true);
+  assert.equal(calm.maxOff, 0, 'reduced motion: kein Wackeln');
+  assert.equal(calm.fx.entryStart, 1.02, 'Ring bleibt als Hinweis');
+  // normaler Gegner loest nichts aus
+  const fx = createFx();
+  syncFx(fx, { time: 1, path, enemies: [] });
+  syncFx(fx, { time: 1.1, path, enemies: [{ type: 'grunt', x: 1, y: 1, radius: 12 }] });
+  assert.equal(fx.entryStart, -Infinity);
+  assert.equal(fx.shakeStrength, 0);
+});
+
+test('Boss-Auftritt B-067: render reicht ui.reducedMotion durch, Ring wird gezeichnet', async () => {
+  const { render } = await import('../src/render.js');
+  const { getFx, drawBossEntry } = await import('../src/render-fx.js');
+  const { BOSS_ENTRY } = await import('../src/config.js');
+  for (const reducedMotion of [false, true]) {
+    const state = createGame();
+    const { ctx, st } = plainCtx();
+    render(ctx, state, { hover: null, selectedTowerId: null, reducedMotion });
+    state.time += 0.05;
+    state.enemies.push(testEnemy({ type: 'boss', radius: ENEMY_TYPES.boss.radius }));
+    const before = st.fills.length;
+    render(ctx, state, { hover: null, selectedTowerId: null, reducedMotion });
+    assert.ok(st.fills.length > before);
+    const fx = getFx();
+    assert.equal(fx.entryStart, state.time);
+    assert.equal(fx.shakeStrength > 0, !reducedMotion, `reducedMotion=${reducedMotion}`);
+    assert.equal(st.depth, 0);
+    // Ring: Ellipse am Boden in Ringfarbe; bei reduced motion ohne Wachsen (Radius = Boss-Radius)
+    const rings = [];
+    const props = {};
+    drawBossEntry(new Proxy({}, { get: (_, k) => (k in props ? props[k] : (...a) => { if (k === 'ellipse') rings.push([a[2], props.strokeStyle]); }), set: (_, k, v) => { props[k] = v; return true; } }));
+    assert.equal(rings.length, 1);
+    assert.equal(rings[0][1], BOSS_ENTRY.ringColor);
+    if (reducedMotion) assert.equal(rings[0][0], ENEMY_TYPES.boss.radius);
+    else assert.ok(rings[0][0] < ENEMY_TYPES.boss.radius, 'Ring startet klein und waechst');
+  }
+});
+
+// ---------- B-068: Projektile und Effekte im Flat-Pop-Stil ----------
+test('B-068: Partikel-Obergrenze unveraendert, Treffer hoechstens 6 Funken, Muenze genau ein Partikel', async () => {
+  const { spawnHit, observeEffect, T_ARROW, T_FROST, T_SNIPER } = await import('../src/fx-system.js');
+  assert.equal(MAX_PARTICLES, 256);
+  for (const type of [T_ARROW, T_FROST, T_SNIPER, 0]) {
+    const fx = createFx();
+    spawnHit(fx, type, 10, 10);
+    assert.ok(liveParticles(fx) - 1 <= 6, `Typ ${type}: Funken`); // minus Treffer-Blitz
+  }
+  const fx = createFx();
+  observeEffect(fx, { kind: 'coin', x: 5, y: 5 }, 1);
+  assert.equal(liveParticles(fx), 1);
+});
+
+test('B-068: coinHop springt hoch, hopst nach und liegt dann; reduzierte Bewegung = kein Hopser', async () => {
+  const { coinHop, coinSpin } = await import('../src/fx-system.js');
+  const { FX_STYLE } = await import('../src/config.js');
+  const c = FX_STYLE.coin;
+  assert.equal(coinHop(0), 0);
+  assert.equal(coinHop(c.split), 0);
+  assert.equal(coinHop(c.end), 0);
+  assert.equal(coinHop(1), 0);
+  assert.ok(Math.abs(coinHop(c.split / 2) + c.hop) < 1e-9, 'Scheitel = volle Hoehe');
+  assert.ok(Math.abs(coinHop((c.split + c.end) / 2) + c.hop * c.bounce) < 1e-9, 'Nachhopser kleiner');
+  for (let u = -0.5; u <= 1.5; u += 0.01) {
+    const h = coinHop(u);
+    assert.ok(h <= 0 && h >= -c.hop, `u=${u}`);
+    assert.equal(coinHop(u, true), 0);
+    const w = coinSpin(u);
+    assert.ok(w >= c.minWidth && w <= 1);
+    assert.equal(coinSpin(u, true), 1);
+  }
+  for (const bad of [NaN, undefined, Infinity]) {
+    assert.equal(coinHop(bad), 0);
+    assert.equal(coinSpin(bad), 1);
+  }
+});
+
+test('B-068: reduzierte Bewegung - Explosion ohne Wackeln, Muenze ohne Seitendrift, Partikel bleiben', () => {
+  const run = (reduced) => {
+    const fx = createFx();
+    const s = fxState(2);
+    s.effects.push({ kind: 'explosion', x: 50, y: 50, r: 44, ttl: 0.3, max: 0.3 }, { kind: 'coin', x: 9, y: 9, ttl: 1, max: 1, text: '+1' });
+    syncFx(fx, s, reduced);
+    let coin = -1;
+    for (let i = 0; i < MAX_PARTICLES; i++) if (fx.pkind[i] === K_COIN) coin = i;
+    return { fx, coin };
+  };
+  const calm = run(true);
+  assert.equal(calm.fx.shakeStrength, 0);
+  assert.equal(calm.fx.reduced, true);
+  assert.equal(calm.fx.pvx[calm.coin], 0);
+  assert.equal(calm.fx.pvy[calm.coin], 0);
+  assert.ok(liveParticles(calm.fx) > 5, 'Funken und Rauch bleiben');
+  const normal = run(false);
+  assert.ok(normal.fx.shakeStrength > 0);
+  assert.equal(normal.fx.reduced, false);
+});
+
+// Zeichen-Protokoll: jede Fuell-/Strichoperation mit aktueller Farbe; prueft save/restore und globalAlpha.
+function logCtx() {
+  const props = { globalAlpha: 1 };
+  const st = { depth: 0, minDepth: 0, ops: [] };
+  const ctx = new Proxy({}, {
+    get(_, k) {
+      if (k in props) return props[k];
+      if (k === 'createLinearGradient' || k === 'createRadialGradient') return () => ({ addColorStop() {} });
+      if (k === 'measureText') return () => ({ width: 10 });
+      return (...a) => {
+        if (k === 'save') st.depth++;
+        if (k === 'restore') { st.depth--; st.minDepth = Math.min(st.minDepth, st.depth); }
+        if (k === 'fill' || k === 'fillRect' || k === 'fillText') st.ops.push(['fill', props.fillStyle]);
+        if (k === 'stroke' || k === 'strokeText') st.ops.push(['stroke', props.strokeStyle]);
+        if (k === 'ellipse') st.ops.push(['ellipse', a[1]]);
+      };
+    },
+    set(_, k, v) { props[k] = v; return true; },
+  });
+  return { ctx, st, props };
+}
+
+test('B-068: Projektile je Typ im eigenen Stil, unbekannte als Rueckfall; save/restore und globalAlpha bleiben', async () => {
+  const { getFx, drawProjectileFx } = await import('../src/render-fx.js');
+  const { FX_STYLE } = await import('../src/config.js');
+  const fx = getFx();
+  const path = { points: [] };
+  const ps = ['arrow', 'cannon', 'frost', 'sniper', 'lightning', 'zzz', undefined].map((t) => ({ x: 100, y: 100, tx: 200, ty: 100, towerType: t }));
+  syncFx(fx, { time: 1, path, projectiles: ps });
+  const expect = { arrow: FX_STYLE.arrow.head, cannon: FX_STYLE.cannon.color, frost: FX_STYLE.frost.color, sniper: FX_STYLE.sniper.bullet };
+  for (const p of ps) {
+    const { ctx, st, props } = logCtx();
+    const drawn = drawProjectileFx(ctx, p);
+    assert.equal(drawn, Object.hasOwn(expect, p.towerType), `${p.towerType}`);
+    if (drawn) assert.ok(st.ops.some(([, c]) => c === expect[p.towerType]), `${p.towerType}: Stilfarbe`);
+    assert.equal(st.depth, 0);
+    assert.equal(st.minDepth, 0);
+    assert.equal(props.globalAlpha, 1);
+  }
+  // nicht verfolgtes Projektil -> Rueckfall
+  assert.equal(drawProjectileFx(logCtx().ctx, { x: 1, y: 1, towerType: 'arrow' }), false);
+});
+
+test('B-068: Explosion und Rauch unter den Gegnern, Funken/Muenzen darueber; Muenze hopst nur ohne reduzierte Bewegung', async () => {
+  const { render } = await import('../src/render.js');
+  const { getFx, drawParticles } = await import('../src/render-fx.js');
+  const { FX_STYLE } = await import('../src/config.js');
+  const s = createGame();
+  s.time = 2;
+  const { ctx, st, props } = logCtx();
+  render(ctx, s, {});
+  s.time = 2.05;
+  s.enemies.push(testEnemy({ x: 200, y: 200 }));
+  s.effects.push({ kind: 'explosion', x: 200, y: 200, r: 44, ttl: 0.25, max: 0.3 }, { kind: 'coin', x: 300, y: 200, ttl: 0.8, max: 0.8, text: '+5' });
+  const baseColors = new Set(st.ops.map(([, c]) => c)); // Farben ohne Gegner (Boden, Deko)
+  st.ops.length = 0;
+  render(ctx, s, {});
+  const first = (c) => st.ops.findIndex(([, x]) => x === c);
+  const last = (c) => st.ops.map(([, x]) => x).lastIndexOf(c);
+  // Gegner erkennen: erste Operation mit einer Farbe, die nur die Gegner-Zeichnung nutzt
+  const { drawEnemy } = await import('../src/render-enemies.js');
+  const solo = logCtx();
+  drawEnemy(solo.ctx, testEnemy({ x: 200, y: 200 }), s.time, buildPath(WAYPOINTS, TILE));
+  const fxColors = new Set(Object.values(FX_STYLE).flatMap((v) => Object.values(v)));
+  const enemyColors = new Set(solo.st.ops.map(([, c]) => c).filter((c) => typeof c === 'string' && !fxColors.has(c) && !baseColors.has(c)));
+  const enemy = st.ops.findIndex(([, c]) => enemyColors.has(c));
+  assert.ok(first(FX_STYLE.explosion.fill) >= 0, 'Explosion gezeichnet');
+  assert.ok(enemy >= 0, 'Gegner gezeichnet');
+  assert.ok(last(FX_STYLE.explosion.fill) < enemy, 'Explosion vor (unter) dem Gegner');
+  assert.ok(last(FX_STYLE.smoke.color) < enemy, 'Rauch vor (unter) dem Gegner');
+  assert.ok(st.ops.slice(enemy).some(([k, c]) => k === 'stroke' && c === FX_STYLE.hit.spark), 'Funken ueber dem Gegner');
+  assert.ok(st.ops.slice(enemy).some(([k, c]) => k === 'fill' && c === FX_STYLE.coin.color), 'Muenze ueber dem Gegner');
+  assert.equal(st.depth, 0);
+  assert.equal(props.globalAlpha, 1);
+  // Schichten getrennt
+  const under = logCtx();
+  drawParticles(under.ctx, true);
+  assert.ok(under.st.ops.every(([, c]) => c === FX_STYLE.smoke.color));
+  const over = logCtx();
+  drawParticles(over.ctx);
+  assert.ok(!over.st.ops.some(([, c]) => c === FX_STYLE.smoke.color));
+  // Muenz-Hoehe: mit Bewegung ueber dem Startpunkt, bei reduzierter Bewegung genau dort
+  const fx = getFx();
+  let coin = -1;
+  for (let i = 0; i < MAX_PARTICLES; i++) if (fx.pkind[i] === K_COIN) coin = i;
+  assert.ok(coin >= 0);
+  for (const reduced of [false, true]) {
+    fx.page[coin] = fx.plife[coin] * FX_STYLE.coin.split / 2;
+    fx.reduced = reduced;
+    const l = logCtx();
+    drawParticles(l.ctx);
+    const ys = l.st.ops.filter(([k]) => k === 'ellipse').map(([, y]) => y);
+    assert.ok(ys.length > 0);
+    if (reduced) assert.ok(ys.every((y) => Math.abs(y - fx.py[coin]) < 1e-6));
+    else assert.ok(ys.every((y) => y < fx.py[coin] - FX_STYLE.coin.hop * 0.9));
+  }
+});
+
+// ---------- Block A: Randfaelle vom Tester ----------
+test('Boss-Auftritt Tester: zweiter Boss loest erneut aus, neues Spiel (neuer Weg) setzt Merker zurueck', () => {
+  const fx = createFx();
+  const path = { points: [] };
+  const b1 = { type: 'boss', x: 10, y: 10, radius: 18 };
+  const b2 = { type: 'boss', x: 40, y: 10, radius: 18 };
+  const s = { time: 1, path, enemies: [b1] };
+  syncFx(fx, s);
+  assert.equal(fx.entryStart, 1);
+  s.time = 3; syncFx(fx, s);
+  assert.equal(fx.entryStart, 1, 'gleicher Boss: kein zweiter Auftritt');
+  s.time = 4; s.enemies = [b1, b2]; syncFx(fx, s);
+  assert.equal(fx.entryStart, 4);
+  assert.equal(fx.entryX, 40);
+  // Neues Spiel: neuer Weg -> Reset, derselbe Boss-Bezug wird wieder als neu erkannt
+  syncFx(fx, { time: 0.5, path: { points: [] }, enemies: [b1] });
+  assert.equal(fx.entryStart, 0.5);
+});
+
+test('Boss-Auftritt Tester: ungueltige Koordinaten und reduced motion ohne Wackeln, kein Absturz', () => {
+  const fx = createFx();
+  syncFx(fx, { time: 1, path: { points: [] }, enemies: [null, { type: 'boss', x: NaN, y: undefined, radius: Infinity }] }, true);
+  assert.equal(fx.entryX, 0);
+  assert.equal(fx.entryY, 0);
+  assert.equal(fx.entryR, 0);
+  assert.equal(fx.entryReduced, true);
+  assert.equal(fx.shakeStrength, 0);
+});
+
+test('B-068 Tester: Partikel-Obergrenze haelt bei Massen von Explosionen und Muenzen', async () => {
+  const { observeEffect } = await import('../src/fx-system.js');
+  const fx = createFx();
+  for (let i = 0; i < 400; i++) {
+    observeEffect(fx, { kind: 'explosion', x: i, y: i, r: 44 }, i * 0.01);
+    observeEffect(fx, { kind: 'coin', x: i, y: i }, i * 0.01);
+  }
+  assert.ok(liveParticles(fx) <= MAX_PARTICLES, `${liveParticles(fx)} > ${MAX_PARTICLES}`);
+  assert.ok(fx.shakeStrength <= SHAKE_MAX);
+});
+
+test('B-068 Tester: coinHop stetig an split und end, coinSpin an Grenzen', async () => {
+  const { coinHop, coinSpin } = await import('../src/fx-system.js');
+  const { FX_STYLE } = await import('../src/config.js');
+  const c = FX_STYLE.coin;
+  for (const k of [c.split, c.end]) {
+    assert.ok(Math.abs(coinHop(k - 1e-7)) < 1e-4, `Sprung vor ${k}`);
+    assert.ok(Math.abs(coinHop(k + 1e-7)) < 1e-4, `Sprung nach ${k}`);
+  }
+  assert.ok(!Object.is(coinHop(0), -0) && !Object.is(coinHop(c.split), -0));
+  assert.equal(coinSpin(0), 1);
+  assert.equal(coinSpin(-Infinity), 1);
+  assert.ok(coinSpin(1 / (2 * c.spins)) === c.minWidth, 'Kante: Mindestbreite');
 });

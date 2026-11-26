@@ -370,3 +370,21 @@ Agents lesen diese Datei nur bei konkretem Bedarf.
 - Akzeptanzkriterien:
   - Erstes Spiel mit Niederlage zeigt keinen „Neuer Rekord!“-Hinweis; Verbesserung der Sterne wird gemeldet.
   - Kein Test wird abgeschwächt; `npm test` bleibt grün.
+
+### B-067: Boss Oger-König (Design-Overhaul)
+- Hinweis: In `tests/fx.test.js` ("Boss ist am groessten") entfiel der Zeichenspur-Vergleich Boss > Schamane (mit B-066 auf Wunsch des Menschen entfernt); mit dem neuen Boss einen Vergleich wieder ergänzen.
+- Status: fertig
+- Aufwand: M
+- Idee: 1,6x Größe, Krone, Keule, Aura, Auftritts-Effekt (Bodenschlag, Wackeln unter 3 px).
+- Akzeptanzkriterien:
+  - Boss auf dem Handy sofort erkennbar.
+  - `prefers-reduced-motion` schaltet das Wackeln aus.
+
+### B-068: Projektile und Effekte (Design-Overhaul)
+- Status: fertig
+- Aufwand: M
+- Idee: Pfeile, Kanonenkugel, Frostsplitter, Blitz, Explosion, Treffer-Funken, Münzen-Hopser beim Tod.
+- Akzeptanzkriterien:
+  - Maximale Partikelzahl wie vorher.
+  - Effekte verdecken Gegner nicht (Screenshot einer Welle mit vielen Gegnern).
+  - Reduzierte Bewegung wird respektiert.

@@ -6,7 +6,7 @@ import { drawPathStyled } from './render-path.js';
 import { TOWER_DRAWERS } from './render-towers.js';
 import { recoilOffset } from './tower-fx.js';
 import { drawEnemy, drawHealAura } from './render-enemies.js';
-import { updateFx, shakeX, shakeY, drawProjectileFx, drawParticles } from './render-fx.js';
+import { updateFx, shakeX, shakeY, drawProjectileFx, drawParticles, drawBossEntry, drawEffectUnder, drawEffectOver } from './render-fx.js';
 import { drawTreeFrame } from './render-trees.js';
 import * as flat from './render-decor.js';
 import { drawIsland } from './render-island.js';
@@ -16,8 +16,9 @@ import { drawGround as drawGroundFill, drawGroundTufts } from './render-ground.j
 import { tileHash, tileRand, decorFor, obstacleKind, treeFrame, groundPatches, accentsFor, coveredByCrown, scatterFor, LARGE_DECOR_RADIUS } from './decor.js';
 
 export function render(ctx, state, ui) {
+  const reduced = !!(ui && ui.reducedMotion);
   // Partikel aus dem Zustand ableiten (nur lesen), danach Shake-Versatz bestimmen.
-  updateFx(state);
+  updateFx(state, reduced);
   const sx = shakeX();
   const sy = shakeY();
   const shaking = sx !== 0 || sy !== 0;
@@ -35,10 +36,14 @@ export function render(ctx, state, ui) {
   if (MAPS[state.mapId]?.theme?.islands) for (const t of state.towers) drawIsland(ctx, t.x, t.y);
   for (const t of state.towers) drawTower(ctx, t, ui.selectedTowerId === t.id);
   for (const e of state.enemies) drawHealAura(ctx, e, state.time);
+  drawBossEntry(ctx);
+  // Explosionen und Rauch unter den Gegnern, damit sie keine Figur verdecken (B-068)
+  for (const fx of state.effects) drawEffectUnder(ctx, fx);
+  drawParticles(ctx, true);
   for (const e of state.enemies) drawEnemy(ctx, e, state.time, enemyPath(state, e));
   for (const p of state.projectiles) drawProjectile(ctx, p);
   drawParticles(ctx);
-  for (const fx of state.effects) drawEffect(ctx, fx);
+  for (const fx of state.effects) drawEffectOver(ctx, fx, reduced);
   if (shaking) ctx.restore();
 }
 
@@ -342,56 +347,12 @@ export function drawTower(ctx, t, selected) {
 const PROJECTILE_COLORS = { arrow: '#f5e6c8', cannon: '#222', frost: '#bdf0ff', sniper: '#e6d1ff', lightning: '#fff7a8' };
 
 function drawProjectile(ctx, p) {
+  if (drawProjectileFx(ctx, p)) return; // Flat-Pop-Projektil je Typ (B-068)
+  // Rueckfall: unbekannter Typ oder nicht verfolgt -> einfacher Kreis
   ctx.fillStyle = (Object.hasOwn(PROJECTILE_COLORS, p.towerType) && PROJECTILE_COLORS[p.towerType]) || '#fff';
   ctx.beginPath();
   ctx.arc(p.x, p.y, p.towerType === 'cannon' ? 5 : 3, 0, Math.PI * 2);
   ctx.fill();
-  drawProjectileFx(ctx, p); // Schweif/Strahl/Leuchten je Typ (unbekannte Typen bleiben ein weisser Kreis)
-}
-
-// Blitzlinie: Turm -> Ziel 1 -> Ziel 2 ..., dünn und hell, blendet aus (deterministisch, ohne Zufall).
-function drawBolt(ctx, fx, a) {
-  const pts = fx.points;
-  if (!Array.isArray(pts) || pts.length < 2) return;
-  ctx.save();
-  ctx.lineCap = 'round';
-  ctx.lineJoin = 'round';
-  const path = () => {
-    ctx.beginPath();
-    ctx.moveTo(pts[0].x, pts[0].y);
-    for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
-    ctx.stroke();
-  };
-  ctx.globalAlpha = 0.5 * a;
-  ctx.strokeStyle = '#6aa8ff';
-  ctx.lineWidth = 5;
-  path();
-  ctx.globalAlpha = a;
-  ctx.strokeStyle = '#fffbd0';
-  ctx.lineWidth = 1.5;
-  path();
-  ctx.globalAlpha = 1;
-  ctx.restore();
-}
-
-function drawEffect(ctx, fx) {
-  const a = fx.ttl / fx.max;
-  if (fx.kind === 'explosion') {
-    ctx.fillStyle = `rgba(255,150,40,${0.5 * a})`;
-    ctx.beginPath();
-    ctx.arc(fx.x, fx.y, fx.r * (1.2 - a * 0.5), 0, Math.PI * 2);
-    ctx.fill();
-  } else if (fx.kind === 'chill') {
-    ctx.fillStyle = `rgba(120,200,255,${0.25 * a})`;
-    ctx.fillRect(0, 0, WIDTH, HEIGHT);
-  } else if (fx.kind === 'bolt') {
-    drawBolt(ctx, fx, a);
-  } else if (fx.kind === 'coin') {
-    ctx.fillStyle = `rgba(255,213,74,${a})`;
-    ctx.font = 'bold 13px system-ui, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText(fx.text, fx.x, fx.y - 20 + a * 10);
-  }
 }
 
 export { WIDTH, HEIGHT };

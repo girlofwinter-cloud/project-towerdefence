@@ -19,6 +19,11 @@ const ui = { buildType: null, selectedTowerId: null, hover: null, pending: null,
 let mapId;
 let state = createGame();
 
+// prefers-reduced-motion (B-067): schaltet das Wackeln beim Boss-Auftritt aus (render liest ui.reducedMotion)
+const motionQuery = typeof window.matchMedia === 'function' ? window.matchMedia('(prefers-reduced-motion: reduce)') : null;
+ui.reducedMotion = !!(motionQuery && motionQuery.matches);
+if (motionQuery && motionQuery.addEventListener) motionQuery.addEventListener('change', (ev) => { ui.reducedMotion = ev.matches; });
+
 // Testseite (test.html bzw. index.html?test): alle Karten offen, nichts speichern, Werkzeug-Panel.
 const TEST_MODE = new URLSearchParams(location.search).has('test');
 
