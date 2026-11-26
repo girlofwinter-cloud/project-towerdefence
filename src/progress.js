@@ -92,7 +92,7 @@ export function resultLines(progress, mapId, res, before = { bestWave: 0, stars:
   const p = mapProgress(progress, mapId);
   const lines = [`Rekord: Welle ${p.bestWave} · ${starText(p.stars)}`];
   if (res.newRecord && before.bestWave > 0) lines.push('Neuer Rekord!');
-  if (res.newStars) lines.push(`Neue Sterne: ${starText(p.stars)}`);
+  if (res.newStars) lines.push('Neue Sterne!');
   if (res.unlockedMap) lines.push(`Neue Karte freigeschaltet: ${MAPS[res.unlockedMap].name}`);
   return lines;
 }
