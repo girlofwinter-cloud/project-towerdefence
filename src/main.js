@@ -1,20 +1,20 @@
 // Verbindet Spiel-Logik, Rendering und Bedienung (DOM, Maus, Tastatur).
-import { TILE, WIDTH, HEIGHT, ARROW_TOWER, TOWER_STYLE, SHOP_CARD, TOWER_TYPES, ENEMY_TYPES, MAX_WAVES, MAPS, SPEED_STEPS, TARGET_MODES, TARGET_MODE_NAMES, MAX_SUBSTEP, LOW_LIVES, ABILITIES, ICON, COIN_BURST, waveSummary, meteorText } from './config.js';
+import { TILE, VIEW_WIDTH, VIEW_HEIGHT, ARROW_TOWER, TOWER_STYLE, SHOP_CARD, TOWER_TYPES, ENEMY_TYPES, MAX_WAVES, MAPS, SPEED_STEPS, TARGET_MODES, TARGET_MODE_NAMES, MAX_SUBSTEP, LOW_LIVES, ABILITIES, ICON, COIN_BURST, waveSummary, meteorText } from './config.js';
 import {
   createGame, stepGame, togglePause, buildTower, upgradeTower, sellTower, setTargetMode, startWave,
   useAbility, abilityCooldownLeft, canBuild, towerAt, towerStats, upgradeCost, sellValue,
 } from './game.js';
-import { render, drawTower } from './render.js';
+import { renderView, drawTower, paintedStatus } from './render.js';
 import { heartStates, abilityView, overheatNote, startButtonView } from './hud.js';
 import { drawIcon } from './render-icons.js';
-import { buildTapStep, aimStep } from './input.js';
+import { buildTapStep, aimStep, fieldPoint } from './input.js';
 import { createSoundTracker, collectSounds, loadSoundOn, saveSoundOn } from './sound-events.js';
 import { unlockAudio, setSoundOn, playSound, updateMusic } from './audio.js';
 import { loadProgress, saveProgress, recordResult, isUnlocked, mapProgress, starText, resultLines, startMap, mapAfterResult, MAP_ORDER } from './progress.js';
 
 const canvas = document.getElementById('game');
-canvas.width = WIDTH;
-canvas.height = HEIGHT;
+canvas.width = VIEW_WIDTH; // Stil 1: Feld + Rand (Wald, Burg, Fahne)
+canvas.height = VIEW_HEIGHT;
 const ctx = canvas.getContext('2d');
 
 const $ = (id) => document.getElementById(id);
@@ -61,6 +61,7 @@ let resultText = []; // Zeilen fürs Overlay (resultLines)
 // Für Tests und Neugierige: im Browser-Konsole `__game` eintippen.
 window.__game = () => state;
 window.__ui = ui;
+window.__painted = () => paintedStatus(state.mapId); // Stil 1: 'ready', sobald der gemalte Hintergrund gerastert ist
 
 // ---------- Icons (B-069) ----------
 // Icons werden einmal je Name und Größe auf ein Canvas gezeichnet und als Bild-URL wiederverwendet.
@@ -182,29 +183,29 @@ function flash(msg, kind = 'error') {
 }
 
 // ---------- Maus ----------
+// Stil 1: Feldkoordinaten ohne den Rand (fieldPoint in input.js)
 function tileFromEvent(ev) {
-  const rect = canvas.getBoundingClientRect();
-  const x = ((ev.clientX - rect.left) / rect.width) * WIDTH;
-  const y = ((ev.clientY - rect.top) / rect.height) * HEIGHT;
-  return { col: Math.floor(x / TILE), row: Math.floor(y / TILE) };
+  const p = fieldPoint(ev.clientX, ev.clientY, canvas.getBoundingClientRect());
+  return { col: p.col, row: p.row, inField: p.inField };
 }
 
 function pointFromEvent(ev) {
-  const rect = canvas.getBoundingClientRect();
-  return { x: ((ev.clientX - rect.left) / rect.width) * WIDTH, y: ((ev.clientY - rect.top) / rect.height) * HEIGHT };
+  const p = fieldPoint(ev.clientX, ev.clientY, canvas.getBoundingClientRect());
+  return { x: p.x, y: p.y };
 }
 
 // Pointer-Events statt nur Maus: so gibt es auch auf Touch eine Vorschau der Kachel.
 let lastPointerType = 'mouse';
 canvas.addEventListener('pointerdown', (ev) => { lastPointerType = ev.pointerType; });
 canvas.addEventListener('pointermove', (ev) => {
-  const { col, row } = tileFromEvent(ev);
+  const { col, row, inField } = tileFromEvent(ev);
   ui.hoverPx = pointFromEvent(ev);
-  ui.hover = { col, row, ok: canBuild(state, col, row).ok };
+  ui.hover = inField ? { col, row, ok: canBuild(state, col, row).ok } : null;
 });
 // Bei Touch feuert pointerleave direkt nach dem Loslassen: dort die Vorschau behalten.
 canvas.addEventListener('pointerleave', (ev) => { if (ev.pointerType === 'mouse') ui.hover = null; });
 canvas.addEventListener('click', (ev) => {
+  if (ui.aiming && !tileFromEvent(ev).inField) return; // Meteor nur aufs Feld, im Rand bleibt der Zielmodus
   const aim = aimStep(ui.aiming, 'click');
   if (aim.fire) {
     ui.aiming = false;
@@ -214,7 +215,13 @@ canvas.addEventListener('click', (ev) => {
     refreshUI();
     return;
   }
-  const { col, row } = tileFromEvent(ev);
+  const { col, row, inField } = tileFromEvent(ev);
+  if (!inField) { // Klick in den Rand: nichts bauen, nur Auswahl aufheben
+    ui.selectedTowerId = null;
+    ui.pending = null;
+    refreshUI();
+    return;
+  }
   const existing = towerAt(state, col, row);
   if (existing) {
     ui.selectedTowerId = existing.id;
@@ -554,7 +561,7 @@ function frame(now) {
   // B-116/B-118: Musik der Karte laden/starten und je nach Spielstatus ein- oder ausblenden
   updateMusic({ status: state.status, paused: state.paused, mapId: state.mapId });
   ui.messageTtl -= dt;
-  render(ctx, state, ui);
+  renderView(ctx, state, ui);
   hudTimer -= dt;
   if (hudTimer <= 0) { refreshUI(); hudTimer = 0.1; }
   requestAnimationFrame(frame);

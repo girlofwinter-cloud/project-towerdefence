@@ -5,6 +5,7 @@ import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 import { createServer } from '../../scripts/serve.mjs';
+import { tileCenter } from './tile.mjs';
 
 const require = createRequire(import.meta.url);
 const { chromium } = require('playwright');
@@ -31,7 +32,7 @@ async function openWithTower(viewport, fontSize) {
   await page.locator('.tower-btn[data-type="frost"]').click();
   await page.evaluate(() => window.scrollTo(0, 0));
   const box = await page.locator('#game').boundingBox();
-  const at = [box.x + 20 * box.width / 800, box.y + 20 * box.width / 800];
+  const at = tileCenter(box, 0, 0);
   await page.mouse.click(...at);
   await page.mouse.click(...at);
   await page.keyboard.press('Escape');

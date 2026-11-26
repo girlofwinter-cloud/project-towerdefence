@@ -5,6 +5,7 @@ import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 import { createServer } from '../../scripts/serve.mjs';
+import { tileCenter } from './tile.mjs';
 
 const require = createRequire(import.meta.url);
 const { chromium } = require('playwright');
@@ -31,8 +32,7 @@ async function setup(viewport) {
   const click = async (c, r) => {
     await page.evaluate(() => window.scrollTo(0, 0));
     const box = await page.locator('#game').boundingBox();
-    const s = box.width / 800;
-    await page.mouse.click(box.x + (c + 0.5) * 40 * s, box.y + (r + 0.5) * 40 * s);
+    await page.mouse.click(...tileCenter(box, c, r));
   };
   await page.locator('.tower-btn[data-type="arrow"]').click();
   await click(0, 0); await click(0, 0);

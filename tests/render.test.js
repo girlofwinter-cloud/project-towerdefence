@@ -1437,9 +1437,20 @@ test('B-104: Render zeichnet mit und ohne Wasser ohne Fehler; Geometrie determin
   assert.ok(g.river.some(([x, y]) => x === 1.5 * TILE && y === 2.5 * TILE), 'Flusslinie läuft gerade unter der Brücke durch');
   // Schwung höchstens riverWiggle, See-Umriss umschließt alle Seekacheln-Mitten
   const { WATER_STYLE } = await import('../src/config.js');
-  for (const [x] of g.river) assert.ok(Math.abs(x - 1.5 * TILE) <= WATER_STYLE.riverWiggle + 1e-9);
+  // Stil 1: Fluss biegt mit der gemalten Form nach links ab; jeder Flusspunkt liegt höchstens riverWiggle neben seiner Kachelmitte
+  MAPS.meadow.river.forEach(([c, r], i) => {
+    const [x, y] = g.river[i + 1]; // g.river[0] = oberes Ende unter dem Rahmen
+    assert.ok(Math.hypot(x - (c + 0.5) * TILE, y - (r + 0.5) * TILE) <= WATER_STYLE.riverWiggle + 1e-9, `Flusspunkt ${c},${r}`);
+  });
+  assert.equal(g.river.length, MAPS.meadow.river.length + 1, 'Fluss mündet nicht quer über Bauplätze in den See');
   assert.equal(lakeOutline(g.lake, WATER_STYLE.lakeRadius).length, WATER_STYLE.lakePoints);
-  assert.ok(mudSpots(g).length >= 2);
+  // Stil 1: Fluss mündet nicht mehr in den See (eigene gemalte Lage), also kein Mündungsschlamm; Schlamm deterministisch
+  assert.equal(g.mouth, false);
+  assert.deepEqual(mudSpots(g), mudSpots(g));
+  const joined = waterGeometry('meadow', s.blocked);
+  joined.lake = { cx: 1.5 * TILE, cy: 6 * TILE, discs: [[1.5 * TILE, 5.5 * TILE], [1.5 * TILE, 6.5 * TILE]] };
+  joined.mouth = true;
+  assert.ok(mudSpots(joined).length >= 2, 'mit Mündung Schlamm links und rechts');
   const m = mockCtx();
   drawWater(m.ctx, g);
   drawBridges(m.ctx, g);
@@ -1491,7 +1502,7 @@ test('B-104 Nachbesserung: See rund ohne Zipfel, Uferdeko deterministisch, nie a
     const [c, r] = tile(p);
     assert.ok(!s.blocked.has(`${c},${r}`), `${p.kind} auf dem Weg ${c},${r}`);
     assert.ok(!(c === 1 && r === 13), `${p.kind} über dem Brunnen`);
-    assert.ok(p.x >= TILE - 2, `${p.kind} im Baumrahmen links (x ${p.x})`);
+    assert.ok(p.x >= 0 && p.y <= ROWS * TILE, `${p.kind} außerhalb des Feldes (x ${p.x})`); // Stil 1: Rahmenwald liegt im Rand, nicht mehr im Feld
     if (p.kind === 'pad') assert.ok(inside([p.x, p.y]), 'Seerose liegt im See');
   }
   // Zeichnen ohne arc/ellipse (Kachel-Test der Kleindeko) und mit ausgeglichenem save/restore

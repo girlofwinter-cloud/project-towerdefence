@@ -6,6 +6,7 @@ import { createRequire } from 'node:module';
 import { createServer } from '../../scripts/serve.mjs';
 import { PROGRESS_KEY, START_LIVES, MAX_WAVES } from '../../src/config.js';
 import { MAP_ORDER } from '../../src/progress.js';
+import { tileCenter } from './tile.mjs';
 
 // Karten über MAP_ORDER-Indizes (B-101), damit Änderungen an der Kartenliste die Tests nicht brechen.
 const [M0, M1] = MAP_ORDER;
@@ -124,7 +125,7 @@ test('Ohne ResizeObserver (ältere Browser): Seite startet ohne Fehler, Turm-Pan
   await p4.locator('.tower-btn[data-type="frost"]').click();
   await p4.evaluate(() => window.scrollTo(0, 0));
   const box = await p4.locator('#game').boundingBox();
-  const at = [box.x + 20 * box.width / 800, box.y + 20 * box.width / 800];
+  const at = tileCenter(box, 0, 0);
   await p4.mouse.click(...at);
   await p4.mouse.click(...at);
   await p4.keyboard.press('Escape');

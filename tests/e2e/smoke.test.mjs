@@ -4,7 +4,8 @@ import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 import { createServer } from '../../scripts/serve.mjs';
-import { TOWER_TYPES } from '../../src/config.js';
+import { TOWER_TYPES, VIEW_WIDTH, VIEW_HEIGHT } from '../../src/config.js';
+import { tileCenter } from './tile.mjs';
 
 const require = createRequire(import.meta.url);
 const { chromium } = require('playwright');
@@ -48,8 +49,7 @@ test('Turm bauen per Klick', async () => {
   await page.locator('.tower-btn[data-type="arrow"]').click();
   // Feld (0,0) ist frei: Klick in die Mitte der ersten Kachel
   const box = await page.locator('#game').boundingBox();
-  const scale = box.width / 800;
-  await page.mouse.click(box.x + 20 * scale, box.y + 20 * scale);
+  await page.mouse.click(...tileCenter(box, 0, 0));
   const s = await page.evaluate(() => ({ gold: window.__game().gold, towers: window.__game().towers.length }));
   assert.equal(s.towers, 1);
   assert.equal(s.gold, goldBefore - 50);
@@ -99,8 +99,7 @@ test('Handy: Bauen per Touch in zwei Schritten, Zoom vergrößert das Spielfeld'
   try {
     await m.locator('.tower-btn[data-type="arrow"]').tap();
     const box = await m.locator('#game').boundingBox();
-    const scale = box.width / 800;
-    const at = (col, row) => [box.x + (col + 0.5) * 40 * scale, box.y + (row + 0.5) * 40 * scale];
+    const at = (col, row) => tileCenter(box, col, row);
     // Feld (0,0) ist frei. Erster Tipp: nur Vorschau, es wird nichts gebaut.
     await m.touchscreen.tap(...at(0, 0));
     assert.equal(await m.evaluate(() => window.__game().towers.length), 0);
@@ -115,5 +114,30 @@ test('Handy: Bauen per Touch in zwei Schritten, Zoom vergrößert das Spielfeld'
     assert.deepEqual(mErrors, []);
   } finally {
     await ctx.close();
+  }
+});
+
+test('Stil 1: gemalter Hintergrund wird gerastert; Klick in den Rand baut nichts, Randkachel Spalte 0 bleibt bebaubar', async () => {
+  const p = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+  const pErrors = [];
+  p.on('pageerror', (e) => pErrors.push(e.message));
+  try {
+    await p.goto(`${url}?test`);
+    await p.waitForFunction(() => window.__painted() === 'ready', null, { timeout: 10000 });
+    assert.deepEqual(await p.evaluate(() => [document.getElementById('game').width, document.getElementById('game').height]), [VIEW_WIDTH, VIEW_HEIGHT]);
+    await p.locator('.tower-btn[data-type="arrow"]').click();
+    const box = await p.locator('#game').boundingBox();
+    // Rand links neben Kachel (0,5) und Rand oben über Kachel (6,0): kein Turm, keine Fehlermeldung
+    const [x0, y5] = tileCenter(box, 0, 5);
+    await p.mouse.click(box.x + 10 * (box.width / VIEW_WIDTH), y5);
+    const [x6, y0] = tileCenter(box, 6, 0);
+    await p.mouse.click(x6, box.y + 10 * (box.width / VIEW_WIDTH));
+    assert.equal(await p.evaluate(() => window.__game().towers.length), 0);
+    assert.equal(await p.locator('#message').textContent(), '');
+    await p.mouse.click(x0, y5);
+    assert.deepEqual(await p.evaluate(() => window.__game().towers.map((t) => [t.col, t.row])), [[0, 5]]);
+    assert.deepEqual(pErrors, []);
+  } finally {
+    await p.close();
   }
 });

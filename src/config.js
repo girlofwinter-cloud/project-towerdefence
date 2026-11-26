@@ -5,6 +5,10 @@ export const COLS = 20;
 export const ROWS = 14;
 export const WIDTH = COLS * TILE;
 export const HEIGHT = ROWS * TILE;
+// Stil 1: Rand um das Spielfeld (Wald, Burg, Fahne, Klippen). Nur Optik: Spiel-Logik rechnet weiter im Feld (WIDTH x HEIGHT).
+export const FRAME_MARGIN = 50; // px bei 1x je Seite (1,25 Kacheln)
+export const VIEW_WIDTH = WIDTH + 2 * FRAME_MARGIN;   // Canvas = Feld + 2 * Rand
+export const VIEW_HEIGHT = HEIGHT + 2 * FRAME_MARGIN;
 
 export const START_GOLD = 140;
 export const START_LIVES = 10;
@@ -33,8 +37,16 @@ export function themed(mapId, key, base) {
 
 // B-104: Fluss und See der Wiese (Kacheln [spalte, zeile]). Der Fluss ist eine Kette von oben (unter dem Baumrahmen)
 // bis zum See, inklusive Brückenkachel; Wasser = Fluss + See ohne Brücken (Brücken liegen auf dem Weg).
-const MEADOW_RIVER = [[1, 0], [1, 1], [1, 2], [1, 3], [1, 4], [1, 5], [1, 6], [1, 7], [1, 8]];
-const MEADOW_LAKE = [[1, 9], [2, 9], [1, 10], [2, 10], [2, 11]];
+// Stil 1: Kacheln folgen der gemalten Form aus dem Entwurf (MEADOW_PAINTED_WATER): Wasser, wo die Kachelmitte im gemalten
+// Wasser liegt. Gleich viele Wasserkacheln wie vorher (13 ohne Brücke), also gleich viele Bauplätze.
+const MEADOW_RIVER = [[1, 0], [1, 1], [1, 2], [1, 3], [0, 3], [0, 4]];
+const MEADOW_LAKE = [[0, 11], [1, 11], [2, 11], [3, 11], [0, 12], [1, 12], [2, 12], [3, 12]];
+// Gemalte Form (Entwurf Z.66–77) in Entwurfs-px, Feld ab (0,0), Kachel 57: Fluss als kubische Bézier-Kette
+// [Start, dann je 3 Punkte; Breite PAINTED_STYLE.river], See als Ellipse des Wassers [cx, cy, rx, ry] (Sandufer im Zeichnen +22/+18 wie im Entwurf).
+const MEADOW_PAINTED_WATER = {
+  river: [[68, -98], [72, -69], [75, -40], [79, -10], [89, 70], [59, 150], [59, 200], [59, 250], [-11, 290], [-81, 300]],
+  lake: [120, 695, 122, 62],
+};
 const MEADOW_BRIDGES = [[1, 2]];
 // Kacheln einer Liste ohne die Brücken-Kacheln (Brücken liegen auf dem Weg, sind also weder Wasser noch Lava)
 const withoutBridges = (list, bridges) => list.filter(([c, r]) => !bridges.some(([bc, br]) => bc === c && br === r));
@@ -69,9 +81,11 @@ export const MAPS = {
     lake: MEADOW_LAKE,
     bridges: MEADOW_BRIDGES,
     water: [...withoutBridges(MEADOW_RIVER, MEADOW_BRIDGES), ...MEADOW_LAKE],
+    paintedWater: MEADOW_PAINTED_WATER,
     // B-071: Wegpalette der Wiese (STIL.md); Eiswelt und Zangenangriff haben eigene Wegfarben (B-072, B-073).
     // B-103: decor.flatTrees, damit die Hindernisse im Flat-Pop-Stil erscheinen (Laubbaum, Fels mit Kontur)
-    theme: { treeFrame: true, ground: true, accents: true, light: true, paint: true, decorStyle: 'flatpop', decor: { flatTrees: true }, path: { main: '#e2c88f', edge: '#8f6a3b', outline: '#4a3418', mid: '#ecd5a0', fringe: '#94d266', fringeAccent: '#46893a', groove: '#3a6a2c' } },
+    // Stil 1: painted = Hintergrund aus dem SVG des Entwurfs (render-painted.js); die alten Schichten bleiben Rückfall, solange das Bild lädt
+    theme: { painted: true, treeFrame: true, ground: true, accents: true, light: true, paint: true, decorStyle: 'flatpop', decor: { flatTrees: true }, path: { main: '#e2c88f', edge: '#8f6a3b', outline: '#4a3418', mid: '#ecd5a0', fringe: '#94d266', fringeAccent: '#46893a', groove: '#3a6a2c' } },
   },
   // Eiswelt (B-029, Glatteis): Gegner rutschen schneller, Kanone und Frost sind schwächer. Modifikatoren (enemySpeed, towerDamage je Typ, slowStrength) und kühles Farbschema (theme).
   ice: {
@@ -944,6 +958,28 @@ export const PAINT_STYLE = {
   blossoms: 7,             // Zusatzblüten je Insel (flach, ohne arc)
   blossomSpread: 26,       // Streuradius der Zusatzblüten um die Inselmitte in px
   blossomPathMargin: 28,   // Mindestabstand der Zusatzblüten zur Wegachse
+};
+
+// Stil 1 (docs/design/stil1-entwurf.dc.html): gemalter Hintergrund als SVG, einmal in den Hintergrund-Cache gerastert.
+// Formen und Farben stehen in render-painted.js (portiert aus dem Entwurf), hier nur Maße und Regeln. Nur Optik.
+export const PAINTED_STYLE = {
+  unit: 57,                // Kachelgröße des Entwurfs in px; Formen werden mit TILE / unit skaliert
+  seed: 42,                // feste Saat (je Karte kommt ein Hash der Karten-ID dazu)
+  fieldVignette: 0.15,     // Vignette im Feld höchstens so dunkel (Test)
+  frameVignette: 0.72,     // starke Vignette nur im Rand (Entwurf Z.39)
+  maxOverhang: 0.3,        // Randbäume dürfen höchstens so viele Kacheln ins Feld ragen (Stamm immer im Rand)
+  treeChance: 0.85,        // Rahmenwald: Anteil besetzter Plätze
+  treeScale: [0.8, 1.15],  // Größe der Randbäume
+  pineShare: 0.45,         // Anteil Tannen
+  flowerChance: 0.19,      // Blumen-Tupfen je freier Feldkachel
+  flowers: ['#fff3d2', '#ffd36a', '#f58aa5'],
+  river: [100, 84, 74],    // Fluss: Sand, Kontur, Wasser (Strichbreiten in Entwurfs-px, Z.66–68)
+  lakeRadius: [34, 28, 25], // See ohne gemalte Form: Hüllradius je Seekachel für Sand, Kontur, Wasser (px bei 1x)
+  castleScale: 0.8,        // Burgtor am Ausgang (im Rand)
+  flagScale: 0.72,         // Wellenfahne am Eingang (im Rand)
+  obstacleTree: 0.62,      // Baum auf Hindernis-Kachel
+  obstacleRock: 1.2,       // Fels auf Hindernis-Kachel
+  keepOut: 46,             // halbe Breite der freien Bahn für den Weg im Rand (Entwurfs-px)
 };
 
 // Akzente der Wiese (B-080): Burgmauer oben, Teich und Brunnen unten. Nur Optik, Maße in px bei 1x.

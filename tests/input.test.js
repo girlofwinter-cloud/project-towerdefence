@@ -2,7 +2,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { buildTapStep } from '../src/input.js';
+import { buildTapStep, fieldPoint } from '../src/input.js';
+import { TILE, COLS, ROWS, FRAME_MARGIN, VIEW_WIDTH, VIEW_HEIGHT } from '../src/config.js';
 
 // ---------- Bauen per Touch in zwei Schritten (buildTapStep) ----------
 
@@ -33,4 +34,21 @@ test('aimStep: Taste schaltet den Zielmodus, Klick löst aus, Abbruch beendet', 
   assert.deepEqual(aimStep(true, 'click'), { aiming: false, fire: true });
   assert.deepEqual(aimStep(false, 'click'), { aiming: false, fire: false });
   assert.deepEqual(aimStep(true, 'cancel'), { aiming: false, fire: false });
+});
+
+// ---------- Stil 1: Klick-Umrechnung mit Rand (fieldPoint) ----------
+test('fieldPoint: zieht den Rand ab, auch bei skaliertem Canvas; Klicks im Rand liegen nicht im Feld', () => {
+  const rect = { left: 10, top: 20, width: VIEW_WIDTH, height: VIEW_HEIGHT };
+  // Mitte der Kachel 0,0 und der letzten Kachel
+  assert.deepEqual(fieldPoint(10 + FRAME_MARGIN + TILE / 2, 20 + FRAME_MARGIN + TILE / 2, rect), { x: TILE / 2, y: TILE / 2, col: 0, row: 0, inField: true });
+  const last = fieldPoint(10 + FRAME_MARGIN + (COLS - 0.5) * TILE, 20 + FRAME_MARGIN + (ROWS - 0.5) * TILE, rect);
+  assert.deepEqual([last.col, last.row, last.inField], [COLS - 1, ROWS - 1, true]);
+  // Rand: links, oben, rechts, unten
+  for (const [x, y] of [[10 + FRAME_MARGIN - 1, 300], [400, 20 + FRAME_MARGIN - 1], [10 + VIEW_WIDTH - 2, 300], [400, 20 + VIEW_HEIGHT - 2]]) {
+    assert.equal(fieldPoint(x, y, rect).inField, false, `${x},${y}`);
+  }
+  // halb so groß angezeigt: gleiche Kachel
+  const half = { left: 0, top: 0, width: VIEW_WIDTH / 2, height: VIEW_HEIGHT / 2 };
+  const p = fieldPoint((FRAME_MARGIN + 5.5 * TILE) / 2, (FRAME_MARGIN + 3.5 * TILE) / 2, half);
+  assert.deepEqual([p.col, p.row, p.inField], [5, 3, true]);
 });

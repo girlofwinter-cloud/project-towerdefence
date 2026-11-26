@@ -2129,7 +2129,7 @@ test('B-104: canBuild lehnt Wasser ab ("Hier ist Wasser"), kein Gold weg; Gegner
     assert.deepEqual(canBuild(s, c, r), { ok: false, reason: 'Hier ist Wasser' });
   }
   const g0 = s.gold;
-  assert.equal(buildTower(s, 'arrow', 1, 5).reason, 'Hier ist Wasser');
+  assert.equal(buildTower(s, 'arrow', 0, 4).reason, 'Hier ist Wasser'); // Stil 1: Fluss biegt bei Zeile 4 nach links ab
   assert.equal(s.gold, g0);
   assert.equal(canBuild(s, 1, 2).reason, 'Auf dem Weg kann nicht gebaut werden', 'Brücke ist Weg');
   assert.equal(canBuild(s, 0, 5).ok, true, 'Ufer daneben bebaubar');
@@ -2137,6 +2137,14 @@ test('B-104: canBuild lehnt Wasser ab ("Hier ist Wasser"), kein Gold weg; Gegner
   const e = spawnEnemy(s, 'grunt', 1);
   run(s, 3);
   assert.ok(e.x > 2 * TILE, 'Goblin hat die Brücke überquert');
+});
+
+test('Stil 1: Wiese hat nach dem Umbau von Fluss und See gleich viele Bauplätze wie vorher (226), 13 Wasserkacheln', () => {
+  const s = createGame({ mapId: 'meadow' });
+  let n = 0;
+  for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) if (canBuild(s, c, r).ok) n++;
+  assert.equal(n, 226);
+  assert.equal(s.water.size, 13);
 });
 
 // ---------- B-103/B-104 Randfälle (Tester) ----------

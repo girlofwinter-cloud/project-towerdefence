@@ -5,6 +5,7 @@ import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 import { createServer } from '../../scripts/serve.mjs';
+import { tileCenter } from './tile.mjs';
 
 const require = createRequire(import.meta.url);
 const { chromium } = require('playwright');
@@ -31,7 +32,7 @@ async function openWithTower(viewport) {
   await page.waitForSelector('#test-panel');
   await page.locator('.tower-btn[data-type="lightning"]').click();
   const box = await page.locator('#game').boundingBox();
-  const at = [box.x + 20 * box.width / 800, box.y + 20 * box.width / 800];
+  const at = tileCenter(box, 0, 0);
   await page.mouse.click(...at);
   await page.mouse.click(...at);
   await page.waitForSelector('#tower-info:not([hidden])');
@@ -70,8 +71,7 @@ async function openMobileWithTower(viewport) {
   await page.waitForSelector('#shop .tower-btn');
   await page.locator('.tower-btn[data-type="arrow"]').tap();
   const box = await page.locator('#game').boundingBox();
-  const s = box.width / 800;
-  const tile = (col, row) => [box.x + (col + 0.5) * 40 * s, box.y + (row + 0.5) * 40 * s];
+  const tile = (col, row) => tileCenter(box, col, row);
   for (let i = 0; i < 3; i++) await page.touchscreen.tap(...tile(0, 0));
   await page.waitForSelector('#tower-info:not([hidden])');
   return { ctx, page, tile };

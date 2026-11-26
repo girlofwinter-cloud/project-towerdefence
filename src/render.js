@@ -1,7 +1,8 @@
 // Zeichnet den Spielzustand auf ein Canvas. Keine Spiel-Logik hier!
-import { TILE, COLS, ROWS, WIDTH, HEIGHT, TOWER_TYPES, MAPS, ABILITIES, RANGE_STYLE, TREE_FRAME, GROUND_STYLE, LIGHT_STYLE, DECOR_STYLE, PAINT_STYLE, themed } from './config.js';
+import { TILE, COLS, ROWS, WIDTH, HEIGHT, FRAME_MARGIN, VIEW_WIDTH, VIEW_HEIGHT, TOWER_TYPES, MAPS, ABILITIES, RANGE_STYLE, TREE_FRAME, GROUND_STYLE, LIGHT_STYLE, DECOR_STYLE, PAINT_STYLE, themed } from './config.js';
 import { towerStats, enemyPath } from './game.js';
-import { disc } from './draw-utils.js';
+import { disc, shd } from './draw-utils.js';
+import { buildPaintedSvg, rasterizePainted, canRasterize } from './render-painted.js';
 import { drawPathStyled } from './render-path.js';
 import { TOWER_DRAWERS } from './render-towers.js';
 import { recoilOffset } from './tower-fx.js';
@@ -15,6 +16,42 @@ import { drawGround as drawGroundFill, drawGroundTufts, drawMottle } from './ren
 import { waterGeometry, drawWater, drawBridges } from './render-water.js';
 import { lavaGeometry, drawLava, drawLavaBridges } from './render-lava.js';
 import { tileHash, tileRand, decorFor, obstacleKind, treeFrame, groundPatches, accentsFor, coveredByCrown, scatterFor, LARGE_DECOR_RADIUS, mottleField, groupedDecor } from './decor.js';
+
+// Stil 1: ganzer Canvas (Feld + Rand). Zeichnet den Rand und verschiebt das Feld um FRAME_MARGIN;
+// render() selbst rechnet weiter in Feldkoordinaten (Eingabe: main.js zieht den Rand ab).
+export function renderView(ctx, state, ui) {
+  if (!paintedFor(state)) drawFramePlain(ctx, state);
+  ctx.save();
+  ctx.translate(FRAME_MARGIN, FRAME_MARGIN);
+  render(ctx, state, ui);
+  ctx.restore();
+}
+
+// Einfacher dunkler Rahmen in Kartenfarbe (Karten ohne theme.painted und Rückfall, solange das Bild lädt)
+function drawFramePlain(ctx, state) {
+  ctx.fillStyle = shd(themed(state.mapId, 'ground', GROUND_STYLE).base, 0.7);
+  ctx.fillRect(0, 0, VIEW_WIDTH, VIEW_HEIGHT);
+}
+
+// ---------- Gemalter Hintergrund (Stil 1, theme.painted) ----------
+// Je Karte einmal: SVG bauen, im Browser rastern; bis dahin (und in Node) gilt das alte Zeichnen als Rückfall.
+const paintedCache = new Map(); // mapId -> { status: 'loading' | 'ready' | 'failed', canvas }
+export function paintedStatus(mapId) {
+  return paintedCache.get(mapId)?.status ?? (MAPS[mapId]?.theme?.painted ? 'none' : 'off');
+}
+function paintedFor(state) {
+  const id = state.mapId;
+  if (!MAPS[id]?.theme?.painted) return null;
+  const entry = paintedCache.get(id);
+  if (entry) return entry.status === 'ready' ? entry.canvas : null;
+  if (!canRasterize()) return null;
+  const e = { status: 'loading', canvas: null };
+  paintedCache.set(id, e);
+  rasterizePainted(buildPaintedSvg(state))
+    .then((cv) => { e.canvas = cv; e.status = cv ? 'ready' : 'failed'; })
+    .catch(() => { e.status = 'failed'; });
+  return null;
+}
 
 export function render(ctx, state, ui) {
   const reduced = !!(ui && ui.reducedMotion);
@@ -84,6 +121,8 @@ function makeCanvas() {
 }
 
 function drawGround(ctx, state) {
+  const painted = paintedFor(state);
+  if (painted) { ctx.drawImage(painted, -FRAME_MARGIN, -FRAME_MARGIN); return; } // Bild enthält Feld und Rand
   // Schluessel = Referenz auf den Weg (neuer Weg -> neue Punkte-Liste)
   if (!bgCanvas || bgKey !== state.path.points) {
     bgCanvas = bgCanvas || makeCanvas();

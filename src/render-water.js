@@ -1,7 +1,7 @@
 // Fluss, See und Brücke der Wiese (B-104). Nur Zeichnen, nur im Hintergrund-Cache (bgCanvas), nie pro Frame.
 // Kacheln kommen aus MAPS.<id> (river, lake, bridges), Farben und Maße aus WATER_STYLE (config.js).
 // Deterministisch (tileRand), keine Verläufe, kein shadowBlur.
-import { TILE, MAPS, STYLE, WATER_STYLE as W, DECOR_STYLE as D } from './config.js';
+import { TILE, ROWS, MAPS, STYLE, WATER_STYLE as W, DECOR_STYLE as D, PAINTED_STYLE } from './config.js';
 import { tileRand } from './decor.js';
 import { shd, outlineOf } from './draw-utils.js';
 
@@ -18,7 +18,14 @@ export function waterGeometry(mapId, blocked) {
   const river = riverLine(m.river || [], bridges, W.riverWiggle);
   const lakeTiles = m.lake || [];
   const discs = lakeTiles.map(center);
-  const lake = discs.length ? { cx: discs.reduce((s, d) => s + d[0], 0) / discs.length, cy: discs.reduce((s, d) => s + d[1], 0) / discs.length, discs } : null;
+  let lake = discs.length ? { cx: discs.reduce((s, d) => s + d[0], 0) / discs.length, cy: discs.reduce((s, d) => s + d[1], 0) / discs.length, discs } : null;
+  // Stil 1: mit gemalter Form (paintedWater, Entwurfs-px) ist der See die Ellipse des Entwurfs (auch im Rückfall-Zeichnen)
+  const pe = m.paintedWater?.lake;
+  if (lake && pe) {
+    const k = TILE / PAINTED_STYLE.unit;
+    lake = { ...lake, cx: pe[0] * k, cy: pe[1] * k, ellipse: [pe[2] * k, pe[3] * k] };
+  }
+  let mouthOn = false; // Fluss mündet in den See
   if (river.length) {
     // Oberes Ende unter den Baumkronen; unten mündet der Fluss in die nächste Seekachel
     if (m.river[0][1] === 0) river.unshift([river[0][0], W.riverTop]);
@@ -26,10 +33,11 @@ export function waterGeometry(mapId, blocked) {
       const last = river[river.length - 1];
       let best = null;
       for (const d of discs) if (!best || Math.hypot(d[0] - last[0], d[1] - last[1]) < Math.hypot(best[0] - last[0], best[1] - last[1])) best = d;
-      river.push(best);
+      // Stil 1: nur einmünden, wenn der See direkt anschließt (sonst liefe der Fluss über Bauplätze)
+      if (Math.hypot(best[0] - last[0], best[1] - last[1]) <= 1.5 * TILE) { river.push(best); mouthOn = true; }
     }
   }
-  return { river, lake, bridges: bridgeList(bridges, blocked) };
+  return { river, lake, mouth: mouthOn, bridges: bridgeList(bridges, blocked) };
 }
 
 // Mittellinie eines Flusses aus einer Kachelkette (auch Lavafluss, B-030): Kachelmitten mit deterministischem Schwung
@@ -71,6 +79,10 @@ const HULL_SAMPLES = 72; // Abtastung der Hülle für die Glättung
 // Ufer-Radius als Funktion des Winkels: Hülle geglättet auf die Harmonischen bis W.lakeHarmonics
 // (Ordnung 2 ergibt ein schräges Oval ohne Zipfel), mal W.lakeScale.
 export function lakeShape(lake, R) {
+  if (lake.ellipse) { // Ellipse (gemalte Form), je Lage um R - lakeRadius größer
+    const ex = lake.ellipse[0] + R - W.lakeRadius, ey = lake.ellipse[1] + R - W.lakeRadius;
+    return (ang) => 1 / Math.hypot(Math.cos(ang) / ex, Math.sin(ang) / ey);
+  }
   const H = W.lakeHarmonics, co = [];
   const r = Array.from({ length: HULL_SAMPLES }, (_, i) => hullRadius(lake, R, (i / HULL_SAMPLES) * Math.PI * 2));
   for (let k = 0; k <= H; k++) {
@@ -152,7 +164,7 @@ function layer(ctx, g, color, w, R, k = 1) {
     const { cx, cy } = g.lake;
     closedCurve(ctx, lakeOutline(g.lake, R).map(([x, y]) => [cx + (x - cx) * k, cy + (y - cy) * k]));
     ctx.fill();
-    if (k === 1 && g.river.length > 2) mouth(ctx, g, w / 2, R);
+    if (k === 1 && g.mouth) mouth(ctx, g, w / 2, R);
   }
 }
 
@@ -194,7 +206,7 @@ function drawBody(ctx, g) {
 export function mudSpots(g) {
   const out = [];
   const half = W.riverWidth / 2 + W.outlineWidth + W.bankWidth / 2;
-  if (g.lake && g.river.length > 2) {
+  if (g.lake && g.mouth) {
     const [x, y] = g.river[g.river.length - 2]; // letzte Flusskachel vor dem See
     // links am geraden Ufer, wo der See beginnt; rechts in der Kehle der Aufweitung
     const rad = lakeShape(g.lake, W.lakeRadius + W.outlineWidth + W.bankWidth / 2), f = W.mouthFlare;
@@ -230,7 +242,8 @@ export function shoreDecor(g) {
   for (const [deg, d, size] of S.stones) { const [x, y] = at(deg, d); out.push({ kind: 'stone', x, y, size }); }
   for (const [deg, d, v] of S.flowers) { const [x, y] = at(deg, d); out.push({ kind: 'flower', x, y, v }); }
   for (const [deg, d] of S.tufts) { const [x, y] = at(deg, d); out.push({ kind: 'tuft', x, y }); }
-  return out;
+  // Stil 1: See liegt jetzt unten links; nichts links außerhalb des Feldes und nichts in der untersten Zeile (dort liegen Baumrahmen und Brunnen des alten Zeichnens)
+  return out.filter((p) => p.x >= 0 && p.y < (ROWS - 1) * TILE);
 }
 
 // Fläche mit Flat-Pop-Kontur (abgedunkelte Eigenfarbe). Ohne clip, damit das Wasser bei genau einem clip (Brücke) bleibt.
