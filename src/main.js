@@ -308,6 +308,7 @@ $('sound').addEventListener('click', toggleSound);
 function toggleSound() {
   ui.soundOn = !ui.soundOn;
   setSoundOn(ui.soundOn);
+  if (ui.soundOn) unlockAudio(); // Klick bzw. Taste ist die Nutzeraktion
   saveSoundOn(soundStorage(), ui.soundOn);
   refreshUI();
 }
@@ -375,7 +376,7 @@ window.addEventListener('keydown', (ev) => {
   else if (key === 't') doCycleTarget();
   else if (key === 'f') toggleSpeed();
   else if (key === 'p') doTogglePause();
-  else if (key === 'm') toggleSound();
+  else if (key === 'm' && !ev.repeat && !ev.ctrlKey && !ev.metaKey) toggleSound();
 });
 
 // ---------- HUD ----------

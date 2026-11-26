@@ -1111,7 +1111,9 @@ export const SOUND = {
   storageKey: 'td-sound', // localStorage-Schlüssel für Ton an/aus
   defaultOn: true,
   // Begrenzung: höchstens perWindow Töne je Art (Schuss je Turmtyp, Tod, Boss) pro window Sekunden Echtzeit
-  limit: { window: 0.1, perWindow: 3 },
+  // Zusätzlich alle Töne zusammen höchstens total pro window; Warnton und Meteor zählen nie dagegen.
+  limit: { window: 0.1, perWindow: 3, total: 6 },
+  totalExempt: ['lifeLost', 'meteorFlight', 'meteorImpact'],
   shots: {
     // Pfeil: kurzes Zupfen/Sirren
     arrow: [

@@ -113,9 +113,31 @@ export function allowSound(lim, key, now) {
   return true;
 }
 
+// Gemeinsame Obergrenze aller Töne (Schlüssel '*'): erst prüfen, dann je Art, dann zählen.
+const TOTAL = '*';
+function totalSlot(lim, now) {
+  let s = lim.slots.get(TOTAL);
+  if (!s || !(now >= s.start) || now - s.start >= lim.limit.window) {
+    s = { start: now, count: 0 };
+    lim.slots.set(TOTAL, s);
+  }
+  return s;
+}
+
+// true = Ton darf spielen (Grenze je Art und, außer bei SOUND.totalExempt, die gemeinsame Grenze)
+export function allowEvent(lim, ev, now) {
+  const key = soundKey(ev);
+  if (SOUND.totalExempt.includes(ev.kind)) return allowSound(lim, key, now);
+  const total = totalSlot(lim, now);
+  if (total.count >= lim.limit.total) return false;
+  if (!allowSound(lim, key, now)) return false;
+  total.count += 1;
+  return true;
+}
+
 // Erkennen und begrenzen in einem Schritt (Aufruf pro Frame aus main.js).
 export function collectSounds(tr, state, now) {
-  return detectSoundEvents(tr, state).filter((ev) => allowSound(tr.limiter, soundKey(ev), now));
+  return detectSoundEvents(tr, state).filter((ev) => allowEvent(tr.limiter, ev, now));
 }
 
 // ---------- Ton an/aus (localStorage, Speicher wird übergeben) ----------

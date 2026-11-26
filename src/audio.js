@@ -26,10 +26,10 @@ export function unlockAudio() {
   } catch { audio.ctx = null; }
 }
 
+// Setzt nur den An/Aus-Zustand; den Context erzeugt erst unlockAudio() bei einer Nutzeraktion.
 export function setSoundOn(on) {
   audio.on = !!on;
-  if (audio.on) unlockAudio();
-  else if (audio.ctx && audio.ctx.state === 'running') audio.ctx.suspend().catch(() => {});
+  if (!audio.on && audio.ctx && audio.ctx.state === 'running') audio.ctx.suspend().catch(() => {});
 }
 
 // Gemeinsamer Rauschen-Buffer (weißes Rauschen)

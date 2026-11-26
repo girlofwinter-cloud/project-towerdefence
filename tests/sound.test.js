@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createGame, update, buildTower, startWave, spawnEnemy, useAbility, togglePause } from '../src/game.js';
 import { SOUND, TOWER_TYPES, FX_STYLE, WIDTH, HEIGHT } from '../src/config.js';
-import { createSoundTracker, detectSoundEvents, collectSounds, createLimiter, allowSound, soundKey, loadSoundOn, saveSoundOn } from '../src/sound-events.js';
+import { createSoundTracker, detectSoundEvents, collectSounds, createLimiter, allowSound, allowEvent, soundKey, loadSoundOn, saveSoundOn } from '../src/sound-events.js';
 import { freeTileNearPath } from './helpers.js';
 
 const kinds = (evs) => evs.map((e) => (e.kind === 'shot' ? `shot:${e.tower}` : e.kind));
@@ -228,4 +228,87 @@ test('B-113: audio.js läuft ohne Web Audio (Node) ohne Fehler', async () => {
     playSound({ kind: 'shot', tower: 'cannon' });
     playSound({ kind: 'meteorImpact' });
   });
+});
+
+// ---------- Tester-Ergänzungen (Randfälle) ----------
+import { stepGame } from '../src/game.js';
+import { MAP_ORDER } from '../src/progress.js';
+
+test('B-113 Rand: echtes Leck (angeschlagener Gegner läuft durch) -> lifeLost, aber kein death', () => {
+  const state = createGame();
+  const tr = createSoundTracker();
+  const e = spawnEnemy(state, 'grunt') ?? state.enemies.at(-1);
+  e.hp = e.maxHp / 2;
+  detectSoundEvents(tr, state);
+  const all = [];
+  for (let i = 0; i < 60 * 120 && state.enemies.includes(e); i++) {
+    update(state, 1 / 60);
+    all.push(...kinds(detectSoundEvents(tr, state)));
+  }
+  assert.ok(!state.enemies.includes(e), 'Gegner hat das Feld verlassen');
+  assert.ok(!all.includes('death') && !all.includes('boss'));
+  assert.ok(all.includes('lifeLost'));
+});
+
+test('B-113 Rand: Kartenwechsel mitten in Welle (neues state-Objekt) ist still', () => {
+  const state = gameWithTower('arrow');
+  const tr = createSoundTracker();
+  startWave(state);
+  for (let i = 0; i < 600; i++) { update(state, 1 / 60); detectSoundEvents(tr, state); }
+  state.enemies.forEach((e) => { e.hp = 0; });
+  const other = createGame({ mapId: MAP_ORDER[1] ?? MAP_ORDER[0] });
+  assert.deepEqual(detectSoundEvents(tr, other), []);
+  assert.deepEqual(detectSoundEvents(tr, other), []);
+});
+
+test('B-113 Rand: Tempo x3 -> Begrenzung nach Echtzeit, je Art höchstens perWindow pro Fenster', () => {
+  const state = gameWithTower('arrow');
+  for (const t of ['cannon', 'frost']) {
+    const [c, r] = freeTileNearPath(state);
+    buildTower(state, t, c, r);
+  }
+  startWave(state);
+  const tr = createSoundTracker();
+  const perKey = new Map();
+  let real = 0;
+  for (let i = 0; i < 60 * 20; i++) {
+    real += 1 / 60;
+    stepGame(state, 1 / 60, 3);
+    for (const ev of collectSounds(tr, state, real)) {
+      const k = `${soundKey(ev)}@${Math.floor(real / SOUND.limit.window)}`;
+      perKey.set(k, (perKey.get(k) || 0) + 1);
+    }
+  }
+  for (const [k, n] of perKey) {
+    const lim = k.startsWith('lifeLost') ? SOUND.lifeLost.limit.perWindow : SOUND.limit.perWindow;
+    // Fenster gleiten (Start beim ersten Ton), daher höchstens 2x je festem Raster-Fenster
+    assert.ok(n <= 2 * lim, `${k}: ${n}`);
+  }
+});
+
+test('B-113 Review: gemeinsame Obergrenze aller Töne; Warnton und Meteor fallen nie weg', () => {
+  const L = SOUND.limit;
+  assert.ok(L.total > 0 && L.total < L.perWindow * 5, 'Obergrenze unter der Summe der Einzelgrenzen');
+  const lim = createLimiter();
+  const types = ['arrow', 'cannon', 'frost', 'sniper', 'lightning'];
+  let n = 0;
+  for (const tower of types) for (let i = 0; i < L.perWindow; i++) if (allowEvent(lim, { kind: 'shot', tower }, 0)) n++;
+  if (allowEvent(lim, { kind: 'death' }, 0.01)) n++;
+  if (allowEvent(lim, { kind: 'boss' }, 0.01)) n++;
+  assert.equal(n, L.total);
+  // ausgenommen: trotz voller Obergrenze erlaubt
+  for (const kind of SOUND.totalExempt) assert.equal(allowEvent(lim, { kind }, 0.02), true, kind);
+  assert.deepEqual([...SOUND.totalExempt].sort(), ['lifeLost', 'meteorFlight', 'meteorImpact']);
+  // neues Fenster: wieder frei
+  assert.equal(allowEvent(lim, { kind: 'shot', tower: 'arrow' }, L.window + 0.05), true);
+  // collectSounds: viele Türme bei Tempo x3 in einem Frame -> höchstens total, Warnton trotzdem dabei
+  const state = createGame();
+  const tr = createSoundTracker();
+  collectSounds(tr, state, 0);
+  for (const tower of types) for (let i = 0; i < 10; i++) state.projectiles.push({ towerType: tower });
+  state.lives -= 2;
+  state.time += 0.05;
+  const evs = collectSounds(tr, state, 5);
+  assert.equal(evs.filter((e) => e.kind === 'shot').length, L.total);
+  assert.ok(evs.some((e) => e.kind === 'lifeLost'));
 });
