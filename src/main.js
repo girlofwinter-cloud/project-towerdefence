@@ -262,7 +262,23 @@ $('pause').addEventListener('click', doTogglePause);
 $('upgrade').addEventListener('click', doUpgrade);
 $('sell').addEventListener('click', doSell);
 $('target-mode').addEventListener('click', doCycleTarget);
-$('ti-close').addEventListener('click', () => { ui.selectedTowerId = null; refreshUI(); });
+// Nach dem Schließen geht der Fokus auf die Shop-Karte des eben gezeigten Turmtyps: der ×-Knopf verschwindet,
+// sonst fiele der Fokus auf <body> und Tab begänne wieder oben. Die Karte gehört zum Turm und liegt in der
+// Tab-Reihenfolge. Das Spielfeld (Canvas) wäre nur mit tabindex fokussierbar und zeigte dann bei jedem
+// Tastendruck einen Fokusrahmen.
+$('ti-close').addEventListener('click', () => {
+  const type = state.towers.find((t) => t.id === ui.selectedTowerId)?.type;
+  ui.selectedTowerId = null;
+  refreshUI();
+  shop.querySelector(`.tower-btn[data-type="${type}"]`)?.focus({ preventScroll: true });
+});
+// Handy-Leiste (fest unten): echte Höhe als --tower-info-h, damit main genug Platz darunter lässt (auch bei großer Schrift)
+const towerInfo = $('tower-info');
+if (typeof ResizeObserver === 'function') {
+  new ResizeObserver(() => {
+    document.documentElement.style.setProperty('--tower-info-h', `${Math.ceil(towerInfo.getBoundingClientRect().height)}px`);
+  }).observe(towerInfo);
+}
 $('restart').addEventListener('click', restart);
 $('zoom').addEventListener('click', toggleZoom);
 

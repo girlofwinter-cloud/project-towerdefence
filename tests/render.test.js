@@ -1371,3 +1371,16 @@ test('B-070 Randfälle (Tester): SHOP_CARD-Farben im Format #rrggbb, Groß-/Klei
   }
   assert.equal(contrastRatio('#FFFFFF', '#000000'), contrastRatio('#ffffff', '#000000'));
 });
+
+test('B-097: contrastRatio versteht auch die Kurzform #rgb, ungültige Farben ergeben NaN', async () => {
+  const { contrastRatio, relativeLuminance } = await import('../src/hud.js');
+  assert.equal(relativeLuminance('#fff'), 1);
+  assert.equal(relativeLuminance('#000'), 0);
+  assert.equal(relativeLuminance('#a3C'), relativeLuminance('#aa33cc'));
+  assert.equal(contrastRatio('#fff', '#000'), contrastRatio('#ffffff', '#000000'));
+  assert.equal(contrastRatio('#777', '#FFF'), contrastRatio('#777777', '#ffffff'));
+  for (const bad of ['red', '#ff', '#ffff', '#fffffff', '#ggg', 'ffffff', '', null, undefined]) {
+    assert.ok(Number.isNaN(relativeLuminance(bad)), `relativeLuminance(${bad})`);
+    assert.ok(Number.isNaN(contrastRatio(bad, '#000')), `contrastRatio(${bad})`);
+  }
+});
