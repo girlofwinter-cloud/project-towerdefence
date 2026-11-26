@@ -840,3 +840,9 @@ Neue Einträge werden unten angehängt. Bestehende Einträge werden nie geänder
 - Ergebnis: Analyse gegen Kingdom Rush (nur als Niveau-Referenz). Größte Lücken: Maßstab (Figuren zu klein), Webseiten-Bühne mit Seitenpanel, unscharfes Canvas auf Retina. Der designer hat Zielbilder für ein Vollbild-Layout in zwei Varianten entworfen (A ruhig, B kräftig), Auswahl in `docs/design/vollbild-*.png`. Neu im Backlog: B-129 bis B-141, alle `vorschlag`.
 - Entscheidungen: Der Mensch lehnt feste Bauplätze ab (B-083), das freie Raster bleibt. Empfehlung: Plaketten aus A, Donut-Ring aus B. B-129 bis B-132 nur als ein Block umsetzen. B-140 ist Spiel-Logik.
 - Tests: keine Codeänderung.
+
+## 2026-11-26 · Prozess · designer baut Prototypen in Claude Design
+- Rolle(n): orchestrator. Branch: agent/designer-claude-design
+- Ergebnis: Der designer liefert Entwürfe künftig als klickbare Prototypen in Claude Design (Design-Artefakt). Neu: `.claude/skills/design/prototyp-format.md` (Formatregeln) und `sprites.mjs` (Grafik-Export). Geändert: `.claude/skills/design/SKILL.md` (Abschnitt Prototyp), `.claude/agents/designer.md` (darf Prototyp-Dateien im Scratchpad schreiben).
+- Entscheidungen: Auf Wunsch des Menschen. Der designer hat kein Artifact-Tool, darum veröffentlicht der Orchestrator. Änderung an `.claude/`: Merge entscheidet der Mensch.
+- Tests: keine Spielcode-Änderung; `sprites.mjs` im Hauptordner getestet (31 PNGs).
