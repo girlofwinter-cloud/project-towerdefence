@@ -603,6 +603,7 @@ export const ICON = {
     heartEmpty: '#5b4a5e', flag: '#d4503f', meteorRock: '#7a6a64', meteorCrater: '#55474a', flame: '#ff7a1f', flameCore: '#ffc23a',
     glass: '#bff0ff', glassShine: '#ffffff', pause: '#fff3c9', play: '#7fd24a', paper: '#e2c88f', mapMark: '#d4503f',
     bone: '#f1e8d2', boneDark: '#4a3030', castleGate: '#4a3030', castleRoof: '#d4503f', // B-096: Totenkopf, Burg
+    speaker: '#e2c88f', soundWave: '#7fd8f4', mute: '#d4503f', // B-113: Ton an/aus
   },
 };
 
@@ -1095,5 +1096,87 @@ export const FX_STYLE = {
     rocks: 8, rockSpeed: 220, rockSpeedVar: 120, rockLift: 170, rockLife: 0.75, rockSize: 3.2, chunk: '#5a4a48',
     smoke: 6, smokeSize: 9, smokeSizeVar: 5, smokeLife: 1.1, smokeSpread: 0.5, smokeSpeed: 22,
     shake: 2.8, // Wackeln in px (SHAKE_MAX begrenzt), nur ohne prefers-reduced-motion
+  },
+};
+
+// B-113: Töne (Web Audio, synthetisiert, keine Dateien). Jeder Ton besteht aus Lagen:
+// osc = Oszillator (wave, freq -> endFreq in Hz), noise = gefiltertes Rauschen (filter, cutoff in Hz, q).
+// duration in s, gain = Spitzenlautstärke der Lage (0..1), attack = Anstiegszeit in s, delay = Start nach s (optional).
+// Die Hüllkurve fällt exponentiell bis SOUND.floorGain ab.
+export const SOUND = {
+  masterGain: 0.16,     // Gesamtlautstärke (leise)
+  floorGain: 0.0001,    // Endwert der Hüllkurve (exponentiell, darf nicht 0 sein)
+  attack: 0.005,        // Standard-Anstiegszeit in s
+  noiseLength: 0.5,     // Länge des gemeinsamen Rauschen-Buffers in s
+  storageKey: 'td-sound', // localStorage-Schlüssel für Ton an/aus
+  defaultOn: true,
+  // Begrenzung: höchstens perWindow Töne je Art (Schuss je Turmtyp, Tod, Boss) pro window Sekunden Echtzeit
+  limit: { window: 0.1, perWindow: 3 },
+  shots: {
+    // Pfeil: kurzes Zupfen/Sirren
+    arrow: [
+      { type: 'osc', wave: 'triangle', freq: 1250, endFreq: 620, duration: 0.09, gain: 0.35 },
+      { type: 'noise', filter: 'bandpass', cutoff: 3200, q: 2, duration: 0.04, gain: 0.12 },
+    ],
+    // Kanone: dumpfer Knall mit Rauschen
+    cannon: [
+      { type: 'osc', wave: 'sine', freq: 140, endFreq: 42, duration: 0.3, gain: 0.8 },
+      { type: 'noise', filter: 'lowpass', cutoff: 700, q: 0.7, duration: 0.22, gain: 0.55 },
+    ],
+    // Frost: heller, glasiger Ton (zwei Sinus im nicht-ganzzahligen Verhältnis)
+    frost: [
+      { type: 'osc', wave: 'sine', freq: 1900, endFreq: 2300, duration: 0.2, gain: 0.18 },
+      { type: 'osc', wave: 'sine', freq: 4750, endFreq: 5600, duration: 0.12, gain: 0.07 },
+    ],
+    // Scharfschütze: scharfer, kurzer Knall
+    sniper: [
+      { type: 'noise', filter: 'highpass', cutoff: 1800, q: 0.7, duration: 0.07, gain: 0.5 },
+      { type: 'osc', wave: 'square', freq: 520, endFreq: 140, duration: 0.08, gain: 0.12 },
+    ],
+    // Blitz: Zischen/Knistern
+    lightning: [
+      { type: 'noise', filter: 'bandpass', cutoff: 5200, q: 1.2, duration: 0.18, gain: 0.35 },
+      { type: 'osc', wave: 'sawtooth', freq: 95, endFreq: 70, duration: 0.14, gain: 0.06 },
+    ],
+  },
+  // Besiegter Gegner: kurzer "Plopp", Tonhöhe zufällig um ±pitchVar (Anteil) variiert
+  death: {
+    pitchVar: 0.18,
+    layers: [{ type: 'osc', wave: 'sine', freq: 520, endFreq: 210, duration: 0.11, gain: 0.4 }],
+  },
+  // Boss besiegt: tiefer, größerer Ton
+  boss: {
+    pitchVar: 0,
+    layers: [
+      { type: 'osc', wave: 'triangle', freq: 220, endFreq: 55, duration: 0.7, gain: 0.7 },
+      { type: 'osc', wave: 'sine', freq: 110, endFreq: 40, duration: 0.9, gain: 0.6 },
+      { type: 'noise', filter: 'lowpass', cutoff: 500, q: 0.7, duration: 0.4, gain: 0.4 },
+    ],
+  },
+  // Leben verloren (Gegner am Ziel): zwei kurze, absteigende Töne. Höchstens ein Warnton je limit-Fenster,
+  // auch wenn mehrere Leben auf einmal verloren gehen.
+  lifeLost: {
+    pitchVar: 0,
+    limit: { window: 0.8, perWindow: 1 },
+    layers: [
+      { type: 'osc', wave: 'triangle', freq: 494, endFreq: 470, duration: 0.14, gain: 0.45 },
+      { type: 'osc', wave: 'triangle', freq: 370, endFreq: 340, duration: 0.22, gain: 0.45, delay: 0.13 },
+      { type: 'osc', wave: 'sine', freq: 185, endFreq: 170, duration: 0.3, gain: 0.25, delay: 0.13 },
+    ],
+  },
+  // Meteor (Fähigkeit): kurzes Pfeifen/Rauschen beim Anflug, beim Einschlag dumpfer Knall mit Nachgrollen.
+  // Einschlag zählt nur, wenn er höchstens impactLate Anteile der Einschlagphase zurückliegt (sonst nicht nachholen).
+  meteor: {
+    impactLate: 0.5,
+    flight: [
+      { type: 'osc', wave: 'sine', freq: 1800, endFreq: 500, duration: 0.28, gain: 0.14 },
+      { type: 'noise', filter: 'bandpass', cutoff: 1400, q: 1.5, duration: 0.28, gain: 0.22, attack: 0.15 },
+    ],
+    impact: [
+      { type: 'osc', wave: 'sine', freq: 110, endFreq: 30, duration: 0.9, gain: 1 },
+      { type: 'osc', wave: 'triangle', freq: 70, endFreq: 28, duration: 1.4, gain: 0.5 },
+      { type: 'noise', filter: 'lowpass', cutoff: 900, q: 0.7, duration: 0.5, gain: 0.9 },
+      { type: 'noise', filter: 'lowpass', cutoff: 220, q: 0.7, duration: 1.6, gain: 0.6, attack: 0.06 }, // Nachgrollen
+    ],
   },
 };

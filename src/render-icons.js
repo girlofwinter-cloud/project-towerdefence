@@ -26,6 +26,22 @@ function stroke2(ctx, pts, color, w) {
   line(ctx, pts, color, w);
 }
 
+// Lautsprecher-Korpus (Kasten und Trichter) links der Mitte
+function speaker(ctx) {
+  rr(ctx, -11, -4.5, 5.5, 9, 1, P.woodDark, W);
+  poly(ctx, [[-6.5, -4.5], [0, -10], [0, 10], [-6.5, 4.5]], C.speaker, W);
+}
+
+// Bogen rechts von (x, y) als Punktliste (für stroke2)
+function arcPts(x, y, r) {
+  const pts = [];
+  for (let i = 0; i <= 6; i++) {
+    const a = -Math.PI / 4 + (i / 6) * (Math.PI / 2);
+    pts.push([x + Math.cos(a) * r, y + Math.sin(a) * r]);
+  }
+  return pts;
+}
+
 const DRAW = {
   gold(ctx) {
     ell(ctx, 0, 0, 12, 12, P.gold, W);
@@ -98,6 +114,16 @@ const DRAW = {
   },
   play(ctx) {
     poly(ctx, [[-7, -11], [11, 0], [-7, 11]], C.play, W);
+  },
+  // B-113: Lautsprecher mit Schallwellen (Ton an) bzw. mit rotem Kreuz (Ton aus)
+  sound(ctx) {
+    speaker(ctx);
+    for (const r of [5, 9.5]) stroke2(ctx, arcPts(2, 0, r), C.soundWave, 2);
+  },
+  soundOff(ctx) {
+    speaker(ctx);
+    stroke2(ctx, [[4, -5], [11, 5]], C.mute, 2);
+    stroke2(ctx, [[11, -5], [4, 5]], C.mute, 2);
   },
   map(ctx) {
     poly(ctx, [[-12, -9], [-4, -12], [4, -9], [12, -12], [12, 9], [4, 12], [-4, 9], [-12, 12]], C.paper, W);
