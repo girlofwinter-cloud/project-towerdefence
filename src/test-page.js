@@ -12,30 +12,26 @@ export function mountTestPanel(api) {
   const panel = document.createElement('section');
   panel.id = 'test-panel';
   panel.innerHTML = `
-    <h3>🧪 Testmodus</h3>
-    <p class="tp-note">Alle Karten offen · Fortschritt wird nicht gespeichert</p>
     <div class="tp-row">
+      <h3 title="Alle Karten offen · Fortschritt wird nicht gespeichert">🧪 Test</h3>
       <label>Karte <select id="tp-map"></select></label>
       <label>Welle <input id="tp-wave" type="number" min="1" max="${MAX_WAVES}" value="1" /></label>
-    </div>
-    <div class="tp-row">
       <button id="tp-new" title="Neues Spiel auf der Karte, direkt vor der gewählten Welle">Neues Spiel ab Welle</button>
       <button id="tp-jump" title="Türme bleiben stehen, Gegner werden entfernt">Zu Welle springen</button>
     </div>
     <div class="tp-row">
       <label><input id="tp-gold" type="checkbox" checked /> Unbegrenztes Gold</label>
       <label><input id="tp-lives" type="checkbox" /> Unverwundbar</label>
+      <span class="tp-speeds" id="tp-speeds">Tempo </span>
     </div>
-    <div class="tp-row" id="tp-speeds"></div>
     <div class="tp-row">
       <button id="tp-clear">Gegner entfernen</button>
       <button id="tp-cool">Fähigkeiten laden</button>
-    </div>
-    <div class="tp-row">
       <button id="tp-win">Sieg erzwingen</button>
       <button id="tp-lose">Niederlage erzwingen</button>
     </div>`;
-  document.querySelector('aside').prepend(panel);
+  // Unter dem Spielfeld statt in der Seitenleiste: dort ist Platz, und der Turm-Shop bleibt ohne Scrollen sichtbar.
+  document.querySelector('.board').appendChild(panel);
   // Eingaben im Panel dürfen keine Spiel-Tasten auslösen (z. B. „5“ im Wellenfeld = Turm 5).
   panel.addEventListener('keydown', (ev) => ev.stopPropagation());
 
@@ -52,7 +48,7 @@ export function mountTestPanel(api) {
     $('tp-speeds').appendChild(b);
   }
   function markSpeed() {
-    for (const b of $('tp-speeds').children) b.classList.toggle('active', Number(b.dataset.speed) === api.ui.speed);
+    for (const b of $('tp-speeds').querySelectorAll('button')) b.classList.toggle('active', Number(b.dataset.speed) === api.ui.speed);
   }
 
   const wave = () => { const w = clampWave($('tp-wave').value); $('tp-wave').value = w; return w; };
