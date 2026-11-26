@@ -629,3 +629,12 @@ Fläche mit vier Stilen für dieselbe Szene (Wiese, Welle 8): https://claude.ai/
 - Akzeptanzkriterien:
   - Weg-Kontur und Gegner im Screenshot klar lesbar (Helligkeitsabstand Gegner/Weg mindestens 25 %).
   - Frame-Zeit mit 20 Lichtkegeln höchstens +1 ms, "perfektes Spiel bis Welle 20" erfüllt.
+
+### B-147: Spielschrift Lilita One für Zahlen und Titel
+- Status: offen
+- Aufwand: S
+- Idee: Die vom Menschen gelieferte Schrift `assets/fonts/LilitaOne-Regular.ttf` (SIL OFL, siehe `assets/fonts/LIZENZ.md`) per `@font-face` in `style.css` einbinden, selbst gehostet, nie von einem fremden Server. Einsatz: Zahlen und Titel im HUD (Gold, Welle, Leben, Preise, Overlays) und Zahlen, die im Canvas gezeichnet werden (Schadens-/Münzzahlen, falls vorhanden), jeweils mit dunklem Umriss. Rückfall: fette Systemschrift. Canvas-Text erst nach `document.fonts.load(...)` mit der Schrift zeichnen. `scripts/serve.mjs` braucht `'.ttf': 'font/ttf'`.
+- Akzeptanzkriterien:
+  - Im Screenshot sind HUD-Zahlen in Lilita One gesetzt (Desktop und Handy), Lesbarkeit mindestens wie vorher.
+  - `OFL.txt` und `LIZENZ.md` liegen neben der Schrift und werden mit ausgeliefert (liegen unter `assets/`).
+  - Unit-Test: `contentType('x.ttf')` ist `font/ttf`; e2e: `document.fonts.check('16px "Lilita One"')` wird nach dem Laden wahr; `npm test` grün.
