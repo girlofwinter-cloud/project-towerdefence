@@ -782,3 +782,12 @@ Neue Einträge werden unten angehängt. Bestehende Einträge werden nie geänder
 - Branch: agent/gain-trennen
 - Ergebnis: fertig. `stopMusic` trennt Quelle und Gain per `onended`.
 - Tests: 459 bestanden, e2e 38/38. Fake-Audio um `disconnect()` erweitert, neuer Test.
+
+---
+
+## 2026-11-26 · B-120 · Lava und Meteor nach Gegnerwelle skalieren
+- Rolle(n): orchestrator, developer, reviewer (ohne Tester, kleiner Diff)
+- Branch: agent/lava-meteor-welle
+- Ergebnis: fertig. Gegner speichern ihre Welle (`enemy.wave`); Lava und Meteor skalieren damit (Rückfall `state.wave`). Ohne Frühstart unverändert.
+- Tests: 3 neue, alle grün; Strategie-Simulationen unverändert.
+- Review: APPROVE. Hinweis: Meteor-Tooltip zeigt bei zwei Wellen den Schaden der neueren Welle (Obergrenze), bleibt so.

@@ -599,3 +599,10 @@ Agents lesen diese Datei nur bei konkretem Bedarf.
 - Idee: Nach `stopMusic` in `src/audio.js` bleibt der alte Gain-Knoten mit `ctx.destination` verbunden (ein toter Knoten je Kartenwechsel, Reviewer-Hinweis zu B-118). `src.onended = () => gain.disconnect()`.
 - Akzeptanzkriterien:
   - Nach einem Kartenwechsel ist der alte Gain getrennt (Fake-Audio-Test in `tests/sound.test.js`).
+
+### B-120: Lava und Meteor nach Gegnerwelle skalieren
+- Status: fertig (Mensch hat am 2026-11-26 freigegeben, inkl. Balancing-Wirkung)
+- Aufwand: S
+- Idee: Lava-Schaden (`game.js` nearLava/hpScale) und Meteor-Schaden skalieren mit `state.wave`, also der höchsten gestarteten Welle. Nach einem Frühstart (B-005) bekommen Gegner der vorigen Welle dadurch etwas mehr Schaden. Mit der Welle des Gegners skalieren (Tester-Hinweis zu B-005). Balancing: Mensch entscheidet.
+- Akzeptanzkriterien:
+  - Gegner speichern ihre Welle; Lava/Meteor nutzen sie. Test mit zwei parallelen Wellen.
