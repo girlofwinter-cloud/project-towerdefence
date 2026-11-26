@@ -547,3 +547,10 @@ Agents lesen diese Datei nur bei konkretem Bedarf.
 - Akzeptanzkriterien:
   - Startet erst nach der ersten Nutzeraktion, nahtlose Schleife, mit dem Ton-Knopf aus; kein Lautstärkeregler (Wunsch des Menschen).
   - Datei höchstens ca. 1,5 MB, Lizenz in `assets/sounds/LIZENZ.md`.
+
+### B-117: Bauplatz-Inseln entfernen
+- Status: fertig
+- Aufwand: S
+- Idee: Wunsch des Menschen am 2026-11-26: Die Gras-Inseln unter den Türmen (B-082) gab es nur auf der Wiese; Türme sollen auf allen Karten gleich aussehen. Inseln ganz entfernen statt auf alle Karten ausweiten.
+- Akzeptanzkriterien:
+  - Keine Insel unter gebauten Türmen und in der Bau-Vorschau, auf keiner Karte; `npm test` grün.

@@ -71,7 +71,7 @@ export const MAPS = {
     water: [...withoutBridges(MEADOW_RIVER, MEADOW_BRIDGES), ...MEADOW_LAKE],
     // B-071: Wegpalette der Wiese (STIL.md); Eiswelt und Zangenangriff haben eigene Wegfarben (B-072, B-073).
     // B-103: decor.flatTrees, damit die Hindernisse im Flat-Pop-Stil erscheinen (Laubbaum, Fels mit Kontur)
-    theme: { treeFrame: true, ground: true, accents: true, light: true, islands: true, decorStyle: 'flatpop', decor: { flatTrees: true }, path: { main: '#e2c88f', edge: '#8f6a3b', outline: '#4a3418', mid: '#ecd5a0', fringe: '#6fbf4e' } },
+    theme: { treeFrame: true, ground: true, accents: true, light: true, decorStyle: 'flatpop', decor: { flatTrees: true }, path: { main: '#e2c88f', edge: '#8f6a3b', outline: '#4a3418', mid: '#ecd5a0', fringe: '#6fbf4e' } },
   },
   // Eiswelt (B-029, Glatteis): Gegner rutschen schneller, Kanone und Frost sind schwächer. Modifikatoren (enemySpeed, towerDamage je Typ, slowStrength) und kühles Farbschema (theme).
   ice: {
@@ -956,20 +956,6 @@ export const LAVA_STYLE = {
     shadow: 'rgba(30,10,8,0.4)', shadowOffset: [2, 4],
     lavaReach: 0.75,       // Lava wird unter der Brücke bis zu diesem Anteil einer Kachel quer zum Weg neu gemalt
   },
-};
-
-// Bauplatz-Inseln der Wiese (B-082): Gras-Plateau mit Kontur und kurzer Wand unter jedem Turm, blasse Vorschau beim Hover.
-// Nur Optik im Frame-Pfad (Türme sind dynamisch), aktiv nur mit MAPS.<id>.theme.islands. Maße in px bei 1x.
-export const ISLAND_STYLE = {
-  offsetY: 11,            // Mittelpunkt der Insel unterhalb der Turmmitte
-  rx: 30, ry: 15,         // Halbachsen der Grasfläche
-  wall: 4,                // Höhe der Wand unter der Grasfläche
-  outline: 1.5,           // Konturbreite
-  colors: { shadow: '43,27,61', outline: '47,106,44', wall: '58,125,50', top: '116,193,87', light: '147,217,107' },
-  shadowAlpha: 0.3,       // Schlagschatten rechts unten
-  ghostAlpha: 0.45,       // Deckkraft der Vorschau-Insel (Hover, gültig)
-  badTint: '255,60,60',   // Rötung bei ungültiger Kachel
-  badAlpha: 0.45,
 };
 
 // Reichweitenkreis (B-082): kräftiger Ring, sehr dezente Fläche (ca. 8 %), damit er über Deko und Plateaus ruhig wirkt.

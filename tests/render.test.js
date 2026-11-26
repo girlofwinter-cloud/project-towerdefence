@@ -973,11 +973,10 @@ test('Wiesen-Licht: Abdunklung begrenzt, nur Wiese, Gradienten nur im Cache, Auf
   } finally { delete globalThis.document; }
 });
 
-test('B-082: Insel wird im Frame-Pfad mit dem Turm gezeichnet (nur Wiese), nicht im Hintergrund-Cache', async () => {
+test('B-117: keine Karte zeichnet Bauplatz-Inseln; Türme im Frame-Pfad, nicht im Hintergrund-Cache', async () => {
   const { MAPS } = await import('../src/config.js');
   const { render } = await import('../src/render.js?insel');
-  assert.equal(MAPS.meadow.theme.islands, true);
-  for (const id of Object.keys(MAPS)) if (id !== 'meadow') assert.ok(!MAPS[id].theme?.islands, `${id} ohne Inseln`);
+  for (const id of Object.keys(MAPS)) assert.ok(!MAPS[id].theme?.islands, `${id} ohne Inseln`);
   const offscreen = [];
   globalThis.document = { createElement() { const m = mockCtx(); const c = { width: 0, height: 0, getContext: () => m.ctx, m }; offscreen.push(c); return c; } };
   try {
@@ -989,18 +988,18 @@ test('B-082: Insel wird im Frame-Pfad mit dem Turm gezeichnet (nur Wiese), nicht
     const bgEll = cache.m.counts.ellipse || 0;
     build(s);
     const withTowers = frame(s);
-    assert.equal(cache.m.counts.ellipse || 0, bgEll, 'Cache enthält keine Insel');
-    assert.ok(withTowers > empty, 'Insel im Frame-Pfad');
-    assert.equal(frame(s), withTowers, 'zweiter Frame zeichnet die Insel erneut');
-    // gleiche Türme auf der Eiswelt: weniger Ellipsen pro Turm (keine Inseln)
+    assert.equal(cache.m.counts.ellipse || 0, bgEll, 'Cache unverändert nach dem Bauen');
+    assert.ok(withTowers > empty, 'Türme im Frame-Pfad');
+    assert.equal(frame(s), withTowers, 'zweiter Frame zeichnet gleich');
+    // gleiche Türme auf der Eiswelt: gleich viele zusätzliche Ellipsen (keine Insel auf der Wiese)
     const f = createGame({ mapId: 'ice' });
     const otherEmpty = frame(f);
     build(f);
-    assert.ok(withTowers - empty > frame(f) - otherEmpty, 'Wiese zeichnet je Turm zusätzlich eine Insel');
-    // Vorschau: gültig und ungültig bekommen eine Insel (nur Wiese)
+    assert.equal(withTowers - empty, frame(f) - otherEmpty, 'Wiese zeichnet je Turm keine zusätzliche Insel');
+    // Vorschau: gültig und ungültig erzeugen auf der Wiese keine zusätzlichen Ellipsen
     const hover = (map, ok) => frame(createGame({ mapId: map }), { buildType: 'cannon', hover: { col: 3, row: 1, ok } });
-    assert.ok(hover('meadow', true) > frame(createGame({ mapId: 'meadow' })));
-    assert.ok(hover('meadow', false) > frame(createGame({ mapId: 'meadow' })));
+    assert.equal(hover('meadow', true) - frame(createGame({ mapId: 'meadow' })), hover('ice', true) - frame(createGame({ mapId: 'ice' })), 'gültige Vorschau ohne Insel');
+    assert.equal(hover('meadow', false), frame(createGame({ mapId: 'meadow' })), 'ungültige Vorschau ohne Insel');
   } finally { delete globalThis.document; }
 });
 
@@ -1024,7 +1023,7 @@ test('B-082: Reichweitenkreis ist Ring mit dezenter Fläche; drawTower (Shop-Vor
   assert.ok((b.counts.ellipse || 0) > (a.counts.ellipse || 0), 'drawTower allein ohne Insel');
 });
 
-test('Tester B-082: Rand-Turm, Hover null/Rand, Meteor-Zielkreis und Kartenwechsel crashen nicht; Inseln nur auf der Wiese', async () => {
+test('Tester B-082/B-117: Rand-Turm, Hover null/Rand, Meteor-Zielkreis und Kartenwechsel crashen nicht; keine Inseln auf allen Karten', async () => {
   const { render } = await import('../src/render.js?tester082');
   const run = (s, ui) => { const m = mockCtx(); render(m.ctx, s, ui); return m; };
   const s = createGame();
@@ -1037,7 +1036,7 @@ test('Tester B-082: Rand-Turm, Hover null/Rand, Meteor-Zielkreis und Kartenwechs
     run(s, ui);
   const wiese = run(s, {}).counts.ellipse || 0;
   const other = createGame({ mapId: 'twin' });
-  for (const id of ['ice', 'fork', 'twin']) {
+  for (const id of ['meadow', 'ice', 'fork', 'twin', 'volcano']) {
     const g = createGame({ mapId: id }); g.gold = 99999;
     buildTower(g, 'arrow', 0, 0); buildTower(g, 'arrow', COLS - 1, ROWS - 1);
     const g0 = createGame({ mapId: id });
@@ -1427,7 +1426,7 @@ test('B-104: Render zeichnet mit und ohne Wasser ohne Fehler; Geometrie determin
   drawWater(n.ctx, null);
   drawBridges(n.ctx, null);
   assert.equal(Object.keys(n.counts).length, 0, 'ohne Wasser nichts zeichnen');
-  // ganzer Render mit Turm neben dem Fluss (Insel ausgespart) und Vorschau über Wasser
+  // ganzer Render mit Turm neben dem Fluss und Vorschau über Wasser
   const { render } = await import('../src/render.js?wasser');
   globalThis.document = { createElement() { const c = mockCtx(); return { width: 0, height: 0, getContext: () => c.ctx }; } };
   try {
@@ -1438,9 +1437,9 @@ test('B-104: Render zeichnet mit und ohne Wasser ohne Fehler; Geometrie determin
       render(main.ctx, st, { buildType: 'arrow', hover: { col: 1, row: 5, ok: false } });
       assert.equal(main.depth, 0, id);
       if (id !== 'meadow') continue;
-      const dry = mockCtx(); // gleicher Zustand ohne Wasser: ein Clip weniger
+      const dry = mockCtx(); // gleicher Zustand ohne Wasser: Turm-Zeichnung braucht keinen zusätzlichen Clip (B-117)
       render(dry.ctx, { ...st, water: new Set() }, { buildType: 'arrow', hover: { col: 1, row: 5, ok: false } });
-      assert.equal(main.counts.clip - (dry.counts.clip || 0), 1, 'Inseln sparen Wasser aus');
+      assert.equal((main.counts.clip || 0) - (dry.counts.clip || 0), 0, 'kein Wasser-Clip im Frame-Pfad');
     }
   } finally { delete globalThis.document; }
 });
