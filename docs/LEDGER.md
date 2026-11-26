@@ -834,3 +834,9 @@ Neue Einträge werden unten angehängt. Bestehende Einträge werden nie geänder
 - Abweichungen (alle vom Menschen entschieden): geplant waren 10/20; Nekromantin in Welle 10 machte die Eiswelt zu schwer, Skelette vor ihr ließen sie durchlaufen, +1 Nekromantin in Welle 20 kippte die Wiese. Eiswelt-Test (B-125) gelockert: knapper Sieg mit höchstens 5 Leben erlaubt. Belohnung 65→75, weil Vulkan Welle 20 nach dem Zusammenführen mit dem Magier zu schwer war.
 - Erkenntnis: Die Strategie-Tests reagieren chaotisch auf kleine Änderungen (Gold, HP); einzelne Grenzen kippen in beide Richtungen.
 - Tests: 484 Unit grün; Wellenplan-Tests an den neuen Plan angepasst.
+
+## 2026-11-26 · Design · Zielbild Vollbild-Layout
+- Rolle(n): designer, orchestrator. Branch: agent/design-vollbild
+- Ergebnis: Analyse gegen Kingdom Rush (nur als Niveau-Referenz). Größte Lücken: Maßstab (Figuren zu klein), Webseiten-Bühne mit Seitenpanel, unscharfes Canvas auf Retina. Der designer hat Zielbilder für ein Vollbild-Layout in zwei Varianten entworfen (A ruhig, B kräftig), Auswahl in `docs/design/vollbild-*.png`. Neu im Backlog: B-129 bis B-141, alle `vorschlag`.
+- Entscheidungen: Der Mensch lehnt feste Bauplätze ab (B-083), das freie Raster bleibt. Empfehlung: Plaketten aus A, Donut-Ring aus B. B-129 bis B-132 nur als ein Block umsetzen. B-140 ist Spiel-Logik.
+- Tests: keine Codeänderung.
