@@ -4,7 +4,7 @@
 // Keine Allokationen pro Frame: Konstanten und Tabellen liegen auf Modulebene.
 import { ENEMY_TYPES, TILE } from './config.js';
 import { rect, tri, disc, groundShadow } from './draw-utils.js';
-import { drawGruntFlat, drawRunnerFlat, drawTankFlat, drawHealerFlat, drawShieldedFlat } from './render-enemies-flat.js';
+import { drawGruntFlat, drawRunnerFlat, drawTankFlat, drawHealerFlat, drawShieldedFlat, drawBossFlat } from './render-enemies-flat.js';
 import { walkPhase, animSpeedFactor, facingFor, facingFlip, facingTilt } from './enemy-fx.js';
 
 const TWO_PI = Math.PI * 2;
@@ -35,59 +35,12 @@ const HP_BOSS_LIFT = 6; // Boss-Krone ragt hoeher -> Balken weiter oben
 // Farben
 const WHITE = '#fff';
 const EYE_DARK = '#1a1a1a';
-const OGRE = { skin: '#7a2e8e', light: '#9a4cb0', dark: '#55206a', gold: '#f2c94c', goldDark: '#b8912a', aura: 'rgba(180,90,220,0.2)', club: '#6b4a2b', tusk: '#f0e6d2', eye: '#ff4a4a' };
 // Heil-Aura (deutlich dezenter als der Frost-Ring)
 const HEAL_AURA_FILL = 'rgba(90,230,150,0.07)';
 const HEAL_AURA_RING = 'rgba(120,240,170,0.28)';
 const HEAL_AURA_WIDTH = 1.5;
 const HEAL_AURA_PULSE = 0.04; // relative Radius-Schwankung
 const HEAL_AURA_SPEED = 2; // Bogenmass pro Sekunde
-
-function oval(ctx, color, x, y, rx, ry, rot) {
-  ctx.fillStyle = color;
-  ctx.beginPath();
-  ctx.ellipse(x, y, rx, ry, rot, 0, TWO_PI);
-  ctx.fill();
-}
-
-// Ein Bein: Huefte (hx, hy), Fuss schwingt mit der Phase vor/zurueck und hebt sich im Vorschwung
-function leg(ctx, color, width, hx, hy, len, phase, swing, lift) {
-  const fx = hx + Math.sin(phase) * swing;
-  const fy = hy + len - Math.max(0, Math.cos(phase)) * lift;
-  ctx.strokeStyle = color;
-  ctx.lineWidth = width;
-  ctx.lineCap = 'round';
-  ctx.beginPath();
-  ctx.moveTo(hx, hy);
-  ctx.lineTo(fx, fy);
-  ctx.stroke();
-}
-
-// Oger-Koenig: grosse violette Gestalt mit Krone, Keule und pulsierender Aura
-function drawBoss(ctx, phase, time) {
-  disc(ctx, OGRE.aura, 0, 0, 1.0 + Math.sin(time * 3) * 0.08);
-  leg(ctx, OGRE.dark, 0.36, -0.32, 0.55, 0.38, phase, 0.14, 0.08);
-  leg(ctx, OGRE.dark, 0.36, 0.32, 0.55, 0.38, phase + Math.PI, 0.14, 0.08);
-  ctx.translate(0, -Math.abs(Math.sin(phase)) * BOB * 0.6);
-  // Keule hinter dem Koerper (schwingt leicht mit)
-  rect(ctx, OGRE.club, 0.62, -0.5, 0.18, 1.0);
-  disc(ctx, OGRE.club, 0.71, -0.55, 0.24);
-  oval(ctx, OGRE.dark, 0, 0.1, 0.78, 0.7, 0);
-  oval(ctx, OGRE.skin, 0, 0.05, 0.72, 0.64, 0);
-  oval(ctx, OGRE.light, 0.05, 0.22, 0.42, 0.34, 0);
-  // Kopf
-  disc(ctx, OGRE.light, 0.2, -0.4, 0.42);
-  tri(ctx, OGRE.tusk, 0.35, -0.12, 0.45, 0.1, 0.5, -0.15);
-  tri(ctx, OGRE.tusk, 0.1, -0.12, 0.05, 0.1, 0.2, -0.12);
-  disc(ctx, OGRE.eye, 0.36, -0.46, 0.1);
-  disc(ctx, OGRE.eye, 0.04, -0.46, 0.08);
-  // Krone
-  rect(ctx, OGRE.goldDark, -0.15, -0.88, 0.72, 0.16);
-  tri(ctx, OGRE.gold, -0.15, -0.88, -0.1, -1.2, 0.1, -0.88);
-  tri(ctx, OGRE.gold, 0.1, -0.88, 0.21, -1.24, 0.32, -0.88);
-  tri(ctx, OGRE.gold, 0.32, -0.88, 0.5, -1.2, 0.57, -0.88);
-  disc(ctx, OGRE.eye, 0.21, -0.8, 0.05);
-}
 
 // Unbekannter Typ: generische Figur (Kreis in def.color, falls vorhanden) mit Augen
 function drawGeneric(ctx, phase, time, color) {
@@ -102,11 +55,11 @@ const FIGURES = new Map([
   ['grunt', drawGruntFlat],
   ['runner', drawRunnerFlat],
   ['tank', drawTankFlat],
-  ['boss', drawBoss],
+  ['boss', drawBossFlat],
   ['healer', drawHealerFlat],
   ['shielded', drawShieldedFlat],
 ]);
-const FLAT_TYPES = new Set(['grunt', 'runner', 'tank', 'healer', 'shielded']);
+const FLAT_TYPES = new Set(['grunt', 'runner', 'tank', 'healer', 'shielded', 'boss']);
 const FALLBACK_COLOR = '#999';
 
 // Frost: bluelicher Glanz ueber der Figur plus kleine Eiskristalle (lokale Einheiten)
