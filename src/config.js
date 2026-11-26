@@ -320,7 +320,47 @@ export const MAPS = {
     lava: [...withoutBridges(VOLCANO_LAVA_RIVER, VOLCANO_BRIDGES), ...VOLCANO_LAVA_POOLS],
     // B-103: wenige Hindernisse (verkohlter Baum oder Fels)
     obstacles: [[1, 8], [7, 1], [18, 8]],
-    theme: { treeFrame: true, ground: true, light: true, decorStyle: 'flatpop', decor: { flatTrees: true } },
+    // Flat-Pop-Vulkan (STIL.md): dunkles Vulkangestein, verkohlte Bäume und Felsbrocken als Rahmen, Asche und Glutsteine
+    // als Streu-Deko, warmes Licht von der Lava.
+    theme: {
+      treeFrame: {
+        kindShare: [0.55, 0, 0, 0.45],
+        greens: ['#3b302f', '#453735', '#352b2b', '#4a3b38'],
+        fir: ['#2e2422', '#3a2d2a'],
+      },
+      ground: {
+        base: '#4d3c3e',
+        light: 'rgba(112,88,84,0.2)',
+        dark: 'rgba(38,26,28,0.26)',
+        blade: ['#2e2325', '#3a2c2e', '#6a5450'],
+        tufts: 160,
+        plateauTop: '#524244',
+        plateauWall: 'rgba(30,20,22,0.9)',
+        plateauRim: 'rgba(18,10,12,0.42)',
+        plateauLight: 'rgba(160,130,125,0.12)',
+      },
+      light: { tint: '255,170,110', shadow: '24,10,12', gradientAlpha: 0.06, beamAlpha: 0.03, vignetteAlpha: 0.22, treeShadowAlpha: 0.2 },
+      decorStyle: 'flatpop',
+      decor: {
+        flatTrees: true,
+        firShare: 0.6,
+        treeColors: ['#3b302f', '#453735', '#352b2b'],
+        fir: ['#2e2422', '#3a2d2a'],
+        trunk: '#241a18',
+        bush: '#4a3a36', berry: '#ff7a1f', rock: '#5a4a48', moss: '#7a6a66',
+        flowers: ['#ff7a1f', '#ffc23a', '#d4503f'], flowerCore: '#fff1b0', stem: '#2e2325', tuft: '#2e2325', tuftLight: '#6a5450',
+        pebble: '#5a4a48', wood: '#3a2a26', woodDark: '#1f1614', logEnd: '#ff9a3a',
+        ember: '#ff7a1f', emberCore: '#ffc23a', ash: '#8a7c78',
+        obstacleGround: 'rgba(20,10,10,0.3)',
+        scatterChance: 0.11,
+        scatterKinds: [['ember', 0.26], ['ash', 0.22], ['rockgroup', 0.24], ['stump', 0.12], ['pebbles', 0.16]],
+      },
+      path: { main: '#8b7468', edge: '#2d1f20', outline: '#1f1415', mid: '#9c857a', fringe: '#2e2325' },
+      pathStyle: {
+        rutColor: 'rgba(45,31,32,0.35)', stoneColors: ['#5a4a48', '#7a6a66'], pebbleColors: ['#6a5650', '#a08a80'],
+        stoneShadow: 'rgba(20,10,12,0.45)', patchDark: 'rgba(45,31,32,0.16)', patchLight: 'rgba(255,190,140,0.12)',
+      },
+    },
   },
 };
 export const DEFAULT_MAP_ID = 'meadow';
@@ -751,6 +791,10 @@ export const DECOR_STYLE = {
   snow: null,
   snowShade: '#c6dcec',
   crystal: '#7fe0ff',
+  // B-030 (Vulkan): Glutsteine und Asche
+  ember: '#ff7a1f',
+  emberCore: '#ffc23a',
+  ash: '#8a7c78',
   // Streu-Deko: wenige flache Stücke auf freien Kacheln, die kein anderes Dekor tragen.
   scatterChance: 0.07,    // Wahrscheinlichkeit je freier Kachel
   scatterEndMargin: 1,    // Abstand (Kacheln, Chebyshev) zu Tor und Ziel
@@ -854,6 +898,40 @@ export const WATER_STYLE = {
     post: 4,               // Pfostengröße
     shadow: 'rgba(43,27,61,0.3)', shadowOffset: [2, 4],
     waterReach: 0.75,      // Wasser wird unter der Brücke bis zu diesem Anteil einer Kachel quer zum Weg neu gemalt
+  },
+};
+
+// Lava des Vulkans (B-030): Lavafluss, Lavatümpel und Steinbrücke. Nur Optik im Hintergrund-Cache (statisch), Maße in px bei 1x.
+// Gezeichnet nur auf Karten mit MAPS.<id>.lava (Kacheln aus lavaRiver/lavaPools/bridges). Palette siehe STIL.md (Vulkan).
+export const LAVA_STYLE = {
+  glow: 'rgba(255,122,31,0.16)', // Glühen auf dem Boden rund um die Lava (zwei Lagen)
+  glowWidth: [18, 9],      // zusätzliche Breite der Glüh-Lagen je Seite
+  crust: '#2a1a17',        // dunkle Kruste am Rand (Kontur)
+  crustWidth: 4,
+  lava: '#ff7a1f',         // Fläche
+  core: '#ffc23a',         // heller Kern zur Mitte hin (Glut)
+  coreScale: [0.62, 0.3],  // Breite der Kern-Stufen als Anteil der Fläche (zweite Stufe in coreHot)
+  coreHot: '#ffe58a',
+  riverWidth: 24,
+  riverWiggle: 3,          // seitlicher Schwung je Kachel, höchstens (deterministisch)
+  edgePad: 24,             // Fluss läuft über Ober- und Unterkante hinaus (unter den Rahmen)
+  poolRadius: 17,          // Radius je Tümpelkachel (Umriss wie der See: geglättete Hülle der Kreise)
+  poolJoin: 1.15,          // Tümpel aus mehreren Kacheln: Radius mal diesem Faktor (ein Oval statt zwei Kreise)
+  poolShift: 6,            // Tümpel rücken so viele px vom angrenzenden Weg weg (der Wegrand verdeckt sie sonst)
+  plate: '#4a2a22',        // Krustenschollen auf der Lava
+  plateSize: [4.5, 2.6],   // Halbachsen einer Scholle
+  plateEvery: 3,           // jede n-te Flusskachel trägt eine Scholle
+  spark: '#fff1b0',        // kleine helle Glutpunkte
+  sparkSize: 1.3,
+  // Steinbrücke: Steinplatten quer zur Laufrichtung, Brüstung aus Blöcken, Schlagschatten auf der Lava
+  bridge: {
+    length: 46, width: 30,
+    stone: '#9a8a80', stoneTop: '#b8a99e', seam: '#6a5a52', outline: '#2a1c1a', outlineWidth: 1.3,
+    slab: 11.5,            // Plattenbreite (Fugenabstand)
+    rail: 4.5,             // Stärke der Brüstung
+    block: 9,              // Blocklänge der Brüstung
+    shadow: 'rgba(30,10,8,0.4)', shadowOffset: [2, 4],
+    lavaReach: 0.75,       // Lava wird unter der Brücke bis zu diesem Anteil einer Kachel quer zum Weg neu gemalt
   },
 };
 

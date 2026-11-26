@@ -185,6 +185,24 @@ function snowpile(ctx, x, y) {
   blob(ctx, x + 5, y - 2.6, 4.4, 2.4, D.snow, 0.1);
 }
 
+// Glutsteine (B-030, Vulkan): dunkle Steine mit glühenden Rissen und Glutkern
+function ember(ctx, x, y) {
+  flatShadow(ctx, x, y + 1, 9, 2.6);
+  rockShape(ctx, x - 4, y + 1.5, 4.4, 4, shd(D.rock, 0.15), null);
+  rockShape(ctx, x + 3, y + 1, 5.6, 5.4, D.rock, null);
+  stroke(ctx, [[x + 0.5, y - 3.4], [x + 2.6, y - 1.6], [x + 2, y + 0.4]], D.ember, 1.4);
+  rr(ctx, x - 5.6, y - 1.2, 3.2, 2.4, 1.2, D.ember);
+  rr(ctx, x - 5, y - 0.7, 1.6, 1.2, 0.6, D.emberCore);
+}
+
+// Aschehaufen (B-030, Vulkan): flacher grauer Hügel mit hellerer Kuppe
+function ash(ctx, x, y) {
+  flatShadow(ctx, x, y + 1, 10, 3);
+  blob(ctx, x, y, 10, 4.4, shd(D.ash, 0.2));
+  blob(ctx, x - 1.2, y - 1.4, 7.6, 3.4, D.ash, 0.3);
+  blob(ctx, x + 4, y - 2.2, 3.4, 1.8, lit(D.ash, 0.2), 0.1);
+}
+
 function barrel(ctx, x, y) {
   flatShadow(ctx, x, y, 8, 3);
   rr(ctx, x - 6, y - 12, 12, 14, 4, D.wood);
@@ -237,6 +255,8 @@ export function drawScatter(ctx, s, x, y) {
   else if (s.kind === 'snowpile') snowpile(ctx, x, y);
   else if (s.kind === 'rockgroup') rockgroup(ctx, x, y);
   else if (s.kind === 'barrel') barrel(ctx, x, y);
+  else if (s.kind === 'ember') ember(ctx, x, y);
+  else if (s.kind === 'ash') ash(ctx, x, y);
   else if (s.kind === 'log') log(ctx, x, y, s.angle);
   else if (s.kind === 'stakes') stakes(ctx, x, y);
   else if (s.kind === 'sign') sign(ctx, x, y);

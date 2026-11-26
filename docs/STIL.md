@@ -17,7 +17,7 @@ Welten (Boden A / Boden B / Halm / Weg / Wegrand / Akzente):
 - **Zwei Fronten (Spätsommer):** `#7cb24f` `#74a94a` `#5a8f36` / `#dcc08a` `#86603a` / Pilz `#c9542f`, Tanne `#336f3c`. (Der Wald wurde mit B-098 entfernt.)
 - **Eis:** `#e3f1fa` `#d4e8f5` `#9cc3d8` / Weg `#9db3c9`, Rand `#4f6682` / Kristall `#7fe0ff`, Schnee `#ffffff`, Tanne `#2f6f5f`.
 - **Zangenangriff (Hochland, Herbst):** `#b3b45a` `#a8a950` `#868838` / `#d6ab70` `#7d5632` / Laub `#e0803a`, Fels `#8b8c94`, Stamm `#6e4d2a`.
-- **Vulkan (geplant):** `#4d3c3e` `#443538` `#2e2325` / `#8b7468` `#2d1f20` / Lava `#ff7a1f`, Glut `#ffc23a`, Fels `#2a2224`.
+- **Vulkan (B-030):** `#4d3c3e` `#524244` `#2e2325` / `#8b7468` `#2d1f20` / Lava `#ff7a1f`, Glut `#ffc23a`, heller Kern `#ffe58a`, Kruste `#2a1a17`, Fels `#5a4a48`, Asche `#8a7c78`, verkohlte Bäume `#2e2422` `#3b302f`, Steinbrücke `#9a8a80`. Lava statisch im Hintergrund-Cache (Glühen als zwei halbtransparente Lagen, keine Verläufe, kein Pulsieren).
 - **Wüste (geplant):** `#eac27a` `#e0b66b` `#c4953e` / `#c98f55` `#7a4e26` / Kaktus `#5fa05a`, Knochen `#f1ead8`, Ruine `#b48a5e`.
 
 Regel: Weg und Boden unterscheiden sich im Helligkeitswert deutlich, nicht nur im Farbton.

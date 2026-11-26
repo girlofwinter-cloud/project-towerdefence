@@ -560,3 +560,17 @@ test('B-030: Deko, Streu-Deko, Plateaus und Büschel liegen nie auf Lava; Karten
   for (const p of g.plateaus) assert.ok(!nearWater(s.lava, p.x, p.y, WATER_STYLE.groundMargin), `Plateau an Lava ${p.x},${p.y}`);
   for (const id of Object.keys(MAPS)) if (id !== 'volcano') assert.equal(lavaTiles(id).size, 0, id);
 });
+
+test('B-030: Vulkan-Palette aus STIL.md (Boden, Weg, Lava), klar verschieden von den anderen Welten, Streu-Deko mit Glut und Asche', async () => {
+  const { themed, GROUND_STYLE, LAVA_STYLE, DECOR_STYLE } = await import('../src/config.js');
+  const t = MAPS.volcano.theme;
+  assert.equal(t.ground.base, '#4d3c3e');
+  assert.equal(t.path.main, '#8b7468');
+  assert.equal(t.path.edge, '#2d1f20');
+  assert.equal(LAVA_STYLE.lava, '#ff7a1f');
+  assert.equal(LAVA_STYLE.core, '#ffc23a');
+  assert.equal(new Set(Object.keys(MAPS).map((id) => themed(id, 'ground', GROUND_STYLE).base)).size, Object.keys(MAPS).length);
+  const kinds = themed('volcano', 'decor', DECOR_STYLE).scatterKinds.map(([k]) => k);
+  for (const k of ['ember', 'ash']) assert.ok(kinds.includes(k), k);
+  for (const id of Object.keys(MAPS)) if (id !== 'volcano') assert.ok(!themed(id, 'decor', DECOR_STYLE).scatterKinds.some(([k]) => k === 'ember' || k === 'ash'), id);
+});

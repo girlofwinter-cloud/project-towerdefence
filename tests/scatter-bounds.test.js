@@ -71,3 +71,23 @@ test('Streu-Deko Zangenangriff/Zwei Fronten: gezeichnete Punkte erreichen nie ei
     assert.ok(kinds.size >= 4, `${id}: Vielfalt ${[...kinds]}`);
   }
 });
+
+// B-030: Vulkan mit Glutsteinen und Asche; auch sie erreichen nie Weg oder Lava.
+test('Streu-Deko Vulkan: Glutsteine und Asche, Punkte nie auf Weg- oder Lavakachel, im Spielfeld', () => {
+  const s = createGame({ mapId: 'volcano' });
+  const kinds = new Set();
+  for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
+    const a = scatterFor(c, r, s.blocked, s.obstacles, 'volcano');
+    if (!a) continue;
+    kinds.add(a.kind);
+    const { ctx, pts } = recorder();
+    drawScatter(ctx, a, c * TILE + a.ox * TILE, r * TILE + a.oy * TILE);
+    assert.ok(pts.length > 0, `${a.kind} zeichnet nichts`);
+    for (const [x, y] of pts) {
+      const k = `${Math.floor(x / TILE)},${Math.floor(y / TILE)}`;
+      assert.ok(!s.blocked.has(k) && !s.lava.has(k), `${a.kind} auf ${c},${r} ragt auf ${k}`);
+      assert.ok(x >= 0 && y >= 0 && x < COLS * TILE && y < ROWS * TILE, `${a.kind} auf ${c},${r} ausserhalb`);
+    }
+  }
+  for (const k of ['ember', 'ash']) assert.ok(kinds.has(k), `Art ${k} fehlt (${[...kinds]})`);
+});

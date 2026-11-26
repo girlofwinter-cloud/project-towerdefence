@@ -15,16 +15,7 @@ export function waterGeometry(mapId, blocked) {
   const m = MAPS[mapId];
   if (!m?.water?.length) return null;
   const bridges = m.bridges || [];
-  const river = (m.river || []).map(([c, r], i, list) => {
-    const [x, y] = center([c, r]);
-    const near = bridges.some((b) => Math.abs(b[0] - c) + Math.abs(b[1] - r) <= 1);
-    const onBridge = bridges.some((b) => same(b, [c, r]));
-    // Schwung quer zur Laufrichtung; an der Brücke gerade, daneben halb
-    const k = onBridge ? 0 : near ? 0.5 : 1;
-    const wig = (tileRand(c, r, 120) - 0.5) * 2 * W.riverWiggle * k;
-    const vertical = list.length < 2 || list[Math.min(i + 1, list.length - 1)][0] === list[Math.max(i - 1, 0)][0];
-    return vertical ? [x + wig, y] : [x, y + wig];
-  });
+  const river = riverLine(m.river || [], bridges, W.riverWiggle);
   const lakeTiles = m.lake || [];
   const discs = lakeTiles.map(center);
   const lake = discs.length ? { cx: discs.reduce((s, d) => s + d[0], 0) / discs.length, cy: discs.reduce((s, d) => s + d[1], 0) / discs.length, discs } : null;
@@ -38,12 +29,30 @@ export function waterGeometry(mapId, blocked) {
       river.push(best);
     }
   }
-  const out = bridges.map(([c, r]) => {
+  return { river, lake, bridges: bridgeList(bridges, blocked) };
+}
+
+// Mittellinie eines Flusses aus einer Kachelkette (auch Lavafluss, B-030): Kachelmitten mit deterministischem Schwung
+// quer zur Laufrichtung (höchstens wiggle px); an der Brücke gerade, direkt daneben halb.
+export function riverLine(tiles, bridges, wiggle) {
+  return tiles.map(([c, r], i, list) => {
+    const [x, y] = center([c, r]);
+    const near = bridges.some((b) => Math.abs(b[0] - c) + Math.abs(b[1] - r) <= 1);
+    const onBridge = bridges.some((b) => same(b, [c, r]));
+    const k = onBridge ? 0 : near ? 0.5 : 1;
+    const wig = (tileRand(c, r, 120) - 0.5) * 2 * wiggle * k;
+    const vertical = list.length < 2 || list[Math.min(i + 1, list.length - 1)][0] === list[Math.max(i - 1, 0)][0];
+    return vertical ? [x + wig, y] : [x, y + wig];
+  });
+}
+
+// Brücken mit Laufrichtung aus den Nachbar-Wegkacheln: [{ x, y, horizontal }]
+export function bridgeList(bridges, blocked) {
+  return bridges.map(([c, r]) => {
     const [x, y] = center([c, r]);
     const horizontal = !blocked || blocked.has(`${c - 1},${r}`) || blocked.has(`${c + 1},${r}`);
     return { x, y, horizontal };
   });
-  return { river, lake, bridges: out };
 }
 
 // Abstand der Hülle der Kreise (Radius R) um die Kachelmitten von der Seemitte in Richtung a
@@ -105,7 +114,7 @@ function mouth(ctx, g, h, R) {
   ctx.fill();
 }
 
-function closedCurve(ctx, pts) {
+export function closedCurve(ctx, pts) {
   const n = pts.length;
   const mid = (a, b) => [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
   const m0 = mid(pts[n - 1], pts[0]);
@@ -117,7 +126,7 @@ function closedCurve(ctx, pts) {
   ctx.closePath();
 }
 
-function openCurve(ctx, pts) {
+export function openCurve(ctx, pts) {
   ctx.moveTo(pts[0][0], pts[0][1]);
   for (let i = 1; i < pts.length - 1; i++) {
     const mx = (pts[i][0] + pts[i + 1][0]) / 2, my = (pts[i][1] + pts[i + 1][1]) / 2;
