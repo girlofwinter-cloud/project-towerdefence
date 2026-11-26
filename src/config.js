@@ -253,6 +253,12 @@ export const MAPS = {
   },
 };
 export const DEFAULT_MAP_ID = 'meadow';
+
+// B-093: Fortschritt im localStorage (Schlüssel mit Version, damit spätere Formate sauber neu beginnen).
+export const PROGRESS_KEY = 'td-progress-v1';
+// Sterne bei Sieg: Stern i gibt es, wenn der Anteil übriger Leben (an START_LIVES) mindestens STAR_LIVES_SHARE[i] ist.
+// 1 Stern: gewonnen; 2 Sterne: mindestens die Hälfte übrig; 3 Sterne: keine Leben verloren. Niederlage: 0 Sterne.
+export const STAR_LIVES_SHARE = [0, 0.5, 1];
 // Alias für die Standardkarte (bestehender Code und Tests)
 export const WAYPOINTS = MAPS[DEFAULT_MAP_ID].waypoints;
 
