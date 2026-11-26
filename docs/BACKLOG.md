@@ -154,15 +154,6 @@ Erledigte Einträge (`fertig`) liegen in `docs/archiv/BACKLOG-fertig.md`. Beim A
   - Je Punkt einzeln bewertbar, nur CSS/UI, keine Spiel-Logik.
   - `npm test` und `npm run test:e2e` bleiben grün.
 
-### B-030: Welt Vulkan (Lava-Felder und Lavafluss)
-- Status: offen
-- Aufwand: L
-- Idee: Fünfte Karte `volcano`, freigeschaltet nach Zwei Fronten, die schwerste Karte. Lava-Kacheln (Lavafluss quer über die Karte plus einzelne Lava-Felder) sind nicht bebaubar. Gegner auf Weg-Kacheln direkt neben Lava nehmen leichten Schaden pro Sekunde; Türme direkt neben Lava überhitzen und schießen langsamer. Entscheidung des Menschen am 2026-11-26: Schaden + Überhitzung, 5. Karte, etwas schwerer als Zwei Fronten.
-- Akzeptanzkriterien:
-  - `MAPS.volcano` mit `lava` (Kacheln), Brücke wo der Weg den Lavafluss kreuzt (Technik wie Wasser aus B-104); Werte (Schaden/s, Überhitzungs-Faktor, Nachbarschaft) in `src/config.js`.
-  - Tests: Gegner neben Lava nehmen Schaden, weiter weg nicht; Turm neben Lava hat längere Schussrate; Lava ist nicht bebaubar; Freischaltung nach Zwei Fronten.
-  - Optik im Flat-Pop-Stil: dunkles Vulkangestein, glühende Lava mit Kontur, Brücke aus Stein oder dunklem Holz; Desktop und Handy per Screenshot.
-  - Balancing per Simulation (dt 1/30 und 1/60): mindestens eine robuste Strategie gewinnt Welle 20, mit weniger Reserve als auf Zwei Fronten; eine schwache Strategie verliert.
 ### B-031: Welt Wüste (Sandsturm)
 - Status: vorschlag
 - Aufwand: M
@@ -353,7 +344,7 @@ Reihenfolge ist Abhängigkeit: B-062 und B-063 zuerst, dann gemeinsame Sichtprü
 ### B-074: Vulkan und Wüste (Design-Overhaul)
 - Status: vorschlag
 - Aufwand: L
-- Idee: Erst wenn die Welten existieren (B-030/B-031): Lava-Risse, Dünen, Kakteen.
+- Idee: Vulkan hat mit B-030 schon seinen Flat-Pop-Stil. Offen: Wüste (B-031) mit Dünen und Kakteen.
 - Akzeptanzkriterien:
   - Eigene Palette gemäß `docs/STIL.md`, Spielbarkeit unverändert.
 
