@@ -362,3 +362,11 @@ Agents lesen diese Datei nur bei konkretem Bedarf.
   - `src/main.js`: Ergebnis wird genau einmal pro Spielende gespeichert (nicht in jedem Frame). Overlay zeigt Rekord und Sterne der Karte, „Neuer Rekord!“ und ggf. „Neue Karte freigeschaltet: <Name>“. Kartenauswahl zeigt Sterne je Karte, gesperrte Karten mit 🔒 und `disabled`.
   - `src/game.js` bleibt unverändert; Browser-Tests laufen unverändert.
   - Tests in neuer Datei `tests/progress.test.js`: Sterne-Grenzen, Rekord-Maximum, Freischalt-Reihenfolge, Laden/Speichern mit Fake-Speicher, Robustheit gegen kaputte Daten und werfenden Speicher.
+
+### B-094: Fortschritt: Meldungen am Spielende verfeinern (Hinweise aus dem Review von B-093)
+- Status: fertig
+- Aufwand: S
+- Idee: (1) „Neuer Rekord!“ erscheint beim ersten Spiel auf einer Karte immer, auch bei früher Niederlage; nur zeigen, wenn vorher ein Rekord > 0 bestand. (2) `newStars` wird berechnet, aber nie angezeigt; „Neue Sterne!“ ergänzen. (3) Neue Overlay-Zeile `#overlay-progress` hat kein eigenes CSS; Designer-Blick. (4) Sterne-Grenztest in `tests/progress.test.js` aus `STAR_LIVES_SHARE[1] * START_LIVES` mit `Math.ceil` ableiten (setzt heute gerades `START_LIVES` voraus). (5) e2e-Fall „Sieg schaltet nächste Karte frei“.
+- Akzeptanzkriterien:
+  - Erstes Spiel mit Niederlage zeigt keinen „Neuer Rekord!“-Hinweis; Verbesserung der Sterne wird gemeldet.
+  - Kein Test wird abgeschwächt; `npm test` bleibt grün.

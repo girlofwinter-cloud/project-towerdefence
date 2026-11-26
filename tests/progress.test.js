@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { START_LIVES, PROGRESS_KEY, STAR_LIVES_SHARE, MAX_WAVES } from '../src/config.js';
 import {
-  emptyProgress, loadProgress, saveProgress, recordResult, starsFor, isUnlocked, mapProgress, starText, MAP_ORDER,
+  emptyProgress, loadProgress, saveProgress, recordResult, starsFor, isUnlocked, mapProgress, starText, resultLines, MAP_ORDER,
 } from '../src/progress.js';
 
 // Einfacher Fake-Speicher mit getItem/setItem wie localStorage.
@@ -23,8 +23,10 @@ test('starsFor: Niederlage 0, Sieg 1 bis 3 nach übrigen Leben', () => {
   assert.equal(starsFor('lost', START_LIVES), 0);
   assert.equal(starsFor('playing', START_LIVES), 0);
   assert.equal(starsFor('won', 1), 1);
-  assert.equal(starsFor('won', Math.ceil(START_LIVES / 2) - 1), 1);
-  assert.equal(starsFor('won', START_LIVES / 2), 2);
+  // Grenze für 2 Sterne aus der Konfiguration (gilt auch bei ungeradem START_LIVES)
+  const twoStars = Math.ceil(STAR_LIVES_SHARE[1] * START_LIVES);
+  assert.equal(starsFor('won', twoStars - 1), 1);
+  assert.equal(starsFor('won', twoStars), 2);
   assert.equal(starsFor('won', START_LIVES - 1), 2);
   assert.equal(starsFor('won', START_LIVES), 3);
 });
@@ -164,4 +166,47 @@ test('Tester B-093: Speicherinhalt null/Array/Zahl/String und Eintrag mit Unsinn
   assert.equal(starText(-1), starText(0));
   // saveProgress mit kaputtem Fortschritt wirft nicht
   assert.equal(saveProgress({ setItem() {} }, null), true);
+});
+
+// ---------- B-094: Meldungen am Spielende ----------
+// Spielt ein Ergebnis wie main.js: Vorher-Stand merken, eintragen, Zeilen bauen.
+function play(p, result) {
+  const before = { ...mapProgress(p, result.mapId) };
+  return resultLines(p, result.mapId, recordResult(p, result), before);
+}
+
+test('resultLines: erstes Spiel mit früher Niederlage meldet keinen neuen Rekord', () => {
+  const p = emptyProgress();
+  assert.deepEqual(play(p, { mapId: 'meadow', status: 'lost', wave: 2, lives: 0 }), ['Rekord: Welle 2 · ☆☆☆']);
+});
+
+test('resultLines: späteres besseres Ergebnis meldet „Neuer Rekord!“, gleiches nicht', () => {
+  const p = emptyProgress();
+  play(p, { mapId: 'meadow', status: 'lost', wave: 4, lives: 0 });
+  assert.deepEqual(play(p, { mapId: 'meadow', status: 'lost', wave: 6, lives: 0 }), ['Rekord: Welle 6 · ☆☆☆', 'Neuer Rekord!']);
+  assert.deepEqual(play(p, { mapId: 'meadow', status: 'lost', wave: 6, lives: 0 }), ['Rekord: Welle 6 · ☆☆☆']);
+});
+
+test('resultLines: erster Sieg meldet Sterne und Freischaltung, ohne „Neuer Rekord!“', () => {
+  const p = emptyProgress();
+  assert.deepEqual(play(p, { mapId: 'meadow', status: 'won', wave: MAX_WAVES, lives: 1 }), [
+    `Rekord: Welle ${MAX_WAVES} · ★☆☆`, 'Neue Sterne: ★☆☆', 'Neue Karte freigeschaltet: Wald',
+  ]);
+});
+
+test('resultLines: mehr Sterne bei gleichem Rekord melden nur „Neue Sterne“', () => {
+  const p = emptyProgress();
+  play(p, { mapId: 'meadow', status: 'won', wave: MAX_WAVES, lives: 1 });
+  assert.deepEqual(play(p, { mapId: 'meadow', status: 'won', wave: MAX_WAVES, lives: START_LIVES }), [
+    `Rekord: Welle ${MAX_WAVES} · ★★★`, 'Neue Sterne: ★★★',
+  ]);
+  // Weniger Sterne als bisher: keine Meldung, Bestwert bleibt
+  assert.deepEqual(play(p, { mapId: 'meadow', status: 'won', wave: MAX_WAVES, lives: 1 }), [`Rekord: Welle ${MAX_WAVES} · ★★★`]);
+});
+
+test('resultLines: Niederlage nach Rekord aus früherem Spiel meldet Rekord, ohne Vorher-Stand keine Rekordmeldung', () => {
+  const p = emptyProgress();
+  play(p, { mapId: 'forest', status: 'lost', wave: 3, lives: 0 });
+  const res = recordResult(p, { mapId: 'forest', status: 'lost', wave: 9, lives: 0 });
+  assert.deepEqual(resultLines(p, 'forest', res), ['Rekord: Welle 9 · ☆☆☆']);
 });
