@@ -47,21 +47,44 @@ Schau dir die fünf Dateien in `.claude/agents/` an und achte auf die Zeile `too
 
 ## 3. Ablauf: der Orchestrator
 
-`/pipeline` lädt den Skill. Das Hauptmodell ist der **Orchestrator**: Es schreibt selbst keinen Code, sondern ruft die Subagents der Reihe nach auf:
+`/pipeline` lädt den Skill (`.claude/skills/pipeline/SKILL.md`). Das Hauptmodell ist der **Orchestrator**, eine Art Projektleiter: Es schreibt selbst keinen Code, sondern verteilt die Arbeit an die Subagents und hält die Regeln ein.
+
+Standard ist der **schnelle Ablauf**. Ziel: neue Versionen schnell live bringen, der Mensch entscheidet nur Wichtiges.
 
 ```
-Backlog → developer → tester ─FAIL→ zurück zum developer
-                        │
-                      PASS
-                        ↓
-                    reviewer ─CHANGES_REQUESTED→ zurück zum developer
-                        │
-                     APPROVE
-                        ↓
-              Ledger-Eintrag → Branch pushen → (PR)
+Backlog (Status "offen")
+   │
+   ▼
+Block bilden ─── Optik, Config-Zahlen, Doku: 3–4 Einträge auf einem Branch (max. ca. 1000 Zeilen)
+   │        └── Spiel-Logik, Balancing, Eingabe, Layout: einzeln
+   ▼
+developer ─── pro Eintrag ein Commit (Code + Unit-Tests)
+   │
+   ▼
+Risiko? ── nein ──→ Orchestrator prüft selbst: npm test, Diff, kein Test abgeschwächt
+   │ ja (game.js, path.js, input.js, main.js, hud.js, index.html, style.css
+   │     oder bestehende Tests geändert)
+   ▼
+tester + reviewer ─── einmal über den ganzen Block
+   │        └── Muss-Punkte → eine Nachbesserung durch den developer
+   ▼
+Ledger-Eintrag → Pull Request → CI grün → Orchestrator mergt → GitHub Pages
 ```
 
-Wichtig ist die **Schleifenbremse** (max. 3 Runden): Agents, die sich gegenseitig Arbeit zuschieben, können sonst endlos Geld und Zeit verbrennen.
+**Wann der Orchestrator selbst mergt:** nur wenn **alle** Bedingungen gelten:
+- Die CI ist grün.
+- Der PR ändert nichts an `.claude/`, `.github/`, `package.json` oder `package-lock.json`.
+- Kein Test wurde gelöscht oder abgeschwächt.
+- Bei Risiko-Dateien liegt ein `APPROVE` des Reviewers ohne Muss-Punkte vor.
+- Es gibt keine Spiel-Logik- oder Balancing-Änderung, die der Mensch nicht freigegeben hat.
+
+Sonst bleibt der PR offen, und der Mensch bekommt den Grund in einer Zeile.
+
+**Was nur der Mensch entscheidet:** neue Mechaniken, Balancing außerhalb des freigegebenen Eintrags, neue Abhängigkeiten, Änderungen an `.claude/`, `.github/` und `CLAUDE.md`, Tests ändern oder löschen, und alles, was `blockiert` ist.
+
+**Schleifenbremse:** höchstens **2 Entwicklungsrunden** und **eine** Review-Runde. Ist danach noch ein Muss-Punkt offen, bekommt der Eintrag den Status `blockiert`, und ein Mensch wird gefragt. Agents, die sich gegenseitig Arbeit zuschieben, könnten sonst endlos Geld und Zeit verbrennen. Hinweise ohne Muss-Charakter gehen als `vorschlag` ins Backlog statt in eine neue Runde.
+
+**Warum so und nicht immer mit allen Prüfungen?** Früher liefen Tester und Reviewer bei jedem Eintrag, auch bei reiner Optik. Das war gründlich, aber langsam und teuer. Heute richtet sich die Prüftiefe nach dem **Risiko**: Eine neue Farbe kann kaum etwas kaputt machen, eine Änderung an der Spiel-Logik schon. Die CI und der Test-Gate-Hook laufen trotzdem immer.
 
 ## 4. Guardrails: Bitten vs. Erzwingen
 
