@@ -159,12 +159,21 @@ export function startWave(state) {
   return { ok: true, wave: state.wave };
 }
 
+// Weg eines neuen Gegners: feste Seite laut MAPS[mapId].lanes (B-099), sonst abwechselnd über alle Wege.
+// Nur abwechselnde Typen zählen den Wechsel weiter, feste Typen stören die Reihenfolge nicht.
+export function laneFor(state, type, count) {
+  const fixed = MAPS[state.mapId]?.lanes?.[type];
+  if (Number.isInteger(fixed) && fixed >= 0 && fixed < count) return fixed;
+  const lane = (state.nextLane || 0) % count;
+  state.nextLane = lane + 1;
+  return lane;
+}
+
 export function spawnEnemy(state, type, wave = state.wave) {
   const def = ENEMY_TYPES[type];
   const hp = Math.round(def.hp * hpScale(Math.max(1, wave)));
   const paths = state.paths || [state.path];
-  const lane = (state.nextLane || 0) % paths.length;
-  state.nextLane = lane + 1;
+  const lane = laneFor(state, type, paths.length);
   const path = paths[lane];
   const pos = pointAt(path, 0);
   const enemy = {

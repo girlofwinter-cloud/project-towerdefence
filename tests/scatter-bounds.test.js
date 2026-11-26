@@ -49,9 +49,9 @@ test('Streu-Deko: gezeichnete Punkte erreichen nie eine Wegkachel und bleiben im
   console.log(`Streu-Deko: ${n} Stuecke, ${outTile} Punkte ausserhalb der eigenen Kachel`);
 });
 
-// B-072: Wald und Zangenangriff haben eigene Streu-Deko; auch sie erreicht nie eine Wegkachel.
-test('Streu-Deko Wald/Zangenangriff: gezeichnete Punkte erreichen nie eine Wegkachel und bleiben im Spielfeld', () => {
-  for (const id of ['forest', 'fork']) {
+// B-072/B-099: Zangenangriff und Zwei Fronten haben eigene Streu-Deko; auch sie erreicht nie eine Wegkachel.
+test('Streu-Deko Zangenangriff/Zwei Fronten: gezeichnete Punkte erreichen nie eine Wegkachel und bleiben im Spielfeld', () => {
+  for (const id of ['twin', 'fork']) {
     const s = createGame({ mapId: id });
     const kinds = new Set();
     for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {

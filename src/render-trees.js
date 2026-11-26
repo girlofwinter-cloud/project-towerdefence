@@ -33,7 +33,7 @@ function drawShadow(ctx, c) {
 
 function drawFir(ctx, c, T) {
   const { x, r } = c;
-  const y = c.y + r * T.firLift; // Wald: Tannen tiefer, damit die Spitze nicht weit ins Feld ragt
+  const y = c.y + r * T.firLift; // Tannen tiefer, damit die Spitze nicht weit ins Feld ragt
   const firCol = c.shade ? T.fir.map((f) => shd(f, c.shade)) : T.fir;
   const w0 = r * 0.82;
   const tiers = [[y + r * 0.55, w0, r * 0.7], [y + r * 0.05, w0 * 0.8, r * 0.7], [y - r * 0.45, w0 * 0.6, r * 0.7]];

@@ -36,7 +36,7 @@ function getStorage() {
 }
 const progress = loadProgress(getStorage());
 const mapOpen = (id) => TEST_MODE || isUnlocked(progress, id);
-// Startkarte merken (B-098): zuletzt gewählte bzw. neueste freigeschaltete Karte. Testmodus bleibt bei der ersten.
+// Startkarte merken (B-101): zuletzt gewählte bzw. neueste freigeschaltete Karte. Testmodus bleibt bei der ersten.
 if (!TEST_MODE) {
   mapId = startMap(progress);
   state = createGame({ mapId });
@@ -260,7 +260,7 @@ mapSelect.value = state.mapId;
 mapSelect.addEventListener('change', () => {
   if (state.wave !== 0 || state.waveActive || !mapOpen(mapSelect.value)) { mapSelect.value = state.mapId; return; }
   mapId = mapSelect.value;
-  // Gewählte Karte merken (B-098); im Testmodus gibt es keinen Speicher.
+  // Gewählte Karte merken (B-101); im Testmodus gibt es keinen Speicher.
   progress.lastMap = mapId;
   saveProgress(getStorage(), progress);
   restart();

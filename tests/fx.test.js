@@ -728,7 +728,7 @@ test('Flat-Pop-Gegner: Frost-Overlay, Ring und HP-Balken sind unveraendert (glei
 test('Flat-Pop-Gegner (B-085): Hauptfarbflaechen haben >= 0,25 Helligkeitsabstand zu allen Wegfarben, Kontur >= 0,25', async () => {
   const { ENEMY_STYLE, MAPS, PATH_STYLE } = await import('../src/config.js');
   const { brightness, outlineOf } = await import('../src/draw-utils.js');
-  // Wiese und Eis (Wald/Zangenangriff: siehe Bericht, dort liegt der Abstand des Goblins bei ca. 0,22)
+  // Wiese und Eis (Zangenangriff: siehe Bericht, dort liegt der Abstand des Goblins bei ca. 0,22)
   const roads = new Set();
   for (const id of ['meadow', 'ice']) { const p = { ...PATH_STYLE.colors, ...(MAPS[id].theme.path || {}) }; roads.add(p.mid); } // Wegmitte (der Wegrand `main` ist dunkler)
   for (const type of FLAT) {

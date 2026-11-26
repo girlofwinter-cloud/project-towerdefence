@@ -14,7 +14,7 @@ Gemeinsam:
 
 Welten (Boden A / Boden B / Halm / Weg / Wegrand / Akzente):
 - **Wiese:** `#5fae48` `#58a542` `#46893a` / `#e2c88f` `#8f6a3b` / Blume gelb `#f6d64a`, rosa `#ff8fb1`, Baum `#3f8f3f`.
-- **Wald:** `#4b9448` `#438a42` `#2f6e33` / `#c9a56a` `#6e4d2a` / Pilz `#d9453a`, Moos `#8fd14f`, Tanne `#2a6b3a`.
+- **Zwei Fronten (Spätsommer):** `#7cb24f` `#74a94a` `#5a8f36` / `#dcc08a` `#86603a` / Pilz `#c9542f`, Tanne `#336f3c`. (Der Wald wurde mit B-098 entfernt.)
 - **Eis:** `#e3f1fa` `#d4e8f5` `#9cc3d8` / Weg `#9db3c9`, Rand `#4f6682` / Kristall `#7fe0ff`, Schnee `#ffffff`, Tanne `#2f6f5f`.
 - **Zangenangriff (Hochland, Herbst):** `#b3b45a` `#a8a950` `#868838` / `#d6ab70` `#7d5632` / Laub `#e0803a`, Fels `#8b8c94`, Stamm `#6e4d2a`.
 - **Vulkan (geplant):** `#4d3c3e` `#443538` `#2e2325` / `#8b7468` `#2d1f20` / Lava `#ff7a1f`, Glut `#ffc23a`, Fels `#2a2224`.

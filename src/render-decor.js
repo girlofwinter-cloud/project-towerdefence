@@ -7,7 +7,7 @@ import { part, poly, rr, ell, shadow, lit, shd, outlineOf, snowCap } from './dra
 
 const TWO_PI = Math.PI * 2;
 
-// Aktiver Stilblock (Wiese, Wald oder Zangenangriff). render.js setzt ihn vor dem Zeichnen des Hintergrunds.
+// Aktiver Stilblock (Wiese, Eiswelt, Zangenangriff oder Zwei Fronten). render.js setzt ihn vor dem Zeichnen des Hintergrunds.
 let D = DECOR_STYLE;
 export function useDecorStyle(style = DECOR_STYLE) { D = style; }
 
@@ -243,7 +243,7 @@ export function drawScatter(ctx, s, x, y) {
   else pebbles(ctx, x, y);
 }
 
-// ---- Bäume im Flat-Pop-Stil (Wald, Zangenangriff): Einzelbäume am Rand und Hindernisse ----
+// ---- Bäume im Flat-Pop-Stil (Eiswelt, Zangenangriff, Zwei Fronten): Einzelbäume am Rand und Hindernisse ----
 // fir: Tanne (drei Stufen) oder Laubbaum (drei Lappen); scale > 1 für Hindernisse. Mitte (x, y) = Kronenmitte.
 export function drawTree(ctx, x, y, v, fir, scale = 1) {
   const s = scale;

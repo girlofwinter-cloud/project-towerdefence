@@ -86,7 +86,7 @@ function drawGround(ctx, state) {
 function paintBackground(ctx, state) {
   ctx.save();
   // Wiese (theme.ground): Flecken und Plateaus statt Schachbrett; Büschel nach dem Weg (nie auf Wegkacheln)
-  // Wald und Zangenangriff (B-072) überschreiben Paletten über themed(); die Wiese nutzt die Basisblöcke
+  // Eiswelt, Zangenangriff und Zwei Fronten (B-072, B-073, B-099) überschreiben Paletten über themed(); die Wiese nutzt die Basisblöcke
   const id = state.mapId;
   const groundStyle = themed(id, 'ground', GROUND_STYLE);
   const lightStyle = themed(id, 'light', LIGHT_STYLE);
@@ -144,7 +144,7 @@ function drawPath(ctx, state) {
 // Dekoration: Regeln stehen in decor.js (gross nur am Rand, innen nur klein, nie auf dem Weg).
 // crowns: Der Baumrahmen ersetzt die einzelnen Rand-Baeume, soweit eine Krone sie verdeckt (kein Doppel).
 function drawDecor(ctx, state, crowns) {
-  const flatpop = MAPS[state.mapId]?.theme?.decorStyle === 'flatpop'; // B-079: neue Deko (Wiese, Wald, Zangenangriff)
+  const flatpop = MAPS[state.mapId]?.theme?.decorStyle === 'flatpop'; // B-079: neue Deko (alle Karten)
   const style = themed(state.mapId, 'decor', DECOR_STYLE);
   const flatTrees = flatpop && style.flatTrees; // B-072: Bäume und Hindernisse im neuen Stil
   const firShare = style.firShare;

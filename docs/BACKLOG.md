@@ -17,6 +17,14 @@ Erledigte Einträge (`fertig`) liegen in `docs/archiv/BACKLOG-fertig.md`. Beim A
 
 ---
 
+### B-100: Seitenhinweis für feste Gegner-Seiten
+- Status: vorschlag
+- Aufwand: S
+- Idee: Auf Zangenangriff und Zwei Fronten kommen Flitzer immer oben, Troll/Schildträger/Schamane immer unten (B-099). Die Wellenvorschau zeigt das noch nicht. Kleines Symbol je Eingang (z. B. Flitzer-Icon oben, Troll-Icon unten) vor Wellenstart, damit man es ohne Ausprobieren erfährt.
+- Akzeptanzkriterien:
+  - Vor jeder Welle ist je Eingang sichtbar, welche Gegnertypen dort kommen (aus `MAPS.<id>.lanes` und `waveSummary`).
+  - Keine Änderung an der Spiel-Logik; Desktop und Handy lesbar (Screenshot).
+
 ### B-005: Vorzeitiger Wellenstart mit Gold-Bonus
 - Status: vorschlag
 - Aufwand: M
@@ -431,7 +439,7 @@ Reihenfolge ist Abhängigkeit: B-062 und B-063 zuerst, dann gemeinsame Sichtprü
 - Akzeptanzkriterien:
   - Grenzen belegt, Zahlen in `config.js`, `npm test` grün.
 
-### B-099: Feinschliff aus dem Block-Review B-095 bis B-098
+### B-102: Feinschliff aus dem Block-Review B-095 bis B-097 und B-101
 - Status: vorschlag
 - Aufwand: S
 - Idee: (1) Gravitation und Dämpfung des Boss-Staubs (`src/fx-system.js`, -10 und 3) als `dustGravity`/`dustDrag` nach `BOSS_ENTRY`. (2) Bei 200 % Schrift läuft auf dem Handy die rechte Spalte des Shop-Rasters aus dem Bild („Scharfschü…“ abgeschnitten; bestand schon vorher).

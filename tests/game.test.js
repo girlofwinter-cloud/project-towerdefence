@@ -1,7 +1,7 @@
 // Unit-Tests der Spiel-Logik (game.js, path.js, config.js). Ausführen: npm test
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createGame, mapModifiers, update, buildTower, upgradeTower, sellTower, startWave, spawnEnemy, canBuild, towerStats, upgradeCost, togglePause, stepGame, setTargetMode, pickTarget, enemyPath, chainTargets } from '../src/game.js';
+import { createGame, mapModifiers, update, buildTower, upgradeTower, sellTower, startWave, spawnEnemy, canBuild, towerStats, upgradeCost, togglePause, stepGame, setTargetMode, pickTarget, enemyPath, chainTargets, laneFor } from '../src/game.js';
 
 import { livesText } from '../src/hud.js';
 
@@ -207,7 +207,8 @@ test('Schwierigkeit: hpScale steigt streng, Wellen werden nie kleiner', () => {
   }
 });
 
-// Freie Felder neben dem Weg, sortiert nach Anzahl Wegpunkte in Reichweite (deterministisch)
+// Freie Felder neben dem Weg, sortiert nach Anzahl Wegpunkte in Reichweite (deterministisch).
+// Zählt über alle Wege (B-099); bei Karten mit einem Weg ist das genau der Hauptweg.
 function rankedSpots(state, rangeTiles) {
   const spots = [];
   for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
@@ -215,9 +216,11 @@ function rankedSpots(state, rangeTiles) {
     const x = (c + 0.5) * TILE;
     const y = (r + 0.5) * TILE;
     let n = 0;
-    for (let d = 0; d < state.path.length; d += 8) {
-      const p = pointAt(state.path, d);
-      if (Math.hypot(p.x - x, p.y - y) <= rangeTiles * TILE) n++;
+    for (const path of state.paths || [state.path]) {
+      for (let d = 0; d < path.length; d += 8) {
+        const p = pointAt(path, d);
+        if (Math.hypot(p.x - x, p.y - y) <= rangeTiles * TILE) n++;
+      }
     }
     if (n) spots.push({ c, r, n });
   }
@@ -923,10 +926,11 @@ test('Jede Karte hat einen gültigen, überschneidungsfreien Weg', () => {
 test('createGame wählt Karte per mapId, unbekannte fällt auf Standard zurück', () => {
   const def = createGame();
   assert.equal(def.mapId, DEFAULT_MAP_ID);
-  const c = createGame({ mapId: 'forest' });
-  assert.equal(c.mapId, 'forest');
+  const c = createGame({ mapId: 'ice' });
+  assert.equal(c.mapId, 'ice');
   assert.notDeepEqual(c.path.points, def.path.points);
-  assert.deepEqual(c.path.points, buildPath(MAPS.forest.waypoints, TILE).points);
+  assert.deepEqual(c.path.points, buildPath(MAPS.ice.waypoints, TILE).points);
+  assert.equal(createGame({ mapId: 'forest' }).mapId, DEFAULT_MAP_ID, 'Wald gibt es nicht mehr (B-098)');
   const u = createGame({ mapId: 'gibt-es-nicht' });
   assert.equal(u.mapId, DEFAULT_MAP_ID);
   assert.deepEqual(u.path.points, def.path.points);
@@ -945,8 +949,11 @@ test('Zweitkarte: Weg-Kacheln blockiert, Gegner erreichen das Ziel', () => {
   assert.ok(s.lives < START_LIVES);
 });
 
-// ---------- Map Wald: Hindernisse (B-028) ----------
-test('Hindernisse: liegen im Feld, nie auf dem Weg; Wald hat genug Bauplaetze nahe am Weg', async () => {
+// ---------- Hindernisse (B-028) ----------
+// Seit B-098 (Wald entfernt) hat keine Karte Hindernisse; die Mechanik wird per Override geprüft.
+const OBST = [[0, 0], [7, 5], [13, 1]];
+const withObstacles = () => createGame({ obstacles: new Set(OBST.map(([c, r]) => `${c},${r}`)) });
+test('Hindernisse: liegen im Feld, nie auf dem Weg', async () => {
   const { MAPS, COLS, ROWS } = await import('../src/config.js');
   for (const id of Object.keys(MAPS)) {
     const s = createGame({ mapId: id });
@@ -957,20 +964,13 @@ test('Hindernisse: liegen im Feld, nie auf dem Weg; Wald hat genug Bauplaetze na
       assert.ok(!s.blocked.has(k), `${id} ${k} nicht auf dem Weg`);
     }
   }
-  const f = createGame({ mapId: 'forest' });
-  assert.ok(f.obstacles.size >= 30 && f.obstacles.size <= 45);
-  let near = 0;
-  for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
-    if (!canBuild(f, c, r).ok) continue;
-    let d = 99;
-    for (const k of f.blocked) { const [a, b] = k.split(',').map(Number); d = Math.min(d, Math.max(Math.abs(a - c), Math.abs(b - r))); }
-    if (d <= 2) near++;
-  }
-  assert.ok(near >= 25, `baubar nahe am Weg: ${near}`);
+  assert.equal(MAPS.forest, undefined, 'Wald entfernt (B-098)');
+  const f = withObstacles();
+  for (const k of f.obstacles) assert.ok(!f.blocked.has(k), `${k} nicht auf dem Weg der Wiese`);
 });
 
 test('Hindernisse: canBuild lehnt ab, daneben normal; Karten ohne Hindernisse unveraendert', () => {
-  const f = createGame({ mapId: 'forest' });
+  const f = withObstacles();
   const [c, r] = [...f.obstacles][0].split(',').map(Number);
   const res = canBuild(f, c, r);
   assert.equal(res.ok, false);
@@ -985,11 +985,11 @@ test('Hindernisse: canBuild lehnt ab, daneben normal; Karten ohne Hindernisse un
   assert.equal(m.obstacles.size, 0);
   assert.equal(createGame({ mapId: 'ice' }).obstacles.size, 0);
   assert.equal(canBuild(m, 0, 0).ok, true);
-  assert.equal(canBuild(f, 3, 6).reason, 'Auf dem Weg kann nicht gebaut werden');
+  assert.equal(canBuild(f, 1, 2).reason, 'Auf dem Weg kann nicht gebaut werden');
 });
 
-test('Hindernisse: Goblin erreicht auf dem Wald das Ziel', () => {
-  const s = createGame({ mapId: 'forest' });
+test('Hindernisse: Goblin erreicht trotz Hindernissen das Ziel', () => {
+  const s = withObstacles();
   spawnEnemy(s, 'grunt', 1);
   const lives = s.lives;
   run(s, 60);
@@ -1130,20 +1130,22 @@ test('Zangenangriff: robuste Strategien gewinnen Welle 20 mit mindestens 1 Leben
   }
 });
 
-// B-046: Wald und fork haben eigene Modifikatoren, die Wiese bleibt ohne.
-test('Modifikatoren: Wiese hat keine, Wald und Zangenangriff schnellere Gegner', () => {
+// B-046: Karten haben eigene Modifikatoren, die Wiese bleibt ohne. B-099: Zangenangriff seit den festen Seiten
+// ohne schnellere Gegner (bewusste Balancing-Änderung, siehe docs/LEDGER.md), Zwei Fronten mit langsameren.
+test('Modifikatoren: Wiese hat keine, Zangenangriff schwächere Kanone, Zwei Fronten langsamere Gegner', () => {
   assert.equal(MAPS.meadow.modifiers, undefined);
   assert.deepEqual(createGame({ mapId: 'meadow' }).modifiers, { enemySpeed: 1, towerDamage: {}, slowStrength: 1 });
-  for (const id of ['forest', 'fork']) {
-    assert.ok(MAPS[id].modifiers.enemySpeed > 1, id);
+  assert.ok(MAPS.fork.modifiers.towerDamage.cannon < 1);
+  assert.ok(MAPS.twin.modifiers.enemySpeed < 1);
+  for (const id of ['fork', 'twin']) {
     const s = createGame({ mapId: id });
     spawnEnemy(s, 'grunt', 1);
-    assert.equal(s.enemies[0].speed, ENEMY_TYPES.grunt.speed * MAPS[id].modifiers.enemySpeed);
+    assert.equal(s.enemies[0].speed, ENEMY_TYPES.grunt.speed * (MAPS[id].modifiers.enemySpeed ?? 1));
   }
 });
 
-test('Wald und Zangenangriff: robuste Strategie (Kanone zuerst) gewinnt Welle 20 mit mindestens 1 Leben (dt 1/30, 1/60)', () => {
-  for (const mapId of ['forest', 'fork']) {
+test('Zangenangriff: robuste Strategie (Kanone zuerst) gewinnt Welle 20 mit mindestens 1 Leben (dt 1/30, 1/60)', () => {
+  for (const mapId of ['fork']) {
     for (const dt of [1 / 30, 1 / 60]) {
       const s = mapRun('arrow', dt, mapId);
       assert.equal(s.status, 'won', `${mapId} dt=${dt}: Status ${s.status} in Welle ${s.wave}`);
@@ -1155,7 +1157,7 @@ test('Wald und Zangenangriff: robuste Strategie (Kanone zuerst) gewinnt Welle 20
 // ---------- Zwei Eingänge (B-033) ----------
 
 test('Zwei Eingänge: Karten ohne extraPaths haben genau einen Weg', () => {
-  for (const id of ['meadow', 'forest', 'ice']) {
+  for (const id of ['meadow', 'ice']) {
     const s = createGame({ mapId: id });
     assert.equal(s.paths.length, 1);
     assert.equal(s.paths[0], s.path);
@@ -1286,6 +1288,117 @@ test('Zangenangriff: Bauplätze nahe beiden Wegen, Wegkacheln/Ein-/Ausgang nicht
     assert.ok(near >= 25, `nur ${near} Bauplätze`);
   }
   for (const [c, r] of [[-1, 2], [-1, 12], [20, 12]]) assert.equal(canBuild(s, c, r).ok, false);
+});
+
+// ---------- Feste Seiten (B-099) und Karte Zwei Fronten ----------
+
+test('Feste Seiten: Flitzer oben, Troll/Schildträger/Schamane unten, Goblin und Boss wechseln weiter ab', () => {
+  for (const id of ['fork', 'twin']) {
+    const s = createGame({ mapId: id });
+    const lanes = ['grunt', 'runner', 'grunt', 'tank', 'shielded', 'healer', 'runner', 'grunt', 'boss', 'boss']
+      .map((t) => spawnEnemy(s, t, 1).lane);
+    // Feste Typen zählen den Wechsel nicht weiter: Goblins/Bosse laufen 0, 1, 0, 1, 0
+    assert.deepEqual(lanes, [0, 0, 1, 1, 1, 1, 0, 0, 1, 0], id);
+    for (const e of s.enemies) assert.deepEqual({ x: e.x, y: e.y }, s.paths[e.lane].points[0]);
+  }
+});
+
+test('Feste Seiten: Karten ohne lanes und Ein-Weg-Overrides bleiben beim Wechsel bzw. Hauptweg', () => {
+  const m = createGame({ mapId: 'meadow' });
+  assert.deepEqual(['runner', 'tank', 'grunt'].map((t) => spawnEnemy(m, t, 1).lane), [0, 0, 0]);
+  const one = createGame({ mapId: 'twin', path: buildPath([[0, 0], [5, 0]], 10) });
+  assert.equal(spawnEnemy(one, 'tank', 1).lane, 0, 'lane außerhalb der Wege fällt auf Wechsel zurück');
+  assert.equal(laneFor({ mapId: 'twin', nextLane: 0 }, 'tank', 2), 1);
+  assert.equal(laneFor({ mapId: 'twin', nextLane: 0 }, 'tank', 1), 0);
+});
+
+test('Feste Seiten: eine echte Welle verteilt die Typen laut Karte, Anzahl unverändert', () => {
+  const s = createGame({ mapId: 'twin', gold: 1e9 });
+  s.wave = 8; // nächste Welle 9: Goblins, Flitzer, Trolle, Schildträger, Schamane
+  startWave(s);
+  const total = s.spawnQueue.length;
+  const seen = new Map();
+  for (let k = 0; k < 60 * 120 && s.waveActive; k++) {
+    for (const e of s.enemies) seen.set(e.id, e);
+    update(s, 1 / 60);
+    if (s.lives <= 1) s.lives = 99; // nur Verteilung prüfen, nicht verlieren
+  }
+  assert.equal(seen.size, total);
+  for (const e of seen.values()) {
+    const fixed = MAPS.twin.lanes[e.type];
+    if (fixed !== undefined) assert.equal(e.lane, fixed, e.type);
+  }
+  const grunts = [...seen.values()].filter((e) => e.type === 'grunt');
+  assert.ok(grunts.some((e) => e.lane === 0) && grunts.some((e) => e.lane === 1), 'Goblins auf beiden Seiten');
+});
+
+test('Karte Zwei Fronten: Wege gültig, getrennt bis auf ein kurzes Endstück, Bauplätze an beiden Wegen', () => {
+  const m = MAPS.twin;
+  const all = [m.waypoints, ...m.extraPaths];
+  assert.equal(all.length, 2);
+  const inside = ([c, r]) => c >= 0 && c < COLS && r >= 0 && r < ROWS;
+  for (const w of all) {
+    assert.ok(!inside(w[0]) && !inside(w[w.length - 1]));
+    for (const p of w.slice(1, -1)) assert.ok(inside(p));
+    for (let i = 0; i < w.length - 1; i++) assert.ok((w[i][0] === w[i + 1][0]) !== (w[i][1] === w[i + 1][1]));
+    const len = buildPath(w, 1).length;
+    assert.ok(len >= 40 && len <= 55, `Länge ${len}`);
+  }
+  assert.notDeepEqual(all[0][0], all[1][0]);
+  assert.deepEqual(all[0].at(-1), all[1].at(-1));
+  const a = pathTiles(all[0]);
+  const b = pathTiles(all[1]);
+  const shared = [...a].filter((k) => b.has(k));
+  assert.ok(shared.length <= 4, `gemeinsam nur das Endstück (${shared.length} Kacheln)`);
+  const s = createGame({ mapId: 'twin' });
+  for (const k of [...a, ...b]) { const [c, r] = k.split(',').map(Number); assert.equal(canBuild(s, c, r).ok, false, k); }
+  for (const tiles of [a, b]) {
+    const pts = [...tiles].map((k) => k.split(',').map(Number));
+    let near = 0;
+    for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
+      if (canBuild(s, c, r).ok && pts.some(([pc, pr]) => Math.max(Math.abs(pc - c), Math.abs(pr - r)) <= 2)) near++;
+    }
+    assert.ok(near >= 25, `nur ${near} Bauplätze`);
+  }
+});
+
+test('Zwei Fronten: Kanonen-Mix über beide Wege gewinnt Welle 20 mit 1 bis 9 Leben (dt 1/30, 1/60)', () => {
+  for (const dt of [1 / 30, 1 / 60]) {
+    const s = mapRun('cannon', dt, 'twin');
+    assert.equal(s.status, 'won', `dt=${dt}: Status ${s.status} in Welle ${s.wave}`);
+    assert.ok(s.lives >= 1 && s.lives < 10, `dt=${dt}: ${s.lives} Leben`);
+  }
+});
+
+// Nur eine Seite verteidigen reicht nicht: Türme nur an den Bauplätzen des oberen Wegs (Hauptweg).
+function oneSideRun(mapId, dt) {
+  const s = createGame({ mapId });
+  const top = createGame({ mapId, paths: [s.path] }); // gleiche Karte, Bauplätze nur nach dem Hauptweg bewertet
+  const spots = rankedSpots(top, TOWER_TYPES.cannon.range);
+  let i = 0;
+  while (s.status === 'playing' && s.wave < MAX_WAVES) {
+    for (let again = true; again;) {
+      again = false;
+      const type = MIX_ARROW[s.towers.length % MIX_ARROW.length];
+      if (i < spots.length && s.gold >= TOWER_TYPES[type].cost) { buildTower(s, type, spots[i].c, spots[i].r); i++; again = true; }
+      else {
+        let best = null;
+        for (const t of s.towers) { const c = upgradeCost(t); if (c !== null && (!best || c < best.c)) best = { id: t.id, c }; }
+        if (best && s.gold >= best.c) { upgradeTower(s, best.id); again = true; }
+      }
+    }
+    startWave(s);
+    for (let k = 0; k < Math.round(600 / dt) && s.waveActive && s.status === 'playing'; k++) update(s, dt);
+  }
+  return s;
+}
+
+test('Feste Seiten: nur oben bauen verliert auf Zangenangriff (vor Welle 18) und Zwei Fronten (vor Welle 5)', () => {
+  for (const [mapId, maxWave] of [['fork', 18], ['twin', 5]]) {
+    const s = oneSideRun(mapId, 1 / 30);
+    assert.equal(s.status, 'lost', `${mapId}: ${s.status} mit ${s.lives} Leben`);
+    assert.ok(s.wave < maxWave, `${mapId}: verloren erst in Welle ${s.wave}`);
+  }
 });
 
 // ---------- B-045: Turm-Spezialfähigkeiten ----------
@@ -1779,38 +1892,19 @@ test('Faehigkeiten: Prototyp-Ids, ungueltige Meteor-Ziele, Spielende ohne Wieder
   assert.equal(useAbility(s, 'freeze').ok, false);
 });
 
-// Aus forest-edge.test.js (B-043)
-test('Wald: Weg gueltig, Hindernisse eindeutig, im Feld, nicht auf Weg', () => {
-  const { waypoints, obstacles } = MAPS.forest;
-  for (let i = 1; i < waypoints.length; i++) {
-    const [a, b] = [waypoints[i - 1], waypoints[i]];
-    assert.ok(a[0] === b[0] || a[1] === b[1], 'achsenparallel');
-    assert.notDeepEqual(a, b);
-  }
-  const f = waypoints[0], l = waypoints[waypoints.length - 1];
-  assert.ok(f[0] < 0 || f[0] >= COLS || f[1] < 0 || f[1] >= ROWS);
-  assert.ok(l[0] < 0 || l[0] >= COLS || l[1] < 0 || l[1] >= ROWS);
-  const keys = obstacles.map(([c, r]) => `${c},${r}`);
-  assert.equal(new Set(keys).size, keys.length, 'keine Duplikate');
-  const blocked = pathTiles(waypoints);
-  for (const [c, r] of obstacles) {
-    assert.ok(c >= 0 && r >= 0 && c < COLS && r < ROWS);
-    assert.ok(!blocked.has(`${c},${r}`), `Hindernis auf Weg ${c},${r}`);
-  }
-});
-
-test('Wald: canBuild-Reihenfolge Feld, Weg, Hindernis, Turm; overrides ohne obstacles', () => {
-  const s = createGame({ mapId: 'forest' });
+// Aus forest-edge.test.js (B-043), seit B-098 mit Hindernissen per Override statt Wald-Karte
+test('Hindernisse: canBuild-Reihenfolge Feld, Weg, Hindernis, Turm; overrides ohne obstacles', () => {
+  const s = withObstacles();
   assert.match(canBuild(s, -1, 0).reason, /Außerhalb/);
   const [pc, pr] = [...s.blocked].map(k => k.split(',').map(Number)).find(([c, r]) => c >= 0 && r >= 0 && c < COLS && r < ROWS);
   assert.match(canBuild(s, pc, pr).reason, /Weg/);
-  const [oc, or] = MAPS.forest.obstacles[0];
+  const [oc, or] = OBST[0];
   assert.match(canBuild(s, oc, or).reason, /Baum/);
   s.towers.push({ col: oc, row: or });
   assert.match(canBuild(s, oc, or).reason, /Baum/, 'Hindernis vor Turm');
   const g = createGame({ obstacles: undefined });
   assert.equal(canBuild(g, 0, 0).ok, true);
-  const h = createGame({ mapId: 'forest', obstacles: new Set() });
+  const h = createGame({ obstacles: new Set() });
   assert.equal(canBuild(h, oc, or).ok, true);
 });
 
