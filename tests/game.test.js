@@ -2413,3 +2413,107 @@ test('B-030 Randfall (Tester): Überhitzung bleibt beim Upgrade, Verkauf unverä
   assert.equal(buildTower(s, 'frost', 6, 6).tower.overheated, false, 'Neubau weg von Lava normal');
 });
 import { sellValue } from '../src/game.js';
+
+// ---------- B-112: Meteor stärker, wächst mit der Welle ----------
+import { meteorLife } from '../src/game.js';
+import { meteorDamage, meteorText, FX_STYLE } from '../src/config.js';
+
+test('B-112 Meteor: Schaden wächst mit hpScale(Welle), Welle 0 zählt als 1, Rüstung zählt nicht', () => {
+  for (const w of [1, 5, 10, 20]) {
+    const s = createGame();
+    s.wave = w;
+    const e = enemyAt(s, 'shielded', 300, 300);
+    e.hp = 1e6;
+    assert.ok(useAbility(s, 'meteor', 300, 300).ok);
+    const dealt = 1e6 - e.hp;
+    assert.ok(Math.abs(dealt - ABILITIES.meteor.damage * hpScale(w)) < 1e-6, `Welle ${w}: ${dealt}`);
+    assert.ok(Math.abs(dealt - meteorDamage(w)) < 1e-6);
+  }
+  assert.equal(meteorDamage(0), meteorDamage(1));
+  assert.ok(meteorDamage(20) > meteorDamage(10) && meteorDamage(10) > meteorDamage(5) && meteorDamage(5) > meteorDamage(1));
+});
+
+test('B-112 Meteor: Radius 2,5 Kacheln, Schaden fällt zum Rand linear auf edge ab, außerhalb nichts', () => {
+  const s = createGame();
+  s.wave = 7;
+  const r = ABILITIES.meteor.radius * TILE;
+  assert.ok(ABILITIES.meteor.radius >= 2.5, 'Reichweite gewachsen (alt 1,8)');
+  const mk = (dx) => { const e = enemyAt(s, 'tank', 400 + dx, 300); e.hp = 1e6; return e; };
+  const mid = mk(0);
+  const half = mk(r / 2);
+  const edge = mk(r - 0.01);
+  const out = mk(r + 1);
+  useAbility(s, 'meteor', 400, 300);
+  const near = (a, b) => Math.abs(a - b) < 0.05;
+  assert.ok(near(1e6 - mid.hp, meteorDamage(7)));
+  assert.ok(near(1e6 - half.hp, meteorDamage(7) * (1 + ABILITIES.meteor.edge) / 2));
+  assert.ok(near(1e6 - edge.hp, meteorDamage(7) * ABILITIES.meteor.edge), `${1e6 - edge.hp}`);
+  assert.equal(out.hp, 1e6);
+  assert.ok(meteorDamage(7, 5) === meteorDamage(7, 1) && meteorDamage(7, -1) === meteorDamage(7, 0), 'frac begrenzt');
+});
+
+test('B-112 Meteor: tötet in jeder Welle Goblin, Flitzer, Schamane und Schildträger (auch am Rand), Troll stark verletzt, Boss 20-30 %', () => {
+  for (let w = 1; w <= MAX_WAVES; w++) {
+    const s = createGame();
+    s.wave = w;
+    const r = ABILITIES.meteor.radius * TILE;
+    const weak = ['grunt', 'runner', 'healer', 'shielded'].map((t, i) => enemyAt(s, t, 400 + (i % 2 ? r - 1 : 0), 300));
+    const troll = enemyAt(s, 'tank', 400, 300);
+    const boss = enemyAt(s, 'boss', 400, 300);
+    for (const e of [...weak, troll, boss]) e.hp = e.maxHp = ENEMY_TYPES[e.type].hp * hpScale(w);
+    useAbility(s, 'meteor', 400, 300);
+    for (const e of weak) assert.ok(!s.enemies.includes(e), `Welle ${w}: ${e.type} überlebt`);
+    const tLoss = 1 - troll.hp / troll.maxHp;
+    const bLoss = 1 - boss.hp / boss.maxHp;
+    assert.ok(tLoss >= 0.5 && tLoss < 1, `Welle ${w}: Troll ${tLoss}`);
+    assert.ok(bLoss >= 0.2 && bLoss <= 0.3, `Welle ${w}: Boss ${bLoss}`);
+  }
+});
+
+test('B-112 Meteor: Effekt lebt Anflug + Einschlag + Krater, altert nur mit Spielzeit und verschwindet (dt 1/30, 1/60)', () => {
+  const M = FX_STYLE.meteor;
+  assert.ok(M.flight <= 0.3, 'Schaden fällt sofort, Anflug darum kurz');
+  assert.ok(M.flight + M.blast >= 0.9 && M.flight + M.blast <= 1.2, 'Ablauf bis zum Krater ca. 1 s');
+  assert.equal(meteorLife(), M.flight + M.blast + M.crater);
+  for (const dt of [1 / 30, 1 / 60]) {
+    const s = createGame();
+    useAbility(s, 'meteor', 300, 300);
+    const fx = s.effects.find((f) => f.meteor);
+    assert.equal(fx.kind, 'explosion');
+    assert.equal(fx.ttl, meteorLife());
+    s.paused = true;
+    update(s, 10);
+    assert.equal(fx.ttl, meteorLife(), 'Pause altert nicht');
+    s.paused = false;
+    run(s, meteorLife() - 0.2, dt);
+    assert.ok(s.effects.includes(fx), `dt=${dt}: Krater noch da`);
+    run(s, 0.3, dt);
+    assert.ok(!s.effects.includes(fx), `dt=${dt}: Krater verschwunden`);
+  }
+});
+
+test('B-112 Meteor: Beschreibung nennt den aktuellen Schaden der Welle', () => {
+  assert.match(ABILITIES.meteor.text, /250/);
+  assert.match(meteorText(10), new RegExp(String(Math.round(meteorDamage(10)))));
+  assert.match(meteorText(0), new RegExp(`Mitte.*wächst mit der Welle.*2,5 Kacheln.*${ABILITIES.meteor.cooldown} s`));
+  for (const w of [0, 1, 20]) assert.ok(!/undefined|NaN/.test(meteorText(w)));
+});
+
+// ---------- B-112 Tester: Randfälle ----------
+test('B-112 Tester: Gegner genau auf dem Rand wird getroffen (edge-Schaden), Krater blockiert das Wellenende nicht', () => {
+  const s = createGame();
+  s.wave = 3;
+  const r = ABILITIES.meteor.radius * TILE;
+  const e = enemyAt(s, 'tank', 300 + r, 300);
+  e.hp = 1e6;
+  assert.ok(useAbility(s, 'meteor', 300, 300).ok);
+  assert.ok(Math.abs(1e6 - e.hp - meteorDamage(3) * ABILITIES.meteor.edge) < 1e-6);
+  // Welle läuft, Krater liegt noch: ohne Gegner und Warteschlange endet die Welle trotzdem sofort
+  s.enemies.length = 0;
+  s.spawnQueue = [];
+  s.waveActive = true;
+  update(s, 0.05);
+  assert.equal(s.waveActive, false, 'Krater-Effekt hält die Welle nicht offen');
+  assert.ok(s.effects.some((f) => f.meteor), 'Krater lebt weiter, nur Darstellung');
+  assert.ok(Number.isFinite(meteorDamage(undefined)) && meteorDamage(NaN, NaN) === meteorDamage(1, 0));
+});

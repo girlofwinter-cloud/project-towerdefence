@@ -1570,3 +1570,39 @@ test('B-030: Render Vulkan wirft nicht, Lava-Palette nur im Hintergrund-Cache, T
     assert.ok(!frame.set.has(LAVA_STYLE.lava) && !frame.set.has(LAVA_STYLE.crust), 'Frame-Pfad zeichnet keine Lava');
   } finally { delete globalThis.document; }
 });
+
+// ---------- B-112: Meteor-Animation zeichnen ----------
+test('B-112 Render: Meteor in allen Phasen (Anflug, Einschlag, Krater) zeichnet ausgewogen, Gestein nur im Anflug', async () => {
+  const { drawEffectUnder, drawEffectOver } = await import('../src/render-fx.js');
+  const { render } = await import('../src/render.js');
+  const { FX_STYLE } = await import('../src/config.js');
+  const M = FX_STYLE.meteor;
+  const max = M.flight + M.blast + M.crater;
+  const mk = (age) => ({ kind: 'explosion', meteor: true, x: 300, y: 250, r: 100, ttl: max - age, max });
+  const ages = [0, M.flight * 0.5, M.flight + 0.02, M.flight + M.blast * 0.4, M.flight + M.blast + 0.5, max - 0.1];
+  const arcsOver = [];
+  for (const age of ages) {
+    const m = mockCtx();
+    drawEffectUnder(m.ctx, mk(age));
+    drawEffectOver(m.ctx, mk(age));
+    assert.equal(m.depth, 0, `Alter ${age}`);
+    const o = mockCtx();
+    drawEffectOver(o.ctx, mk(age));
+    arcsOver.push(o.counts.arc || 0);
+  }
+  assert.ok(arcsOver[0] > M.tailPoints && arcsOver[1] > M.tailPoints, 'Anflug: Schweif und Gestein');
+  assert.ok(arcsOver[2] >= 3, 'Einschlag: Feuerball und Blitz');
+  assert.equal(arcsOver[4], 0, 'Krater: nichts mehr über den Gegnern');
+  const late = mockCtx();
+  drawEffectUnder(late.ctx, mk(max - 0.1));
+  assert.ok((late.counts.ellipse || 0) >= 2, 'Krater und Brandfleck');
+  // Ganzes Bild, auch mit reduzierter Bewegung und kaputten Werten
+  const s = createGame();
+  s.time = 3;
+  s.effects.push(...ages.map(mk), { kind: 'explosion', meteor: true, x: NaN, y: 1, r: -5, ttl: 1, max: 1 });
+  for (const reducedMotion of [false, true]) {
+    const m = mockCtx();
+    render(m.ctx, s, { reducedMotion });
+    assert.equal(m.depth, 0);
+  }
+});

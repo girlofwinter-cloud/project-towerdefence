@@ -475,11 +475,27 @@ for (const [type, build] of Object.entries(SPECIAL_TEXTS)) TOWER_TYPES[type].spe
 // Zeiten in Sekunden Spielzeit, radius in Kacheln, slow = Anteil der Verlangsamung (0,7 = 70 % langsamer).
 // short = Kurzname auf dem Knopf (B-058), der volle Name steht im zugänglichen Namen.
 export const ABILITIES = {
-  meteor: { name: 'Meteor', short: 'Meteor', key: 'q', cooldown: 50, radius: 1.8, damage: 150 },
+  // Meteor (B-112): damage = Schaden in der Mitte in Welle 1, wächst mit hpScale(Welle) wie die Gegner-HP;
+  // edge = Anteil des Schadens am Rand des Radius (linear abfallend). Rüstung zählt nicht (Flächenschaden).
+  meteor: { name: 'Meteor', short: 'Meteor', key: 'q', cooldown: 60, radius: 2.5, damage: 250, edge: 0.6 },
   freeze: { name: 'Kälteschock', short: 'Kälte', key: 'w', cooldown: 60, slow: 0.7, duration: 4 },
   repair: { name: 'Notfall-Reparatur', short: 'Reparatur', key: 'e', cooldown: 120, maxUses: 2, heal: 1 },
 };
-ABILITIES.meteor.text = `Flächenschaden (${ABILITIES.meteor.damage}) im Umkreis von ${num(ABILITIES.meteor.radius)} Kacheln, Abklingzeit ${ABILITIES.meteor.cooldown} s.`;
+ABILITIES.meteor.text = meteorText(1);
+
+// Meteor-Schaden (B-112) in Welle wave bei Abstand frac (0 = Mitte, 1 = Rand des Radius); Welle < 1 zählt als 1.
+export function meteorDamage(wave, frac = 0) {
+  const m = ABILITIES.meteor;
+  const f = frac > 0 ? Math.min(frac, 1) : 0;
+  return m.damage * hpScale(Math.max(1, wave || 0)) * (1 - (1 - m.edge) * f);
+}
+
+// Beschreibung mit dem aktuellen Schaden der Welle (Tooltip des Knopfs, main.js aktualisiert sie je Welle).
+export function meteorText(wave) {
+  const m = ABILITIES.meteor;
+  return `Flächenschaden ${Math.round(meteorDamage(wave))} in der Mitte (am Rand ${pct(m.edge)}), wächst mit der Welle. `
+    + `Umkreis ${num(m.radius)} Kacheln, Abklingzeit ${m.cooldown} s.`;
+}
 ABILITIES.freeze.text = `Alle Gegner ${pct(ABILITIES.freeze.slow)} langsamer für ${ABILITIES.freeze.duration} s, Abklingzeit ${ABILITIES.freeze.cooldown} s.`;
 ABILITIES.repair.text = `+${ABILITIES.repair.heal} Leben, höchstens ${ABILITIES.repair.maxUses}× pro Spiel, Abklingzeit ${ABILITIES.repair.cooldown} s.`;
 
@@ -1054,4 +1070,30 @@ export const FX_STYLE = {
     edgeWidth: 1, inner: 0.72, shineMin: 0.6, shineOffset: 0.3, shineR: 0.22 }, // Rand, Innenfläche und Glanz relativ zur Größe
   coinText: { color: '#f4c542', outline: '#3b2415', outlineWidth: 3, rise: 10, lift: 20, font: 'bold 13px system-ui, sans-serif' }, // lift: Start über dem Gegner in px
   chill: { rgb: '120,200,255', alpha: 0.25 }, // Frost-Schimmer über dem ganzen Feld
+  // Meteor (B-112): Anflug -> Einschlag -> Krater. Zeiten in Sekunden Spielzeit (flight + blast + crater = Effektdauer),
+  // Radien als Anteil des Meteor-Radius r, sonst px. Der Schaden fällt sofort (game.js), der Anflug ist darum kurz.
+  meteor: {
+    flight: 0.28, blast: 0.75, crater: 4,
+    // Anflug: schräg von rechts oben; Gestein mit Kontur, Glanzpunkt, Feuerschweif aus wenigen Kreisen
+    fromX: 130, fromY: -230, fromMin: 0.45, rock: '#7a6a64', rockR: 10, rockShine: '#b3adaa',
+    glow: '#ff7a1f', glowR: 17, glowAlpha: 0.45,
+    tail: ['#ff7a1f', '#ffc23a', '#fff3c9'], tailPoints: 7, tailSpacing: 11, tailSize: 9, tailMin: 0.25, tailAlpha: 0.85,
+    shadow: '#2b1b3d', shadowAlpha: 0.4, shadowFrom: 0.12, shadowTo: 0.45, shadowFlat: 0.6,
+    target: '#ff5a28', targetAlpha: 0.65, targetWidth: 2.5,
+    // Einschlag (Anteile der Einschlagdauer): Blitz, Feuerball in drei Lagen, Schockwellen-Ring bis zum Radius
+    flash: '#fffbe8', flashEnd: 0.16, flashR: 0.95,
+    // Feuerball als Wolke aus Puffs (Flat-Pop): firePuffs Kreise um die Mitte, puffDist/puffR in Feuerball-Radien
+    fire: ['#ff7a1f', '#ffc23a', '#fff3c9'], fireR: [0.5, 0.36, 0.2], fireGrow: 0.18, fireEnd: 0.7, fireStart: 0.3,
+    firePuffs: 7, puffDist: 0.55, puffR: 0.55, fireDrift: 0.35, fireEdge: 2,
+    wave: '#fff3c9', waveEdge: '#ff7a1f', waveEnd: 0.6, waveFrom: 0.2, waveWidth: 8, waveEdgeWidth: 3,
+    // Krater: dunkle Mulde mit hellem Rand, Brandfleck außen, Glutpunkte; verblasst über die Kraterzeit
+    pit: '#55474a', craterRim: '#8b7468', craterR: 0.34, craterFlat: 0.72, rimWidth: 3, rimStones: 9, rimStoneR: 3.2,
+    scorch: '#2b1b3d', scorchAlpha: 0.32, scorchR: 0.7,
+    embers: 5, ember: '#ffc23a', emberR: 2.2, emberEnd: 0.45,
+    // Partikel beim Einschlag (Pool hat 256 Plätze; ein Meteor braucht höchstens sparks + rocks + smoke)
+    sparks: 14, sparkSpeed: 300, sparkSpeedVar: 220, sparkLife: 0.45,
+    rocks: 8, rockSpeed: 220, rockSpeedVar: 120, rockLift: 170, rockLife: 0.75, rockSize: 3.2, chunk: '#5a4a48',
+    smoke: 6, smokeSize: 9, smokeSizeVar: 5, smokeLife: 1.1, smokeSpread: 0.5, smokeSpeed: 22,
+    shake: 2.8, // Wackeln in px (SHAKE_MAX begrenzt), nur ohne prefers-reduced-motion
+  },
 };

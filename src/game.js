@@ -1,7 +1,7 @@
 // Spiel-Logik: kompletter Zustand + update(). Kein DOM, kein Canvas -> in Node testbar.
 import {
   TILE, COLS, ROWS, START_GOLD, START_LIVES, MAX_WAVES, SELL_RATIO, MAX_LEVEL, MAX_SUBSTEP, TARGET_MODES,
-  MAPS, DEFAULT_MAP_ID, TOWER_TYPES, ABILITIES, WIDTH, HEIGHT, ENEMY_TYPES, LAVA, waveFor, waveBonus, hpScale,
+  MAPS, DEFAULT_MAP_ID, TOWER_TYPES, ABILITIES, WIDTH, HEIGHT, ENEMY_TYPES, LAVA, FX_STYLE, waveFor, waveBonus, hpScale, meteorDamage,
 } from './config.js';
 import { buildPath, pointAt, pathTiles } from './path.js';
 
@@ -242,9 +242,15 @@ export function useAbility(state, id, x, y) {
   if (state.time < a.readyAt) return { ok: false, reason: `${def.name} lädt noch (${Math.ceil(a.readyAt - state.time)} s)` };
   if (id === 'meteor') {
     if (!Number.isFinite(x) || !Number.isFinite(y) || x < 0 || y < 0 || x > WIDTH || y > HEIGHT) return { ok: false, reason: 'Ziel liegt außerhalb des Spielfelds' };
+    // B-112: Schaden sofort (wie bisher), wächst mit der Welle und fällt zum Rand linear ab; Rüstung zählt nicht.
+    // Der Effekt bleibt eine 'explosion' mit meteor = true und lebt bis zum Ende des Kraters (nur Darstellung).
     const r = def.radius * TILE;
-    for (const e of state.enemies) if (Math.hypot(e.x - x, e.y - y) <= r) damage(state, e, { damage: def.damage });
-    state.effects.push({ kind: 'explosion', x, y, r, ttl: 0.5, max: 0.5 });
+    for (const e of state.enemies) {
+      const d = Math.hypot(e.x - x, e.y - y);
+      if (d <= r) damage(state, e, { damage: meteorDamage(state.wave, d / r) });
+    }
+    const life = meteorLife();
+    state.effects.push({ kind: 'explosion', meteor: true, x, y, r, ttl: life, max: life });
     removeDead(state);
   } else if (id === 'freeze') {
     const factor = 1 - def.slow;
@@ -261,6 +267,12 @@ export function useAbility(state, id, x, y) {
   a.uses += 1;
   a.readyAt = state.time + def.cooldown;
   return { ok: true };
+}
+
+// Gesamtdauer des Meteor-Effekts in Sekunden Spielzeit: Anflug + Einschlag + Krater (B-112).
+export function meteorLife() {
+  const m = FX_STYLE.meteor;
+  return m.flight + m.blast + m.crater;
 }
 
 // Simuliert dt*speed Sekunden in gleich großen Teilschritten von höchstens MAX_SUBSTEP.

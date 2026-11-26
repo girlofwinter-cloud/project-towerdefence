@@ -18,6 +18,7 @@ export const K_SPARK = 3;
 export const K_FLASH = 4;
 export const K_COIN = 5;
 export const K_DUST = 6; // Staub beim Boss-Auftritt (B-095), liegt unter den Gegnern
+export const K_ROCK = 7; // Gesteinsbrocken beim Meteor-Einschlag (B-112), fliegen im Bogen
 
 // Projektil-Typcodes (0 = unbekannt)
 const TYPE_CODE = { arrow: 1, cannon: 2, frost: 3, sniper: 4 };
@@ -28,8 +29,8 @@ export const T_SNIPER = 4;
 
 // Physik je Partikelart (Index = Art): Schwerkraft in px/s^2 (negativ = steigt), Daempfung pro Sekunde.
 // Muenzen haben keine Schwerkraft: ihr Hopser kommt aus coinHop (B-068), die Physik treibt sie nur seitlich.
-const GRAVITY = new Float32Array([0, -14, 40, 160, 0, 0, -10]);
-const DRAG = new Float32Array([0, 1.5, 2, 3, 0, 4, 3]);
+const GRAVITY = new Float32Array([0, -14, 40, 160, 0, 0, -10, 520]);
+const DRAG = new Float32Array([0, 1.5, 2, 3, 0, 4, 3, 1]);
 
 // Screen-Shake
 export const SHAKE_MAX = 3; // Pixel, harte Obergrenze
@@ -79,6 +80,8 @@ export function createFx() {
     shakeLock: -Infinity, // Spielzeit des letzten ausgeloesten Shakes (fuer SHAKE_COOLDOWN)
     // Boss-Auftritt (B-067): bereits gesehene Gegner, letzter Bodenschlag
     seenEnemies: new WeakSet(),
+    // B-112: Meteore, deren Einschlag (Partikel, Wackeln) schon ausgeloest wurde
+    meteorHits: new WeakSet(),
     entryStart: -Infinity,
     entryX: 0,
     entryY: 0,
@@ -106,6 +109,7 @@ export function resetFx(fx) {
   fx.shakeStrength = 0;
   fx.shakeLock = -Infinity; // Sperre leeren
   fx.seenEnemies = new WeakSet();
+  fx.meteorHits = new WeakSet();
   fx.entryStart = -Infinity;
   fx.entryReduced = false;
 }
@@ -259,6 +263,7 @@ export function observeEffect(fx, e, time, reducedMotion = false) {
   fx.seenEffects.add(e);
   const x = Number.isFinite(e.x) ? e.x : 0;
   const y = Number.isFinite(e.y) ? e.y : 0;
+  if (e.kind === 'explosion' && e.meteor) return; // Meteor: Partikel erst beim Einschlag (meteorStep)
   if (e.kind === 'explosion') {
     const r = Number.isFinite(e.r) ? e.r : 0;
     const n = Math.min(14, 6 + Math.floor(r / 8));
@@ -278,6 +283,61 @@ export function observeEffect(fx, e, time, reducedMotion = false) {
     const drift = reducedMotion ? 0 : (nextRand(fx) - 0.5) * FX_STYLE.coin.drift;
     spawnParticle(fx, K_COIN, x, y - 6, drift, 0, 0.7, 3.5);
   }
+}
+
+// ---------- Meteor (B-112) ----------
+// Phase eines Meteor-Effekts aus seinem Alter (max - ttl, Spielzeit): 'flight' (Anflug), 'blast' (Einschlag),
+// 'crater' (Krater verblasst) oder 'none'. u = Fortschritt 0..1 innerhalb der Phase. Ergebnis in out
+// (wiederverwendbar, keine Allokation pro Frame).
+const PHASE = { phase: 'none', u: 0 };
+export function meteorPhase(e, out = PHASE) {
+  const M = FX_STYLE.meteor;
+  out.phase = 'none';
+  out.u = 0;
+  if (!e || !Number.isFinite(e.ttl) || !Number.isFinite(e.max) || !(e.ttl > 0)) return out;
+  const age = e.max - e.ttl;
+  if (!(age >= 0)) return out;
+  if (age < M.flight) { out.phase = 'flight'; out.u = age / M.flight; }
+  else if (age < M.flight + M.blast) { out.phase = 'blast'; out.u = (age - M.flight) / M.blast; }
+  else if (age < M.flight + M.blast + M.crater) { out.phase = 'crater'; out.u = (age - M.flight - M.blast) / M.crater; }
+  return out;
+}
+
+// Loest beim ersten Frame nach dem Anflug den Einschlag aus (einmal pro Meteor): Funken, Gesteinsbrocken,
+// Rauch und Wackeln. Ein schon lange vergangener Einschlag (z. B. nach Reset) wird nicht nachgeholt.
+// reducedMotion: kein Wackeln, keine fliegenden Funken und Brocken, nur Rauch.
+export function meteorStep(fx, e, time, reducedMotion = false) {
+  if (!e || e.kind !== 'explosion' || !e.meteor || fx.meteorHits.has(e)) return false;
+  const p = meteorPhase(e);
+  if (p.phase === 'flight' || p.phase === 'none') return false;
+  fx.meteorHits.add(e);
+  if (p.phase !== 'blast' || p.u > 0.5) return false;
+  const M = FX_STYLE.meteor;
+  const x = Number.isFinite(e.x) ? e.x : 0;
+  const y = Number.isFinite(e.y) ? e.y : 0;
+  const r = Number.isFinite(e.r) && e.r > 0 ? e.r : 0;
+  if (!reducedMotion) {
+    for (let i = 0; i < M.sparks; i++) {
+      const a = ((i + nextRand(fx) * 0.8) / M.sparks) * Math.PI * 2;
+      const v = M.sparkSpeed + nextRand(fx) * M.sparkSpeedVar;
+      spawnParticle(fx, K_SPARK, x, y, Math.cos(a) * v, Math.sin(a) * v, M.sparkLife * (0.6 + nextRand(fx) * 0.6), 1.5);
+    }
+    for (let i = 0; i < M.rocks; i++) {
+      const a = ((i + nextRand(fx)) / M.rocks) * Math.PI * 2;
+      const v = M.rockSpeed + nextRand(fx) * M.rockSpeedVar;
+      // vy mit Auftrieb: Brocken fliegen hoch und fallen zurück (Schwerkraft K_ROCK)
+      spawnParticle(fx, K_ROCK, x, y, Math.cos(a) * v, Math.sin(a) * v * 0.6 - M.rockLift, M.rockLife * (0.7 + nextRand(fx) * 0.5), M.rockSize * (0.7 + nextRand(fx) * 0.7));
+    }
+    fx.shakeLock = time;
+    triggerShake(fx, time, M.shake);
+  }
+  for (let i = 0; i < M.smoke; i++) {
+    const a = ((i + nextRand(fx) * 0.5) / M.smoke) * Math.PI * 2;
+    const d = r * M.smokeSpread * (0.4 + nextRand(fx) * 0.6);
+    spawnParticle(fx, K_SMOKE, x + Math.cos(a) * d, y + Math.sin(a) * d, Math.cos(a) * M.smokeSpeed, Math.sin(a) * M.smokeSpeed,
+      M.smokeLife * (0.8 + nextRand(fx) * 0.4), M.smokeSize + nextRand(fx) * M.smokeSizeVar);
+  }
+  return true;
 }
 
 // ---------- Muenzen-Hopser (B-068) ----------
@@ -361,7 +421,10 @@ export function syncFx(fx, state, reducedMotion = false) {
   }
   sweepProjectiles(fx);
   const effects = state.effects || [];
-  for (let i = 0; i < effects.length; i++) observeEffect(fx, effects[i], fx.lastTime, reducedMotion);
+  for (let i = 0; i < effects.length; i++) {
+    observeEffect(fx, effects[i], fx.lastTime, reducedMotion);
+    if (effects[i] && effects[i].meteor) meteorStep(fx, effects[i], fx.lastTime, reducedMotion);
+  }
   const enemies = state.enemies || [];
   if (fx.timeJump) {
     // Zeitsprung im selben Spiel (z. B. Testseite): schon vorhandene Gegner gelten als gesehen,
