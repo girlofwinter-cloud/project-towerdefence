@@ -71,7 +71,7 @@ export const MAPS = {
     water: [...withoutBridges(MEADOW_RIVER, MEADOW_BRIDGES), ...MEADOW_LAKE],
     // B-071: Wegpalette der Wiese (STIL.md); Eiswelt und Zangenangriff haben eigene Wegfarben (B-072, B-073).
     // B-103: decor.flatTrees, damit die Hindernisse im Flat-Pop-Stil erscheinen (Laubbaum, Fels mit Kontur)
-    theme: { treeFrame: true, ground: true, accents: true, light: true, decorStyle: 'flatpop', decor: { flatTrees: true }, path: { main: '#e2c88f', edge: '#8f6a3b', outline: '#4a3418', mid: '#ecd5a0', fringe: '#6fbf4e', groove: '#3a6a2c' } },
+    theme: { treeFrame: true, ground: true, accents: true, light: true, paint: true, decorStyle: 'flatpop', decor: { flatTrees: true }, path: { main: '#e2c88f', edge: '#8f6a3b', outline: '#4a3418', mid: '#ecd5a0', fringe: '#6fbf4e', groove: '#3a6a2c' } },
   },
   // Eiswelt (B-029, Glatteis): Gegner rutschen schneller, Kanone und Frost sind schwächer. Modifikatoren (enemySpeed, towerDamage je Typ, slowStrength) und kühles Farbschema (theme).
   ice: {
@@ -887,6 +887,37 @@ export const LIGHT_STYLE = {
   treeShadowDy: 0.6,       // Versatz nach unten, Anteil des Kronenradius
   treeShadowScale: 1.0,    // Radius des Schattens, Anteil des Kronenradius
   maxDarken: 0.15,         // Obergrenze je dunkelnder Schicht (Vignette, Baumschatten), Test
+};
+
+// Gemalter Boden (B-142, STIL.md 0): große Hell-Dunkel-Flecken aus eigenem Rauschen, warmes Licht oben links,
+// Abschattung nach rechts unten und Vignette. Nur Optik im Hintergrund-Cache, aktiv nur mit MAPS.<id>.theme.paint
+// (true = diese Werte; Objekt überschreibt einzelne Werte, z. B. Farben einer anderen Welt). Bisher nur die Wiese.
+export const PAINT_STYLE = {
+  seed: 142,               // feste Saat (je Karte kommt ein Hash der Karten-ID dazu)
+  cell: 8,                 // Rasterweite des Rausch-Feldes in px (dazwischen weich interpoliert)
+  scale: 150,              // Fleckengröße: Grundwellenlänge des Rauschens in px
+  octaves: 3,              // Rausch-Oktaven (mehr = unruhigere Ränder)
+  stretch: 0.75,           // Verhältnis Wellenlänge x zu y (< 1: Flecken eher breit)
+  dark: [26, 72, 22],      // dunkle Flecken (Moos-Grün, RGB)
+  darkGain: 2.4,           // Deckkraft = clamp(darkGain * n + darkOffset) * darkAlpha
+  darkOffset: -1.05,
+  darkAlpha: 0.32,
+  light: [255, 236, 150],  // helle Flecken (warmes Gelb, RGB)
+  lightGain: 2.4,
+  lightOffset: -1.1,
+  lightAlpha: 0.2,
+  // Licht (ersetzt mit theme.light den Diagonalverlauf von LIGHT_STYLE): Stopps als Anteil der Diagonale oben links -> unten rechts
+  tint: '255,240,176',     // Sonnenlicht (rgba-Anteil)
+  sunAlpha: 0.38,          // Deckkraft in der Ecke oben links
+  sunMid: 0.3,             // Stopp mit sunMidAlpha
+  sunMidAlpha: 0.14,
+  sunEnd: 0.45,            // ab hier kein Licht mehr, danach Abschattung
+  shadow: '20,30,24',      // Schattenton für Abschattung und Vignette
+  shadeAlpha: 0.15,        // Abschattung diagonal nach rechts unten (höchstens LIGHT_STYLE.maxDarken)
+  vignetteAlpha: 0.15,     // Vignette (höchstens LIGHT_STYLE.maxDarken)
+  vignetteInner: 0.45,     // Radius ohne Abdunklung, Anteil der halben Felddiagonale
+  vignetteX: 0.56,         // Mitte der Vignette leicht nach rechts unten (Licht kommt von oben links)
+  vignetteY: 0.56,
 };
 
 // Akzente der Wiese (B-080): Burgmauer oben, Teich und Brunnen unten. Nur Optik, Maße in px bei 1x.

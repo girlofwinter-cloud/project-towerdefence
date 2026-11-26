@@ -265,3 +265,51 @@ export function accentsFor(mapId = 'meadow') {
     return true;
   });
 }
+
+// ---------- Gemalter Boden (B-142) ----------
+// Wertrauschen (Value Noise) auf ganzzahligem Gitter, glatt interpoliert; deterministisch über tileHash. Wert in [0, 1).
+export function valueNoise(x, y, seed = 0) {
+  const ix = Math.floor(x), iy = Math.floor(y);
+  const fx = x - ix, fy = y - iy;
+  const sx = fx * fx * (3 - 2 * fx), sy = fy * fy * (3 - 2 * fy);
+  const a = tileRand(ix, iy, seed), b = tileRand(ix + 1, iy, seed);
+  const c = tileRand(ix, iy + 1, seed), d = tileRand(ix + 1, iy + 1, seed);
+  return a + (b - a) * sx + (c - a) * sy + (a - b - c + d) * sx * sy;
+}
+
+// Fraktales Rauschen: Oktaven mit halber Amplitude und doppelter Frequenz, auf [0, 1) normiert.
+export function fractalNoise(x, y, seed = 0, octaves = 3) {
+  let sum = 0, amp = 1, norm = 0, f = 1;
+  for (let o = 0; o < octaves; o++) {
+    sum += valueNoise(x * f, y * f, seed + o * 31) * amp;
+    norm += amp;
+    amp *= 0.5;
+    f *= 2;
+  }
+  return sum / norm;
+}
+
+// Saat je Karte: feste Grundsaat plus Hash der Karten-ID
+function mapSeed(mapId, base) {
+  let h = base | 0;
+  for (const ch of String(mapId)) h = (Math.imul(h, 31) + ch.charCodeAt(0)) | 0;
+  return Math.abs(h) % 100000;
+}
+
+// Deckkraft-Felder der dunklen und hellen Flecken auf einem groben Raster (Abstand P.cell px, Werte in [0, P.*Alpha]).
+// Gitterpunkt (i, j) liegt bei (i * cell, j * cell); das Raster deckt das ganze Feld samt rechtem/unterem Rand.
+export function mottleField(mapId, P) {
+  const cols = Math.ceil(WIDTH / P.cell) + 1, rows = Math.ceil(HEIGHT / P.cell) + 1;
+  const seed = mapSeed(mapId, P.seed);
+  const dark = new Float32Array(cols * rows), light = new Float32Array(cols * rows);
+  const clamp01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
+  for (let j = 0; j < rows; j++) {
+    for (let i = 0; i < cols; i++) {
+      const x = (i * P.cell) / P.scale, y = (j * P.cell) / (P.scale * P.stretch);
+      const k = j * cols + i;
+      dark[k] = clamp01(P.darkGain * fractalNoise(x, y, seed, P.octaves) + P.darkOffset) * P.darkAlpha;
+      light[k] = clamp01(P.lightGain * fractalNoise(x, y, seed + 977, P.octaves) + P.lightOffset) * P.lightAlpha;
+    }
+  }
+  return { cols, rows, cell: P.cell, dark, light };
+}

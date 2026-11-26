@@ -1,5 +1,5 @@
 // Zeichnet den Spielzustand auf ein Canvas. Keine Spiel-Logik hier!
-import { TILE, COLS, ROWS, WIDTH, HEIGHT, TOWER_TYPES, MAPS, ABILITIES, RANGE_STYLE, TREE_FRAME, GROUND_STYLE, LIGHT_STYLE, DECOR_STYLE, themed } from './config.js';
+import { TILE, COLS, ROWS, WIDTH, HEIGHT, TOWER_TYPES, MAPS, ABILITIES, RANGE_STYLE, TREE_FRAME, GROUND_STYLE, LIGHT_STYLE, DECOR_STYLE, PAINT_STYLE, themed } from './config.js';
 import { towerStats, enemyPath } from './game.js';
 import { disc } from './draw-utils.js';
 import { drawPathStyled } from './render-path.js';
@@ -11,10 +11,10 @@ import { drawTreeFrame } from './render-trees.js';
 import * as flat from './render-decor.js';
 import { drawAccents } from './render-accents.js';
 import { drawTreeShadows, drawLight } from './render-light.js';
-import { drawGround as drawGroundFill, drawGroundTufts } from './render-ground.js';
+import { drawGround as drawGroundFill, drawGroundTufts, drawMottle } from './render-ground.js';
 import { waterGeometry, drawWater, drawBridges } from './render-water.js';
 import { lavaGeometry, drawLava, drawLavaBridges } from './render-lava.js';
-import { tileHash, tileRand, decorFor, obstacleKind, treeFrame, groundPatches, accentsFor, coveredByCrown, scatterFor, LARGE_DECOR_RADIUS } from './decor.js';
+import { tileHash, tileRand, decorFor, obstacleKind, treeFrame, groundPatches, accentsFor, coveredByCrown, scatterFor, LARGE_DECOR_RADIUS, mottleField } from './decor.js';
 
 export function render(ctx, state, ui) {
   const reduced = !!(ui && ui.reducedMotion);
@@ -60,6 +60,18 @@ const EXIT_DARK = '#1c1a20';
 let bgCanvas = null;
 let bgKey = null;
 
+// B-142: Rausch-Felder des gemalten Bodens, je Karte genau einmal berechnet (neues Spiel auf derselben Karte nutzt sie weiter)
+const mottleCache = new Map();
+export const paintStats = { builds: 0 }; // Zähler für Tests
+
+function mottleFor(mapId, P) {
+  if (!mottleCache.has(mapId)) {
+    mottleCache.set(mapId, mottleField(mapId, P));
+    paintStats.builds++;
+  }
+  return mottleCache.get(mapId);
+}
+
 function makeCanvas() {
   if (typeof document !== 'undefined') {
     const c = document.createElement('canvas');
@@ -93,6 +105,9 @@ function paintBackground(ctx, state) {
   flat.useDecorStyle(themed(id, 'decor', DECOR_STYLE));
   if (ground) drawGroundFill(ctx, ground, groundStyle);
   else drawGrass(ctx, MAPS[id]?.theme);
+  // B-142: gemalte Flecken unter Wasser und Weg, damit der Weg lesbar bleibt
+  const paint = MAPS[id]?.theme?.paint ? themed(id, 'paint', PAINT_STYLE) : null;
+  if (paint) drawMottle(ctx, mottleFor(id, paint), paint);
   const water = waterGeometry(id, state.blocked); // B-104: Ebenen Boden, Wasser, Weg, Brücke
   drawWater(ctx, water);
   const lava = lavaGeometry(id, state.blocked); // B-030: Lava wie Wasser zwischen Boden und Weg, Steinbrücke darüber
@@ -107,7 +122,8 @@ function paintBackground(ctx, state) {
   if (crowns && light) drawTreeShadows(ctx, crowns, lightStyle); // vor den Kronen
   if (crowns) drawTreeFrame(ctx, crowns, themed(id, 'treeFrame', TREE_FRAME));
   if (MAPS[state.mapId]?.theme?.accents) drawAccents(ctx, accentsFor(state.mapId));
-  if (light) drawLight(ctx, lightStyle); // Licht und Vignette vor den Toren, damit Start/Ziel lesbar bleiben
+  // Licht und Vignette vor den Toren, damit Start/Ziel lesbar bleiben; B-142: mit theme.paint kräftiger (Licht oben links, Schatten rechts unten)
+  if (light) drawLight(ctx, lightStyle, paint);
   for (const path of state.paths || [state.path]) {
     const pts = path.points;
     drawGate(ctx, pts[0], pts[1]);

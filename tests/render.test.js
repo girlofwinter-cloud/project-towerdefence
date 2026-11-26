@@ -1628,3 +1628,66 @@ test('B-112 Render: Meteor in allen Phasen (Anflug, Einschlag, Krater) zeichnet 
     assert.equal(m.depth, 0);
   }
 });
+
+// ---------- Gemalter Boden (B-142) ----------
+test('Gemalter Boden: Rausch-Felder je Karte nur einmal gebaut, nur im Cache, nur mit theme.paint', async () => {
+  const { render, paintStats } = await import('../src/render.js?b142');
+  const offscreen = [];
+  let pixelReads = 0;
+  globalThis.document = {
+    createElement() {
+      const m = mockCtx();
+      // Pixelzugriff nachbilden, damit die Flecken wirklich gemischt werden
+      m.ctx.getImageData = (x, y, w, h) => { pixelReads++; return { width: w, height: h, data: new Uint8ClampedArray(w * h * 4).fill(100) }; };
+      const c = { width: 0, height: 0, getContext: () => m.ctx, m };
+      offscreen.push(c);
+      return c;
+    },
+  };
+  try {
+    assert.ok(MAPS.meadow.theme.paint, 'Wiese hat den Schalter');
+    const main = mockCtx();
+    const s = createGame({ mapId: 'meadow' });
+    render(main.ctx, s, {});
+    assert.equal(paintStats.builds, 1, 'erster Frame baut das Feld');
+    const off = offscreen[offscreen.length - 1];
+    assert.equal(off.m.counts.putImageData, 1, 'Flecken in den Cache geschrieben');
+    for (let i = 0; i < 5; i++) render(main.ctx, s, {});
+    assert.equal(paintStats.builds, 1, 'weitere Frames bauen nichts');
+    assert.equal(off.m.counts.putImageData, 1, 'weitere Frames schreiben keine Pixel');
+    assert.equal(main.counts.putImageData || 0, 0, 'Frame-Pfad schreibt keine Pixel');
+    assert.equal((main.counts.createRadialGradient || 0) + (main.counts.createLinearGradient || 0), 0, 'Frame-Pfad ohne Verläufe');
+    render(main.ctx, createGame({ mapId: 'meadow' }), {}); // neues Spiel: Cache neu, Feld bleibt
+    assert.equal(off.m.counts.putImageData, 2);
+    assert.equal(paintStats.builds, 1, 'neues Spiel auf derselben Karte nutzt das Feld weiter');
+    const reads = pixelReads;
+    for (const id of Object.keys(MAPS)) if (!MAPS[id].theme?.paint) render(main.ctx, createGame({ mapId: id }), {});
+    assert.equal(pixelReads, reads, 'Karten ohne theme.paint bleiben ungefleckt');
+    render(main.ctx, createGame({ mapId: 'meadow' }), {});
+    assert.equal(paintStats.builds, 1, 'Rückkehr zur Wiese baut das Feld nicht neu');
+    assert.equal(off.m.depth, 0);
+  } finally { delete globalThis.document; }
+});
+
+test('Gemalter Boden: Rauschen deterministisch, Flecken hell und dunkel, Deckkraft begrenzt, Licht oben links', async () => {
+  const { mottleField, valueNoise, fractalNoise } = await import('../src/decor.js');
+  const { PAINT_STYLE: P, LIGHT_STYLE: L, WIDTH, HEIGHT } = await import('../src/config.js');
+  for (let i = 0; i < 200; i++) {
+    const x = i * 0.37, y = i * 0.11;
+    const v = valueNoise(x, y, 5), f = fractalNoise(x, y, 5, 3);
+    assert.ok(v >= 0 && v < 1 && f >= 0 && f < 1, 'Rauschen in [0, 1)');
+    assert.equal(valueNoise(x, y, 5), v, 'deterministisch');
+  }
+  assert.ok(Math.abs(valueNoise(3.5, 2, 1) - valueNoise(3.5001, 2, 1)) < 0.01, 'stetig');
+  const a = mottleField('meadow', P), b = mottleField('meadow', P), c = mottleField('ice', P);
+  assert.deepEqual(a.dark, b.dark);
+  assert.notDeepEqual(a.dark, c.dark, 'je Karte eigene Saat');
+  assert.ok((a.cols - 1) * a.cell >= WIDTH && (a.rows - 1) * a.cell >= HEIGHT, 'Raster deckt das Feld');
+  for (const [arr, max] of [[a.dark, P.darkAlpha], [a.light, P.lightAlpha]]) {
+    const on = arr.filter((v) => v > 0.02).length / arr.length;
+    assert.ok(on > 0.1 && on < 0.8, `Flecken statt Fläche (${on.toFixed(2)})`);
+    assert.ok(arr.every((v) => v >= 0 && v <= max + 1e-6), 'Deckkraft begrenzt');
+  }
+  assert.ok(P.shadeAlpha <= L.maxDarken && P.vignetteAlpha <= L.maxDarken, 'Abdunklung je Schicht höchstens maxDarken');
+  assert.ok(P.sunAlpha > P.sunMidAlpha && P.sunMid < P.sunEnd && P.sunEnd < 1 && P.vignetteX >= 0.5 && P.vignetteY >= 0.5, 'Licht oben links, Schatten rechts unten');
+});
