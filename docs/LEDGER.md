@@ -734,3 +734,12 @@ Neue Einträge werden unten angehängt. Bestehende Einträge werden nie geänder
 - Ergebnis: fertig. `.github/copilot-instructions.md` mit Befehlen, Architekturgrenzen, Testpfaden und Regeln aus README und CLAUDE.md; `.mcp.json` mit Playwright-MCP-Server.
 - Tests: npm test (keine Code-Änderung)
 - Entscheidungen: `.github/` und neue MCP-Abhängigkeit vom Menschen freigegeben. Ledger-Eintrag unten angehängt statt oben (Format).
+
+---
+
+## 2026-11-26 · B-117 · Bauplatz-Inseln entfernen
+- Rolle(n): orchestrator, developer (ohne Tester und Reviewer, Wunsch des Menschen)
+- Branch: agent/insel-entfernen
+- Ergebnis: fertig. `src/render-island.js`, `ISLAND_STYLE` und `theme.islands` entfernt; Türme sehen auf allen Karten gleich aus.
+- Tests: 422 bestanden. Vier Insel-Prüfungen in `tests/render.test.js` umgestellt von „Insel nur auf der Wiese“ auf „keine Insel auf allen Karten“ (vom Menschen freigegeben, Prüfungen gleich streng oder strenger).
+- Entscheidungen: Mensch wählte Entfernen statt Inseln je Karte einzufärben.
