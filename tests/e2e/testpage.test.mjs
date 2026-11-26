@@ -73,3 +73,13 @@ test('Testseite: nach Spielende weiterspielen, Overlay verschwindet', async () =
   assert.deepEqual(await page.evaluate(() => [window.__game().status, window.__game().wave]), ['playing', 3]);
   assert.equal(await page.locator('#overlay-progress').textContent(), '');
 });
+
+test('Testseite Desktop 1280x800: Panel unter dem Spielfeld, alle Turm-Buttons ohne Scrollen sichtbar', async () => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto(`${url}?test`);
+  await page.waitForSelector('#test-panel');
+  assert.equal(await page.locator('.board #test-panel').count(), 1);
+  const btns = page.locator('#shop .tower-btn');
+  const box = await btns.nth((await btns.count()) - 1).boundingBox();
+  assert.ok(box.y + box.height <= 800, `Letzter Turm endet bei ${box.y + box.height}`);
+});

@@ -230,10 +230,12 @@ footer { text-align: center; color: var(--muted); font-size: 0.8rem; padding: 16
 }
 
 /* ---------- Testseite (test.html bzw. ?test) ---------- */
-#test-panel { border: 2px dashed #e0457b; border-radius: 10px; padding: 8px 10px; margin-bottom: 10px; background: rgba(224, 69, 123, 0.08); }
-#test-panel h3 { margin: 0 0 2px; color: #e0457b; }
-#test-panel .tp-note { margin: 0 0 6px; font-size: 0.8rem; color: var(--muted); }
-#test-panel .tp-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 6px; font-size: 0.85rem; }
-#test-panel .tp-row button { flex: 1; padding: 5px 8px; }
+/* Leiste unter dem Spielfeld, damit die Seitenleiste (Turm-Shop) nicht nach unten rutscht. */
+#test-panel { margin-top: 8px; border: 2px dashed #e0457b; border-radius: 10px; padding: 2px 10px 6px; background: rgba(60, 30, 20, 0.85); }
+#test-panel h3 { margin: 0; font-size: 1rem; color: #e0457b; text-transform: uppercase; letter-spacing: 1px; cursor: help; }
+#test-panel .tp-row { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; margin-top: 6px; font-size: 0.85rem; }
+#test-panel .tp-row > button { flex: 1 1 auto; padding: 3px 10px; }
+#test-panel .tp-speeds { display: flex; align-items: center; gap: 4px; margin-left: auto; }
+#test-panel .tp-speeds button { padding: 4px 8px; }
 #test-panel input[type="number"] { width: 4.5em; }
-#test-panel #tp-speeds button.active { outline: 2px solid #e0457b; }
+#test-panel .tp-speeds button.active { outline: 2px solid #e0457b; }
