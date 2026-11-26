@@ -306,3 +306,14 @@ test('startMap (B-101 Randfall): Ergebnis ist immer freigeschaltet, auch wenn St
   assert.equal(isUnlocked(p, M2), false, 'gemerkte Karte ist gesperrt');
   assert.notEqual(m, M2);
 });
+
+test('B-030 Randfall (Tester): alter Spielstand ohne volcano lädt; Vulkan offen genau dann, wenn twin gewonnen', () => {
+  const old = (twinStars) => fakeStorage({ [PROGRESS_KEY]: JSON.stringify({ maps: { meadow: { stars: 3, bestWave: MAX_WAVES }, ice: { stars: 2, bestWave: MAX_WAVES }, fork: { stars: 1, bestWave: MAX_WAVES }, twin: { stars: twinStars, bestWave: twinStars ? MAX_WAVES : 7 } }, lastMap: 'twin' }) });
+  const won = loadProgress(old(1));
+  assert.equal(mapProgress(won, 'volcano').stars, 0);
+  assert.equal(isUnlocked(won, 'volcano'), true);
+  assert.equal(startMap(won), 'twin', 'zuletzt gewählte Karte bleibt');
+  const notYet = loadProgress(old(0));
+  assert.equal(isUnlocked(notYet, 'volcano'), false);
+  assert.equal(startMap(loadProgress(fakeStorage({ [PROGRESS_KEY]: JSON.stringify({ maps: {}, lastMap: 'volcano' }) }))), 'meadow', 'gesperrter Vulkan als lastMap fällt zurück');
+});

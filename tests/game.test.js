@@ -2277,3 +2277,57 @@ test('B-030 HUD: overheatNote nennt die Überhitzung nur für überhitzte Türme
   assert.equal(overheatNote(buildTower(s, 'arrow', 6, 6).tower), '');
   assert.equal(overheatNote(null), '');
 });
+
+// ---------- B-030 Randfälle (Tester) ----------
+test('B-030 Randfall (Tester): Brücke liegt zwischen Lava, Gegner auf der Brücke und davor/danach brennt', () => {
+  const s = createGame({ mapId: 'volcano' });
+  for (const b of V.bridges) {
+    assert.ok(nearLava(s.lava, ...b), 'Brücke grenzt an Lava');
+    assert.ok(lavaBurn('grunt', ...b, 1, 1 / 60).lost > 0, 'Schaden auf der Brücke');
+    assert.ok(lavaBurn('grunt', b[0] - 1, b[1], 1, 1 / 60).lost > 0, 'Schaden vor der Brücke');
+  }
+});
+
+test('B-030 Randfall (Tester): Lava-Schaden bei Tempo x3 gleich, in der Pause und nach Spielende keiner', () => {
+  const mk = () => {
+    const s = createGame({ mapId: 'volcano' });
+    s.wave = 1;
+    const e = spawnEnemy(s, 'grunt', 1);
+    e.speed = 0; e.hp = e.maxHp = 1e6;
+    s.paths = [buildPath([[10, 8], [11, 8]], TILE)];
+    e.dist = 0;
+    return { s, e };
+  };
+  const a = mk(), b = mk();
+  for (let i = 0; i < 60; i++) stepGame(a.s, 1 / 60, 1);
+  for (let i = 0; i < 20; i++) stepGame(b.s, 1 / 60, 3);
+  assert.ok(Math.abs((1e6 - a.e.hp) - (1e6 - b.e.hp)) < LAVA.dps * 0.05, `x1 ${1e6 - a.e.hp} vs x3 ${1e6 - b.e.hp}`);
+  const p = mk();
+  togglePause(p.s);
+  stepGame(p.s, 1, 1);
+  assert.equal(p.e.hp, 1e6, 'Pause: kein Schaden');
+  const l = mk();
+  l.s.status = 'lost';
+  stepGame(l.s, 1, 1);
+  assert.equal(l.e.hp, 1e6, 'nach Spielende kein Schaden');
+});
+
+test('B-030 Randfall (Tester): Überhitzung bleibt beim Upgrade, Verkauf unverändert, Neubau am Platz entscheidet neu', () => {
+  const s = createGame({ mapId: 'volcano', gold: 1e6 });
+  const hot = buildTower(s, 'cannon', 11, 8).tower;
+  upgradeTower(s, hot.id);
+  upgradeTower(s, hot.id);
+  assert.equal(hot.overheated, true, 'nach Upgrade weiter überhitzt');
+  assert.ok(Math.abs(towerStats(hot, s.modifiers).rate - towerStats({ type: 'cannon', level: hot.level }, s.modifiers).rate * LAVA.overheat) < 1e-9);
+  const cool = buildTower(s, 'cannon', 6, 6).tower;
+  upgradeTower(s, cool.id); upgradeTower(s, cool.id);
+  assert.equal(sellValue(hot), sellValue(cool), 'Verkaufswert unabhängig von Überhitzung');
+  // Turmtausch: verkaufen und anderen Typ an derselben Stelle bauen
+  assert.equal(sellTower(s, hot.id).ok, true);
+  const swapped = buildTower(s, 'arrow', 11, 8).tower;
+  assert.equal(swapped.overheated, true, 'neuer Turm neben Lava wieder überhitzt');
+  assert.equal(swapped.level, 1);
+  assert.equal(sellTower(s, cool.id).ok, true);
+  assert.equal(buildTower(s, 'frost', 6, 6).tower.overheated, false, 'Neubau weg von Lava normal');
+});
+import { sellValue } from '../src/game.js';
