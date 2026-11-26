@@ -17,6 +17,15 @@ Erledigte Einträge (`fertig`) liegen in `docs/archiv/BACKLOG-fertig.md`. Beim A
 
 ---
 
+### B-112: Meteor stärker und mit Spezialfähigkeits-Animation
+- Status: offen
+- Aufwand: M
+- Idee: Wunsch des Menschen am 2026-11-26: Der Meteor macht zu wenig Schaden, braucht mehr Reichweite und eine bessere Animation, damit er wie eine echte Spezialfähigkeit aussieht. Ursache: fester Schaden 150, während Gegner-HP mit `hpScale` wachsen (Welle 20: Goblin 437, Troll 4917 HP).
+- Akzeptanzkriterien:
+  - Schaden wächst mit der Welle (`hpScale`), Radius deutlich größer als 1,8; Werte in `config.js`, Beschreibungstext passt sich an.
+  - Animation: sichtbarer Einschlag von oben, Explosion, Schockwelle, Krater/Brandfleck, Partikel; Bildschirm-Wackeln nur ohne `prefers-reduced-motion`.
+  - Balancing gemessen: Test „perfektes Spiel möglich“ und alle Schwierigkeits-Tests bleiben grün.
+
 ### B-105: Statistik je Turm im Panel
 - Status: vorschlag
 - Aufwand: S
