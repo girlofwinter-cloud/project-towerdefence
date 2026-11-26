@@ -476,3 +476,20 @@ Agents lesen diese Datei nur bei konkretem Bedarf.
 - Idee: Wunsch des Menschen am 2026-11-26: Wer Wiese und Wald geschafft hat, soll nicht jedes Mal Wiese vorgewählt bekommen. Das Spiel startet auf der zuletzt gewählten Karte, sonst auf der neuesten freigeschalteten.
 - Akzeptanzkriterien:
   - `startMap(progress)` in `src/progress.js` mit Tests; `lastMap` wird beim Kartenwechsel gespeichert und bei neuer Freischaltung gelöscht; alte Speicherstände laden weiter; Testmodus unverändert.
+
+### B-103: Wenige Hindernisse auf allen Karten
+- Status: fertig
+- Aufwand: M
+- Idee: Hindernisse (`MAPS.<id>.obstacles`) sind seit dem Wald (B-098) auf keiner Karte mehr. Sie sollen auf jeder Karte vorkommen können, aber sparsam: je Karte 2 bis 4 Bäume oder Felsen im Stil der Karte, auf der Wasser-Karte (B-104) höchstens 1 bis 2. Kacheln nach Vorschlag des Designers, keine Top-Turmplätze.
+- Akzeptanzkriterien:
+  - Jede Karte hat 2 bis 4 Hindernisse (Wasser-Karte 1 bis 2), nie auf Weg, Tor oder Ziel. Wiese und Eiswelt zeichnen sie passend zu ihrem Stil.
+  - Schwierigkeit per Strategie-Simulation vorher/nachher gemessen (alle Karten, dt 1/30 und 1/60), Werte im Ledger. Die Strategien bleiben gewinnbar, die Wirkung ist gering.
+
+### B-104: Kleiner See und Fluss (Optik, nicht bebaubar)
+- Status: fertig
+- Aufwand: M
+- Idee: Auf einer Karte (Wahl und Kacheln vom Designer) ein kleiner See und ein schmaler Fluss. Beide sind nicht bebaubar (wie Hindernisse, eigene Meldung "Hier ist Wasser"). Wo der Weg den Fluss kreuzt, wird eine Brücke gezeichnet; die Gegner laufen normal. Der Fluss darf die Schwierigkeit nur wenig beeinflussen.
+- Akzeptanzkriterien:
+  - `MAPS.<id>.water` (Kachel-Liste) in `config.js`; `canBuild` lehnt Wasser ab; Deko meidet Wasser; Brücke auf Weg-Kacheln im Fluss.
+  - Wasser im Flat-Pop-Stil (`docs/STIL.md`), Desktop und Handy per Screenshot geprüft.
+  - Schwierigkeit per Simulation vorher/nachher gemessen, Werte im Ledger; die Strategien bleiben gewinnbar.

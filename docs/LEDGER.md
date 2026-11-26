@@ -673,3 +673,12 @@ Neue Einträge werden unten angehängt. Bestehende Einträge werden nie geänder
 - Ergebnis: fertig. B-095: Zahlen nach `FX_STYLE`, Treffer-Blitz 0,08 s, kein erneuter Boss-Auftritt nach Zeitsprung, Staub beim Auftritt. B-096: keine Emoji mehr in der Spiel-UI (neue Icons Trophäe, Totenkopf, Burg), Kürzel auf Touch aus, `abilityView` gehärtet. B-097: Fokus nach ×, Klammerabstand, Leistenhöhe per ResizeObserver, gleiche Kartenhöhe, `#rgb`. B-101 (neu, Wunsch des Menschen): Start auf zuletzt gewählter bzw. neuester freigeschalteter Karte.
 - Tests: 319 Unit-Tests, 37 Browser-Tests. Tester: PASS (5 Unit-, 2 e2e-Tests ergänzt). Review: APPROVE, Hinweise als B-102.
 - Entscheidungen: **Zwei Test-Zusicherungen mit ausdrücklicher Freigabe des Menschen geändert:** `tests/fx.test.js` Boss-Auftritt erzeugt wenige Staubpartikel statt keine; `tests/render.test.js` 14 statt 11 Icons. B-101: `lastMap` wird nur beim Kartenwechsel gespeichert und bei neuer Freischaltung gelöscht, damit man nach einem Sieg auf der neuen Karte startet.
+
+## 2026-11-26 · B-103 und B-104 · Hindernisse auf allen Karten; See und Fluss auf der Wiese (Block)
+- Rolle(n): orchestrator, designer (Platzierung), developer, tester, reviewer
+- Branch: agent/wasser-hindernisse
+- Runden: 1 von max. 2 (plus Nachbesserung des Sees nach Rückmeldung des Menschen: runder, Uferpflanzen)
+- Ergebnis: fertig. B-103: Hindernisse sind wieder eine Mechanik für alle Karten (Entscheidung des Menschen nach Entfernen des Waldes): Wiese 2, Eiswelt 3, Zangenangriff 4, Zwei Fronten 3, nur auf schwachen Turmplätzen (Designer-Analyse Wegabdeckung Radius 3). B-104: Wiese mit Fluss in Spalte 1, Holzbrücke am Eingang [1,2] (nur Optik), kleinem See mit Schilf, Blumen, Steinen und Seerosen; `MAPS.meadow.water`, `canBuild` meldet „Hier ist Wasser“, neues `src/render-water.js`, Maße in `WATER_STYLE`.
+- Balancing (gemessen, dt 1/30 und 1/60): End-Leben aller Strategien auf allen Karten vorher = nachher (Wiese Kanone 10, Pfeil 6, Blitz 4). Die Pfeil-Strategie wich auf der Wiese von den Wasserkacheln [1,1]/[1,3] automatisch aus.
+- Tests: 335 Unit-Tests, 37 Browser-Tests. Tester: PASS (3 Tests ergänzt). Review: APPROVE. Reine Datenanpassungen bestehender Tests: Eis-Hindernisse (keine → Liste/3), Scharfschütze und Frostturm (e2e panel-edge) von [1,0] auf [2,0] (dort ist jetzt Fluss), zwei Fork-Render-Tests mit `obstacles: new Set()`.
+- Offen: Uferdeko nur mit einfacher Kontur statt drei Flächentönen (Test erlaubt beim Wasser nur einen `clip`). Lavafluss für den Vulkan in B-030 vorgemerkt.
