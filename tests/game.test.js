@@ -1,12 +1,12 @@
 // Unit-Tests der Spiel-Logik (game.js, path.js, config.js). Ausführen: npm test
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createGame, mapModifiers, update, buildTower, upgradeTower, sellTower, startWave, earlyStartBonus, spawnEnemy, canBuild, towerStats, upgradeCost, togglePause, stepGame, setTargetMode, pickTarget, enemyPath, chainTargets, laneFor, nearLava } from '../src/game.js';
+import { createGame, mapModifiers, update, buildTower, upgradeTower, sellTower, startWave, earlyStartBonus, earlyStartRisk, earlyStartPreview, waveHp, spawnEnemy, canBuild, towerStats, upgradeCost, togglePause, stepGame, setTargetMode, pickTarget, enemyPath, chainTargets, laneFor, nearLava } from '../src/game.js';
 
 import { livesText, startButtonView } from '../src/hud.js';
 
 import { buildPath, pointAt, pathTiles } from '../src/path.js';
-import { TOWER_TYPES, MAX_WAVES, START_GOLD, START_LIVES, LOW_LIVES, WAYPOINTS, MAPS, DEFAULT_MAP_ID, TILE, COLS, ROWS, TARGET_MODES, EARLY_START_BONUS, waveFor, waveBonus, waveSummary, hpScale, ENEMY_TYPES, SPEED_STEPS, MAX_SUBSTEP } from '../src/config.js';
+import { TOWER_TYPES, MAX_WAVES, START_GOLD, START_LIVES, LOW_LIVES, WAYPOINTS, MAPS, DEFAULT_MAP_ID, TILE, COLS, ROWS, TARGET_MODES, EARLY_START_MAX, waveFor, waveBonus, waveSummary, hpScale, ENEMY_TYPES, SPEED_STEPS, MAX_SUBSTEP } from '../src/config.js';
 
 import { run, freeTileNearPath, mockCtx, recordEnemy } from './helpers.js';
 
@@ -2542,8 +2542,8 @@ test('B-005: Frühstart vor vollständigem Spawn der laufenden Welle wird abgele
   assert.equal(s.wave, 2);
 });
 
-test('B-005: Frühstart-Bonus = floor(waveBonus * EARLY_START_BONUS), nur während einer Welle, mit Münz-Text', () => {
-  assert.equal(EARLY_START_BONUS, 0.5);
+test('B-005/B-123: Frühstart-Bonus = floor(waveBonus * EARLY_START_MAX * Risiko), nur während einer Welle, mit Münz-Text', () => {
+  assert.equal(EARLY_START_MAX, 3);
   const s = createGame();
   const gold = s.gold;
   const first = startWave(s);
@@ -2552,11 +2552,13 @@ test('B-005: Frühstart-Bonus = floor(waveBonus * EARLY_START_BONUS), nur währe
   spawnAll(s);
   const before = s.gold;
   const coins = s.effects.filter((e) => e.kind === 'coin').length;
+  const risk = earlyStartRisk(s);
+  assert.ok(risk > 0.5, `direkt nach dem Spawn ist die Welle fast vollständig auf dem Feld (${risk})`);
   const res = startWave(s);
   assert.ok(res.ok);
   assert.equal(res.wave, 2);
-  assert.equal(res.bonus, earlyStartBonus(2));
-  assert.equal(res.bonus, Math.floor(waveBonus(2) * EARLY_START_BONUS));
+  assert.equal(res.bonus, earlyStartBonus(2, risk));
+  assert.equal(res.bonus, Math.floor(waveBonus(2) * EARLY_START_MAX * risk));
   // sofort: Frühstart-Bonus der neuen Welle + normaler Wellenbonus der laufenden Welle
   assert.equal(s.gold, before + res.bonus + waveBonus(1));
   const fx = s.effects.filter((e) => e.kind === 'coin');
@@ -2572,7 +2574,9 @@ test('B-005: Jede Welle zahlt ihren Wellenbonus genau einmal', () => {
   assert.ok(startWave(s).ok);
   s.spawnQueue = [];
   assert.ok(startWave(s).ok);
-  const early = earlyStartBonus(2) + earlyStartBonus(3);
+  // Leeres Feld: kein Risiko, also kein Frühstart-Bonus (B-123)
+  const early = earlyStartBonus(2, 0) + earlyStartBonus(3, 0);
+  assert.equal(early, 0);
   assert.equal(s.gold, gold + early + waveBonus(1) + waveBonus(2));
   s.spawnQueue = [];
   s.enemies = [];
@@ -2664,7 +2668,12 @@ test('B-005: HUD-Knopf während der Welle erst nach vollständigem Spawn bedienb
   startWave(s);
   assert.deepEqual(startButtonView(s), { disabled: true, label: 'Welle läuft…', showKey: false });
   s.spawnQueue = [];
-  assert.deepEqual(startButtonView(s), { disabled: false, label: `Nächste Welle +${earlyStartBonus(2)}`, showKey: true });
+  assert.deepEqual(startButtonView(s), { disabled: false, label: 'Nächste Welle +0', showKey: true }, 'leeres Feld: kein Bonus');
+  spawnEnemy(s, 'tank');
+  const preview = earlyStartPreview(s);
+  assert.ok(preview > 0);
+  assert.equal(preview, earlyStartBonus(2, earlyStartRisk(s)));
+  assert.deepEqual(startButtonView(s), { disabled: false, label: `Nächste Welle +${preview}`, showKey: true });
   const last = createGame({ wave: MAX_WAVES - 1 });
   startWave(last);
   assert.deepEqual(startButtonView(last), { disabled: true, label: 'Letzte Welle läuft…', showKey: false });
@@ -2712,10 +2721,11 @@ test('B-005 Rand: direkter zweiter Start abgelehnt; frühestmöglicher Frühstar
   for (let w = 1; w <= MAX_WAVES; w++) expected += waveFor(w).length;
   // Jeweils frühestmöglich rufen, nie Leben verlieren, Gegner nie töten (keine Türme, also kein Kill-Gold)
   s.lives = 1e9;
-  let spawned = 0, bonus = 0;
+  let spawned = 0, bonus = 0, earlyBonuses = 0;
   const seen = new Set();
   for (let i = 0; i < 60 * 2000 && s.status === 'playing'; i++) {
     if (s.waveActive && !s.spawnQueue.length && s.wave < MAX_WAVES) {
+      earlyBonuses += earlyStartPreview(s);
       const r = startWave(s);
       assert.ok(r.ok, `Frühstart Welle ${s.wave + 1}`);
       bonus += r.bonus;
@@ -2727,9 +2737,9 @@ test('B-005 Rand: direkter zweiter Start abgelehnt; frühestmöglicher Frühstar
   assert.equal(s.wave, MAX_WAVES);
   assert.equal(spawned, expected, 'jeder Gegner genau einmal');
   assert.equal(s.status, 'won');
-  let waveBonuses = 0, earlyBonuses = 0;
+  let waveBonuses = 0;
   for (let w = 1; w <= MAX_WAVES; w++) waveBonuses += waveBonus(w);
-  for (let w = 2; w <= MAX_WAVES; w++) earlyBonuses += earlyStartBonus(w);
+  assert.ok(earlyBonuses > 0);
   assert.equal(bonus, earlyBonuses);
   assert.equal(s.gold, gold0 + waveBonuses + earlyBonuses, 'jeder Wellenbonus genau einmal');
 });
@@ -2825,9 +2835,10 @@ test('B-121: Frühstart während laufender Welle bleibt unverändert und setzt k
   const s = createGame();
   startWave(s);
   s.spawnQueue = [];
+  const expected = earlyStartPreview(s);
   const r = startWave(s);
   assert.ok(r.ok);
-  assert.equal(r.bonus, earlyStartBonus(2));
+  assert.equal(r.bonus, expected);
   assert.equal(s.autoWaveIn, null);
 });
 
@@ -2990,4 +3001,48 @@ test('B-120 Meteor: Gegner der älteren Welle bekommt Meteor-Schaden seiner Well
   assert.ok(Math.abs(1e6 - old.hp - meteorDamage(5)) < 1e-6, 'ältere Welle');
   assert.ok(Math.abs(1e6 - cur.hp - meteorDamage(9)) < 1e-6, 'aktuelle Welle wie bisher');
   assert.ok(Math.abs(1e6 - none.hp - meteorDamage(9)) < 1e-6, 'Rückfall state.wave');
+});
+
+// --- B-123: Frühstart-Bonus nach Risiko ---
+
+test('B-123: earlyStartBonus wächst mit dem Risiko, gekappt auf 0..1', () => {
+  for (const w of [2, 10, MAX_WAVES]) {
+    assert.equal(earlyStartBonus(w, 0), 0);
+    assert.equal(earlyStartBonus(w, 1), Math.floor(waveBonus(w) * EARLY_START_MAX));
+    assert.equal(earlyStartBonus(w, 5), earlyStartBonus(w, 1), 'über 1 gekappt');
+    assert.equal(earlyStartBonus(w, -1), 0);
+    assert.equal(earlyStartBonus(w, NaN), 0);
+    assert.equal(earlyStartBonus(w), 0, 'ohne Risiko kein Bonus');
+    assert.ok(earlyStartBonus(w, 0.8) >= earlyStartBonus(w, 0.4));
+  }
+  // Volles Risiko zahlt deutlich mehr als der alte feste Bonus (halber Wellenbonus)
+  assert.ok(earlyStartBonus(2, 1) >= 3 * Math.floor(waveBonus(2) * 0.5));
+});
+
+test('B-123: earlyStartRisk = HP auf dem Feld / HP der laufenden Welle', () => {
+  const s = createGame();
+  assert.equal(earlyStartRisk(s), 0, 'ohne laufende Welle');
+  startWave(s);
+  s.spawnQueue = [];
+  assert.equal(earlyStartRisk(s), 0, 'leeres Feld');
+  for (const e of waveFor(1)) spawnEnemy(s, e.type, 1);
+  assert.equal(waveHp(1), s.enemies.reduce((a, e) => a + e.hp, 0));
+  assert.equal(earlyStartRisk(s), 1, 'ganze Welle unverletzt');
+  for (const e of s.enemies) e.hp = e.maxHp / 2;
+  assert.ok(Math.abs(earlyStartRisk(s) - 0.5) < 1e-9, 'halbe HP');
+  for (const e of waveFor(1)) spawnEnemy(s, e.type, 1);
+  assert.equal(earlyStartRisk(s), 1, 'mehr als eine Welle: gekappt');
+});
+
+test('B-123: mehr Gegner auf dem Feld = mehr Frühstart-Gold, besiegte Gegner senken den Bonus', () => {
+  const full = createGame();
+  startWave(full);
+  spawnAll(full);
+  const few = createGame();
+  startWave(few);
+  spawnAll(few);
+  few.enemies = few.enemies.slice(0, Math.ceil(few.enemies.length / 4));
+  const a = startWave(full).bonus;
+  const b = startWave(few).bonus;
+  assert.ok(a > b, `volles Feld ${a} > fast leeres Feld ${b}`);
 });

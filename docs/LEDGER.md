@@ -799,3 +799,12 @@ Neue Einträge werden unten angehängt. Bestehende Einträge werden nie geänder
 - Branch: agent/naechste-karte
 - Ergebnis: fertig. Neues `mapAfterResult` in `progress.js`; nach einem Sieg ist die nächste offene Karte gewählt (auch gemerkt als `lastMap`), der Overlay-Knopf heißt dann „Weiter: <Karte>“. Niederlage/letzte Karte: wie bisher.
 - Tests: 1 neuer Unit-Test, e2e-Fortschrittstest erweitert; 463 + 38 e2e grün.
+
+---
+
+## 2026-11-26 · B-123 · Frühstart-Bonus nach Risiko, Münz-Explosion mit Ton
+- Rolle(n): orchestrator (Umsetzung), reviewer. Regel vom Menschen gewählt: „Bonus nach Risiko“.
+- Branch: agent/fruehstart-risiko
+- Ergebnis: Bonus = floor(Wellenbonus × `EARLY_START_MAX` (3) × Risiko), Risiko = Gegner-HP auf dem Feld / HP der laufenden Welle (0..1). Der Knopf zeigt den aktuellen Wert, der mit jedem Kill sinkt. Beim Bonus explodieren 12 Münzen aus der Goldanzeige, dazu „+Betrag“, eine Meldung und der neue Ton `coinBurst` (vorhandene Münz-Aufnahmen, heller).
+- Messung (Wiese, immer frühestmöglich gestartet): +692 Gold statt +195 über das Spiel; Risiko beim frühesten Start 0,45 bis 1,0. Strategien ohne Frühstart unverändert.
+- Tests: B-005-Tests auf die neue Formel umgestellt (`EARLY_START_BONUS` 0,5 → `EARLY_START_MAX` 3), 3 neue Tests, `coinBurst` in der Liste der Ereignis-Töne; 466 Unit- und 38 e2e-Tests grün.

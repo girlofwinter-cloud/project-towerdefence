@@ -517,15 +517,21 @@ export const ENEMY_TYPES = {
   shielded: { name: 'Schildträger', hp: 90, speed: 1.0, reward: 12, leak: 2, radius: 13, color: '#6f86a8', armor: 0.5 },
 };
 
-// B-005: Wer die nächste Welle startet, während eine läuft, bekommt diesen Anteil ihres Wellenbonus sofort.
-export const EARLY_START_BONUS = 0.5;
+// B-005/B-123: Wer die nächste Welle startet, während eine läuft, bekommt sofort einen Bonus nach Risiko:
+// höchstens dieses Vielfache ihres Wellenbonus, wenn noch die volle Gegner-HP der laufenden Welle auf dem Feld ist.
+export const EARLY_START_MAX = 3;
 
 // B-121: Nach Wellenende startet die nächste Welle nach so vielen Sekunden Spielzeit automatisch (nicht vor Welle 1).
 export const AUTO_WAVE_DELAY = 5;
 
-// B-005: Frühstart-Bonus der Welle `wave` (einzige Stelle der Formel; Spiel-Logik und HUD nutzen sie).
-export function earlyStartBonus(wave) {
-  return Math.floor(waveBonus(wave) * EARLY_START_BONUS);
+// B-123: Münz-Explosion an der Goldanzeige beim Frühstart-Bonus (Darstellung, in CSS-px und Sekunden)
+export const COIN_BURST = { count: 12, minDist: 35, maxDist: 75, fall: 40, duration: 1.0, stagger: 0.25 };
+
+// B-005/B-123: Frühstart-Bonus der Welle `wave` bei Risiko `risk` (0..1, Anteil der Gegner-HP auf dem Feld).
+// Einzige Stelle der Formel; Spiel-Logik und HUD nutzen sie.
+export function earlyStartBonus(wave, risk) {
+  const share = Number.isFinite(risk) ? Math.min(1, Math.max(0, risk)) : 0;
+  return Math.floor(waveBonus(wave) * EARLY_START_MAX * share);
 }
 
 export function waveBonus(wave) {
@@ -1247,6 +1253,16 @@ export const SOUND = {
         { type: 'osc', wave: 'sine', freq: 2300, endFreq: 2250, duration: 0.18, gain: 0.25, delay: 0.07 },
       ],
     },
+    // B-123: Münzregen beim Frühstart-Bonus (Ersatz: helles, aufsteigendes Klingeln)
+    coinBurst: {
+      pitchVar: 0.03,
+      limit: { window: 0.3, perWindow: 1 },
+      layers: [
+        { type: 'osc', wave: 'sine', freq: 1800, endFreq: 1780, duration: 0.1, gain: 0.25 },
+        { type: 'osc', wave: 'sine', freq: 2200, endFreq: 2180, duration: 0.1, gain: 0.25, delay: 0.06 },
+        { type: 'osc', wave: 'sine', freq: 2700, endFreq: 2650, duration: 0.2, gain: 0.25, delay: 0.12 },
+      ],
+    },
     // Wellenstart: kurzes Horn (Quinte aufwärts)
     waveStart: {
       pitchVar: 0,
@@ -1287,6 +1303,8 @@ export const SOUND = {
       build:     { files: ['build-1', 'build-2'], gain: 0.8, pitchVar: 0.04 },
       upgrade:   { files: ['upgrade-1', 'upgrade-2'], gain: 0.6, pitchVar: 0 },
       sell:      { files: ['sell-1', 'sell-2'], gain: 0.7, pitchVar: 0.03 },
+      // B-123: dieselben Münz-Aufnahmen, lauter und heller als beim Verkaufen
+      coinBurst: { files: ['sell-2', 'sell-1'], gain: 0.95, pitchVar: 0.03, rate: 1.18 },
       waveStart: { files: ['wave-start'], gain: 0.8, pitchVar: 0 },
       won:       { files: ['won'], gain: 0.9, pitchVar: 0 },
       lost:      { files: ['lost'], gain: 0.9, pitchVar: 0 },
