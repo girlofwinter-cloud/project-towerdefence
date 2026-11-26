@@ -725,3 +725,12 @@ Neue Einträge werden unten angehängt. Bestehende Einträge werden nie geänder
 - Ergebnis: fertig. B-116: „The Old Tower Inn“ (RandomMind, OpenGameArt, CC0) als leise Schleife (Stille am Ende per loopStart/loopEnd übersprungen), Einblenden nach erster Nutzeraktion, bei Sieg/Niederlage aus, Ton-Knopf schaltet mit ab. Nach Anhören durch den Menschen: Musik leiser (0,025); Kanone als echter Abschussknall (Kenney explosionCrunch + Tiefton, tiefer gestimmt), lauter, nie von der gemeinsamen Grenze verschluckt; Tod als kurzes Monster-Geschrei (Ogrebane, CC0, Tonhöhe je Gegnertyp), Boss-Schrei; Pfeil als echter Bogenschuss (artisticdude, CC0).
 - Tests: 422 Unit-Tests, 37 Browser-Tests. Tester: PASS (6 Tests ergänzt), Review: APPROVE. Keine bestehenden Tests geändert.
 - Entscheidungen: Lizenzen hat der Mensch per Screenshot bestätigt; Dateien lädt der Mensch selbst. Musik in `assets/music/` (eigene Größengrenze), Kanonen-Tonhöhe in der Datei statt in `SOUND` (bestehender Test). Der Testserver (`npm run testserver -- agent/musik`) wurde zum Anhören vor dem Merge genutzt.
+
+---
+
+## 2026-11-26 · Copilot · Repository-Anweisungen
+- Rolle(n): Copilot, Mensch (Freigabe), Claude (PR)
+- Branch: agent/copilot-instructions
+- Ergebnis: fertig. `.github/copilot-instructions.md` mit Befehlen, Architekturgrenzen, Testpfaden und Regeln aus README und CLAUDE.md; `.mcp.json` mit Playwright-MCP-Server.
+- Tests: npm test (keine Code-Änderung)
+- Entscheidungen: `.github/` und neue MCP-Abhängigkeit vom Menschen freigegeben. Ledger-Eintrag unten angehängt statt oben (Format).
