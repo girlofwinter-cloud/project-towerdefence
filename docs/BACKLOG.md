@@ -27,6 +27,31 @@ Erledigte Einträge (`fertig`) liegen in `docs/archiv/BACKLOG-fertig.md`. Beim A
   - Begrenzung: höchstens wenige Töne pro Zeitfenster und Art, auch bei Tempo ×3 kein Lärm; Lautstärke leise. Alle Zahlen in `config.js` (`SOUND`).
   - Ton an/aus per Knopf und Taste M, Wahl gespeichert; AudioContext erst nach der ersten Nutzeraktion; ohne Web Audio läuft das Spiel normal weiter.
 
+### B-114: Aufgenommene Sounddateien statt Synthese
+- Status: offen
+- Aufwand: M
+- Idee: Entscheidung des Menschen am 2026-11-26 nach Recherche (Vorbild-Prinzip Kingdom Rush: echte Aufnahmen, Schüsse leise, Ereignisse deutlich): Töne aus kurzen, frei lizenzierten Aufnahmen (CC0, z. B. Kenney.nl) statt Web-Audio-Synthese. Keine fremden Spiel-Assets kopieren.
+- Akzeptanzkriterien:
+  - Dateien in `assets/sounds/`, Format für alle Browser (AAC/.m4a), zusammen höchstens ca. 400 KB; Herkunft und Lizenz je Datei in `assets/sounds/LIZENZ.md`.
+  - Gleiche Ereignisse, Begrenzung und Ton-Schalter wie B-113; Laden erst nach der ersten Nutzeraktion, fehlende Datei = Synthese-Ton als Ersatz oder still, nie ein Fehler im Spiel.
+  - Mehrere Varianten je Ton, zufällig gewählt, plus leichte Tonhöhen-Variation; Lautstärken in `SOUND`.
+
+### B-115: Töne für Bauen, Ausbauen, Verkaufen und Wellenstart
+- Status: offen
+- Aufwand: S
+- Idee: Wunsch des Menschen am 2026-11-26: Ereignis-Töne nach dem Kingdom-Rush-Prinzip. Bauen: Hämmern/Holz; Ausbauen: aufsteigender, „besser werdender“ Klang; Verkaufen: Münzen; Wellenstart: kurzes Horn.
+- Akzeptanzkriterien:
+  - Erkennung in `src/sound-events.js` (rein, getestet); `game.js` unverändert. Kein Ton bei abgelehntem Bau oder Ausbau.
+  - Dateien und Lizenz wie B-114.
+
+### B-116: Hintergrundmusik
+- Status: offen
+- Aufwand: M
+- Idee: Wunsch des Menschen am 2026-11-26: ruhige Musikschleife (frei lizenziert, CC0) im Hintergrund, leiser als die Effekte.
+- Akzeptanzkriterien:
+  - Startet erst nach der ersten Nutzeraktion, nahtlose Schleife, mit dem Ton-Knopf aus; kein Lautstärkeregler (Wunsch des Menschen).
+  - Datei höchstens ca. 1,5 MB, Lizenz in `assets/sounds/LIZENZ.md`.
+
 ### B-105: Statistik je Turm im Panel
 - Status: vorschlag
 - Aufwand: S
