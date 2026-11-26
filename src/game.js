@@ -1,7 +1,7 @@
 // Spiel-Logik: kompletter Zustand + update(). Kein DOM, kein Canvas -> in Node testbar.
 import {
   TILE, COLS, ROWS, START_GOLD, START_LIVES, MAX_WAVES, SELL_RATIO, MAX_LEVEL, MAX_SUBSTEP, TARGET_MODES,
-  MAPS, DEFAULT_MAP_ID, LANE_ASYNC, TOWER_TYPES, ABILITIES, WIDTH, HEIGHT, ENEMY_TYPES, LAVA, FX_STYLE, AUTO_WAVE_DELAY, earlyStartBonus, waveFor, waveBonus, hpScale, meteorDamage,
+  MAPS, DEFAULT_MAP_ID, LANE_ASYNC, TOWER_TYPES, ABILITIES, WIDTH, HEIGHT, ENEMY_TYPES, LAVA, FX_STYLE, AUTO_WAVE_DELAY, earlyStartBonus, waveFor, waveBonus, hpScale, meteorDamage, isBoss,
 } from './config.js';
 import { buildPath, pointAt, pathTiles } from './path.js';
 
@@ -280,6 +280,7 @@ export function spawnEnemy(state, type, wave = state.wave, lane = null) {
     armor: def.armor || 0,
     healTick: 0,
   };
+  if (def.summonInterval) enemy.summonAt = state.time + def.summonInterval; // B-127: nächste Beschwörung
   state.enemies.push(enemy);
   return enemy;
 }
@@ -362,6 +363,7 @@ export function update(state, dt) {
   if (state.status !== 'playing') return;
   lavaStep(state, dt);
   healStep(state);
+  summonStep(state);
   towersStep(state, dt);
   projectilesStep(state, dt);
   effectsStep(state, dt);
@@ -442,6 +444,31 @@ function healStep(state) {
       if (Math.hypot(e.x - h.x, e.y - h.y) > reach) continue;
       e.hp = Math.min(e.maxHp, e.hp + e.maxHp * def.healPerSec * def.healInterval);
       e.healTick = tick;
+    }
+  }
+}
+
+// B-127: Beschwörung. Jeder lebende Beschwörer (summonInterval) ruft alle summonInterval Sekunden Spielzeit
+// summonCount Gegner vom Typ summonType auf seinem eigenen Weg summonBehind Kacheln hinter sich herbei (nie vor
+// den Wegstart), damit Türme zuerst den Beschwörer treffen. Sie bekommen die HP-Skalierung der Welle des Beschwörers und zählen fürs Wellenende.
+function summonStep(state) {
+  const list = state.enemies;
+  const n = list.length; // neu beschworene Gegner beschwören in diesem Schritt nicht
+  for (let i = 0; i < n; i++) {
+    const s = list[i];
+    if (!(s.summonAt <= state.time) || s.hp <= 0) continue;
+    const def = ENEMY_TYPES[s.type];
+    s.summonAt += def.summonInterval;
+    if (s.summonAt <= state.time) s.summonAt = state.time + def.summonInterval; // nach großem dt nicht aufholen
+    const path = enemyPath(state, s);
+    for (let k = 0; k < def.summonCount; k++) {
+      const m = spawnEnemy(state, def.summonType, s.wave ?? state.wave, s.lane);
+      m.summoned = true; // beschworen, nicht aus der Spawn-Liste
+      m.dist = Math.max(0, s.dist - (def.summonBehind + k * def.summonSpacing) * TILE);
+      const p = pointAt(path, m.dist);
+      m.x = p.x;
+      m.y = p.y;
+      state.effects.push({ kind: 'summon', x: p.x, y: p.y, ttl: FX_STYLE.summon.life, max: FX_STYLE.summon.life });
     }
   }
 }
@@ -586,7 +613,7 @@ function hit(state, p, target) {
     const tower = p.freezeEvery ? state.towers.find((t) => t.id === p.towerId) : null;
     if (tower) {
       tower.hitCount = (tower.hitCount || 0) + 1;
-      if (tower.hitCount % p.freezeEvery === 0 && target.type !== 'boss') target.frozenUntil = state.time + p.freezeDuration;
+      if (tower.hitCount % p.freezeEvery === 0 && !isBoss(target)) target.frozenUntil = state.time + p.freezeDuration;
     }
   }
 }
@@ -595,7 +622,7 @@ function hit(state, p, target) {
 function knockBack(state, e, p) {
   if (state.time < (e.knockUntil || 0)) return; // Schutzzeit: kein Dauer-Zurückwerfen
   e.knockUntil = state.time + p.knockbackCooldown;
-  const amount = p.knockback * (e.type === 'boss' ? p.bossKnockbackFactor : 1);
+  const amount = p.knockback * (isBoss(e) ? p.bossKnockbackFactor : 1);
   e.dist = Math.max(0, e.dist - amount);
   const pt = pointAt(enemyPath(state, e), e.dist);
   e.x = pt.x;

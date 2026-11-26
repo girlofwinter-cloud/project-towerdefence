@@ -508,14 +508,26 @@ export const LAVA = { dps: 7.5, overheat: 1.5 };
 // Healer: healRadius in Kacheln, healPerSec = Anteil der maxHp des Ziels pro Sekunde,
 //   healInterval = Sekunden (Spielzeit) zwischen zwei Heilimpulsen.
 // Schildträger: armor = Anteil des Schadens, den Treffer ohne Splash blockiert (0,5 = 50 %).
+// boss: true = Boss (immun gegen Einfrieren, nur anteiliger Rückstoß, Boss-Auftritt und Boss-Sound).
+// Nekromantin (B-127): beschwört alle summonInterval Sekunden (Spielzeit) summonCount Gegner vom Typ summonType,
+//   summonBehind Kacheln hinter sich auf ihrem Weg (nie vor den Wegstart), jeweils summonSpacing Kacheln versetzt.
 export const ENEMY_TYPES = {
   grunt: { name: 'Goblin', hp: 40, speed: 1.4, reward: 4, leak: 1, radius: 11, color: '#6fbf4a' },
   runner: { name: 'Flitzer', hp: 25, speed: 2.6, reward: 3, leak: 1, radius: 9, color: '#f2c14e' },
   tank: { name: 'Panzer-Troll', hp: 450, speed: 0.8, reward: 12, leak: 2, radius: 14, color: '#b5523b' },
-  boss: { name: 'Oger-König', hp: 1100, speed: 0.6, reward: 65, leak: 6, radius: 18, color: '#7a2e8e' },
+  boss: { name: 'Oger-König', hp: 1100, speed: 0.6, reward: 65, leak: 6, radius: 18, color: '#7a2e8e', boss: true },
   healer: { name: 'Schamane', hp: 40, speed: 1.1, reward: 9, leak: 1, radius: 11, color: '#3fbf8f', healRadius: 1.5, healPerSec: 0.02, healInterval: 1 },
   shielded: { name: 'Schildträger', hp: 90, speed: 1.0, reward: 12, leak: 2, radius: 13, color: '#6f86a8', armor: 0.5 },
+  necro: { name: 'Nekromantin', hp: 1000, speed: 0.6, reward: 65, leak: 6, radius: 18, color: '#3d4a5c', boss: true,
+    summonInterval: 8, summonCount: 2, summonType: 'skeleton', summonBehind: 0.6, summonSpacing: 0.3 },
+  skeleton: { name: 'Skelett', hp: 18, speed: 0.9, reward: 1, leak: 1, radius: 10, color: '#e6e0cf' },
 };
+
+// B-127: Boss-Merkmal statt Typname. Nimmt einen Gegner ({ type }) oder einen Typnamen.
+export function isBoss(e) {
+  const type = typeof e === 'string' ? e : e?.type;
+  return Object.hasOwn(ENEMY_TYPES, type ?? '') && ENEMY_TYPES[type].boss === true;
+}
 
 // B-005/B-123: Wer die nächste Welle startet, während eine läuft, bekommt sofort einen Bonus nach Risiko:
 // höchstens dieses Vielfache ihres Wellenbonus, wenn noch die volle Gegner-HP der laufenden Welle auf dem Feld ist.
@@ -555,6 +567,9 @@ export function hpScale(wave) {
 // pro Welle ein Troll und zwei Flitzer mehr dazu. Die Wellen 1-13 bleiben davon unberührt.
 const LATE_WAVE = 14;
 
+// B-127: In dieser Welle kommt die Nekromantin statt des Oger-Königs (gleiche Anzahl)
+export const NECRO_WAVE = 15;
+
 // Erzeugt die Spawn-Liste einer Welle: [{ type, at }] (at = Sekunden nach Wellenstart)
 export function waveFor(wave) {
   const list = [];
@@ -581,7 +596,8 @@ export function waveFor(wave) {
     for (let i = 0; i < healers; i++) list.push({ type: 'healer', at: tankStart + 2 + i * 2 });
     list.sort((a, b) => a.at - b.at);
   }
-  if (wave % 5 === 0) add('boss', Math.floor(wave / 10) + 1, 3);
+  // B-127: Bosse in jeder 5. Welle; in Welle NECRO_WAVE kommt die Nekromantin statt des Oger-Königs
+  if (wave % 5 === 0) add(wave === NECRO_WAVE ? 'necro' : 'boss', Math.floor(wave / 10) + 1, 3);
   return list;
 }
 
@@ -1033,6 +1049,20 @@ export const ENEMY_STYLE = {
     auraRadius: 12.6, auraPulse: 0.7, auraSpeed: 3, // Aura: Grundradius, Pulsausschlag (Design-px), Tempo (rad/s)
     main: { skin: 0.55, belly: 0.15, fur: 0.15, gold: 0.15 },
   },
+  // Boss Nekromantin (B-127): so groß wie der Oger-König (sizeFactor), Kapuze, Robe, Stab mit grünem Licht.
+  necro: {
+    sizeFactor: 1.6,
+    skin: '#3d4a5c', robe: '#2a2f45', robeDark: '#1d2033', face: '#151622', hand: '#b9c4b0', staff: '#6b4a2b',
+    glow: '#7dff9a', orb: '#b8ffc8', halo: 'rgba(125,255,154,0.3)',
+    orbRadius: 2.2, orbPulse: 0.35, orbSpeed: 3.5, haloScale: 1.6, // Leuchtkugel: Grundradius, Pulsausschlag (Design-px), Tempo (rad/s), Lichthof
+    main: { skin: 0.35, robe: 0.65 },
+  },
+  // Skelett (B-127): knochig, klein, zerlumpter dunkler Umhang (Kontrast zum hellen Weg)
+  skeleton: {
+    ref: 10,
+    skin: '#e6e0cf', rag: '#3b3550', socket: '#1a1a1a', bone: '#c9c0a6',
+    main: { skin: 0.4, rag: 0.6 },
+  },
 };
 
 // Auftritt des Bosses (B-067, nur Darstellung): Bodenschlag-Ring plus leichtes Wackeln.
@@ -1074,6 +1104,8 @@ export const FX_STYLE = {
     ice: '#bff0ff', iceSize: 1.6, iceBase: 1.5, iceStretch: 1.4, iceLine: 1, // iceBase: Partikelgröße ohne Vergrößerung
   },
   smoke: { color: '#9a8fa6', alpha: 0.45, grow: 0.6 }, // unter den Gegnern
+  // B-127: Beschwörung der Nekromantin: grüne Lichtfunken steigen auf (life = Effektdauer in s Spielzeit, size in px)
+  summon: { color: '#7dff9a', count: 6, life: 0.6, size: 2.2, sizeVar: 1.2, speed: 30, spread: 8, alpha: 0.85 },
   coin: { color: '#f4c542', dark: '#b07a14', shine: '#fff3c9', hop: 12, bounce: 0.3, split: 0.55, end: 0.85, spins: 1.5, minWidth: 0.3, fadeFrom: 0.6, drift: 20,
     edgeWidth: 1, inner: 0.72, shineMin: 0.6, shineOffset: 0.3, shineR: 0.22 }, // Rand, Innenfläche und Glanz relativ zur Größe
   coinText: { color: '#f4c542', outline: '#3b2415', outlineWidth: 3, rise: 10, lift: 20, font: 'bold 13px system-ui, sans-serif' }, // lift: Start über dem Gegner in px
@@ -1214,7 +1246,7 @@ export const SOUND = {
       'shot:lightning': { files: ['lightning-1', 'lightning-2', 'lightning-3'], gain: 0.18, pitchVar: 0.06 },
       // Tod: kurze Monster-Schreie (OpenGameArt, CC0); enemyRate = Tonhöhe je Gegnertyp (klein/schnell höher)
       death:            { files: ['death-1', 'death-2', 'death-3', 'death-4'], gain: 0.55, pitchVar: 0.08,
-                          enemyRate: { runner: 1.25, grunt: 1.1, healer: 1.05, shielded: 0.95, tank: 0.85 } },
+                          enemyRate: { runner: 1.25, grunt: 1.1, healer: 1.05, shielded: 0.95, tank: 0.85, skeleton: 1.35 } },
       // Boss-Tod: langer, tiefer Schrei, zusätzlich tiefer abgespielt (rate = Grund-Tonhöhe)
       boss:             { files: ['boss-1', 'boss-2'], gain: 0.9, pitchVar: 0.03, rate: 0.85 },
       lifeLost:         { files: ['life-lost-1', 'life-lost-2'], gain: 0.8, pitchVar: 0 },

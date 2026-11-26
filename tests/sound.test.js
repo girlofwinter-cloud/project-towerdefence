@@ -1266,7 +1266,7 @@ test('Pfeil: echter Bogenschuss aus Bow.wav, leiser als Kanone, Lizenz je Datei'
 });
 
 // ---------- Tester: Randfälle Musik und Töne ----------
-import { ENEMY_TYPES } from '../src/config.js';
+import { ENEMY_TYPES, isBoss } from '../src/config.js';
 
 // Musik bis zum Start bringen (Ton an, Nutzeraktion, Effekte geladen)
 async function startFakeMusic({ mod, release, tick }) {
@@ -1363,7 +1363,7 @@ test('Rand B-116: Testseiten-Cheat "Sieg erzwingen" -> Musik aus, neues Spiel ->
 
 test('Rand Tod: enemyRate deckt alle Gegnertypen (außer Boss) ab, keine unbekannten Namen', () => {
   const r = SOUND.samples.sounds.death.enemyRate;
-  const types = Object.keys(ENEMY_TYPES).filter((t) => t !== 'boss');
+  const types = Object.keys(ENEMY_TYPES).filter((t) => !isBoss(t)); // B-127: Bosse haben den Boss-Ton
   assert.deepEqual(Object.keys(r).sort(), types.sort());
   for (const v of Object.values(r)) assert.ok(v > 0.5 && v < 2);
   // Extremwerte mit Variation bleiben im hörbaren Bereich
@@ -1406,4 +1406,19 @@ test('B-005: Vorzeitiger Wellenstart spielt den Wellenstart-Ton, sonst nicht ern
   assert.deepEqual(kinds(detectStateEvents(tr, state)), ['waveStart']);
   update(state, 1 / 60);
   assert.ok(!kinds(detectStateEvents(tr, state)).includes('waveStart'));
+});
+
+test('B-127: Nekromantin spielt beim Tod den Boss-Ton, Skelett den normalen Tod-Ton', () => {
+  const state = createGame();
+  const tr = createSoundTracker();
+  const n = spawnEnemy(state, 'necro');
+  const k = spawnEnemy(state, 'skeleton');
+  detectSoundEvents(tr, state);
+  n.hp = 0;
+  k.hp = 0;
+  update(state, 1 / 60);
+  const evs = detectSoundEvents(tr, state);
+  assert.equal(evs.filter((e) => e.kind === 'boss').length, 1);
+  assert.ok(evs.some((e) => e.kind === 'death' && e.enemy === 'skeleton'));
+  assert.ok(!evs.some((e) => e.kind === 'death' && e.enemy === 'necro'));
 });

@@ -4,7 +4,7 @@
 // Alles ist vorab allokiert (feste Pools, Typed Arrays); im Hotpath entstehen keine Objekte.
 // Zufall ist deterministisch (tileRand mit Zaehler), niemals Math.random.
 import { tileRand } from './decor.js';
-import { BOSS_ENTRY, FX_STYLE } from './config.js';
+import { BOSS_ENTRY, FX_STYLE, isBoss } from './config.js';
 
 export const MAX_PARTICLES = 256; // feste Obergrenze, ist der Pool voll wird das Aelteste ueberschrieben
 export const MAX_TRACKED = 256; // gleichzeitig verfolgte Projektile (Schweif-Richtung, Treffer-Erkennung)
@@ -19,6 +19,7 @@ export const K_FLASH = 4;
 export const K_COIN = 5;
 export const K_DUST = 6; // Staub beim Boss-Auftritt (B-095), liegt unter den Gegnern
 export const K_ROCK = 7; // Gesteinsbrocken beim Meteor-Einschlag (B-112), fliegen im Bogen
+export const K_SUMMON = 8; // B-127: grüne Lichtfunken bei der Beschwörung der Nekromantin, steigen auf
 
 // Projektil-Typcodes (0 = unbekannt)
 const TYPE_CODE = { arrow: 1, cannon: 2, frost: 3, sniper: 4 };
@@ -29,8 +30,8 @@ export const T_SNIPER = 4;
 
 // Physik je Partikelart (Index = Art): Schwerkraft in px/s^2 (negativ = steigt), Daempfung pro Sekunde.
 // Muenzen haben keine Schwerkraft: ihr Hopser kommt aus coinHop (B-068), die Physik treibt sie nur seitlich.
-const GRAVITY = new Float32Array([0, -14, 40, 160, 0, 0, -10, 520]);
-const DRAG = new Float32Array([0, 1.5, 2, 3, 0, 4, 3, 1]);
+const GRAVITY = new Float32Array([0, -14, 40, 160, 0, 0, -10, 520, -30]);
+const DRAG = new Float32Array([0, 1.5, 2, 3, 0, 4, 3, 1, 2]);
 
 // Screen-Shake
 export const SHAKE_MAX = 3; // Pixel, harte Obergrenze
@@ -282,6 +283,14 @@ export function observeEffect(fx, e, time, reducedMotion = false) {
   } else if (e.kind === 'coin') {
     const drift = reducedMotion ? 0 : (nextRand(fx) - 0.5) * FX_STYLE.coin.drift;
     spawnParticle(fx, K_COIN, x, y - 6, drift, 0, 0.7, 3.5);
+  } else if (e.kind === 'summon') {
+    // B-127: kleine grüne Lichtfunken; bei reduzierter Bewegung steigen sie nicht auf
+    const S = FX_STYLE.summon;
+    for (let i = 0; i < S.count; i++) {
+      const a = ((i + nextRand(fx) * 0.6) / S.count) * Math.PI * 2;
+      const vy = reducedMotion ? 0 : -S.speed * (0.5 + nextRand(fx) * 0.5);
+      spawnParticle(fx, K_SUMMON, x + Math.cos(a) * S.spread, y + Math.sin(a) * S.spread * 0.5, 0, vy, S.life, S.size + nextRand(fx) * S.sizeVar);
+    }
   }
 }
 
@@ -380,7 +389,7 @@ export function bossEntryProgress(time, start) {
 export function observeEnemy(fx, e, time, reducedMotion) {
   if (!e || fx.seenEnemies.has(e)) return;
   fx.seenEnemies.add(e);
-  if (e.type !== 'boss') return;
+  if (!isBoss(e)) return;
   const x = Number.isFinite(e.x) ? e.x : 0;
   const y = Number.isFinite(e.y) ? e.y : 0;
   const r = Number.isFinite(e.radius) ? e.radius : 0;

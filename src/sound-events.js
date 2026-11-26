@@ -1,6 +1,6 @@
 // B-113: Erkennt Ton-Ereignisse aus dem Spielzustand (Schüsse, besiegte Gegner, Meteor).
 // Reine Logik ohne DOM und ohne Web Audio: liest den Zustand nur, verändert ihn nie. Abgespielt wird in audio.js.
-import { SOUND } from './config.js';
+import { SOUND, isBoss } from './config.js';
 import { meteorPhase } from './fx-system.js';
 
 // Merker für ein Spiel. Neues Spiel (anderes state-Objekt) oder Zeit rückwärts -> Reset ohne Ereignisse.
@@ -83,7 +83,7 @@ export function detectSoundEvents(tr, state) {
   const alive = new Set(now);
   for (const e of tr.enemies) {
     if (alive.has(e) || !(e.hp <= 0)) continue;
-    out.push(e.type === 'boss' ? { kind: 'boss' } : { kind: 'death', enemy: e.type });
+    out.push(isBoss(e) ? { kind: 'boss' } : { kind: 'death', enemy: e.type });
   }
   tr.enemies = now.slice();
   if (Number.isFinite(state.lives) && Number.isFinite(tr.lives) && state.lives < tr.lives) out.push({ kind: 'lifeLost' });

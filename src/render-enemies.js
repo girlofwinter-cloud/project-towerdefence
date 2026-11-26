@@ -2,9 +2,9 @@
 // Figuren werden in Einheiten von e.radius gezeichnet (Blick nach +x, Boden bei y ~ +0.9),
 // damit sie ungefaehr in den Kreis des Gegners passen (Krone/Waffe bis ca. 1,3x).
 // Keine Allokationen pro Frame: Konstanten und Tabellen liegen auf Modulebene.
-import { ENEMY_TYPES, TILE } from './config.js';
+import { ENEMY_TYPES, TILE, isBoss } from './config.js';
 import { tri, disc, groundShadow } from './draw-utils.js';
-import { drawGruntFlat, drawRunnerFlat, drawTankFlat, drawHealerFlat, drawShieldedFlat, drawBossFlat } from './render-enemies-flat.js';
+import { drawGruntFlat, drawRunnerFlat, drawTankFlat, drawHealerFlat, drawShieldedFlat, drawBossFlat, drawNecroFlat, drawSkeletonFlat } from './render-enemies-flat.js';
 import { walkPhase, animSpeedFactor, facingFor, facingFlip, facingTilt } from './enemy-fx.js';
 
 const TWO_PI = Math.PI * 2;
@@ -58,8 +58,10 @@ const FIGURES = new Map([
   ['boss', drawBossFlat],
   ['healer', drawHealerFlat],
   ['shielded', drawShieldedFlat],
+  ['necro', drawNecroFlat],
+  ['skeleton', drawSkeletonFlat],
 ]);
-const FLAT_TYPES = new Set(['grunt', 'runner', 'tank', 'healer', 'shielded', 'boss']);
+const FLAT_TYPES = new Set(['grunt', 'runner', 'tank', 'healer', 'shielded', 'boss', 'necro', 'skeleton']);
 const FALLBACK_COLOR = '#999';
 
 // Frost: bluelicher Glanz ueber der Figur plus kleine Eiskristalle (lokale Einheiten)
@@ -131,5 +133,5 @@ export function drawEnemy(ctx, e, time, path) {
     ctx.arc(e.x, e.y, r + FROST_RING_PX, 0, TWO_PI);
     ctx.stroke();
   }
-  drawHpBar(ctx, e, e.type === 'boss' ? HP_BOSS_LIFT : 0);
+  drawHpBar(ctx, e, isBoss(e) ? HP_BOSS_LIFT : 0);
 }
