@@ -834,3 +834,9 @@ Neue Einträge werden unten angehängt. Bestehende Einträge werden nie geänder
 - Abweichungen (alle vom Menschen entschieden): geplant waren 10/20; Nekromantin in Welle 10 machte die Eiswelt zu schwer, Skelette vor ihr ließen sie durchlaufen, +1 Nekromantin in Welle 20 kippte die Wiese. Eiswelt-Test (B-125) gelockert: knapper Sieg mit höchstens 5 Leben erlaubt. Belohnung 65→75, weil Vulkan Welle 20 nach dem Zusammenführen mit dem Magier zu schwer war.
 - Erkenntnis: Die Strategie-Tests reagieren chaotisch auf kleine Änderungen (Gold, HP); einzelne Grenzen kippen in beide Richtungen.
 - Tests: 484 Unit grün; Wellenplan-Tests an den neuen Plan angepasst.
+
+## 2026-11-26 · Prozess · designer baut Prototypen in Claude Design
+- Rolle(n): orchestrator. Branch: agent/designer-claude-design
+- Ergebnis: Der designer liefert Entwürfe künftig als klickbare Prototypen in Claude Design (Design-Artefakt). Neu: `.claude/skills/design/prototyp-format.md` (Formatregeln) und `sprites.mjs` (Grafik-Export). Geändert: `.claude/skills/design/SKILL.md` (Abschnitt Prototyp), `.claude/agents/designer.md` (darf Prototyp-Dateien im Scratchpad schreiben).
+- Entscheidungen: Auf Wunsch des Menschen. Der designer hat kein Artifact-Tool, darum veröffentlicht der Orchestrator. Änderung an `.claude/`: Merge entscheidet der Mensch.
+- Tests: keine Spielcode-Änderung; `sprites.mjs` im Hauptordner getestet (31 PNGs).

@@ -1,10 +1,20 @@
 ---
 name: design
-description: Lässt den designer Aussehen und Bedienung des Spiels auf Desktop und Handy prüfen und Vorschläge für neue Designs machen; trägt Befunde und Vorschläge ins Backlog ein. Nutzen bei "Design prüfen", "sieht das gut aus" oder /design.
+description: Lässt den designer Aussehen und Bedienung des Spiels auf Desktop und Handy prüfen und Vorschläge für neue Designs machen; trägt Befunde und Vorschläge ins Backlog ein. Entwürfe und Zielbilder baut er als klickbare Prototypen in Claude Design. Nutzen bei "Design prüfen", "sieht das gut aus", "Zielbild", "Prototyp" oder /design.
 ---
 
+## Prüfen (Standard)
 1. Rufe den Subagent `designer` auf. Gib ihm im Auftrag mit: den Pfad des Repos, den Pfad des Scratchpad-Verzeichnisses für Screenshots und Skripte (außerhalb des Repos) und, falls der Mensch einen Schwerpunkt genannt hat (z. B. "nur Handy", "nur Eiswelt", "Türme"), diesen Schwerpunkt. Ohne Schwerpunkt prüft er alles.
 2. Trage die **Muss-Befunde** und alle **Vorschläge** in `docs/BACKLOG.md` ein (Format dort), Status `vorschlag`, Aufwand und Akzeptanzkriterien aus dem Bericht. "Sollte"/"Nett"-Befunde nur, wenn sie sich zu einem sinnvollen Eintrag bündeln lassen. Lies dafür nur die offenen und vorgeschlagenen Einträge, Erledigtes liegt in `docs/archiv/BACKLOG-fertig.md`.
 3. Ändere keinen Code. Ein Mensch gibt Einträge frei (`offen`); die Umsetzung läuft danach über die Pipeline (`developer`).
 4. Fasse dem Menschen die wichtigsten Befunde und Vorschläge in wenigen Zeilen zusammen und nenne den Pfad der Screenshots.
 5. Hänge einen Ledger-Eintrag an `docs/LEDGER.md` an (Rolle `designer`), auf einem Branch `agent/design-<kurzname>` mit Pull Request (nie direkt auf `main`).
+
+## Entwurf als Prototyp in Claude Design
+Wenn der Mensch ein Zielbild, einen Entwurf oder Prototyp möchte, entsteht er als klickbarer Prototyp in Claude Design (Artefakt vom Typ "Design"), nicht nur als PNG. Der `designer` hat kein Artifact-Tool, darum veröffentlicht der Orchestrator:
+1. **Fläche anlegen:** `Artifact` mit `action: "quickstart"`, `intent: "design"`, dann mit der genannten `type_url`, einem `title` und `auto_open: "after_first_write"` anlegen. Die Anweisungen des Typs im Ergebnis gelten; Weitergabe an andere entscheidet der Mensch.
+2. **Grafiken hochladen:** `node .claude/skills/design/sprites.mjs <scratchpad>/assets` (im Hauptordner mit `node_modules`) exportiert Türme, Gegner und Icons als PNG; Spielfeld-Bilder per Playwright-Screenshot von `#game`. Dann `Artifact` mit `url`, `asset: true`, `file_paths` (höchstens 25 je Aufruf) und die zurückgegebenen `/_blob/…`-URLs notieren.
+3. **Auftrag schreiben** (Datei im Scratchpad): Ziel, Zeichenflächen und Größen, Bild-URLs, nötige Spieldaten aus `src/config.js` (Preise, Reichweiten, Wege), was klickbar sein soll, gewünschte Tweaks. Formatregeln: auf `.claude/skills/design/prototyp-format.md` verweisen.
+4. **`designer` aufrufen** mit Repo-Pfad, Scratchpad-Ordner und Auftragsdatei. Er schreibt `project/canvas.json` und `project/*.dc.html` unter `<scratchpad>/canvas/` und rendert nicht.
+5. **Veröffentlichen:** `Artifact` mit `url`, `root: <scratchpad>/canvas`, `file_path: <root>/project/canvas.json` und `files` für die `.dc.html`-Dateien. Bei Ablehnung der Fehlermeldung folgen und den designer nachbessern lassen.
+6. Dem Menschen den Link geben. Vorschläge daraus wie oben ins Backlog (Status `vorschlag`), Ledger-Eintrag auf `agent/design-<kurzname>` mit PR.
