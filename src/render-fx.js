@@ -2,7 +2,7 @@
 // Transparenz nur ueber globalAlpha innerhalb von save/restore. Keine Allokation pro Frame.
 import {
   createFx, syncFx, shakeOffset, bossEntryProgress, MAX_PARTICLES,
-  K_NONE, K_SMOKE, K_ICE, K_SPARK, K_FLASH, K_COIN, K_DUST, coinHop, coinSpin,
+  K_NONE, K_SMOKE, K_ICE, K_SPARK, K_FLASH, K_COIN, K_DUST, K_ROCK, coinHop, coinSpin, meteorPhase,
   T_ARROW, T_CANNON, T_FROST, T_SNIPER,
 } from './fx-system.js';
 import { BOSS_ENTRY, FX_STYLE, STYLE, WIDTH, HEIGHT } from './config.js';
@@ -37,6 +37,13 @@ const OUT_EXPLOSION = outlineOf(EX.ring);
 const OUT_ICE = outlineOf(HI.ice);
 const COIN_EDGE = outlineOf(CO.dark);
 const CHILL = FX_STYLE.chill;
+const MT = FX_STYLE.meteor;
+const OUT_ROCK = outlineOf(MT.rock);
+const OUT_CHUNK = outlineOf(MT.chunk);
+const OUT_CRATER = outlineOf(MT.pit);
+const OUT_FIRE = outlineOf(MT.fire[0]);
+const MT_DIR = Math.hypot(MT.fromX, MT.fromY); // Länge des Anflugwegs in px
+const meteorScratch = { phase: 'none', u: 0 };
 
 // Pro Frame einmal aufrufen (vor dem Zeichnen): leitet Partikel aus dem Zustand ab.
 // reducedMotion: prefers-reduced-motion (aus main.js ueber ui), schaltet das Boss-Wackeln aus.
@@ -299,6 +306,20 @@ export function drawParticles(ctx, under = false) {
       ctx.lineTo(x - q, y - q);
       ctx.closePath();
       ctx.fill();
+    } else if (k === K_ROCK) {
+      // Gesteinsbrocken: kleine Raute mit Kontur, verblasst zum Ende
+      ctx.globalAlpha = u < 0.6 ? 1 : (1 - u) / 0.4;
+      ctx.fillStyle = MT.chunk;
+      ctx.strokeStyle = OUT_CHUNK;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(x, y - size);
+      ctx.lineTo(x + size * 1.1, y);
+      ctx.lineTo(x + size * 0.3, y + size);
+      ctx.lineTo(x - size, y + size * 0.2);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
     } else if (k === K_COIN) {
       const cy = y + coinHop(u, fx.reduced);
       const w = size * coinSpin(u, fx.reduced);
@@ -329,6 +350,7 @@ export function drawParticles(ctx, under = false) {
 // Effekte aus dem Spielzustand, die unter den Gegnern liegen (Explosion als Bodenfleck mit Ring).
 export function drawEffectUnder(ctx, e) {
   if (!e || e.kind !== 'explosion') return;
+  if (e.meteor) { drawMeteorUnder(ctx, e); return; }
   const a = e.ttl / e.max;
   const r = e.r * (EX.endScale - a * EX.grow);
   if (!(r > 0) || !(a > 0)) return;
@@ -358,6 +380,8 @@ export function drawEffectOver(ctx, e, reducedMotion = false) {
     ctx.fillRect(0, 0, WIDTH, HEIGHT);
   } else if (e.kind === 'bolt') {
     drawBolt(ctx, e, a);
+  } else if (e.kind === 'explosion' && e.meteor) {
+    drawMeteorOver(ctx, e);
   } else if (e.kind === 'coin') {
     const ty = e.y - CT.lift + (reducedMotion ? 0 : a * CT.rise);
     ctx.save();
@@ -399,6 +423,183 @@ function drawBolt(ctx, e, a) {
   ctx.strokeStyle = BO.core;
   ctx.lineWidth = BO.coreWidth;
   path();
+  ctx.globalAlpha = 1;
+  ctx.restore();
+}
+
+// ---------- Meteor (B-112) ----------
+// Ablauf aus meteorPhase (Spielzeit): Anflug (Schatten und Zielring am Boden, Gestein mit Feuerschweif),
+// Einschlag (Blitz, Feuerball, Schockwellen-Ring bis zum Radius, Partikel aus fx-system), Krater verblasst.
+// Unter den Gegnern: Schatten, Zielring, Brandfleck, Krater, Schockwelle. Darüber: Gestein, Blitz, Feuerball.
+const easeOut = (t) => 1 - (1 - t) * (1 - t);
+
+function drawMeteorUnder(ctx, e) {
+  const p = meteorPhase(e, meteorScratch);
+  const r = Number.isFinite(e.r) && e.r > 0 ? e.r : 0;
+  if (p.phase === 'none' || !r) return;
+  ctx.save();
+  if (p.phase === 'flight') {
+    // Schatten wächst, Zielring zieht sich leicht zusammen
+    const k = MT.shadowFrom + (MT.shadowTo - MT.shadowFrom) * p.u;
+    ctx.globalAlpha = MT.shadowAlpha * (0.4 + 0.6 * p.u);
+    ctx.fillStyle = MT.shadow;
+    ctx.beginPath();
+    ctx.ellipse(e.x, e.y, r * k, r * k * MT.shadowFlat, 0, 0, TWO_PI);
+    ctx.fill();
+    ctx.globalAlpha = MT.targetAlpha;
+    ctx.strokeStyle = MT.target;
+    ctx.lineWidth = MT.targetWidth;
+    ctx.beginPath();
+    ctx.arc(e.x, e.y, r * (1.08 - 0.08 * p.u), 0, TWO_PI);
+    ctx.stroke();
+  } else {
+    // Krater und Brandfleck: ab dem Einschlag voll, in der Kraterphase verblassend
+    const fade = p.phase === 'crater' ? 1 - p.u : 1;
+    ctx.globalAlpha = MT.scorchAlpha * fade;
+    ctx.fillStyle = MT.scorch;
+    ctx.beginPath();
+    ctx.ellipse(e.x, e.y, r * MT.scorchR, r * MT.scorchR * MT.craterFlat, 0, 0, TWO_PI);
+    ctx.fill();
+    ctx.globalAlpha = fade;
+    const cr = r * MT.craterR;
+    ctx.fillStyle = MT.pit;
+    ctx.strokeStyle = MT.craterRim;
+    ctx.lineWidth = MT.rimWidth;
+    ctx.beginPath();
+    ctx.ellipse(e.x, e.y, cr, cr * MT.craterFlat, 0, 0, TWO_PI);
+    ctx.fill();
+    ctx.stroke();
+    ctx.strokeStyle = OUT_CRATER;
+    ctx.lineWidth = OUT_WIDTH;
+    ctx.beginPath();
+    ctx.ellipse(e.x, e.y, cr + MT.rimWidth / 2, (cr + MT.rimWidth / 2) * MT.craterFlat, 0, 0, TWO_PI);
+    ctx.stroke();
+    // aufgeworfene Steine am Kraterrand
+    ctx.fillStyle = MT.craterRim;
+    ctx.strokeStyle = OUT_CRATER;
+    ctx.lineWidth = 1;
+    for (let i = 0; i < MT.rimStones; i++) {
+      const a = (i / MT.rimStones) * TWO_PI + 0.3;
+      const d = cr + MT.rimWidth * (i % 2 ? 1.6 : 0.8);
+      const sr = MT.rimStoneR * (i % 3 ? 1 : 0.7);
+      ctx.beginPath();
+      ctx.arc(e.x + Math.cos(a) * d, e.y + Math.sin(a) * d * MT.craterFlat, sr, 0, TWO_PI);
+      ctx.fill();
+      ctx.stroke();
+    }
+    // Glutpunkte in der Mulde (kurz nach dem Einschlag)
+    const glow = p.phase === 'blast' ? 1 : 1 - p.u / MT.emberEnd;
+    if (glow > 0) {
+      ctx.globalAlpha = glow;
+      ctx.fillStyle = MT.ember;
+      for (let i = 0; i < MT.embers; i++) {
+        const a = (i / MT.embers) * TWO_PI + 0.6;
+        const d = cr * (0.35 + 0.25 * (i % 2));
+        ctx.beginPath();
+        ctx.arc(e.x + Math.cos(a) * d, e.y + Math.sin(a) * d * MT.craterFlat, MT.emberR, 0, TWO_PI);
+        ctx.fill();
+      }
+    }
+    // Schockwelle: heller Ring mit orangem Rand, wächst bis zum Radius (reduzierte Bewegung: steht, wird dünner)
+    if (p.phase === 'blast' && p.u < MT.waveEnd) {
+      const w = p.u / MT.waveEnd;
+      const rr = r * (fx.reduced ? 1 : MT.waveFrom + (1 - MT.waveFrom) * easeOut(w));
+      ctx.globalAlpha = 1 - w * w;
+      ctx.strokeStyle = MT.waveEdge;
+      ctx.lineWidth = MT.waveWidth * (1 - w) + MT.waveEdgeWidth;
+      ctx.beginPath();
+      ctx.arc(e.x, e.y, rr, 0, TWO_PI);
+      ctx.stroke();
+      ctx.strokeStyle = MT.wave;
+      ctx.lineWidth = MT.waveWidth * (1 - w);
+      ctx.stroke();
+    }
+  }
+  ctx.globalAlpha = 1;
+  ctx.restore();
+}
+
+function drawMeteorOver(ctx, e) {
+  const p = meteorPhase(e, meteorScratch);
+  const r = Number.isFinite(e.r) && e.r > 0 ? e.r : 0;
+  if (!r || (p.phase !== 'flight' && p.phase !== 'blast')) return;
+  ctx.save();
+  if (p.phase === 'flight') {
+    // Gestein fliegt beschleunigt von rechts oben ins Ziel, Schweif zeigt zurück zum Start
+    // Ziel nahe am oberen Rand: Anflug kürzer, damit das Gestein sichtbar bleibt
+    const room = Math.min(1, Math.max(MT.fromMin, (e.y - MT.rockR) / -MT.fromY));
+    const k = (1 - p.u * p.u) * room;
+    const x = e.x + MT.fromX * k;
+    const y = e.y + MT.fromY * k;
+    const dx = MT.fromX / MT_DIR;
+    const dy = MT.fromY / MT_DIR;
+    for (let i = MT.tailPoints - 1; i >= 0; i--) {
+      const t = 1 - i / MT.tailPoints; // 1 vorn .. klein hinten
+      const d = (i + 1) * MT.tailSpacing;
+      const size = MT.tailSize * (MT.tailMin + (1 - MT.tailMin) * t);
+      ctx.globalAlpha = MT.tailAlpha * t;
+      ctx.fillStyle = MT.tail[i < 2 ? 2 : i < 4 ? 1 : 0];
+      ctx.beginPath();
+      ctx.arc(x + dx * d, y + dy * d, size, 0, TWO_PI);
+      ctx.fill();
+    }
+    ctx.globalAlpha = MT.glowAlpha;
+    ctx.fillStyle = MT.glow;
+    ctx.beginPath();
+    ctx.arc(x, y, MT.glowR, 0, TWO_PI);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = MT.rock;
+    ctx.strokeStyle = OUT_ROCK;
+    ctx.lineWidth = OUT_WIDTH;
+    ctx.beginPath();
+    ctx.arc(x, y, MT.rockR, 0, TWO_PI);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = MT.rockShine;
+    ctx.beginPath();
+    ctx.arc(x - MT.rockR * 0.35, y + MT.rockR * 0.1, MT.rockR * 0.3, 0, TWO_PI);
+    ctx.fill();
+    ctx.fillStyle = MT.tail[1]; // glühende Front zum Ziel hin
+    ctx.beginPath();
+    ctx.arc(x - dx * MT.rockR * 0.45, y - dy * MT.rockR * 0.45, MT.rockR * 0.45, 0, TWO_PI);
+    ctx.fill();
+  } else {
+    // Feuerball als Puff-Wolke in drei Lagen (außen orange mit Kontur, Mitte gelb, Kern creme):
+    // schnell auf, dann driften die Puffs nach außen, schrumpfen und verblassen
+    if (p.u < MT.fireEnd) {
+      const grow = p.u < MT.fireGrow ? easeOut(p.u / MT.fireGrow) : 1;
+      const fall = p.u < MT.fireStart ? 1 : 1 - (p.u - MT.fireStart) / (MT.fireEnd - MT.fireStart);
+      const drift = 1 + MT.fireDrift * (1 - fall);
+      ctx.globalAlpha = fall > 0 ? fall : 0;
+      for (let layer = -1; layer < 3; layer++) {
+        const R = r * MT.fireR[layer < 0 ? 0 : layer] * grow * (0.7 + 0.3 * fall);
+        const edge = layer < 0 ? MT.fireEdge : 0;
+        ctx.fillStyle = layer < 0 ? OUT_FIRE : MT.fire[layer];
+        ctx.beginPath();
+        ctx.arc(e.x, e.y, R + edge, 0, TWO_PI);
+        ctx.fill();
+        if (layer === 2) continue; // Kern ohne Puffs
+        for (let i = 0; i < MT.firePuffs; i++) {
+          const a = (i / MT.firePuffs) * TWO_PI + 0.4;
+          const d = R * MT.puffDist * drift * (i % 2 ? 1 : 0.8);
+          const pr = R * MT.puffR * (i % 3 ? 1 : 0.8) + edge;
+          ctx.beginPath();
+          ctx.arc(e.x + Math.cos(a) * d, e.y + Math.sin(a) * d, pr, 0, TWO_PI);
+          ctx.fill();
+        }
+      }
+    }
+    // Heller Blitz ganz am Anfang
+    if (p.u < MT.flashEnd) {
+      const f = p.u / MT.flashEnd;
+      ctx.globalAlpha = 1 - f;
+      ctx.fillStyle = MT.flash;
+      ctx.beginPath();
+      ctx.arc(e.x, e.y, r * MT.flashR * (0.6 + 0.4 * f), 0, TWO_PI);
+      ctx.fill();
+    }
+  }
   ctx.globalAlpha = 1;
   ctx.restore();
 }

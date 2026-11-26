@@ -1287,3 +1287,96 @@ test('B-095 Randfall: Staub bei vollem Partikel-Pool ueberschreibt nur, Pool ble
   assert.equal(dust, Math.min(MAX_PARTICLES, 50 * BOSS_ENTRY.dustCount));
   for (let i = 0; i < MAX_PARTICLES; i++) assert.ok(Number.isFinite(fx.px[i]) && Number.isFinite(fx.py[i]));
 });
+
+// ---------- B-112: Meteor-Animation ----------
+import { meteorPhase, meteorStep, K_ROCK } from '../src/fx-system.js';
+import { FX_STYLE as FXS_B112 } from '../src/config.js';
+
+const meteorFx = (age, over = {}) => {
+  const M = FXS_B112.meteor;
+  const max = M.flight + M.blast + M.crater;
+  return { kind: 'explosion', meteor: true, x: 200, y: 200, r: 100, ttl: max - age, max, ...over };
+};
+
+test('B-112 meteorPhase: Anflug -> Einschlag -> Krater -> none, u läuft 0..1', () => {
+  const M = FXS_B112.meteor;
+  const ph = (age) => ({ ...meteorPhase(meteorFx(age)) });
+  assert.deepEqual(ph(0), { phase: 'flight', u: 0 });
+  assert.equal(ph(M.flight / 2).phase, 'flight');
+  assert.equal(ph(M.flight + 0.01).phase, 'blast');
+  assert.ok(Math.abs(ph(M.flight + M.blast / 2).u - 0.5) < 1e-9);
+  assert.equal(ph(M.flight + M.blast + 0.01).phase, 'crater');
+  assert.equal(ph(M.flight + M.blast + M.crater).phase, 'none', 'ttl 0 = vorbei');
+  for (const bad of [null, {}, { ttl: NaN, max: 1 }, { ttl: 2, max: 1 }]) assert.equal(meteorPhase(bad).phase, 'none');
+});
+
+test('B-112 meteorStep: Einschlag genau einmal nach dem Anflug, Brocken und Funken begrenzt, Wackeln nur ohne reduced motion', () => {
+  const M = FXS_B112.meteor;
+  const fx = createFx();
+  const e = meteorFx(0.05);
+  assert.equal(meteorStep(fx, e, 1), false, 'im Anflug noch nichts');
+  assert.equal(liveParticles(fx), 0);
+  e.ttl -= M.flight;
+  assert.equal(meteorStep(fx, e, 1.3), true);
+  const n = liveParticles(fx);
+  assert.equal(n, M.sparks + M.rocks + M.smoke);
+  assert.ok(fx.pkind.some((k) => k === K_ROCK));
+  assert.ok(fx.shakeStrength > 0 && fx.shakeStrength <= SHAKE_MAX);
+  assert.equal(meteorStep(fx, e, 1.31), false, 'nur einmal');
+  assert.equal(liveParticles(fx), n);
+
+  const calm = createFx();
+  assert.equal(meteorStep(calm, meteorFx(M.flight + 0.01), 1, true), true);
+  assert.equal(calm.shakeStrength, 0, 'reduced motion: kein Wackeln');
+  assert.ok(!calm.pkind.some((k) => k === K_ROCK || k === K_SPARK), 'reduced motion: keine fliegenden Brocken/Funken');
+  assert.equal(liveParticles(calm), M.smoke);
+
+  const late = createFx();
+  assert.equal(meteorStep(late, meteorFx(M.flight + M.blast + 1), 5), false, 'vergangener Einschlag wird nicht nachgeholt');
+  assert.equal(liveParticles(late), 0);
+  assert.equal(meteorStep(late, { kind: 'explosion', x: 1, y: 1, r: 40, ttl: 0.3, max: 0.3 }, 5), false, 'Kanonen-Explosion ist kein Meteor');
+});
+
+test('B-112 syncFx: Meteor erzeugt beim ersten Sehen keine Kanonen-Partikel, der Einschlag folgt mit der Spielzeit; viele Meteore sprengen den Pool nicht', () => {
+  const M = FXS_B112.meteor;
+  const fx = createFx();
+  const s = fxState(2);
+  const e = meteorFx(0);
+  s.effects.push(e);
+  syncFx(fx, s);
+  assert.equal(liveParticles(fx), 0);
+  assert.equal(fx.shakeStrength, 0);
+  s.time += M.flight + 0.02;
+  e.ttl -= M.flight + 0.02;
+  syncFx(fx, s);
+  assert.ok(liveParticles(fx) > 0);
+  assert.equal(fx.shakeStart, s.time);
+  // 30 Meteore auf einmal: Ringpuffer bleibt in der Grenze
+  for (let i = 0; i < 30; i++) s.effects.push(meteorFx(M.flight + 0.01, { x: i * 10 }));
+  syncFx(fx, s);
+  assert.ok(liveParticles(fx) <= MAX_PARTICLES);
+});
+
+// ---------- B-112 Tester: resetFx und Ablauf über syncFx ----------
+import { resetFx as resetFxB112 } from '../src/fx-system.js';
+
+test('B-112 Tester: Einschlag über syncFx genau einmal, nach resetFx kein Nachholen eines alten Kraters', () => {
+  const M = FXS_B112.meteor;
+  const fx = createFx();
+  const s = fxState(2);
+  const e = meteorFx(M.flight + 0.01);
+  s.effects.push(e);
+  syncFx(fx, s);
+  const n = liveParticles(fx);
+  assert.ok(n > 0);
+  for (let i = 0; i < 3; i++) { s.time += 0.01; e.ttl -= 0.01; syncFx(fx, s); }
+  assert.ok(liveParticles(fx) <= n, 'kein zweiter Einschlag in Folgeframes');
+  resetFxB112(fx);
+  assert.equal(liveParticles(fx), 0);
+  const old = meteorFx(M.flight + M.blast + 0.5);
+  const s2 = fxState(10);
+  s2.effects.push(old);
+  syncFx(fx, s2);
+  assert.equal(liveParticles(fx), 0, 'Krater nach Reset löst keinen Einschlag aus');
+  assert.equal(fx.shakeStrength, 0);
+});

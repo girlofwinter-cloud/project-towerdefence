@@ -503,3 +503,12 @@ Agents lesen diese Datei nur bei konkretem Bedarf.
   - Tests: Gegner neben Lava nehmen Schaden, weiter weg nicht; Turm neben Lava hat längere Schussrate; Lava ist nicht bebaubar; Freischaltung nach Zwei Fronten.
   - Optik im Flat-Pop-Stil: dunkles Vulkangestein, glühende Lava mit Kontur, Brücke aus Stein oder dunklem Holz; Desktop und Handy per Screenshot.
   - Balancing per Simulation (dt 1/30 und 1/60): mindestens eine robuste Strategie gewinnt Welle 20, mit weniger Reserve als auf Zwei Fronten; eine schwache Strategie verliert.
+
+### B-112: Meteor stärker und mit Spezialfähigkeits-Animation
+- Status: fertig
+- Aufwand: M
+- Idee: Wunsch des Menschen am 2026-11-26: Der Meteor macht zu wenig Schaden, braucht mehr Reichweite und eine bessere Animation, damit er wie eine echte Spezialfähigkeit aussieht. Ursache: fester Schaden 150, während Gegner-HP mit `hpScale` wachsen (Welle 20: Goblin 437, Troll 4917 HP).
+- Akzeptanzkriterien:
+  - Schaden wächst mit der Welle (`hpScale`), Radius deutlich größer als 1,8; Werte in `config.js`, Beschreibungstext passt sich an.
+  - Animation: sichtbarer Einschlag von oben, Explosion, Schockwelle, Krater/Brandfleck, Partikel; Bildschirm-Wackeln nur ohne `prefers-reduced-motion`.
+  - Balancing gemessen: Test „perfektes Spiel möglich“ und alle Schwierigkeits-Tests bleiben grün.

@@ -697,3 +697,10 @@ Neue Einträge werden unten angehängt. Bestehende Einträge werden nie geänder
 - Branch: agent/ideen-2026-11-26
 - Ergebnis: sieben Vorschläge eingetragen (Status `vorschlag`): Statistik je Turm, Saboteur, Bau rückgängig, alle Reichweiten anzeigen, Herausforderungen je Karte, Tagesherausforderung, Held-Einheit.
 - Entscheidungen: Ideator empfiehlt B-105 und B-106 zusammen als ersten Block (Statistik zeigt die Wirkung des Saboteurs). Kein Code geändert; Freigabe durch den Menschen.
+
+## 2026-11-26 · B-112 · Meteor stärker, neue Animation
+- Rolle(n): orchestrator, developer (in einer früheren Sitzung, hier wieder aufgenommen), tester, reviewer
+- Branch: agent/meteor
+- Ergebnis: fertig. Meteor-Schaden 250 in der Mitte × hpScale(Welle), am Rand 60 %, Radius 2,5 statt 1,8; Tooltip zeigt den Schaden der aktuellen Welle. Animation: Anflug, Feuerball, Schockwelle, Brocken/Funken/Rauch, Krater ~4 s; Wackeln und fliegende Partikel nur ohne reduzierte Bewegung (`FX_STYLE.meteor`, `meteorStep`).
+- Balancing (gemessen, dt 1/30 und 1/60): Mit Abklingzeit 50 wurde es zu leicht (a>a>c>f mit Meteor überall 10 Leben). Entscheidung des Menschen: Schaden behalten, Abklingzeit 60. Danach a>a>c>f+F: Wiese W4L wie vorher, Eis W10, Zwei Fronten W7/W6 (vorher verloren), Vulkan verloren wie vorher. Perfektes Spiel auf allen Karten weiter W10.
+- Tests: 371 Unit-Tests, 37 Browser-Tests. Tester: PASS nach Anpassung (2 Tests ergänzt), Review: APPROVE. Neuer B-112-Test liest die Abklingzeit jetzt aus der Config statt fest „50 s“.

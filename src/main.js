@@ -1,5 +1,5 @@
 // Verbindet Spiel-Logik, Rendering und Bedienung (DOM, Maus, Tastatur).
-import { TILE, WIDTH, HEIGHT, ARROW_TOWER, TOWER_STYLE, SHOP_CARD, TOWER_TYPES, ENEMY_TYPES, MAX_WAVES, MAPS, SPEED_STEPS, TARGET_MODES, TARGET_MODE_NAMES, MAX_SUBSTEP, LOW_LIVES, ABILITIES, ICON, waveSummary } from './config.js';
+import { TILE, WIDTH, HEIGHT, ARROW_TOWER, TOWER_STYLE, SHOP_CARD, TOWER_TYPES, ENEMY_TYPES, MAX_WAVES, MAPS, SPEED_STEPS, TARGET_MODES, TARGET_MODE_NAMES, MAX_SUBSTEP, LOW_LIVES, ABILITIES, ICON, waveSummary, meteorText } from './config.js';
 import {
   createGame, stepGame, togglePause, buildTower, upgradeTower, sellTower, setTargetMode, startWave,
   useAbility, abilityCooldownLeft, canBuild, towerAt, towerStats, upgradeCost, sellValue,
@@ -394,6 +394,11 @@ function refreshUI() {
     btn.querySelector('.ab-badge').textContent = v.badge;
     btn.disabled = v.state !== 'ready' || state.status !== 'playing';
     btn.classList.toggle('aiming', id === 'meteor' && ui.aiming);
+    // B-112: Meteor-Schaden wächst mit der Welle, der Tooltip zeigt den aktuellen Wert
+    if (id === 'meteor' && btn.dataset.wave !== String(state.wave)) {
+      btn.dataset.wave = String(state.wave);
+      btn.title = meteorText(state.wave);
+    }
   }
 
   for (const btn of shop.children) {
