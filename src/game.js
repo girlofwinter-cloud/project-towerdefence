@@ -1,7 +1,7 @@
 // Spiel-Logik: kompletter Zustand + update(). Kein DOM, kein Canvas -> in Node testbar.
 import {
   TILE, COLS, ROWS, START_GOLD, START_LIVES, MAX_WAVES, SELL_RATIO, MAX_LEVEL, MAX_SUBSTEP, TARGET_MODES,
-  MAPS, DEFAULT_MAP_ID, TOWER_TYPES, ABILITIES, WIDTH, HEIGHT, ENEMY_TYPES, LAVA, FX_STYLE, earlyStartBonus, waveFor, waveBonus, hpScale, meteorDamage,
+  MAPS, DEFAULT_MAP_ID, TOWER_TYPES, ABILITIES, WIDTH, HEIGHT, ENEMY_TYPES, LAVA, FX_STYLE, AUTO_WAVE_DELAY, earlyStartBonus, waveFor, waveBonus, hpScale, meteorDamage,
 } from './config.js';
 import { buildPath, pointAt, pathTiles } from './path.js';
 
@@ -23,6 +23,7 @@ export function createGame({ mapId, ...overrides } = {}) {
     wave: 0,
     waveActive: false,
     waveTime: 0,
+    autoWaveIn: null, // B-121: Sekunden bis zum automatischen Start der nächsten Welle (null = kein Countdown)
     spawnQueue: [],
     towers: [],
     enemies: [],
@@ -179,6 +180,7 @@ export function startWave(state) {
   const early = state.waveActive;
   if (early && state.spawnQueue.length) return { ok: false, reason: 'Gegner der laufenden Welle kommen noch' };
   if (early) state.gold += waveBonus(state.wave);
+  state.autoWaveIn = null; // B-121: ein Start (manuell oder automatisch) beendet den Countdown
   state.wave += 1;
   const wave = state.wave;
   if (!early) {
@@ -310,6 +312,7 @@ export function update(state, dt) {
   if (state.status !== 'playing' || state.paused) return;
   state.time += dt;
 
+  autoWaveStep(state, dt);
   spawnStep(state, dt);
   moveEnemies(state, dt);
   if (state.status !== 'playing') return;
@@ -319,6 +322,13 @@ export function update(state, dt) {
   projectilesStep(state, dt);
   effectsStep(state, dt);
   waveEndCheck(state);
+}
+
+// B-121: Countdown nach Wellenende; bei 0 startet die nächste Welle. Läuft in Spielzeit (Pause hält an, Tempo gilt).
+function autoWaveStep(state, dt) {
+  if (state.autoWaveIn === null) return;
+  state.autoWaveIn -= dt;
+  if (state.autoWaveIn <= 1e-9) startWave(state);
 }
 
 function spawnStep(state, dt) {
@@ -583,4 +593,5 @@ function waveEndCheck(state) {
   state.waveActive = false;
   state.gold += waveBonus(state.wave);
   if (state.wave >= MAX_WAVES) state.status = 'won';
+  else state.autoWaveIn = AUTO_WAVE_DELAY; // B-121: nach Welle 20 kein Countdown
 }
