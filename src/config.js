@@ -521,6 +521,10 @@ export const ENEMY_TYPES = {
 // höchstens dieses Vielfache ihres Wellenbonus, wenn noch die volle Gegner-HP der laufenden Welle auf dem Feld ist.
 export const EARLY_START_MAX = 3;
 
+// B-124: Karten mit mehreren Eingängen: Gegner (ohne feste Seite) kommen in Schüben von `burst` Gegnern je Seite,
+// und je Welle startet eine Seite `offset` Sekunden später (die Seite wechselt von Welle zu Welle).
+export const LANE_ASYNC = { burst: 5, offset: 6 };
+
 // B-121: Nach Wellenende startet die nächste Welle nach so vielen Sekunden Spielzeit automatisch (nicht vor Welle 1).
 export const AUTO_WAVE_DELAY = 5;
 
@@ -539,12 +543,12 @@ export function waveBonus(wave) {
 }
 
 // HP-Multiplikator pro Welle: Gegner werden mit jeder Welle zäher.
-// Welle 1-5 moderat (+15 %), Welle 5-10 steil (+26 %), danach flach (+7 %), damit Welle 20 schaffbar bleibt.
+// Welle 1-5 moderat (+15 %), Welle 5-10 steil (+26 %), danach +11 % (B-125: vorher +7 %, Spätphase war zu leicht).
 export function hpScale(wave) {
   const early = Math.min(wave, 5) - 1;
   const mid = Math.max(Math.min(wave, 10) - 5, 0);
   const late = Math.max(wave - 10, 0);
-  return Math.pow(1.15, early) * Math.pow(1.26, mid) * Math.pow(1.07, late);
+  return Math.pow(1.15, early) * Math.pow(1.26, mid) * Math.pow(1.11, late);
 }
 
 // Spätphase (B-013): ab dieser Welle laufen Heiler in der Troll-Gruppe mit, ab der Welle danach kommen
