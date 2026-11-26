@@ -419,8 +419,9 @@ function refreshUI() {
 
   const over = $('overlay');
   over.hidden = state.status === 'playing';
-  if (state.status === 'won') $('overlay-title').textContent = 'Gewonnen!';
-  if (state.status === 'lost') $('overlay-title').textContent = 'Verloren';
+  // B-096: Trophäe bzw. Totenkopf vor dem Text (nur Schmuck, alt leer)
+  if (state.status === 'won') setHtml($('overlay-title'), `${iconHtml('trophy', 'result')} Gewonnen!`);
+  if (state.status === 'lost') setHtml($('overlay-title'), `${iconHtml('skull', 'result')} Verloren`);
   $('overlay-stats').textContent = `Welle ${state.wave} · ${state.kills} Gegner besiegt`;
   if (state.status !== 'playing' && !resultSaved) saveResult();
   renderResultLines($('overlay-progress'), resultText);

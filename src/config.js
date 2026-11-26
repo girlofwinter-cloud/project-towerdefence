@@ -465,10 +465,11 @@ export const ICON = {
   half: 13,          // halbe Motivgröße (26 px Motiv, 3 px Rand)
   outline: 2,        // Kontur im Raster (bei 16 px noch 1 px)
   maxDpr: 3,         // höchste Pixeldichte der vorgerenderten Bilder
-  sizes: { hud: 22, heart: 16, inline: 16, button: 20, ability: 26 }, // Anzeigegröße in CSS-px
+  sizes: { hud: 22, heart: 16, inline: 16, button: 20, ability: 26, title: 26, result: 40 }, // Anzeigegröße in CSS-px (title: Überschrift, result: Sieg/Niederlage)
   colors: {
     heartEmpty: '#5b4a5e', flag: '#d4503f', meteorRock: '#7a6a64', meteorCrater: '#55474a', flame: '#ff7a1f', flameCore: '#ffc23a',
     glass: '#bff0ff', glassShine: '#ffffff', pause: '#fff3c9', play: '#7fd24a', paper: '#e2c88f', mapMark: '#d4503f',
+    bone: '#f1e8d2', boneDark: '#4a3030', castleGate: '#4a3030', castleRoof: '#d4503f', // B-096: Totenkopf, Burg
   },
 };
 
@@ -795,6 +796,15 @@ export const BOSS_ENTRY = {
   ringColor: 'rgba(244,197,66,0.85)',
   ringDrop: 0.7,       // Ring-Mitte unterhalb der Boss-Mitte in Boss-Radien (am Boden)
   ringFlat: 0.4,       // Höhe der Ring-Ellipse relativ zur Breite (Draufsicht)
+  // Staub beim Aufstampfen (B-095): wenige Wölkchen am Boden, bei reduzierter Bewegung keine
+  dustCount: 8,        // Anzahl Staubpartikel (klein halten, Pool hat 256 Plätze)
+  dustColor: 'rgba(245,236,214,0.7)', // heller, halbdurchsichtiger Staub (hebt sich vom Sandweg ab)
+  dustLife: 0.6,       // Lebensdauer in Sekunden Spielzeit
+  dustSpeed: 90,       // Startgeschwindigkeit nach außen in px/s
+  dustStart: 0.9,      // Startabstand von der Ring-Mitte in Boss-Radien (am Rand der Figur)
+  dustSize: 4,         // Grundgröße in px (plus bis zu dustSizeVar)
+  dustSizeVar: 2,
+  dustGrow: 0.8,       // Aufblähen über die Lebensdauer (Anteil der Größe), schrumpft zum Ende auf 0
 };
 
 // Projektile und Effekte im Flat-Pop-Stil (B-068, nur Darstellung). Maße in px bei 1x, Zeiten in Sekunden Spielzeit.

@@ -2,7 +2,7 @@
 // Transparenz nur ueber globalAlpha innerhalb von save/restore. Keine Allokation pro Frame.
 import {
   createFx, syncFx, shakeOffset, bossEntryProgress, MAX_PARTICLES,
-  K_NONE, K_SMOKE, K_ICE, K_SPARK, K_FLASH, K_COIN, coinHop, coinSpin,
+  K_NONE, K_SMOKE, K_ICE, K_SPARK, K_FLASH, K_COIN, K_DUST, coinHop, coinSpin,
   T_ARROW, T_CANNON, T_FROST, T_SNIPER,
 } from './fx-system.js';
 import { BOSS_ENTRY, FX_STYLE, STYLE, WIDTH, HEIGHT } from './config.js';
@@ -46,7 +46,9 @@ export function updateFx(state, reducedMotion = false) {
 
 // Bodenschlag beim Boss-Auftritt (B-067): goldener Ring am Boden, waechst und wird duenner.
 // Bei reduzierter Bewegung waechst er nicht, sondern wird nur duenner.
+// Dazu der Staub (B-095, eigene Partikelart, unter den Gegnern).
 export function drawBossEntry(ctx) {
+  drawBossDust(ctx);
   const u = bossEntryProgress(fx.lastTime, fx.entryStart);
   if (u < 0) return;
   const k = fx.entryReduced ? 1 : BOSS_ENTRY.ringStart + (BOSS_ENTRY.ringRadius - BOSS_ENTRY.ringStart) * (1 - (1 - u) * (1 - u));
@@ -56,6 +58,25 @@ export function drawBossEntry(ctx) {
   ctx.beginPath();
   ctx.ellipse(fx.entryX, fx.entryY + fx.entryR * BOSS_ENTRY.ringDrop, fx.entryR * k, fx.entryR * k * BOSS_ENTRY.ringFlat, 0, 0, TWO_PI);
   ctx.stroke();
+  ctx.restore();
+}
+
+// Staubwoelkchen: Deckkraft steckt in der Farbe, sie vergehen ueber die Groesse (kein globalAlpha noetig).
+function drawBossDust(ctx) {
+  let any = false;
+  for (let i = 0; i < MAX_PARTICLES; i++) if (fx.pkind[i] === K_DUST) { any = true; break; }
+  if (!any) return;
+  ctx.save();
+  ctx.fillStyle = BOSS_ENTRY.dustColor;
+  for (let i = 0; i < MAX_PARTICLES; i++) {
+    if (fx.pkind[i] !== K_DUST) continue;
+    const u = fx.page[i] / fx.plife[i];
+    const r = fx.psize[i] * (1 + u * BOSS_ENTRY.dustGrow) * (1 - u);
+    if (!(r > 0)) continue;
+    ctx.beginPath();
+    ctx.arc(fx.px[i], fx.py[i], r, 0, TWO_PI);
+    ctx.fill();
+  }
   ctx.restore();
 }
 
@@ -219,7 +240,7 @@ export function drawParticles(ctx, under = false) {
   let any = false;
   for (let i = 0; i < MAX_PARTICLES; i++) {
     const k = fx.pkind[i];
-    if (k !== K_NONE && (k === K_SMOKE) === under) { any = true; break; }
+    if (k !== K_NONE && k !== K_DUST && (k === K_SMOKE) === under) { any = true; break; }
   }
   if (!any) return;
   ctx.save();
@@ -227,7 +248,7 @@ export function drawParticles(ctx, under = false) {
   ctx.lineJoin = 'round';
   for (let i = 0; i < MAX_PARTICLES; i++) {
     const k = fx.pkind[i];
-    if (k === K_NONE || (k === K_SMOKE) !== under) continue;
+    if (k === K_NONE || k === K_DUST || (k === K_SMOKE) !== under) continue;
     const u = fx.page[i] / fx.plife[i]; // 0 neu .. 1 fast weg
     const x = fx.px[i];
     const y = fx.py[i];

@@ -17,6 +17,7 @@ export const K_ICE = 2;
 export const K_SPARK = 3;
 export const K_FLASH = 4;
 export const K_COIN = 5;
+export const K_DUST = 6; // Staub beim Boss-Auftritt (B-095), liegt unter den Gegnern
 
 // Projektil-Typcodes (0 = unbekannt)
 const TYPE_CODE = { arrow: 1, cannon: 2, frost: 3, sniper: 4 };
@@ -27,8 +28,8 @@ export const T_SNIPER = 4;
 
 // Physik je Partikelart (Index = Art): Schwerkraft in px/s^2 (negativ = steigt), Daempfung pro Sekunde.
 // Muenzen haben keine Schwerkraft: ihr Hopser kommt aus coinHop (B-068), die Physik treibt sie nur seitlich.
-const GRAVITY = new Float32Array([0, -14, 40, 160, 0, 0]);
-const DRAG = new Float32Array([0, 1.5, 2, 3, 0, 4]);
+const GRAVITY = new Float32Array([0, -14, 40, 160, 0, 0, -10]);
+const DRAG = new Float32Array([0, 1.5, 2, 3, 0, 4, 3]);
 
 // Screen-Shake
 export const SHAKE_MAX = 3; // Pixel, harte Obergrenze
@@ -315,7 +316,7 @@ export function bossEntryProgress(time, start) {
 }
 
 // Erkennt neue Gegner (Referenz-Merker); ein neuer Boss loest Bodenschlag (Ring) und Wackeln aus.
-// reducedMotion: kein Wackeln, der Ring waechst nicht (bleibt als ruhiger Hinweis).
+// reducedMotion: kein Wackeln, kein Staub, der Ring waechst nicht (bleibt als ruhiger Hinweis).
 export function observeEnemy(fx, e, time, reducedMotion) {
   if (!e || fx.seenEnemies.has(e)) return;
   fx.seenEnemies.add(e);
@@ -329,6 +330,20 @@ export function observeEnemy(fx, e, time, reducedMotion) {
   fx.entryR = r;
   fx.entryReduced = !!reducedMotion;
   triggerShake(fx, time, bossEntryShake(reducedMotion));
+  if (!reducedMotion) spawnBossDust(fx, x, y + r * BOSS_ENTRY.ringDrop, r);
+}
+
+// Staubwoelkchen am Boden rund um den Boss (B-095); fliegen flach nach aussen (Draufsicht).
+export function spawnBossDust(fx, x, y, r) {
+  const B = BOSS_ENTRY;
+  const n = B.dustCount;
+  for (let i = 0; i < n; i++) {
+    const a = ((i + nextRand(fx) * 0.6) / n) * Math.PI * 2;
+    const c = Math.cos(a);
+    const s = Math.sin(a) * B.ringFlat;
+    const v = B.dustSpeed * (0.6 + nextRand(fx) * 0.4);
+    spawnParticle(fx, K_DUST, x + c * r * B.dustStart, y + s * r * B.dustStart, c * v, s * v, B.dustLife, B.dustSize + nextRand(fx) * B.dustSizeVar);
+  }
 }
 
 // Gesamter Ablauf pro Frame. Liest den Spielzustand nur, veraendert ihn nie.
