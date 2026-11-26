@@ -1095,3 +1095,57 @@ test('B-068: Explosion und Rauch unter den Gegnern, Funken/Muenzen darueber; Mue
     else assert.ok(ys.every((y) => y < fx.py[coin] - FX_STYLE.coin.hop * 0.9));
   }
 });
+
+// ---------- Block A: Randfaelle vom Tester ----------
+test('Boss-Auftritt Tester: zweiter Boss loest erneut aus, neues Spiel (neuer Weg) setzt Merker zurueck', () => {
+  const fx = createFx();
+  const path = { points: [] };
+  const b1 = { type: 'boss', x: 10, y: 10, radius: 18 };
+  const b2 = { type: 'boss', x: 40, y: 10, radius: 18 };
+  const s = { time: 1, path, enemies: [b1] };
+  syncFx(fx, s);
+  assert.equal(fx.entryStart, 1);
+  s.time = 3; syncFx(fx, s);
+  assert.equal(fx.entryStart, 1, 'gleicher Boss: kein zweiter Auftritt');
+  s.time = 4; s.enemies = [b1, b2]; syncFx(fx, s);
+  assert.equal(fx.entryStart, 4);
+  assert.equal(fx.entryX, 40);
+  // Neues Spiel: neuer Weg -> Reset, derselbe Boss-Bezug wird wieder als neu erkannt
+  syncFx(fx, { time: 0.5, path: { points: [] }, enemies: [b1] });
+  assert.equal(fx.entryStart, 0.5);
+});
+
+test('Boss-Auftritt Tester: ungueltige Koordinaten und reduced motion ohne Wackeln, kein Absturz', () => {
+  const fx = createFx();
+  syncFx(fx, { time: 1, path: { points: [] }, enemies: [null, { type: 'boss', x: NaN, y: undefined, radius: Infinity }] }, true);
+  assert.equal(fx.entryX, 0);
+  assert.equal(fx.entryY, 0);
+  assert.equal(fx.entryR, 0);
+  assert.equal(fx.entryReduced, true);
+  assert.equal(fx.shakeStrength, 0);
+});
+
+test('B-068 Tester: Partikel-Obergrenze haelt bei Massen von Explosionen und Muenzen', async () => {
+  const { observeEffect } = await import('../src/fx-system.js');
+  const fx = createFx();
+  for (let i = 0; i < 400; i++) {
+    observeEffect(fx, { kind: 'explosion', x: i, y: i, r: 44 }, i * 0.01);
+    observeEffect(fx, { kind: 'coin', x: i, y: i }, i * 0.01);
+  }
+  assert.ok(liveParticles(fx) <= MAX_PARTICLES, `${liveParticles(fx)} > ${MAX_PARTICLES}`);
+  assert.ok(fx.shakeStrength <= SHAKE_MAX);
+});
+
+test('B-068 Tester: coinHop stetig an split und end, coinSpin an Grenzen', async () => {
+  const { coinHop, coinSpin } = await import('../src/fx-system.js');
+  const { FX_STYLE } = await import('../src/config.js');
+  const c = FX_STYLE.coin;
+  for (const k of [c.split, c.end]) {
+    assert.ok(Math.abs(coinHop(k - 1e-7)) < 1e-4, `Sprung vor ${k}`);
+    assert.ok(Math.abs(coinHop(k + 1e-7)) < 1e-4, `Sprung nach ${k}`);
+  }
+  assert.ok(!Object.is(coinHop(0), -0) && !Object.is(coinHop(c.split), -0));
+  assert.equal(coinSpin(0), 1);
+  assert.equal(coinSpin(-Infinity), 1);
+  assert.ok(coinSpin(1 / (2 * c.spins)) === c.minWidth, 'Kante: Mindestbreite');
+});
