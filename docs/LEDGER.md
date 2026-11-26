@@ -825,3 +825,12 @@ Neue Einträge werden unten angehängt. Bestehende Einträge werden nie geänder
 - Ergebnis: Magier (hp 55, speed 1,1, reward 6) schützt alle 5 s andere Gegner im Umkreis 1,5 Kacheln mit einem Schild von 5 % ihrer maxHp (kein Stapeln, nicht sich selbst); Schaden: Rüstung, dann Schild, dann HP. Ab Welle 8 zusätzlich 1 + floor((w−8)/4) Magier. Eigene Figur und Schild-Blase.
 - Abweichung: geplant waren 25 % Schild; das kippte Strategie-Tests (Eiswelt, Zwei Fronten). Der Mensch hat 5 % zum Mergen freigegeben, stärkerer Magier als B-128 (vorschlag). Kanonen-Mix-Leben je Karte praktisch unverändert, perfektes Spiel überall 10 Leben.
 - Tests: 3 neue in game.test.js, 1 in fx.test.js; FLAT2 und waveSummary(10) nur ergänzt. 476 Unit-Tests grün. Review: APPROVE.
+
+---
+
+## 2026-11-26 · B-127 · Zweiter Boss Nekromantin
+- Rolle(n): developer, orchestrator (Messungen, Teständerung Eiswelt auf ausdrückliche Anweisung des Menschen), reviewer (ohne Tester, auf Wunsch nach Tempo). Branch: agent/nekromantin
+- Ergebnis: Nekromantin (hp 1000, reward 75, Boss-Merkmal `isBoss`) beschwört alle 8 s 2 Skelette (hp 18) 0,6 Kacheln hinter sich. Wellenplan: Oger-König 5/10/20, Nekromantin nur in Welle 15 (`NECRO_WAVE`). Eigene Figuren, grüner Beschwörungs-Effekt, Boss-Ton und -Auftritt für beide Bosse.
+- Abweichungen (alle vom Menschen entschieden): geplant waren 10/20; Nekromantin in Welle 10 machte die Eiswelt zu schwer, Skelette vor ihr ließen sie durchlaufen, +1 Nekromantin in Welle 20 kippte die Wiese. Eiswelt-Test (B-125) gelockert: knapper Sieg mit höchstens 5 Leben erlaubt. Belohnung 65→75, weil Vulkan Welle 20 nach dem Zusammenführen mit dem Magier zu schwer war.
+- Erkenntnis: Die Strategie-Tests reagieren chaotisch auf kleine Änderungen (Gold, HP); einzelne Grenzen kippen in beide Richtungen.
+- Tests: 484 Unit grün; Wellenplan-Tests an den neuen Plan angepasst.
