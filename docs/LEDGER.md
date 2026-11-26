@@ -627,3 +627,9 @@ Neue Einträge werden unten angehängt. Bestehende Einträge werden nie geänder
 - Branch: agent/lernen-ablauf (eigener Worktree)
 - Ergebnis: fertig. Abschnitt 3 beschrieb noch den alten Ablauf (jeder Eintrag mit Tester und Reviewer, max. 3 Runden). Jetzt: Blöcke, Prüftiefe nach Risiko, Merge-Bedingungen, Entscheidungen des Menschen, Schleifenbremse 2 Runden / 1 Review-Runde, wie in `.claude/skills/pipeline/SKILL.md`.
 - Tests: nur Doku.
+
+## 2026-11-26 · Doku · LERNEN.md: Merge-Regeln in Abschnitt 2, 6 und 7 angepasst
+- Rolle(n): Claude (interaktiv, auf Wunsch des Menschen)
+- Branch: agent/lernen-merge (eigener Worktree)
+- Ergebnis: fertig. Abschnitt 2 (reviewer: keine Delegation pro PR mehr nötig), Abschnitt 6 (Orchestrator mergt unter Bedingungen, Rolle des Menschen), Abschnitt 7 Schritt 6 (PR anschauen statt selbst anlegen) an den schnellen Ablauf angepasst.
+- Tests: nur Doku.

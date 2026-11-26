@@ -36,7 +36,7 @@ Schau dir die fünf Dateien in `.claude/agents/` an und achte auf die Zeile `too
 |---|---|---|
 | `developer` | ja (`src/`, Tests) | Er baut. |
 | `tester` | nur `tests/` | Wer prüft, soll den Code nicht „passend machen“. |
-| `reviewer` | **nein** (Dateien); im PR-Modus darf er per `gh` abnehmen und mergen | Wer bewertet, darf nicht gleichzeitig reparieren. Das Mergen ist an feste Bedingungen gebunden (CI grün, keine Änderung an `.claude/`, `.github/`, Abhängigkeiten) und nur nach Delegation durch den Menschen. |
+| `reviewer` | **nein** (Dateien); im PR-Modus darf er per `gh` abnehmen und mergen | Wer bewertet, darf nicht gleichzeitig reparieren. Gemergt wird nur unter festen Bedingungen (CI grün, keine Änderung an `.claude/`, `.github/`, Abhängigkeiten, bei Risiko ein `APPROVE`; siehe Abschnitt 3). Eine eigene Freigabe des Menschen pro PR ist seit dem schnellen Ablauf nicht mehr nötig. |
 | `ideator` | **nein** | Er liefert Vorschläge, ein Mensch entscheidet. |
 | `designer` | **nein** (nur Screenshots außerhalb des Repos) | Er prüft Optik und Bedienung mit echten Screenshots und schlägt Designs vor; gebaut wird über die Pipeline. |
 
@@ -123,8 +123,9 @@ Beides ist **append-only**: Es wird nur angehängt, nie überschrieben. So kanns
 
 - **Stop-Hook** (`test-gate.mjs`): Claude kann nicht „fertig“ sagen, solange `npm test` rot ist.
 - **CI** (`ci.yml`): GitHub führt bei jedem Pull Request alle Tests aus.
-- **Reviewer-Agent:** inhaltliche Prüfung vor dem Commit.
-- **Mensch:** die letzte Instanz – du mergst den Pull Request.
+- **Reviewer-Agent:** inhaltliche Prüfung, wenn ein Block Risiko-Dateien oder bestehende Tests berührt (Abschnitt 3).
+- **Merge-Bedingungen:** Der Orchestrator mergt selbst, aber nur, wenn alle Bedingungen aus Abschnitt 3 erfüllt sind. Sonst bleibt der PR offen.
+- **Mensch:** entscheidet, *was* gebaut wird (Backlog auf `offen`), und alles Wichtige: neue Mechaniken, Balancing, Abhängigkeiten, Regeldateien, Test-Änderungen. Den einzelnen PR muss er nicht mehr selbst mergen, kann aber jederzeit eingreifen.
 
 > Die Faustregel: **Je weniger du einem Agent vertraust, desto mehr unabhängige Prüfungen brauchst du.** Und: Ein Agent, der seine eigene Arbeit bewertet, ist keine Prüfung.
 
@@ -135,7 +136,7 @@ Beides ist **append-only**: Es wird nur angehängt, nie überschrieben. So kanns
 3. Setze in `docs/BACKLOG.md` einen Eintrag von `vorschlag` auf `offen`.
 4. Tippe `/pipeline` und beobachte, wie die Rollen nacheinander arbeiten.
 5. Lies danach `docs/LEDGER.md` und `.claude/ledger/audit.jsonl`.
-6. Prüfe den Branch `agent/...` und erstelle selbst den Pull Request.
+6. Schau dir auf GitHub den Pull Request an, den der Orchestrator angelegt hat: Beschreibung, Tab „Files changed“ und den CI-Haken. Ist er gemergt, findest du das Ergebnis nach ein bis zwei Minuten online.
 
 **Übungen:**
 - Ändere den `reviewer` so, dass er strenger ist. Was passiert in der Pipeline?
