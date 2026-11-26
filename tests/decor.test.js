@@ -524,3 +524,16 @@ test('B-104: Deko, Streu-Deko, Plateaus und Büschel liegen nie auf Wasser; Kart
   assert.equal(nearWater(new Set(['1,1']), 90, 60, 6), false);
   for (const id of Object.keys(MAPS)) if (id !== 'meadow') assert.equal(waterTiles(id).size, 0, id);
 });
+
+test('B-103/B-104 Randfälle (Tester): auf allen Karten keine Deko/Streu-Deko auf Hindernis oder Wasser', async () => {
+  const { scatterFor } = await import('../src/decor.js');
+  const { MAPS: ALL } = await import('../src/config.js');
+  for (const id of Object.keys(ALL)) {
+    const s = createGame({ mapId: id });
+    for (const k of [...s.obstacles, ...s.water]) {
+      const [c, r] = k.split(',').map(Number);
+      assert.equal(decorFor(c, r, s.blocked, s.obstacles, s.water), null, `${id} Deko ${k}`);
+      assert.equal(scatterFor(c, r, s.blocked, s.obstacles, id), null, `${id} Streu ${k}`);
+    }
+  }
+});

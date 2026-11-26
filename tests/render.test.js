@@ -1444,3 +1444,16 @@ test('B-104: Render zeichnet mit und ohne Wasser ohne Fehler; Geometrie determin
     }
   } finally { delete globalThis.document; }
 });
+
+test('B-104 Randfall (Tester): Render ohne water-Set (undefined/null) wirft auf keiner Karte', async () => {
+  const { render } = await import('../src/render.js?ohne-wasser-set');
+  globalThis.document = { createElement() { const c = mockCtx(); return { width: 0, height: 0, getContext: () => c.ctx }; } };
+  try {
+    for (const id of Object.keys(MAPS)) for (const water of [undefined, null]) {
+      const st = createGame({ mapId: id, water, obstacles: undefined });
+      const m = mockCtx();
+      render(m.ctx, st, { buildType: 'arrow', hover: { col: 1, row: 5, ok: true } });
+      assert.equal(m.depth, 0, `${id} ${water}`);
+    }
+  } finally { delete globalThis.document; }
+});
