@@ -468,7 +468,7 @@ export const ICON = {
   sizes: { hud: 22, heart: 16, inline: 16, button: 20, ability: 26 }, // Anzeigegröße in CSS-px
   colors: {
     heartEmpty: '#5b4a5e', flag: '#d4503f', meteorRock: '#7a6a64', meteorCrater: '#55474a', flame: '#ff7a1f', flameCore: '#ffc23a',
-    glass: '#bff0ff', pause: '#fff3c9', play: '#7fd24a', paper: '#e2c88f', mapMark: '#d4503f',
+    glass: '#bff0ff', glassShine: '#ffffff', pause: '#fff3c9', play: '#7fd24a', paper: '#e2c88f', mapMark: '#d4503f',
   },
 };
 

@@ -90,7 +90,7 @@ const DRAW = {
     stroke2(ctx, [[4, 4], [11, 11]], P.woodDark, 4.5);
     ell(ctx, -3, -3, 9, 9, P.stone, W);
     ell(ctx, -3, -3, 6, 6, C.glass, W);
-    disc(ctx, '#ffffff', -5, -5, 1.8);
+    disc(ctx, C.glassShine, -5, -5, 1.8);
   },
   pause(ctx) {
     rr(ctx, -8, -10, 6, 20, 1.5, C.pause, W);

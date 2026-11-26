@@ -182,7 +182,9 @@ button.primary {
 .abilities button[data-state="used"]:disabled { opacity: .8; }
 /* Tastenkürzel-Hinweise nur mit Tastatur (auf Touch-Geräten und schmalen Bildschirmen aus) */
 .key[hidden] { display: none; }
-@media (hover: none), (pointer: coarse), (max-width: 700px) { .key { display: none; } }
+/* Gegenstück: Hinweise nur für Touch/schmale Bildschirme (z. B. "Tippe auf Weiter" im Pause-Banner) */
+.touch-hint { display: none; }
+@media (hover: none), (pointer: coarse), (max-width: 700px) { .key { display: none; } .touch-hint { display: inline; } #pause-banner .touch-hint { display: block; font-size: 1.1rem; } }
 .map-pick { flex: 1 1 100%; display: flex; align-items: center; gap: 8px; }
 .map-pick select { flex: 1; padding: 6px; }
 #wave-preview { margin: 8px 0 0; padding: 4px 8px; font-size: .8rem; color: var(--muted); background: rgba(0,0,0,.25); border-radius: 6px; }

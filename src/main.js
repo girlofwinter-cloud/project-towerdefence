@@ -111,7 +111,7 @@ for (const [type, def] of Object.entries(TOWER_TYPES)) {
   btn.className = 'tower-btn';
   btn.dataset.type = type;
   btn.innerHTML = `<canvas class="t-icon" width="${ICON_SIZE}" height="${ICON_SIZE}"></canvas>
-    <span class="t-name">${def.name} <kbd>${def.key}</kbd></span>
+    <span class="t-name">${def.name} <kbd class="key">${def.key}</kbd></span>
     <span class="t-cost">${def.cost} ${COIN()}</span>
     <span class="t-desc">${def.description}</span>`;
   // Fähigkeiten-Text: als Tooltip der Karte (und im Turm-Info-Panel des gewählten Turms)
@@ -240,13 +240,14 @@ for (const id of Object.keys(MAPS)) {
   opt.value = id;
   mapSelect.appendChild(opt);
 }
-// Beschriftung mit Sternen, gesperrte Karten mit Schloss und nicht wählbar.
+// Beschriftung mit Sternen, gesperrte Karten mit Zusatz "(gesperrt)" und nicht wählbar.
+// <option> kann kein Bild zeigen, darum Text statt Schloss-Emoji (B-096).
 function refreshMapOptions() {
   for (const opt of mapSelect.options) {
     const name = MAPS[opt.value].name;
     const open = mapOpen(opt.value);
     opt.disabled = !open;
-    opt.textContent = open ? `${name} ${starText(mapProgress(progress, opt.value).stars)}` : `🔒 ${name}`;
+    opt.textContent = open ? `${name} ${starText(mapProgress(progress, opt.value).stars)}` : `${name} (gesperrt)`;
   }
 }
 refreshMapOptions();
@@ -402,8 +403,8 @@ function refreshUI() {
 
   const over = $('overlay');
   over.hidden = state.status === 'playing';
-  if (state.status === 'won') $('overlay-title').textContent = '🏆 Gewonnen!';
-  if (state.status === 'lost') $('overlay-title').textContent = '💀 Verloren';
+  if (state.status === 'won') $('overlay-title').textContent = 'Gewonnen!';
+  if (state.status === 'lost') $('overlay-title').textContent = 'Verloren';
   $('overlay-stats').textContent = `Welle ${state.wave} · ${state.kills} Gegner besiegt`;
   if (state.status !== 'playing' && !resultSaved) saveResult();
   renderResultLines($('overlay-progress'), resultText);

@@ -16,9 +16,13 @@ export function livesText(lives, max = START_LIVES) {
 // und zugänglicher Name. def = Eintrag aus ABILITIES, uses = bisherige Einsätze, left = Rest-Abklingzeit in s.
 // fill: 1 = voll geladen (bereit), 0 = gerade ausgelöst; wächst während des Ladens.
 export function abilityView(def, uses, left) {
-  const remaining = def.maxUses !== undefined ? Math.max(0, def.maxUses - uses) : null;
+  // Härtung (B-096): fehlende/ungültige Einsätze zählen wie 0 (sonst Abzeichen "NaN×").
+  const n = Number.isFinite(uses) ? uses : 0;
+  const remaining = def.maxUses !== undefined ? Math.max(0, def.maxUses - n) : null;
   const used = remaining === 0;
-  const wait = Math.max(0, left);
+  // Ungültige Restzeit (NaN, undefined, ±Infinity) nicht als "bereit" werten (sonst voller Balken):
+  // Rückfall auf die volle Abklingzeit, also "lädt" mit leerem Balken.
+  const wait = Math.max(0, Number.isFinite(left) ? left : def.cooldown);
   const charging = !used && wait > 0;
   const fill = used ? 0 : charging ? Math.max(0, Math.min(1, 1 - wait / def.cooldown)) : 1;
   const state = used ? 'used' : charging ? 'charging' : 'ready';
