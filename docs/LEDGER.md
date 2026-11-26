@@ -649,3 +649,11 @@ Neue Einträge werden unten angehängt. Bestehende Einträge werden nie geänder
 - Ergebnis: fertig. Neue `src/render-icons.js` (11 Canvas-Icons) ersetzt Emoji in HUD und Knöpfen; Fähigkeitsknöpfe mit großem Symbol, Kurzname, Ladungs-Abzeichen und Abklingbalken (`abilityView` in `src/hud.js`), Laden grau mit Goldbalken; Tastenkürzel (`.key`) auf dem Handy ausgeblendet; alle Knöpfe ≥ 44 px, Desktop-Fähigkeitsknöpfe 58 statt ~100 px.
 - Tests: 299 Unit-Tests (6 neu vom Developer, 3 vom Tester), 16 Browser-Tests (neu `tests/e2e/buttons.test.mjs`). Tester: PASS. Review: APPROVE, Hinweise als B-096.
 - Entscheidungen: Einträge standen auf `vorschlag`, vom Menschen per Auftrag freigegeben. B-058 (Layout) mit B-069 im Block, weil beide dieselben Knöpfe betreffen. Neues Textfeld `short` in `ABILITIES` (kein Balancing). Kein bestehender Test geändert.
+
+## 2026-11-26 · B-057, B-056 und B-070 · Turm-Panel (Desktop und Handy), Shop-Karten (Block)
+- Rolle(n): orchestrator, developer (B-057/B-056, dann B-070 mit Nachbesserung), danach einmal tester und reviewer über den Block
+- Branch: agent/turmpanel-shop
+- Runden: 2 von max. 2 (Nachbesserung der Handy-Knopftexte nach Orchestrator-Sichtprüfung)
+- Ergebnis: fertig. Desktop: `#tower-info` als flache Leiste unter dem Spielfeld (`#sell` endet bei y=721 statt 958). Handy: feste Leiste unten mit Name/Stufe, Ziel/Verbessern/Verkaufen (≥ 44 px, zweizeilig, ohne Kürzel), Schließen per × oder Tipp aufs Feld. Shop-Karten: Farben in `SHOP_CARD`, deutlicher Zustand „zu teuer“, Kontrast ≥ 4,5:1 per Test (`contrastRatio` in `src/hud.js`), Kartenhöhen unverändert.
+- Tests: 302 Unit-Tests, 26 Browser-Tests (neu `tests/e2e/panel.test.mjs`, vom Tester `panel-edge.test.mjs`). Tester: PASS. Review: APPROVE, Hinweise als B-097.
+- Entscheidungen: Einträge standen auf `vorschlag`, vom Menschen per Auftrag freigegeben. Layout-Einträge als Block, da alle dasselbe Panel betreffen. B-070 und die B-056-Nachbesserung in einem Commit (Developer committete nicht, Aufteilung nach Hunks zu fehleranfällig). „Canvas ≥ 280 px“: Feld ist auf dem Handy nur 266/245 px hoch; Test verlangt, dass das ganze Feld über der Leiste sichtbar bleibt.

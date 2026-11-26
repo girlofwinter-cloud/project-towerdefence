@@ -472,6 +472,23 @@ export const ICON = {
   },
 };
 
+// Shop-Karten im Flat-Pop-Stil (B-070): flache Flächen statt Verlauf. main.js setzt die Werte als
+// CSS-Variablen (--card-*) auf #shop, style.css nutzt nur diese Variablen. Schrift auf Karte und
+// aktiver Karte braucht mindestens minContrast (WCAG, Test in tests/render.test.js).
+export const SHOP_CARD = {
+  bg: '#4e321d',        // Karte
+  bgActive: '#62402a',  // gewählte Karte (dazu goldener Rahmen)
+  name: '#fff4dc',      // Turmname
+  cost: '#ffe27a',      // Preis
+  costPoor: '#ff9e8f',  // Preis, wenn das Gold nicht reicht
+  desc: '#d1bb94',      // Beschreibung
+  keyText: '#fff4dc',   // Tasten-Badge: Schrift
+  keyBg: '#2e1d10',     // Tasten-Badge: Fläche
+  iconBg: '#5fae48',    // Fläche hinter der Mini-Turm-Vorschau (Wiese)
+  poorEdge: '#d4503f',  // Rahmen "zu teuer" (zusätzlich grau getönte Vorschau, nicht nur Farbe)
+  minContrast: 4.5,
+};
+
 // Pfeilturm im Flat-Pop-Stil (B-063). Alle Maße in px, Ursprung = Bodenmitte des Turms, y nach oben negativ.
 export const ARROW_TOWER = {
   scale: 0.85,              // Gesamtskalierung (Turm ca. 30 px breit, ca. 58 px hoch)

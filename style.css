@@ -197,17 +197,45 @@ button.primary {
   align-items: center;
   padding: 4px 10px 4px 5px;
 }
-.tower-btn.active { outline: 3px solid var(--gold); background: linear-gradient(#8f6339, #6b4529); }
-.tower-btn.poor .t-cost { color: #ff8b7b; }
-.t-icon { grid-area: icon; width: 44px; height: 44px; border-radius: 8px; background: radial-gradient(circle, #5aa84a, #3a7a30); border: 2px solid var(--panel-edge); }
+/* Shop-Karten (B-070): flache Flächen, Farben als --card-* aus SHOP_CARD (config.js, gesetzt in main.js) */
+.tower-btn { background: var(--card-bg); color: var(--card-name); }
+.tower-btn:hover:not(:disabled) { filter: none; border-color: var(--gold); }
+.tower-btn.active { outline: 3px solid var(--gold); background: var(--card-bg-active); }
+/* Zu teuer: roter Rahmen, Vorschau grau getönt, Preis rot (nicht nur über Farbe) */
+.tower-btn.poor { border-color: var(--card-poor-edge); box-shadow: inset 0 0 0 1px var(--card-poor-edge), 0 3px 0 var(--panel-edge); }
+.tower-btn.poor .t-icon { filter: grayscale(.85) brightness(.85); }
+.tower-btn.poor .t-cost { color: var(--card-cost-poor); }
+.tower-btn kbd { color: var(--card-key-text); background: var(--card-key-bg); }
+.t-icon { grid-area: icon; width: 44px; height: 44px; border-radius: 8px; background: var(--card-icon-bg); border: 2px solid var(--panel-edge); }
 .t-name { grid-area: name; font-weight: 700; }
-.t-cost { grid-area: cost; color: #ffe27a; font-weight: 700; }
-.t-desc { grid-area: desc; font-size: 0.74rem; line-height: 1.2; font-weight: 400; color: var(--muted); display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; }
-#tower-info { border-top: 2px solid var(--panel-edge); margin-top: 12px; }
-#tower-info p { color: var(--muted); font-size: 0.85rem; margin: 6px 0; }
-#tower-info h3 { margin: 8px 0 4px; }
-#ti-special { font-size: 0.78rem; line-height: 1.25; }
-#tower-info button { width: 100%; margin-bottom: 6px; padding: 6px 10px; }
+.t-cost { grid-area: cost; display: inline-flex; align-items: center; gap: 3px; white-space: nowrap; color: var(--card-cost); font-weight: 700; }
+.t-desc { grid-area: desc; font-size: 0.74rem; line-height: 1.2; font-weight: 400; color: var(--card-desc); display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; }
+/* Turm-Panel (B-057): flache Holzleiste direkt unter dem Spielfeld.
+   Links Name und Werte, rechts die drei Knöpfe, darunter der Spezialtext über die volle Breite. */
+#tower-info {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas: 'name actions' 'stats actions' 'special special';
+  gap: 2px 10px;
+  align-items: center;
+  margin-top: 8px;
+  padding: 6px 10px;
+  background: linear-gradient(#64412a, var(--panel));
+  border: 3px solid var(--panel-edge);
+  border-radius: 10px;
+  box-shadow: inset 0 0 0 2px #8a5e38, 0 4px 10px rgba(0,0,0,.45);
+}
+#tower-info h3 { grid-area: name; margin: 0; font-size: 1rem; color: var(--gold); text-shadow: 0 1px 0 var(--panel-edge); }
+#tower-info p { color: var(--muted); font-size: 0.85rem; margin: 0; }
+#ti-stats { grid-area: stats; }
+#ti-special { grid-area: special; font-size: 0.78rem; line-height: 1.25; }
+#ti-special:empty { display: none; }
+#ti-close { display: none; }
+.ti-actions { grid-area: actions; display: flex; gap: 6px; }
+.ti-actions button { padding: 6px 10px; font-size: .85rem; white-space: nowrap; display: inline-flex; align-items: center; justify-content: center; gap: 4px; }
+.ti-actions .act-cost { display: inline-flex; align-items: center; white-space: nowrap; }
+.ti-actions .act-cost .ico { margin: 0 1px 0 3px; }
+.ti-actions .key { font-weight: 400; color: var(--muted); }
 kbd {
   font-size: 0.72rem;
   color: var(--text);
@@ -241,7 +269,31 @@ footer { text-align: center; color: var(--muted); font-size: 0.8rem; padding: 16
   .abilities button { padding: 3px 2px 7px; font-size: .72rem; }
   #zoom { display: inline-flex; min-height: 44px; }
   #wave-preview { order: 2; margin-top: 6px; }
-  #tower-info { order: 3; margin-top: 8px; }
+  /* Turm-Panel als feste Leiste (Schublade) am unteren Rand (B-056): Name, Werte, Schließen, drei Knöpfe.
+     Schließen per ×, Tipp aufs leere Feld oder Esc. */
+  #tower-info {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 20;
+    margin: 0;
+    grid-template-columns: minmax(0, 1fr) 44px;
+    grid-template-areas: 'name close' 'stats close' 'actions actions';
+    gap: 2px 8px;
+    padding: 6px 8px calc(8px + env(safe-area-inset-bottom));
+    border-width: 3px 0 0;
+    border-radius: 12px 12px 0 0;
+    box-shadow: inset 0 2px 0 #8a5e38, 0 -6px 16px rgba(0,0,0,.5);
+  }
+  #ti-special { display: none; }
+  #ti-close { grid-area: close; display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; padding: 0; font-size: 1.6rem; line-height: 1; }
+  .ti-actions { margin-top: 4px; }
+  .ti-actions button { flex: 1 1 0; min-width: 0; min-height: 44px; padding: 4px; font-size: .8rem; line-height: 1.15; white-space: normal; flex-direction: column; gap: 1px; text-align: center; }
+  /* Zweizeilig: "Verbessern" / "38 Münze", ohne Klammern (B-056) */
+  .ti-actions .paren { display: none; }
+  /* Platz unter der Seite, damit die Leiste nichts endgültig verdeckt */
+  body:has(#tower-info:not([hidden])) main { padding-bottom: 140px; }
   #shop { order: 4; display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 8px; }
   .tower-btn { grid-template-columns: 40px 1fr; grid-template-areas: 'icon name' 'icon cost'; gap: 0 6px; padding: 4px 6px 4px 4px; }
   .t-icon { width: 40px; height: 40px; }

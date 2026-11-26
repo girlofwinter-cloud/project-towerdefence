@@ -1,5 +1,5 @@
 // Verbindet Spiel-Logik, Rendering und Bedienung (DOM, Maus, Tastatur).
-import { TILE, WIDTH, HEIGHT, ARROW_TOWER, TOWER_STYLE, TOWER_TYPES, ENEMY_TYPES, MAX_WAVES, MAPS, SPEED_STEPS, TARGET_MODES, TARGET_MODE_NAMES, MAX_SUBSTEP, LOW_LIVES, ABILITIES, ICON, waveSummary } from './config.js';
+import { TILE, WIDTH, HEIGHT, ARROW_TOWER, TOWER_STYLE, SHOP_CARD, TOWER_TYPES, ENEMY_TYPES, MAX_WAVES, MAPS, SPEED_STEPS, TARGET_MODES, TARGET_MODE_NAMES, MAX_SUBSTEP, LOW_LIVES, ABILITIES, ICON, waveSummary } from './config.js';
 import {
   createGame, stepGame, togglePause, buildTower, upgradeTower, sellTower, setTargetMode, startWave,
   useAbility, abilityCooldownLeft, canBuild, towerAt, towerStats, upgradeCost, sellValue,
@@ -84,6 +84,9 @@ function setHtml(el, html) {
   el.innerHTML = html;
 }
 const COIN = () => iconHtml('gold', 'inline', 'Gold');
+// Knopf im Turm-Panel: "Verbessern (38 Gold) (U)" am Desktop, auf dem Handy zweizeilig ohne Klammern und Kürzel
+const actionHtml = (label, cost, key) => `<span class="act-label">${label}</span> `
+  + `<span class="act-cost"><span class="paren">(</span>${cost}<span class="paren">)</span></span> <span class="key">(${key})</span>`;
 
 // ---------- Turm-Leiste ----------
 // Mini-Turm als Kartenbild: nutzt dieselbe Zeichenfunktion wie das Spielfeld (kein extra Grafik-Aufwand).
@@ -99,6 +102,10 @@ function drawTowerIcon(cv, type) {
   drawTower(c, { type, x: TILE / 2, y: TILE / 2, level: 1, cooldown: 0, angle: -Math.PI / 4 }, false);
 }
 const shop = $('shop');
+// Kartenfarben aus config.js (B-070): camelCase -> --card-kebab-case
+for (const [k, v] of Object.entries(SHOP_CARD)) {
+  if (typeof v === 'string') shop.style.setProperty(`--card-${k.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`)}`, v);
+}
 for (const [type, def] of Object.entries(TOWER_TYPES)) {
   const btn = document.createElement('button');
   btn.className = 'tower-btn';
@@ -254,6 +261,7 @@ $('pause').addEventListener('click', doTogglePause);
 $('upgrade').addEventListener('click', doUpgrade);
 $('sell').addEventListener('click', doSell);
 $('target-mode').addEventListener('click', doCycleTarget);
+$('ti-close').addEventListener('click', () => { ui.selectedTowerId = null; refreshUI(); });
 $('restart').addEventListener('click', restart);
 $('zoom').addEventListener('click', toggleZoom);
 
@@ -376,10 +384,17 @@ function refreshUI() {
     $('ti-name').textContent = `${s.name} (Stufe ${t.level})`;
     $('ti-stats').textContent = `Schaden ${Math.round(s.damage)} · Reichweite ${s.range.toFixed(1)} · ${(1 / s.rate).toFixed(1)} Schuss/s`;
     $('ti-special').textContent = s.special?.text ?? '';
-    setHtml($('upgrade'), up === null ? 'Max. Stufe' : `Verbessern (${up} ${COIN()})`);
+    // Knöpfe (B-056): Beschriftung und Preis als eigene Zeilen-Teile, Klammern und Kürzel
+    // fallen auf dem Handy weg (CSS); der zugängliche Name bleibt vollständig (aria-label).
+    const sell = sellValue(t);
+    const mode = TARGET_MODE_NAMES[t.targetMode];
+    setHtml($('upgrade'), up === null ? 'Max. Stufe' : actionHtml('Verbessern', `${up} ${COIN()}`, 'U'));
+    $('upgrade').setAttribute('aria-label', up === null ? 'Max. Stufe' : `Verbessern für ${up} Gold (U)`);
     $('upgrade').disabled = up === null || state.gold < up;
-    $('target-mode').textContent = `Ziel: ${TARGET_MODE_NAMES[t.targetMode]} (T)`;
-    setHtml($('sell'), `Verkaufen (+${sellValue(t)} ${COIN()})`);
+    setHtml($('target-mode'), `<span class="act-label">Ziel: ${mode}</span> <span class="key">(T)</span>`);
+    $('target-mode').setAttribute('aria-label', `Ziel: ${mode} (T)`);
+    setHtml($('sell'), actionHtml('Verkaufen', `+${sell} ${COIN()}`, 'S'));
+    $('sell').setAttribute('aria-label', `Verkaufen für ${sell} Gold (S)`);
   }
 
   $('message').textContent = ui.messageTtl > 0 ? ui.message : '';

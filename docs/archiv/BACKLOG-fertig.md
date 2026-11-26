@@ -405,3 +405,29 @@ Agents lesen diese Datei nur bei konkretem Bedarf.
   - Zustand "bereit" und "lädt" ist ohne Text unterscheidbar (Balken oder Helligkeit).
   - Tastenkürzel-Hinweise sind auf dem Handy ausgeblendet (auch bei Pause und Tempo).
   - Unit-/Browser-Test prüft die Mindesthöhe.
+
+### B-057: Desktop: Turm-Panel ohne Scrollen erreichbar (Muss, Design-Prüfung)
+- Status: fertig
+- Aufwand: S
+- Idee: Bei 1280x800 und 1366x768 endet Verkaufen bei y=958, die Seite ist 1262 px hoch; das Panel liegt unter Turmliste und Hilfe. Panel oben in der Seitenleiste (vor den Turmkarten) oder neben das Feld, Hilfe einklappen. Risiko: Layout-Sprünge. Screenshot: d1280-4select.png.
+- Akzeptanzkriterien:
+  - Bei 1280x800 und 1366x768 liegt `#sell` bei gewähltem Turm mit Unterkante < 800 bzw. 768.
+  - Alle Turmkarten bleiben ohne Scrollen sichtbar (bestehender Browser-Test aus shop-kompakt bleibt grün).
+
+### B-056: Handy: Turm-Panel als feste Leiste am unteren Rand (Muss, Design-Prüfung)
+- Status: fertig
+- Aufwand: M
+- Idee: Auf dem Handy liegt das Turm-Panel (Verbessern, Verkaufen, Zielregel) unter Spielfeld und Bedienleiste; man muss scrollen und sieht das Feld nicht mehr. Der Turmname fehlt, weil `aside h3 { display:none }` (style.css ca. Zeile 217) auch `#ti-name` versteckt. Lösung: Panel als feste Leiste (Schublade) am unteren Bildschirmrand mit Name, Stufe, Verbessern, Verkaufen, Zielregel; Schließen per Tippen aufs Feld. Risiko: Leiste verdeckt unten das Feld. Screenshots: m390-4select.png, m360-4select.png im Scratchpad der Design-Prüfung 2026-11-21.
+- Akzeptanzkriterien:
+  - Bei 390x844 und 360x740 liegen nach dem Antippen eines Turms Verbessern und Verkaufen komplett im Bild (Unterkante < innerHeight) und sind mindestens 44 px hoch.
+  - Turmname und Stufe sind sichtbar.
+  - Das Canvas bleibt mit mindestens 280 px Höhe sichtbar.
+  - Browser-Test für beide Größen; kein horizontaler Scroll.
+
+### B-070: Shop-Karten (Design-Overhaul)
+- Status: fertig
+- Aufwand: S
+- Idee: Mini-Turm-Vorschau aus den neuen Sprites, Preis mit Münz-Icon. Verknüpft mit B-056/B-057.
+- Akzeptanzkriterien:
+  - Kartenhöhe nicht größer als jetzt, alle Karten ohne Scrollen erreichbar.
+  - Kontrast Text/Hintergrund mindestens 4,5:1.
