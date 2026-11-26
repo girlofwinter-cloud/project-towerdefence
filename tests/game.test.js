@@ -3125,3 +3125,45 @@ test('B-124: gespawnte Gegner laufen auf der geplanten Seite, auch beim Frühsta
   assert.equal(spawnEnemy(d, 'grunt', 1, 1).lane, 1);
   assert.equal(spawnEnemy(d, 'grunt', 1, 7).lane, 0, 'ungültige Seite -> Wechsel');
 });
+
+// --- B-124: Tester-Ergänzungen ---
+
+test('B-124 (Tester): Frühstart addiert den Versatz relativ zur laufenden waveTime, Queue bleibt sortiert', () => {
+  const s = createGame({ mapId: 'fork' });
+  startWave(s);
+  s.lives = 1e6; // nur Zeitplanung prüfen
+  while (s.spawnQueue.length) update(s, 1 / 60); // Frühstart erst, wenn alle Gegner der Welle gespawnt sind
+  assert.ok(s.waveActive && s.waveTime > LANE_ASYNC.offset);
+  const t = s.waveTime;
+  const before = s.spawnQueue.length;
+  assert.ok(startWave(s).ok);
+  const added = s.spawnQueue.filter((e) => e.wave === 2);
+  const planned = planLanes(s, waveFor(2), 2);
+  assert.equal(added.length, planned.length);
+  assert.equal(s.spawnQueue.length, before + planned.length);
+  const exp = planned.map((e) => e.at + t).sort((a, b) => a - b);
+  const got = added.map((e) => e.at).sort((a, b) => a - b);
+  for (let k = 0; k < exp.length; k++) assert.ok(Math.abs(got[k] - exp[k]) < 1e-9, `Eintrag ${k}: ${got[k]} vs ${exp[k]}`);
+  // späte Seite (2 % 2 = 0) startet frühestens t + offset
+  const lateFirst = Math.min(...added.filter((e) => e.lane === 0).map((e) => e.at));
+  assert.ok(lateFirst >= t + LANE_ASYNC.offset - 1e-9);
+  for (let k = 1; k < s.spawnQueue.length; k++) assert.ok(s.spawnQueue[k].at >= s.spawnQueue[k - 1].at);
+});
+
+test('B-124 (Tester): Welle 20 mit Bossen auf beiden Karten vollständig geplant, Eingabe unverändert', () => {
+  for (const mapId of ['fork', 'twin']) {
+    const s = createGame({ mapId });
+    const raw = waveFor(20);
+    const copy = JSON.stringify(raw);
+    const planned = planLanes(s, raw, 20);
+    assert.equal(JSON.stringify(raw), copy, `${mapId}: Eingabeliste verändert`);
+    assert.equal(planned.length, raw.length);
+    const count = s.paths.length;
+    assert.ok(planned.every((e) => Number.isInteger(e.lane) && e.lane >= 0 && e.lane < count));
+    const bosses = planned.filter((e) => e.type === 'boss');
+    assert.equal(bosses.length, raw.filter((e) => e.type === 'boss').length);
+    // Typ-Anzahl bleibt gleich
+    const tally = (l) => l.reduce((m, e) => ((m[e.type] = (m[e.type] || 0) + 1), m), {});
+    assert.deepEqual(tally(planned), tally(raw));
+  }
+});
