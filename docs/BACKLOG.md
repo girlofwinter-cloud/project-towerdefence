@@ -286,24 +286,6 @@ Erledigte Einträge (`fertig`) liegen in `docs/archiv/BACKLOG-fertig.md`. Beim A
 - Akzeptanzkriterien:
   - `npm test` bleibt grün, keine Prüfung abgeschwächt (nur Toleranz, wo die Reserve knapp ist).
 
-### B-056: Handy: Turm-Panel als feste Leiste am unteren Rand (Muss, Design-Prüfung)
-- Status: vorschlag
-- Aufwand: M
-- Idee: Auf dem Handy liegt das Turm-Panel (Verbessern, Verkaufen, Zielregel) unter Spielfeld und Bedienleiste; man muss scrollen und sieht das Feld nicht mehr. Der Turmname fehlt, weil `aside h3 { display:none }` (style.css ca. Zeile 217) auch `#ti-name` versteckt. Lösung: Panel als feste Leiste (Schublade) am unteren Bildschirmrand mit Name, Stufe, Verbessern, Verkaufen, Zielregel; Schließen per Tippen aufs Feld. Risiko: Leiste verdeckt unten das Feld. Screenshots: m390-4select.png, m360-4select.png im Scratchpad der Design-Prüfung 2026-11-21.
-- Akzeptanzkriterien:
-  - Bei 390x844 und 360x740 liegen nach dem Antippen eines Turms Verbessern und Verkaufen komplett im Bild (Unterkante < innerHeight) und sind mindestens 44 px hoch.
-  - Turmname und Stufe sind sichtbar.
-  - Das Canvas bleibt mit mindestens 280 px Höhe sichtbar.
-  - Browser-Test für beide Größen; kein horizontaler Scroll.
-
-### B-057: Desktop: Turm-Panel ohne Scrollen erreichbar (Muss, Design-Prüfung)
-- Status: vorschlag
-- Aufwand: S
-- Idee: Bei 1280x800 und 1366x768 endet Verkaufen bei y=958, die Seite ist 1262 px hoch; das Panel liegt unter Turmliste und Hilfe. Panel oben in der Seitenleiste (vor den Turmkarten) oder neben das Feld, Hilfe einklappen. Risiko: Layout-Sprünge. Screenshot: d1280-4select.png.
-- Akzeptanzkriterien:
-  - Bei 1280x800 und 1366x768 liegt `#sell` bei gewähltem Turm mit Unterkante < 800 bzw. 768.
-  - Alle Turmkarten bleiben ohne Scrollen sichtbar (bestehender Browser-Test aus shop-kompakt bleibt grün).
-
 
 ### B-060: Wellen-Vorschau mit Symbolen und Fortschritt am Start-Knopf (Sollte, Design-Prüfung)
 - Status: vorschlag
@@ -348,15 +330,6 @@ Reihenfolge ist Abhängigkeit: B-062 und B-063 zuerst, dann gemeinsame Sichtprü
 - Idee: Übrige Gegnertypen (inkl. Fliegende, Splitter/Tarn, sofern vorhanden). Zustände Schild, Heilung, Eingefroren zusätzlich über Form/Symbol.
 - Akzeptanzkriterien:
   - Je Typ ein Screenshot-Beleg, keine reine Farbunterscheidung.
-
-
-### B-070: Shop-Karten (Design-Overhaul)
-- Status: vorschlag
-- Aufwand: S
-- Idee: Mini-Turm-Vorschau aus den neuen Sprites, Preis mit Münz-Icon. Verknüpft mit B-056/B-057.
-- Akzeptanzkriterien:
-  - Kartenhöhe nicht größer als jetzt, alle Karten ohne Scrollen erreichbar.
-  - Kontrast Text/Hintergrund mindestens 4,5:1.
 
 
 ### B-083: Feste Bauplätze wie im Referenzbild (Spiel-Änderung, nur nach Freigabe)
@@ -471,3 +444,10 @@ Reihenfolge ist Abhängigkeit: B-062 und B-063 zuerst, dann gemeinsame Sichtprü
 - Idee: (1) Restliche Emoji außerhalb von HUD/Knöpfen: 🔒 in den Kartenoptionen, 🏆/💀 im Overlay-Titel, 🏰 in der Überschrift. (2) Tastenkürzel auch bei „Ziel: … (T)“ und `<kbd>` auf den Turmkarten über `.key` auf dem Handy ausblenden; Pause-Banner zeigt auf dem Handy noch „P drücken“. (3) `#ffffff` in `src/render-icons.js` (Zoom-Glanzpunkt) nach `ICON.colors`. (4) `abilityView` gegen `uses` undefined („NaN×“) und `left` NaN (meldet „bereit“) härten.
 - Akzeptanzkriterien:
   - Keine Emoji mehr in sichtbarer Spiel-UI außer wo technisch nötig; Randfälle mit Test; `npm test` grün.
+
+### B-097: Turm-Panel: Feinschliff (Hinweise aus dem Block-Review B-056/B-057/B-070)
+- Status: vorschlag
+- Aufwand: S
+- Idee: (1) Nach Klick auf × (`#ti-close`) geht der Tastaturfokus verloren; Fokus auf `#game` oder die letzte Turmkarte setzen. (2) aria-label „Schließen“ → „Turm-Panel schließen“. (3) Desktop: Leerzeichen vor der schließenden Klammer in „Verbessern (38 [Münze] )“ (`actionHtml` in `src/main.js`). (4) `main { padding-bottom: 140px }` im Handy-Block aus der echten Leistenhöhe ableiten (safe-area, große Schrift). (5) „Scharfschütze“ bricht am Desktop mit Tasten-Badge um (Karte 78 statt ~58 px). (6) `contrastRatio` versteht nur `#rrggbb`.
+- Akzeptanzkriterien:
+  - Fokus bleibt nach dem Schließen sinnvoll, keine Lücke vor der Klammer, Leiste verdeckt bei 200 % Schrift nichts; `npm test` grün.
