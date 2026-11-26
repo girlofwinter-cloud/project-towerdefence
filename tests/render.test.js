@@ -1361,3 +1361,13 @@ test('Shop-Karten: Name, Preis (auch zu teuer), Beschreibung und Tasten-Badge mi
   assert.notEqual(C.costPoor, C.cost);
   assert.notEqual(C.poorEdge, C.bg);
 });
+
+test('B-070 Randfälle (Tester): SHOP_CARD-Farben im Format #rrggbb, Groß-/Kleinschreibung egal', async () => {
+  const { contrastRatio } = await import('../src/hud.js');
+  const { SHOP_CARD: C } = await import('../src/config.js');
+  // contrastRatio versteht nur #rrggbb; Kurzform (#fff) oder Namen (red) ergäben NaN
+  for (const [k, v] of Object.entries(C)) {
+    if (typeof v === 'string') assert.match(v, /^#[0-9a-f]{6}$/i, `${k}: ${v}`);
+  }
+  assert.equal(contrastRatio('#FFFFFF', '#000000'), contrastRatio('#ffffff', '#000000'));
+});
