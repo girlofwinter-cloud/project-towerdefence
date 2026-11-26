@@ -25,7 +25,7 @@ export const MAX_SUBSTEP = 0.05;
 export const OBSTACLE_TREE_SHARE = 0.7;
 
 // Stil-Parameter einer Karte (B-072): Ist theme.<key> ein Objekt, überschreibt es einzelne Werte des Basisblocks
-// (z. B. Palette von Wald oder Zangenangriff); bei true/fehlend gilt der Basisblock der Wiese unverändert.
+// (z. B. Palette von Eiswelt oder Zangenangriff); bei true/fehlend gilt der Basisblock der Wiese unverändert.
 export function themed(mapId, key, base) {
   const v = MAPS[mapId]?.theme?.[key];
   return v && typeof v === 'object' ? { ...base, ...v } : base;
@@ -46,73 +46,8 @@ export const MAPS = {
       [16, 11],
       [20, 11],
     ],
-    // B-071: Wegpalette der Wiese (STIL.md); Eis nutzt vorerst PATH_STYLE.colors; Wald und Zangenangriff haben eigene Wegfarben (B-072).
+    // B-071: Wegpalette der Wiese (STIL.md); Eiswelt und Zangenangriff haben eigene Wegfarben (B-072, B-073).
     theme: { treeFrame: true, ground: true, accents: true, light: true, islands: true, decorStyle: 'flatpop', path: { main: '#e2c88f', edge: '#8f6a3b', outline: '#4a3418', mid: '#ecd5a0', fringe: '#6fbf4e' } },
-  },
-  forest: {
-    name: 'Wald',
-    waypoints: [
-      [-1, 6],
-      [3, 6],
-      [3, 2],
-      [8, 2],
-      [8, 10],
-      [12, 10],
-      [12, 5],
-      [16, 5],
-      [16, 11],
-      [20, 11],
-    ],
-    // Bäume und Felsen [spalte, zeile]: blockieren das Bauen, nicht den Weg.
-    obstacles: [
-      [1, 0], [2, 1], [2, 3], [2, 4], [2, 9], [4, 3], [4, 6], [4, 8], [6, 9], [7, 0],
-      [7, 4], [7, 5], [7, 6], [7, 8], [9, 1], [9, 2], [9, 4], [10, 6], [10, 7], [11, 4],
-      [11, 6], [13, 4], [13, 6], [13, 10], [13, 11], [13, 12], [14, 4], [14, 6], [15, 3], [15, 8],
-      [15, 9], [16, 3], [17, 3], [17, 5], [18, 5], [18, 9], [18, 12], [19, 7], [19, 12],
-    ],
-    // B-046: schnellere Gegner im Dickicht. ACHTUNG: gemessen und nur in einem schmalen Bereich stabil
-    // (enemySpeed 1,19 trägt zwischen etwa 1,17 und 1,20), nicht ahnungslos ändern; Strategie-Tests prüfen das.
-    modifiers: { enemySpeed: 1.19 },
-    // B-072: Wald im Flat-Pop-Stil (STIL.md): dichter dunkler Tannenrahmen, Moos-Weg, Pilze und Moos als Streu-Deko.
-    theme: {
-      treeFrame: {
-        rows: [
-          { radius: [15, 19], depth: [0, 0.3], spacing: 24, shade: 0.4 },
-          { radius: [16, 20], depth: [0.4, 0.7], spacing: 28, shade: 0.22 },
-          { radius: [17, 21], depth: [0.75, 1], spacing: 34, shade: 0.06 },
-        ],
-        spacingJitter: 6,
-        kindShare: [0.2, 0, 0, 0.8], // Laubbaum, Apfel, Blüte, Tanne: überwiegend Tannen
-        greens: ['#2f8a3c', '#2a7a3a', '#3a9442', '#2c7438'],
-        fir: ['#2a6b3a', '#235c33'],
-        firLift: 0.42,               // Tannen nach unten rücken, damit die Spitze nicht tief ins Feld ragt
-      },
-      ground: {
-        base: '#4b9448',
-        light: 'rgba(110,186,84,0.16)',
-        dark: 'rgba(30,92,48,0.2)',
-        blade: ['#2f6e33', '#3a8038', '#8fd14f'],
-        plateaus: 6,
-        plateauTop: '#438a42',
-        plateauWall: 'rgba(30,80,42,0.88)',
-        plateauRim: 'rgba(20,55,28,0.4)',
-        plateauLight: 'rgba(150,215,100,0.16)',
-      },
-      light: { tint: '214,236,170', gradientAlpha: 0.05, beamAlpha: 0.03, vignetteAlpha: 0.24, vignetteInner: 0.5, treeShadowAlpha: 0.22 },
-      decorStyle: 'flatpop',
-      decor: {
-        flatTrees: true,
-        firShare: 0.8,
-        treeColors: ['#2f8a3c', '#2a7a3a', '#3a9442'],
-        fir: ['#2a6b3a', '#235c33'],
-        bush: '#2d7d3b', berry: '#d9453a', rock: '#8c8f98', moss: '#8fd14f',
-        flowers: ['#f4f1e6', '#c9a0e8', '#f6d64a'], stem: '#2f6e33', tuft: '#2f6e33', tuftLight: '#8fd14f',
-        mushroomCap: '#d9453a', wood: '#a9763f', woodDark: '#6e4d2a',
-        scatterChance: 0.12,
-        scatterKinds: [['mushroom', 0.26], ['mushrooms', 0.18], ['moss', 0.2], ['stump', 0.12], ['log', 0.14], ['pebbles', 0.1]],
-      },
-      path: { main: '#c9a56a', edge: '#6e4d2a', outline: '#3b2813', mid: '#d4b277', fringe: '#8fd14f' },
-    },
   },
   // Eiswelt (B-029, Glatteis): Gegner rutschen schneller, Kanone und Frost sind schwächer. Modifikatoren (enemySpeed, towerDamage je Typ, slowStrength) und kühles Farbschema (theme).
   ice: {
@@ -182,8 +117,12 @@ export const MAPS = {
   },
   // Zangenangriff (B-033): zwei Eingänge links oben und links unten, beide Wege laufen bei [10, 7] zusammen.
   // extraPaths: weitere Wegpunkt-Listen; Gegner verteilen sich abwechselnd auf alle Wege.
+  // lanes (B-099): Gegnertyp -> fester Weg (0 = Hauptweg oben, 1 = erster extraPath unten). Nicht genannte Typen
+  // wechseln weiter ab. Oben kommt der schnelle Schwarm (Flitzer), unten die schwere Kolonne (Troll, Schildträger,
+  // Schamane), damit man auf beiden Seiten unterschiedlich bauen muss.
   fork: {
     name: 'Zangenangriff',
+    lanes: { runner: 0, tank: 1, shielded: 1, healer: 1 },
     waypoints: [
       [-1, 2],
       [5, 2],
@@ -196,9 +135,10 @@ export const MAPS = {
       [18, 12],
       [20, 12],
     ],
-    // B-046: etwas schnellere Gegner, schwächere Kanone und Pfeile. ACHTUNG: die Werte sind kombiniert gemessen
-    // und nur in einem schmalen Bereich stabil (wie bei forest), nicht ahnungslos ändern.
-    modifiers: { enemySpeed: 1.03, towerDamage: { cannon: 0.92, arrow: 0.97 } },
+    // B-046/B-099: schwächere Kanone. Seit den festen Seiten (lanes) ohne schnellere Gegner und ohne Pfeil-Abzug:
+    // Pfeil-Mix über beide Wege gewinnt mit 2 bis 8 Leben, nur die obere Seite verteidigt verliert in Welle 13 bis 14.
+    // Bei enemySpeed 1,02 verliert auch die Strategie über beide Wege. Nicht ahnungslos ändern.
+    modifiers: { towerDamage: { cannon: 0.92 } },
     // B-072: Zangenangriff im Flat-Pop-Stil (STIL.md Hochland/Herbst): Herbstbäume, Felsgruppen, Laubhaufen.
     theme: {
       treeFrame: {
@@ -250,6 +190,78 @@ export const MAPS = {
         [20, 12],
       ],
     ],
+  },
+  // Zwei Fronten (B-099): zwei getrennte Wege, die erst kurz vor dem Ausgang bei [18, 7] zusammenlaufen.
+  // Oben läuft der schnelle Schwarm, unten die schwere Kolonne (lanes); ein Turm am Zusammenfluss reicht nicht.
+  twin: {
+    name: 'Zwei Fronten',
+    waypoints: [
+      [-1, 1],
+      [3, 1],
+      [3, 5],
+      [7, 5],
+      [7, 1],
+      [11, 1],
+      [11, 5],
+      [15, 5],
+      [15, 1],
+      [18, 1],
+      [18, 7],
+      [20, 7],
+    ],
+    extraPaths: [
+      [
+        [-1, 12],
+        [3, 12],
+        [3, 8],
+        [7, 8],
+        [7, 12],
+        [11, 12],
+        [11, 8],
+        [15, 8],
+        [15, 12],
+        [18, 12],
+        [18, 7],
+        [20, 7],
+      ],
+    ],
+    lanes: { runner: 0, tank: 1, shielded: 1, healer: 1 },
+    // Gegner etwas langsamer, weil sich die Türme auf zwei Wege verteilen. Gemessen (Strategie-Tests, dt 1/30 und 1/60):
+    // Kanonen-Mix über beide Wege gewinnt mit 3 bis 4 Leben, eine Seite allein verliert in Welle 2. Bei 0,85 wird es
+    // für gute Platzierung zu leicht (10 Leben), bei 1,0 verliert jede Strategie bis Welle 10.
+    modifiers: { enemySpeed: 0.9 },
+    // Spätsommer im Flat-Pop-Stil: gemischter Baumrahmen, warmes Gras, Pilze, Baumstümpfe und Wegweiser.
+    theme: {
+      treeFrame: {
+        kindShare: [0.45, 0.15, 0.15, 0.25],
+        greens: ['#4f9a3e', '#5aa845', '#448a38', '#62b04a'],
+        fir: ['#336f3c', '#2c6236'],
+      },
+      ground: {
+        base: '#7cb24f',
+        light: 'rgba(196,226,120,0.18)',
+        dark: 'rgba(70,120,40,0.2)',
+        blade: ['#5a8f36', '#6aa040', '#c4e278'],
+        plateauTop: '#74a94a',
+        plateauWall: 'rgba(70,96,36,0.88)',
+        plateauRim: 'rgba(40,60,20,0.38)',
+        plateauLight: 'rgba(220,240,150,0.2)',
+      },
+      light: { tint: '255,232,170', gradientAlpha: 0.07, beamAlpha: 0.04, vignetteAlpha: 0.16, treeShadowAlpha: 0.18 },
+      decorStyle: 'flatpop',
+      decor: {
+        flatTrees: true,
+        firShare: 0.3,
+        treeColors: ['#4f9a3e', '#5aa845', '#448a38'],
+        fir: ['#336f3c', '#2c6236'],
+        bush: '#4a8f3a', berry: '#c94a8a', rock: '#9a958c', moss: '#a6cf5a',
+        flowers: ['#f6d64a', '#c94a8a', '#f4f1e6'], stem: '#5a8f36', tuft: '#5a8f36', tuftLight: '#c4e278',
+        mushroomCap: '#c9542f', wood: '#b07c46', woodDark: '#6e4d2a',
+        scatterChance: 0.1,
+        scatterKinds: [['mushroom', 0.18], ['stump', 0.18], ['log', 0.16], ['rockgroup', 0.18], ['sign', 0.12], ['pebbles', 0.18]],
+      },
+      path: { main: '#dcc08a', edge: '#86603a', outline: '#3e2a14', mid: '#e8d2a0', fringe: '#a6cf5a' },
+    },
   },
 };
 export const DEFAULT_MAP_ID = 'meadow';
@@ -662,7 +674,7 @@ export const DECOR_STYLE = {
   woodDark: '#8a5a34',
   hoop: '#5a4a52',        // Fassreifen
   logEnd: '#e2b87a',
-  // B-072 (Wald, Zangenangriff): Bäume, Hindernisse und Laubhaufen im Flat-Pop-Stil; die Wiese nutzt davon nichts.
+  // B-072 (Zangenangriff): Bäume, Hindernisse und Laubhaufen im Flat-Pop-Stil; die Wiese nutzt davon nichts.
   flatTrees: false,       // Einzelbäume am Rand im neuen Stil (sonst alter Baum)
   firShare: 0,            // Anteil Tannen unter Hindernis-Bäumen und Einzelbäumen (Rest: Laubbaum)
   obstacleGround: 'rgba(20,48,26,0.3)', // dunkler Fleck unter Hindernissen (zeigt: nicht bebaubar)

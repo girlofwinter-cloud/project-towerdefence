@@ -431,3 +431,20 @@ Agents lesen diese Datei nur bei konkretem Bedarf.
 - Akzeptanzkriterien:
   - Kartenhöhe nicht größer als jetzt, alle Karten ohne Scrollen erreichbar.
   - Kontrast Text/Hintergrund mindestens 4,5:1.
+
+### B-098: Karte Wald entfernen
+- Status: fertig
+- Aufwand: S
+- Idee: Rückmeldung des Menschen aus dem Spieltest: Der Wald macht keinen Spaß und kann komplett weg. Freischalt-Reihenfolge danach Wiese, Eiswelt, Zangenangriff, Zwei Fronten.
+- Akzeptanzkriterien:
+  - `MAPS.forest` entfernt, alte Spielstände mit Wald-Eintrag laden ohne Fehler (Eintrag fällt weg).
+  - Hindernis-Mechanik bleibt erhalten und wird per Override getestet.
+
+### B-099: Feste Seiten für Gegner, neue Karte Zwei Fronten
+- Status: fertig
+- Aufwand: M
+- Idee: Rückmeldung des Menschen: Karten wie der Zangenangriff machen Spaß; unterschiedliche Gegner auf beiden Seiten, damit man auf beiden Seiten bauen muss. `MAPS.<id>.lanes` legt Gegnertypen auf einen Weg fest (oben Flitzer, unten Troll/Schildträger/Schamane), Goblins und Bosse wechseln weiter ab. Neue Karte „Zwei Fronten“ mit zwei getrennten Wegen, die erst kurz vor dem Ausgang zusammenlaufen.
+- Akzeptanzkriterien:
+  - Feste Seiten auf Zangenangriff und Zwei Fronten; nur eine Seite verteidigen verliert (Strategie-Test).
+  - Strategie über beide Wege gewinnt Welle 20 auf beiden Karten mit Reserve unter 10 Leben (Pfeil-Mix Zangenangriff, Kanonen-Mix Zwei Fronten).
+  - Deko (Baumrahmen, Bodenflecken, Akzente, Streu-Deko) meidet alle Wege, nicht nur den Hauptweg.

@@ -16,7 +16,7 @@ const throwingStorage = { getItem() { throw new Error('verboten'); }, setItem() 
 test('Konfiguration: Schlüssel und Sterne-Grenzen', () => {
   assert.equal(PROGRESS_KEY, 'td-progress-v1');
   assert.deepEqual(STAR_LIVES_SHARE, [0, 0.5, 1]);
-  assert.deepEqual(MAP_ORDER, ['meadow', 'forest', 'ice', 'fork']);
+  assert.deepEqual(MAP_ORDER, ['meadow', 'ice', 'fork', 'twin']); // B-098: Wald entfernt, B-099: Zwei Fronten neu
 });
 
 test('starsFor: Niederlage 0, Sieg 1 bis 3 nach übrigen Leben', () => {
@@ -55,26 +55,36 @@ test('recordResult: Rekord und Sterne werden nie schlechter', () => {
   assert.deepEqual(mapProgress(p, 'meadow'), { bestWave: MAX_WAVES, stars: 3 });
 });
 
-test('Freischalten: Reihenfolge meadow, forest, ice, fork', () => {
+test('Freischalten: Reihenfolge meadow, ice, fork, twin', () => {
   const p = emptyProgress();
   assert.equal(isUnlocked(p, 'meadow'), true);
-  assert.equal(isUnlocked(p, 'forest'), false);
+  assert.equal(isUnlocked(p, 'ice'), false);
   assert.equal(isUnlocked(p, 'unbekannt'), false);
   // Niederlage schaltet nichts frei
   assert.equal(recordResult(p, { mapId: 'meadow', status: 'lost', wave: 19, lives: 0 }).unlockedMap, null);
-  assert.equal(isUnlocked(p, 'forest'), false);
-  // Sieg schaltet genau die nächste Karte frei, nur beim ersten Mal gemeldet
-  assert.equal(recordResult(p, { mapId: 'meadow', status: 'won', wave: MAX_WAVES, lives: 3 }).unlockedMap, 'forest');
-  assert.equal(recordResult(p, { mapId: 'meadow', status: 'won', wave: MAX_WAVES, lives: 10 }).unlockedMap, null);
-  assert.equal(isUnlocked(p, 'forest'), true);
   assert.equal(isUnlocked(p, 'ice'), false);
-  assert.equal(recordResult(p, { mapId: 'forest', status: 'won', wave: MAX_WAVES, lives: 1 }).unlockedMap, 'ice');
+  // Sieg schaltet genau die nächste Karte frei, nur beim ersten Mal gemeldet
+  assert.equal(recordResult(p, { mapId: 'meadow', status: 'won', wave: MAX_WAVES, lives: 3 }).unlockedMap, 'ice');
+  assert.equal(recordResult(p, { mapId: 'meadow', status: 'won', wave: MAX_WAVES, lives: 10 }).unlockedMap, null);
+  assert.equal(isUnlocked(p, 'ice'), true);
+  assert.equal(isUnlocked(p, 'fork'), false);
   assert.equal(recordResult(p, { mapId: 'ice', status: 'won', wave: MAX_WAVES, lives: 1 }).unlockedMap, 'fork');
+  assert.equal(recordResult(p, { mapId: 'fork', status: 'won', wave: MAX_WAVES, lives: 1 }).unlockedMap, 'twin');
   // Letzte Karte schaltet nichts mehr frei
-  assert.equal(recordResult(p, { mapId: 'fork', status: 'won', wave: MAX_WAVES, lives: 1 }).unlockedMap, null);
-  // Unbekannte Karte wird ignoriert
+  assert.equal(recordResult(p, { mapId: 'twin', status: 'won', wave: MAX_WAVES, lives: 1 }).unlockedMap, null);
+  // Unbekannte Karte wird ignoriert, auch der entfernte Wald (B-098)
   assert.deepEqual(recordResult(p, { mapId: 'mond', status: 'won', wave: 20, lives: 10 }), { newRecord: false, newStars: false, unlockedMap: null });
   assert.equal('mond' in p.maps, false);
+  assert.equal(recordResult(p, { mapId: 'forest', status: 'won', wave: 20, lives: 10 }).unlockedMap, null);
+  assert.equal('forest' in p.maps, false);
+});
+
+test('Freischalten: alter Spielstand mit Wald-Sieg bleibt gültig, Wald fällt weg (B-098)', () => {
+  const s = fakeStorage({ [PROGRESS_KEY]: JSON.stringify({ maps: { meadow: { bestWave: 20, stars: 2 }, forest: { bestWave: 20, stars: 3 } } }) });
+  const p = loadProgress(s);
+  assert.equal('forest' in p.maps, false);
+  assert.equal(isUnlocked(p, 'ice'), true);
+  assert.equal(isUnlocked(p, 'fork'), false);
 });
 
 test('Laden/Speichern mit Fake-Speicher: Rundreise', () => {
@@ -86,7 +96,7 @@ test('Laden/Speichern mit Fake-Speicher: Rundreise', () => {
   assert.ok(typeof s.data[PROGRESS_KEY] === 'string');
   const back = loadProgress(s);
   assert.deepEqual(back, p);
-  assert.equal(isUnlocked(back, 'forest'), true);
+  assert.equal(isUnlocked(back, 'ice'), true);
 });
 
 test('Robustheit: kaputte, fremde und falsch typisierte Daten ergeben leeren bzw. bereinigten Fortschritt', () => {
@@ -190,7 +200,7 @@ test('resultLines: späteres besseres Ergebnis meldet „Neuer Rekord!“, gleic
 test('resultLines: erster Sieg meldet Sterne und Freischaltung, ohne „Neuer Rekord!“', () => {
   const p = emptyProgress();
   assert.deepEqual(play(p, { mapId: 'meadow', status: 'won', wave: MAX_WAVES, lives: 1 }), [
-    `Rekord: Welle ${MAX_WAVES} · ★☆☆`, 'Neue Sterne!', 'Neue Karte freigeschaltet: Wald',
+    `Rekord: Welle ${MAX_WAVES} · ★☆☆`, 'Neue Sterne!', 'Neue Karte freigeschaltet: Eiswelt',
   ]);
 });
 
@@ -206,7 +216,7 @@ test('resultLines: mehr Sterne bei gleichem Rekord melden nur „Neue Sterne“'
 
 test('resultLines: Niederlage nach Rekord aus früherem Spiel meldet Rekord, ohne Vorher-Stand keine Rekordmeldung', () => {
   const p = emptyProgress();
-  play(p, { mapId: 'forest', status: 'lost', wave: 3, lives: 0 });
-  const res = recordResult(p, { mapId: 'forest', status: 'lost', wave: 9, lives: 0 });
-  assert.deepEqual(resultLines(p, 'forest', res), ['Rekord: Welle 9 · ☆☆☆']);
+  play(p, { mapId: 'ice', status: 'lost', wave: 3, lives: 0 });
+  const res = recordResult(p, { mapId: 'ice', status: 'lost', wave: 9, lives: 0 });
+  assert.deepEqual(resultLines(p, 'ice', res), ['Rekord: Welle 9 · ☆☆☆']);
 });

@@ -163,7 +163,7 @@ test('Dekoration: Verteilung ohne Cluster, weder leer noch voll', () => {
 
 test('Hindernis-Art: deterministisch, nur tree/rock; Kleindeko nie auf Hindernis', async () => {
   const { obstacleKind } = await import('../src/decor.js');
-  const s = createGame({ mapId: 'forest' });
+  const s = createGame({ obstacles: new Set(['0,0', '7,5', '13,1']) }); // B-098: keine Karte hat mehr Hindernisse
   const kinds = new Set();
   for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
     const k = obstacleKind(c, r);
@@ -177,7 +177,7 @@ test('Hindernis-Art: deterministisch, nur tree/rock; Kleindeko nie auf Hindernis
 
 // Aus forest-edge.test.js (B-043)
 test('decorFor: 3-Parameter-Aufruf unveraendert', () => {
-  const b = pathTiles(MAPS.forest.waypoints);
+  const b = pathTiles(MAPS.ice.waypoints);
   for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
     assert.deepEqual(decorFor(c, r, b), decorFor(c, r, b, undefined));
     assert.deepEqual(decorFor(c, r, b), decorFor(c, r, b, new Set()));
@@ -203,8 +203,8 @@ test('treeFrame: mindestens 60 Kronen in mehreren Reihen, deterministisch, Krone
 test('treeFrame: keine Krone schneidet den Weg (inkl. Wegrand), Ein- und Ausgang bleiben frei', async () => {
   const { treeFrame } = await import('../src/decor.js');
   const { pathReach } = await import('../src/render-path.js');
-  for (const id of Object.keys(MAPS)) {
-    const pts = MAPS[id].waypoints.map(([c, r]) => ({ x: (c + 0.5) * TILE, y: (r + 0.5) * TILE }));
+  for (const id of Object.keys(MAPS)) for (const wps of [MAPS[id].waypoints, ...(MAPS[id].extraPaths || [])]) { // B-099: alle Wege
+    const pts = wps.map(([c, r]) => ({ x: (c + 0.5) * TILE, y: (r + 0.5) * TILE }));
     for (const c of treeFrame(id)) {
       let m = Infinity;
       for (let i = 0; i < pts.length - 1; i++) {
@@ -261,7 +261,7 @@ test('DECOR_STYLE: Konturbreite 1,3 bis 2,3 px, Anteile der Streu-Deko ergeben 1
   assert.equal(D.outlineWidth, STYLE.outlineWidth, 'part() zeichnet mit STYLE.outlineWidth');
   assert.ok(Math.abs(D.scatterKinds.reduce((a, k) => a + k[1], 0) - 1) < 1e-9);
   assert.equal(MAPS.meadow.theme.decorStyle, 'flatpop');
-  for (const id of ['forest', 'ice', 'fork']) assert.equal(MAPS[id].theme.decorStyle, 'flatpop'); // B-072, B-073
+  for (const id of ['ice', 'fork', 'twin']) assert.equal(MAPS[id].theme.decorStyle, 'flatpop'); // B-072, B-073, B-099
   const { themed, DECOR_STYLE } = await import('../src/config.js');
   for (const id of Object.keys(MAPS)) {
     const st = themed(id, 'decor', DECOR_STYLE);
@@ -324,14 +324,14 @@ test('accentsFor (Randfaelle): undefined = Wiese, unbekannte Id ohne Akzente, en
   assert.deepEqual(accentsFor(undefined), accentsFor('meadow'));
   assert.deepEqual(accentsFor('gibtsnicht'), []);
   for (const a of accentsFor('meadow')) for (const v of [a.x, a.y, a.w, a.h]) assert.ok(Number.isFinite(v) && (v === a.x || v === a.y || v > 0));
-  for (const id of ['forest', 'ice', 'fork']) {
+  for (const id of ['ice', 'fork', 'twin']) {
     assert.deepEqual(accentsFor(id), []);
     assert.deepEqual(treeFrame(id), treeFrame(id));
     assert.ok(treeFrame(id).length >= 60, `${id}: mindestens 60 Kronen`);
   }
 });
 
-// ---------- Welten Wald und Zangenangriff (B-072) ----------
+// ---------- Welten Zangenangriff (B-072) und Zwei Fronten (B-099) ----------
 test('themed: true/fehlend liefert den Basisblock, ein Objekt ueberschreibt nur einzelne Werte', async () => {
   const { themed, TREE_FRAME, GROUND_STYLE, DECOR_STYLE } = await import('../src/config.js');
   assert.equal(themed('meadow', 'treeFrame', TREE_FRAME), TREE_FRAME, 'Wiese: true -> Basis (dasselbe Objekt)');
@@ -339,48 +339,44 @@ test('themed: true/fehlend liefert den Basisblock, ein Objekt ueberschreibt nur 
   assert.equal(themed('ice', 'ground', GROUND_STYLE).blobPoints, GROUND_STYLE.blobPoints, 'nicht genannte Werte bleiben');
   assert.equal(themed(undefined, 'decor', DECOR_STYLE), DECOR_STYLE);
   assert.equal(themed('gibtsnicht', 'decor', DECOR_STYLE), DECOR_STYLE);
-  const g = themed('forest', 'ground', GROUND_STYLE);
-  assert.equal(g.base, '#4b9448');
+  const g = themed('fork', 'ground', GROUND_STYLE);
+  assert.equal(g.base, '#b3b45a');
   assert.equal(g.tufts, GROUND_STYLE.tufts, 'nicht genannte Werte bleiben');
   assert.equal(GROUND_STYLE.base, '#5fae48', 'Basisblock bleibt unveraendert');
 });
 
-test('Wald/Zangenangriff: eigene Paletten aus config (Boden, Weg, Akzente), klar verschieden von Wiese und voneinander', async () => {
+test('Zangenangriff/Zwei Fronten: eigene Paletten aus config (Boden, Weg, Akzente), klar verschieden von Wiese und voneinander', async () => {
   const { themed, GROUND_STYLE, TREE_FRAME, DECOR_STYLE } = await import('../src/config.js');
   const gb = (id) => themed(id, 'ground', GROUND_STYLE).base;
-  assert.equal(gb('forest'), '#4b9448');
+  assert.equal(gb('twin'), '#7cb24f');
   assert.equal(gb('fork'), '#b3b45a');
-  assert.equal(new Set(['meadow', 'forest', 'fork'].map(gb)).size, 3);
-  assert.equal(MAPS.forest.theme.path.main, '#c9a56a');
-  assert.equal(MAPS.forest.theme.path.edge, '#6e4d2a');
+  assert.equal(new Set(['meadow', 'twin', 'fork'].map(gb)).size, 3);
+  assert.equal(MAPS.twin.theme.path.main, '#dcc08a');
+  assert.equal(MAPS.twin.theme.path.edge, '#86603a');
   assert.equal(MAPS.fork.theme.path.main, '#d6ab70');
   assert.equal(MAPS.fork.theme.path.edge, '#7d5632');
-  assert.equal(themed('forest', 'decor', DECOR_STYLE).mushroomCap, '#d9453a');
-  assert.equal(themed('forest', 'decor', DECOR_STYLE).moss, '#8fd14f');
-  assert.deepEqual(themed('forest', 'treeFrame', TREE_FRAME).fir[0], '#2a6b3a');
+  assert.equal(themed('twin', 'decor', DECOR_STYLE).mushroomCap, '#c9542f');
+  assert.deepEqual(themed('twin', 'treeFrame', TREE_FRAME).fir[0], '#336f3c');
   assert.ok(themed('fork', 'treeFrame', TREE_FRAME).greens.includes('#e0803a'), 'Laub orange');
   assert.equal(themed('fork', 'decor', DECOR_STYLE).rock, '#8b8c94');
   assert.equal(themed('fork', 'decor', DECOR_STYLE).woodDark, '#6e4d2a', 'Stamm');
 });
 
-test('treeFrame Wald/Zangenangriff: Wald ueberwiegend Tannen, Fork Herbstlaub, deterministisch, Wald dichter als Wiese', async () => {
+test('treeFrame Zangenangriff/Zwei Fronten: Fork Herbstlaub, Zwei Fronten gemischt, deterministisch', async () => {
   const { treeFrame } = await import('../src/decor.js');
-  const forest = treeFrame('forest'), fork = treeFrame('fork'), meadow = treeFrame('meadow');
-  assert.deepEqual(forest, treeFrame('forest'));
+  const twin = treeFrame('twin'), fork = treeFrame('fork'), meadow = treeFrame('meadow');
+  assert.deepEqual(twin, treeFrame('twin'));
   assert.deepEqual(fork, treeFrame('fork'));
   const share = (list, k) => list.filter((c) => c.kind === k).length / list.length;
-  assert.ok(share(forest, 'fir') >= 0.6, `Wald: Tannenanteil ${share(forest, 'fir')}`);
-  assert.ok(forest.some((c) => c.kind === 'leaf'), 'einzelne Laubbaeume');
   assert.ok(share(fork, 'fir') < 0.3 && share(fork, 'leaf') > 0.3, 'Fork: Laubbaeume');
   assert.ok(share(meadow, 'fir') < 0.3);
-  assert.ok(forest.length > meadow.length * 1.3, `Wald dichter (${forest.length} vs ${meadow.length})`);
-  assert.ok(new Set(forest.map((c) => c.row)).size >= 3, 'Wald: drei Reihen');
+  assert.ok(share(twin, 'fir') > 0.1 && share(twin, 'leaf') > 0.3, 'Zwei Fronten: Laub und Tannen gemischt');
 });
 
-test('Wald/Zangenangriff: Streu-Deko je Welt verschieden, deterministisch, nie auf Weg/Hindernis/Tor, nur eigene Arten', async () => {
+test('Zangenangriff/Zwei Fronten: Streu-Deko je Welt verschieden, deterministisch, nie auf Weg/Hindernis/Tor, nur eigene Arten', async () => {
   const { scatterFor } = await import('../src/decor.js');
   const sets = {};
-  for (const id of ['meadow', 'forest', 'fork']) {
+  for (const id of ['meadow', 'twin', 'fork']) {
     const g = createGame({ mapId: id });
     const kinds = new Set();
     let n = 0;
@@ -396,28 +392,23 @@ test('Wald/Zangenangriff: Streu-Deko je Welt verschieden, deterministisch, nie a
     assert.ok(n >= 8, `${id}: ${n} Stuecke`);
     sets[id] = kinds;
   }
-  for (const k of ['mushroom', 'moss', 'stump']) assert.ok(sets.forest.has(k), `Wald: ${k}`);
+  for (const k of ['stump', 'sign']) assert.ok(sets.twin.has(k), `Zwei Fronten: ${k}`);
   for (const k of ['leafpile', 'rockgroup']) assert.ok(sets.fork.has(k), `Fork: ${k}`);
-  assert.ok(![...sets.forest].some((k) => sets.fork.has(k) && ['leafpile', 'rockgroup', 'moss'].includes(k)));
+  assert.ok(!sets.twin.has('leafpile'), 'Zwei Fronten ohne Herbstlaub');
   for (const k of ['leafpile', 'rockgroup', 'moss', 'stump', 'mushrooms']) assert.ok(!sets.meadow.has(k), `Wiese ohne ${k}`);
-  assert.notDeepEqual([...sets.forest].sort(), [...sets.fork].sort());
-  assert.notDeepEqual([...sets.forest].sort(), [...sets.meadow].sort());
+  assert.notDeepEqual([...sets.twin].sort(), [...sets.fork].sort());
+  assert.notDeepEqual([...sets.twin].sort(), [...sets.meadow].sort());
 });
 
-test('Wald: Hindernisse unveraendert (Anzahl, Lage, nicht bebaubar), Bodenflecken nie auf dem Weg', async () => {
+test('Zangenangriff/Zwei Fronten: Balancing wie gemessen (B-099), Bodenflecken nie auf einem Weg', async () => {
   const { groundPatches } = await import('../src/decor.js');
-  const { canBuild } = await import('../src/game.js');
-  const g = createGame({ mapId: 'forest' });
-  assert.equal(MAPS.forest.obstacles.length, 39);
-  assert.equal(g.obstacles.size, 39);
-  for (const [c, r] of MAPS.forest.obstacles) { assert.ok(g.obstacles.has(`${c},${r}`)); assert.equal(canBuild(g, c, r).ok, false); }
-  assert.equal(MAPS.forest.modifiers.enemySpeed, 1.19, 'Balancing unveraendert');
-  assert.deepEqual(MAPS.fork.modifiers, { enemySpeed: 1.03, towerDamage: { cannon: 0.92, arrow: 0.97 } });
-  for (const id of ['forest', 'fork']) {
+  assert.deepEqual(MAPS.fork.modifiers, { towerDamage: { cannon: 0.92 } });
+  assert.deepEqual(MAPS.twin.modifiers, { enemySpeed: 0.9 });
+  for (const id of ['twin', 'fork']) {
     const a = groundPatches(id);
     assert.deepEqual(a, groundPatches(id));
     assert.ok(a.patches.length > 0 && a.tufts.length > 0);
-    const pts = createGame({ mapId: id }).path.points;
+    for (const pts of createGame({ mapId: id }).paths.map((p) => p.points)) {
     for (const t of a.tufts) {
       let m = Infinity;
       for (let i = 0; i < pts.length - 1; i++) {
@@ -426,6 +417,7 @@ test('Wald: Hindernisse unveraendert (Anzahl, Lage, nicht bebaubar), Bodenflecke
         m = Math.min(m, Math.hypot(t.x - p.x - u * dx, t.y - p.y - u * dy));
       }
       assert.ok(m >= 28, `${id}: Buesche nicht auf dem Weg (${m.toFixed(1)} px)`);
+    }
     }
   }
 });
@@ -436,7 +428,7 @@ test('Eis: Palette aus config (Boden, Weg dunkler als Schnee, Tanne, Kristall), 
   const { brightness } = await import('../src/draw-utils.js');
   const gb = (id) => themed(id, 'ground', GROUND_STYLE).base;
   assert.equal(gb('ice'), '#e3f1fa');
-  assert.equal(new Set(['meadow', 'forest', 'fork', 'ice'].map(gb)).size, 4);
+  assert.equal(new Set(['meadow', 'twin', 'fork', 'ice'].map(gb)).size, 4);
   const path = MAPS.ice.theme.path;
   assert.equal(path.main, '#9db3c9');
   assert.equal(path.edge, '#4f6682');
@@ -446,7 +438,7 @@ test('Eis: Palette aus config (Boden, Weg dunkler als Schnee, Tanne, Kristall), 
   assert.equal(themed('ice', 'treeFrame', TREE_FRAME).snow, '#ffffff');
   assert.equal(themed('ice', 'decor', DECOR_STYLE).crystal, '#7fe0ff');
   assert.equal(themed('meadow', 'decor', DECOR_STYLE).snow, null, 'Wiese ohne Schnee');
-  assert.equal(themed('forest', 'treeFrame', TREE_FRAME).snow, null);
+  assert.equal(themed('twin', 'treeFrame', TREE_FRAME).snow, null);
 });
 
 test('Eis: Balancing und Logik unveraendert (Modifikatoren, keine Hindernisse, alles bebaubar ausser Weg)', async () => {

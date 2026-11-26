@@ -17,6 +17,14 @@ Erledigte Einträge (`fertig`) liegen in `docs/archiv/BACKLOG-fertig.md`. Beim A
 
 ---
 
+### B-100: Seitenhinweis für feste Gegner-Seiten
+- Status: vorschlag
+- Aufwand: S
+- Idee: Auf Zangenangriff und Zwei Fronten kommen Flitzer immer oben, Troll/Schildträger/Schamane immer unten (B-099). Die Wellenvorschau zeigt das noch nicht. Kleines Symbol je Eingang (z. B. Flitzer-Icon oben, Troll-Icon unten) vor Wellenstart, damit man es ohne Ausprobieren erfährt.
+- Akzeptanzkriterien:
+  - Vor jeder Welle ist je Eingang sichtbar, welche Gegnertypen dort kommen (aus `MAPS.<id>.lanes` und `waveSummary`).
+  - Keine Änderung an der Spiel-Logik; Desktop und Handy lesbar (Screenshot).
+
 ### B-005: Vorzeitiger Wellenstart mit Gold-Bonus
 - Status: vorschlag
 - Aufwand: M

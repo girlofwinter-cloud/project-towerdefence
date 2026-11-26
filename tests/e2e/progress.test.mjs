@@ -34,7 +34,7 @@ const optionDisabled = (id) => page.locator(`#map-select option[value="${id}"]`)
 
 test('Fortschritt: frisch ist nur die erste Karte offen', async () => {
   assert.equal(await optionDisabled('meadow'), false);
-  assert.equal(await optionDisabled('forest'), true);
+  assert.equal(await optionDisabled('ice'), true);
 });
 
 test('Fortschritt: Sieg schaltet die nächste Karte frei, Overlay meldet es, bleibt nach Neuladen', async () => {
@@ -42,13 +42,13 @@ test('Fortschritt: Sieg schaltet die nächste Karte frei, Overlay meldet es, ble
   await page.evaluate(([lives, wave]) => { const s = window.__game(); s.lives = lives; s.wave = wave; s.status = 'won'; }, [START_LIVES, MAX_WAVES]);
   await page.waitForSelector('#overlay:not([hidden]) .result-highlight');
   const lines = await page.locator('#overlay-progress .result-line').allTextContents();
-  assert.ok(lines.includes('Neue Karte freigeschaltet: Wald'), lines.join(' | '));
+  assert.ok(lines.includes('Neue Karte freigeschaltet: Eiswelt'), lines.join(' | '));
   assert.ok(!lines.includes('Neuer Rekord!'), 'Erstes Ergebnis: keine Rekordmeldung');
-  assert.equal(await optionDisabled('forest'), false);
+  assert.equal(await optionDisabled('ice'), false);
   assert.ok(await page.evaluate((k) => localStorage.getItem(k), PROGRESS_KEY));
   await page.reload();
   await page.waitForSelector('#shop .tower-btn');
-  assert.equal(await optionDisabled('forest'), false);
-  assert.equal(await optionDisabled('ice'), true);
+  assert.equal(await optionDisabled('ice'), false);
+  assert.equal(await optionDisabled('fork'), true);
   assert.deepEqual(errors, []);
 });

@@ -68,7 +68,22 @@ export function obstacleKind(col, row) {
   return tileRand(col, row, 6) < OBSTACLE_TREE_SHARE ? 'tree' : 'rock';
 }
 
-// Kleinster Abstand eines Punkts zu den Wegsegmenten einer Karte (px).
+// Alle Wege einer Karte (Hauptweg und extraPaths) als Wegpunkt-Listen in Kacheln bzw. als Punktlisten in px.
+function mapWaypoints(mapId) {
+  const m = MAPS[mapId];
+  return [m.waypoints, ...(m.extraPaths || [])];
+}
+function mapPoints(mapId) {
+  return mapWaypoints(mapId).map((w) => buildPath(w, TILE).points);
+}
+// Kleinster Abstand zu einem der Wege (Liste von Punktlisten).
+function distToPaths(paths, x, y) {
+  let m = Infinity;
+  for (const points of paths) m = Math.min(m, distToWaypoints(points, x, y));
+  return m;
+}
+
+// Kleinster Abstand eines Punkts zu den Wegsegmenten eines Wegs (px).
 function distToWaypoints(points, x, y) {
   let m = Infinity;
   for (let i = 0; i < points.length - 1; i++) {
@@ -84,8 +99,8 @@ function distToWaypoints(points, x, y) {
 // Keine Krone beruehrt den Weg (Abstand >= r + pathMargin); sie ragt hoechstens maxOverhang ins Feld.
 // Spiellogik bleibt unberuehrt: jede Nicht-Weg-Kachel ist weiter bebaubar.
 export function treeFrame(mapId = 'meadow') {
-  const T = themed(mapId, 'treeFrame', TREE_FRAME); // Wald und Zangenangriff überschreiben Palette und Reihen
-  const points = buildPath(MAPS[mapId].waypoints, TILE).points;
+  const T = themed(mapId, 'treeFrame', TREE_FRAME); // andere Welten überschreiben Palette und Reihen
+  const paths = mapPoints(mapId); // B-099: Kronen meiden alle Wege, auch den zweiten Eingang
   const out = [];
   const blockers = accentsFor(mapId); // Mauer, Teich und Brunnen ersetzen Kronen in ihrem Bereich
   // Seiten: Start, Richtung entlang des Rands, Richtung nach innen
@@ -105,7 +120,7 @@ export function treeFrame(mapId = 'meadow') {
       const depth = Math.max(0, T.maxOverhang - r) * f;
       const x = sd.x + sd.ax * t + sd.nx * depth;
       const y = sd.y + sd.ay * t + sd.ny * depth;
-      if (distToWaypoints(points, x, y) >= r + T.pathMargin && !crownBlocked(blockers, x, y, r)) {
+      if (distToPaths(paths, x, y) >= r + T.pathMargin && !crownBlocked(blockers, x, y, r)) {
         const q = tileRand(si, i, 43);
         let acc = 0, k = 0;
         while (k < T.kindShare.length - 1 && q >= (acc += T.kindShare[k])) k++;
@@ -140,7 +155,7 @@ export function groundPatches(mapId = 'meadow') {
   const G = themed(mapId, 'ground', GROUND_STYLE);
   const out = { patches: [], plateaus: [], tufts: [] };
   if (!MAPS[mapId]?.theme?.ground) return out;
-  const points = buildPath(MAPS[mapId].waypoints, TILE).points;
+  const paths = mapPoints(mapId);
   const lerp = (r, u) => r[0] + u * (r[1] - r[0]);
   const total = G.lightPatches + G.darkPatches;
   for (let i = 0; i < total; i++) {
@@ -151,14 +166,14 @@ export function groundPatches(mapId = 'meadow') {
     const y = lerp([G.plateauInset[1], HEIGHT - G.plateauInset[1]], tileRand(t, 0, 71));
     const rx = lerp(G.plateauRadiusX, tileRand(t, 0, 72)), ry = lerp(G.plateauRadiusY, tileRand(t, 0, 73));
     const seed = tileHash(t, 0, 74);
-    if (distToWaypoints(points, x, y) < G.plateauCenterMargin) continue;
+    if (distToPaths(paths, x, y) < G.plateauCenterMargin) continue;
     const edge = blobPoints(x, y, rx, ry, seed, G.plateauPoints).map((p) => [p[0] + (p[0] - x) * 0.3, p[1] + (p[1] - y) * 0.3 + G.plateauDrop]);
-    if (edge.some((p) => distToWaypoints(points, p[0], p[1]) < G.plateauEdgeMargin)) continue;
+    if (edge.some((p) => distToPaths(paths, p[0], p[1]) < G.plateauEdgeMargin)) continue;
     out.plateaus.push({ x, y, rx, ry, seed });
   }
   for (let i = 0; i < G.tufts; i++) {
     const x = 4 + tileRand(i, 0, 80) * (WIDTH - 8), y = 6 + tileRand(i, 0, 81) * (HEIGHT - 8);
-    if (distToWaypoints(points, x, y) < G.tuftPathMargin) continue;
+    if (distToPaths(paths, x, y) < G.tuftPathMargin) continue;
     out.tufts.push({ x, y, s: lerp(G.tuftScale, tileRand(i, 0, 82)), dark: i % 3 === 0, seed: tileHash(i, 0, 83) });
   }
   return out;
@@ -175,8 +190,7 @@ export function scatterFor(col, row, blocked, obstacles, mapId = 'meadow') {
   if (obstacles && obstacles.has(`${col},${row}`)) return null;
   if (decorFor(col, row, blocked, obstacles)) return null;
   const D = themed(mapId, 'decor', DECOR_STYLE);
-  const wp = map.waypoints;
-  for (const [wc, wr] of [wp[0], wp[wp.length - 1]]) {
+  for (const [wc, wr] of mapWaypoints(mapId).flatMap((wp) => [wp[0], wp[wp.length - 1]])) {
     const ec = Math.min(Math.max(wc, 0), COLS - 1), er = Math.min(Math.max(wr, 0), ROWS - 1);
     if (Math.max(Math.abs(col - ec), Math.abs(row - er)) <= D.scatterEndMargin) return null;
   }
@@ -210,10 +224,10 @@ export function accentsFor(mapId = 'meadow') {
     { kind: 'pond', x: pond.cx - pond.rx - 4, y: pond.cy - pond.reedLift, w: 2 * (pond.rx + 4), h: pond.ry + pond.reedLift + 4 },
     { kind: 'well', x: well.cx - well.w / 2, y: well.base - well.height, w: well.w, h: well.height },
   ];
-  const points = buildPath(MAPS[mapId].waypoints, TILE).points;
+  const paths = mapPoints(mapId);
   return list.filter((a) => {
     for (let i = 0; i <= 8; i++) for (let j = 0; j <= 4; j++) {
-      if (distToWaypoints(points, a.x + (a.w * i) / 8, a.y + (a.h * j) / 4) < A.pathMargin) return false;
+      if (distToPaths(paths, a.x + (a.w * i) / 8, a.y + (a.h * j) / 4) < A.pathMargin) return false;
     }
     return true;
   });
