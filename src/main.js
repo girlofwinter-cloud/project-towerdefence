@@ -254,6 +254,7 @@ $('pause').addEventListener('click', doTogglePause);
 $('upgrade').addEventListener('click', doUpgrade);
 $('sell').addEventListener('click', doSell);
 $('target-mode').addEventListener('click', doCycleTarget);
+$('ti-close').addEventListener('click', () => { ui.selectedTowerId = null; refreshUI(); });
 $('restart').addEventListener('click', restart);
 $('zoom').addEventListener('click', toggleZoom);
 
