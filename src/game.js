@@ -168,7 +168,8 @@ export function sellTower(state, id) {
 // B-005: Bonus für den vorzeitigen Start (Formel in config.js), hier weiter exportiert.
 export { earlyStartBonus };
 
-// Startet die nächste Welle. Läuft schon eine, startet sie vorzeitig (B-005): ihre Gegner kommen zusätzlich in die
+// Startet die nächste Welle. Läuft schon eine, startet sie vorzeitig (B-005), aber erst wenn alle Gegner der laufenden
+// Welle gespawnt sind (höchstens zwei Wellen gleichzeitig, kein Gold-Stapeln). Ihre Gegner kommen zusätzlich in die
 // Spawn-Liste (Zeiten relativ zu ihrem eigenen Start, jeder Eintrag trägt seine Wellennummer). Die laufende Welle
 // bekommt ihren normalen Wellenbonus sofort, dazu gibt es den Frühstart-Bonus. Jede Welle zahlt ihren Bonus genau einmal:
 // die zuletzt gestartete beim Ende aller Wellen (waveEndCheck), jede frühere beim Frühstart ihrer Nachfolgerin.
@@ -176,6 +177,7 @@ export function startWave(state) {
   if (state.status !== 'playing') return { ok: false, reason: 'Spiel ist vorbei' };
   if (state.wave >= MAX_WAVES) return { ok: false, reason: 'Alle Wellen geschafft' };
   const early = state.waveActive;
+  if (early && state.spawnQueue.length) return { ok: false, reason: 'Gegner der laufenden Welle kommen noch' };
   if (early) state.gold += waveBonus(state.wave);
   state.wave += 1;
   const wave = state.wave;

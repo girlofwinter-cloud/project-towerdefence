@@ -2520,6 +2520,28 @@ test('B-112 Tester: Gegner genau auf dem Rand wird getroffen (edge-Schaden), Kra
 
 // ---------- B-005: Vorzeitiger Wellenstart ----------
 
+// Läuft, bis alle Gegner der laufenden Welle gespawnt sind (Frühstart ist erst dann erlaubt). Leben hoch, damit nichts endet.
+function spawnAll(s, dt = 1 / 60) {
+  s.lives = 1e9;
+  for (let k = 0; k < Math.round(600 / dt) && s.spawnQueue.length; k++) update(s, dt);
+  assert.equal(s.spawnQueue.length, 0);
+}
+
+test('B-005: Frühstart vor vollständigem Spawn der laufenden Welle wird abgelehnt (kein Gold, keine Welle)', () => {
+  const s = createGame();
+  startWave(s);
+  run(s, 1);
+  const gold = s.gold;
+  const res = startWave(s);
+  assert.equal(res.ok, false);
+  assert.match(res.reason, /kommen noch/);
+  assert.equal(s.gold, gold);
+  assert.equal(s.wave, 1);
+  spawnAll(s);
+  assert.ok(startWave(s).ok, 'nach leerer Spawn-Liste erlaubt');
+  assert.equal(s.wave, 2);
+});
+
 test('B-005: Frühstart-Bonus = floor(waveBonus * EARLY_START_BONUS), nur während einer Welle, mit Münz-Text', () => {
   assert.equal(EARLY_START_BONUS, 0.5);
   const s = createGame();
@@ -2527,7 +2549,7 @@ test('B-005: Frühstart-Bonus = floor(waveBonus * EARLY_START_BONUS), nur währe
   const first = startWave(s);
   assert.equal(first.bonus, 0, 'ohne laufende Welle kein Bonus');
   assert.equal(s.gold, gold);
-  run(s, 1);
+  spawnAll(s);
   const before = s.gold;
   const coins = s.effects.filter((e) => e.kind === 'coin').length;
   const res = startWave(s);
@@ -2546,8 +2568,10 @@ test('B-005: Jede Welle zahlt ihren Wellenbonus genau einmal', () => {
   const s = createGame();
   const gold = s.gold;
   startWave(s);
-  startWave(s);
-  startWave(s);
+  s.spawnQueue = [];
+  assert.ok(startWave(s).ok);
+  s.spawnQueue = [];
+  assert.ok(startWave(s).ok);
   const early = earlyStartBonus(2) + earlyStartBonus(3);
   assert.equal(s.gold, gold + early + waveBonus(1) + waveBonus(2));
   s.spawnQueue = [];
@@ -2562,12 +2586,12 @@ test('B-005: Jede Welle zahlt ihren Wellenbonus genau einmal', () => {
 test('B-005: Zwei Wellen parallel spawnen relativ zum Start ihrer Welle, Gegner behalten die HP ihrer Welle', () => {
   const s = createGame();
   startWave(s);
-  const t0 = 2;
   const seen = [];
   const dt = 1 / 120;
-  for (let t = 0; t < t0 - dt / 2; t += dt) update(s, dt);
+  spawnAll(s, dt);
   const already = s.enemies.length + s.kills;
-  startWave(s);
+  const old = s.enemies.map((e) => [e, e.maxHp]);
+  assert.ok(startWave(s).ok);
   const w1 = waveFor(1).filter((e) => e.at > s.waveTime);
   const w2 = waveFor(2);
   const tStart = s.waveTime;
@@ -2595,15 +2619,18 @@ test('B-005: Zwei Wellen parallel spawnen relativ zum Start ihrer Welle, Gegner 
     assert.ok(hit, `Spawn ${e.type} (HP ${e.maxHp}) bei ${e.at.toFixed(2)} s`);
   }
   assert.ok(hp('grunt', 2) > hp('grunt', 1), 'Welle 2 ist zäher');
+  for (const [e, maxHp] of old) assert.equal(e.maxHp, maxHp, 'Gegner der Welle 1 unverändert');
+  assert.ok(old.some(([e]) => s.enemies.includes(e)), 'Welle 1 lief parallel weiter');
 });
 
 test('B-005: Gegner einer früheren Welle behalten ihre HP-Skalierung, auch nach späterem Start', () => {
   const s = createGame({ wave: 4 });
   startWave(s); // Welle 5
-  s.spawnQueue = [{ type: 'grunt', at: 5, wave: 5 }];
-  startWave(s); // Welle 6 vorzeitig
-  s.spawnQueue = s.spawnQueue.filter((e) => e.wave === 5);
-  run(s, 6);
+  s.spawnQueue = [];
+  assert.ok(startWave(s).ok); // Welle 6 vorzeitig
+  // Ein Eintrag trägt seine Wellennummer: spawnStep nutzt sie statt state.wave
+  s.spawnQueue = [{ type: 'grunt', at: s.waveTime + 1, wave: 5 }];
+  run(s, 2);
   const g = s.enemies.find((e) => e.type === 'grunt');
   assert.ok(g);
   assert.equal(g.maxHp, Math.round(ENEMY_TYPES.grunt.hp * hpScale(5)));
@@ -2612,6 +2639,7 @@ test('B-005: Gegner einer früheren Welle behalten ihre HP-Skalierung, auch nach
 test("B-005: 'won' erst, wenn alle Wellen gespawnt und alle Gegner besiegt sind; kein Start über MAX_WAVES", () => {
   const s = createGame({ wave: MAX_WAVES - 2 });
   startWave(s);
+  s.spawnQueue = [];
   assert.ok(startWave(s).ok, 'letzte Welle vorzeitig');
   assert.equal(s.wave, MAX_WAVES);
   assert.equal(startWave(s).ok, false, 'keine Welle über MAX_WAVES');
@@ -2630,10 +2658,12 @@ test("B-005: 'won' erst, wenn alle Wellen gespawnt und alle Gegner besiegt sind;
   assert.equal(s.status, 'won');
 });
 
-test('B-005: HUD-Knopf bleibt während der Welle bedienbar und zeigt den Frühstart-Bonus', () => {
+test('B-005: HUD-Knopf während der Welle erst nach vollständigem Spawn bedienbar, zeigt dann den Frühstart-Bonus', () => {
   const s = createGame();
   assert.deepEqual(startButtonView(s), { disabled: false, label: 'Welle 1 starten', showKey: true });
   startWave(s);
+  assert.deepEqual(startButtonView(s), { disabled: true, label: 'Welle läuft…', showKey: false });
+  s.spawnQueue = [];
   assert.deepEqual(startButtonView(s), { disabled: false, label: `Nächste Welle +${earlyStartBonus(2)}`, showKey: true });
   const last = createGame({ wave: MAX_WAVES - 1 });
   startWave(last);
@@ -2641,4 +2671,83 @@ test('B-005: HUD-Knopf bleibt während der Welle bedienbar und zeigt den Frühst
   last.status = 'lost';
   last.waveActive = false;
   assert.equal(startButtonView(last).disabled, true);
+});
+
+// ---------- B-005: Randfälle (Tester) ----------
+
+test('B-005 Rand: Frühstart bei Status lost und won abgelehnt, kein Gold', () => {
+  const s = createGame();
+  startWave(s);
+  s.status = 'lost';
+  const g = s.gold;
+  assert.equal(startWave(s).ok, false);
+  assert.equal(s.gold, g);
+  assert.equal(s.wave, 1);
+  assert.equal(startButtonView(s).disabled, true);
+});
+
+test('B-005 Rand: Frühstart in der Pause ist möglich, Spawns warten auf das Ende der Pause', () => {
+  const s = createGame();
+  startWave(s);
+  spawnAll(s);
+  togglePause(s);
+  const n = s.enemies.length;
+  assert.ok(startWave(s).ok);
+  run(s, 5);
+  assert.equal(s.enemies.length, n, 'in der Pause kein Spawn');
+  togglePause(s);
+  run(s, 0.1);
+  assert.ok(s.enemies.length > n);
+});
+
+test('B-005 Rand: direkter zweiter Start abgelehnt; frühestmöglicher Frühstart bis 20 spawnt alles genau einmal, won erst am Ende', () => {
+  const s = createGame();
+  const gold0 = s.gold;
+  startWave(s);
+  const g = s.gold;
+  assert.equal(startWave(s).ok, false, 'direkter zweiter Start abgelehnt');
+  assert.equal(s.gold, g, 'kein Gold beim abgelehnten Start');
+  assert.equal(s.wave, 1);
+  let expected = 0;
+  for (let w = 1; w <= MAX_WAVES; w++) expected += waveFor(w).length;
+  // Jeweils frühestmöglich rufen, nie Leben verlieren, Gegner nie töten (keine Türme, also kein Kill-Gold)
+  s.lives = 1e9;
+  let spawned = 0, bonus = 0;
+  const seen = new Set();
+  for (let i = 0; i < 60 * 2000 && s.status === 'playing'; i++) {
+    if (s.waveActive && !s.spawnQueue.length && s.wave < MAX_WAVES) {
+      const r = startWave(s);
+      assert.ok(r.ok, `Frühstart Welle ${s.wave + 1}`);
+      bonus += r.bonus;
+    } else if (s.wave < MAX_WAVES) assert.equal(startWave(s).ok, false);
+    if (s.spawnQueue.length || s.enemies.length) assert.equal(s.status, 'playing');
+    update(s, 1 / 60);
+    for (const e of s.enemies) if (!seen.has(e)) { seen.add(e); spawned++; }
+  }
+  assert.equal(s.wave, MAX_WAVES);
+  assert.equal(spawned, expected, 'jeder Gegner genau einmal');
+  assert.equal(s.status, 'won');
+  let waveBonuses = 0, earlyBonuses = 0;
+  for (let w = 1; w <= MAX_WAVES; w++) waveBonuses += waveBonus(w);
+  for (let w = 2; w <= MAX_WAVES; w++) earlyBonuses += earlyStartBonus(w);
+  assert.equal(bonus, earlyBonuses);
+  assert.equal(s.gold, gold0 + waveBonuses + earlyBonuses, 'jeder Wellenbonus genau einmal');
+});
+
+test('B-005 Rand: Frühstart 19 -> 20, won nicht, solange Gegner von Welle 19 leben', () => {
+  const s = createGame();
+  s.wave = 18;
+  startWave(s);
+  spawnAll(s);
+  assert.ok(startWave(s).ok);
+  assert.equal(s.wave, 20);
+  s.spawnQueue = [];
+  const g = s.gold;
+  update(s, 0.016);
+  assert.ok(s.enemies.length > 0);
+  assert.equal(s.status, 'playing');
+  s.enemies = [];
+  update(s, 0.016);
+  assert.equal(s.status, 'won');
+  assert.equal(s.gold, g + waveBonus(20));
 });

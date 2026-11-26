@@ -74,12 +74,19 @@ test('Welle starten bringt Gegner aufs Feld', async () => {
 
 test('B-005: Leertaste startet früh, gehaltene Taste (Wiederholung) startet nicht mehrfach', async () => {
   const before = await page.evaluate(() => window.__game().wave);
+  // Solange Gegner der laufenden Welle noch kommen: Knopf aus, Leertaste wirkungslos
+  assert.equal(await page.locator('#start-wave').isDisabled(), true);
+  await page.evaluate(() => window.dispatchEvent(new KeyboardEvent('keydown', { key: ' ' })));
+  assert.equal(await page.evaluate(() => window.__game().wave), before);
+  await page.evaluate(() => { window.__game().spawnQueue = []; });
+  await page.waitForFunction(() => /^Nächste Welle \+\d+$/.test(document.getElementById('start-label').textContent), null, { timeout: 5000 });
   await page.evaluate(() => {
     window.dispatchEvent(new KeyboardEvent('keydown', { key: ' ' }));
     for (let i = 0; i < 5; i++) window.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', repeat: true }));
   });
   assert.equal(await page.evaluate(() => window.__game().wave), before + 1);
-  assert.match(await page.locator('#start-label').textContent(), /^Nächste Welle \+\d+$/);
+  // Neue Welle spawnt: Knopf wieder aus bis zum vollständigen Spawn
+  assert.equal(await page.locator('#start-label').textContent(), 'Welle läuft…');
   assert.deepEqual(errors, []);
 });
 

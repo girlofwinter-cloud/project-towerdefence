@@ -57,12 +57,16 @@ export function contrastRatio(a, b) {
   return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
 }
 
-// B-005: Zustand des Knopfs „Welle starten“. Während einer Welle bleibt er bis zur letzten Welle bedienbar
-// und zeigt den Frühstart-Bonus der nächsten Welle.
+// B-005: Zustand des Knopfs „Welle starten“. Während einer Welle wird er bedienbar, sobald alle ihre Gegner
+// gespawnt sind (bis zur letzten Welle), und zeigt dann den Frühstart-Bonus der nächsten Welle.
 export function startButtonView(state) {
-  const canStart = state.status === 'playing' && state.wave < MAX_WAVES;
+  const spawning = state.waveActive && state.spawnQueue.length > 0;
+  const canStart = state.status === 'playing' && state.wave < MAX_WAVES && !spawning;
   const next = state.wave + 1;
   let label = `Welle ${next} starten`;
-  if (state.waveActive) label = canStart ? `Nächste Welle +${earlyStartBonus(next)}` : 'Letzte Welle läuft…';
+  if (state.waveActive) {
+    if (state.wave >= MAX_WAVES) label = 'Letzte Welle läuft…';
+    else label = spawning ? 'Welle läuft…' : `Nächste Welle +${earlyStartBonus(next)}`;
+  }
   return { disabled: !canStart, label, showKey: canStart };
 }

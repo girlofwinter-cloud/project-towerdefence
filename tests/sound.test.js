@@ -1161,6 +1161,9 @@ test('B-005: Vorzeitiger Wellenstart spielt den Wellenstart-Ton, sonst nicht ern
   assert.deepEqual(kinds(detectStateEvents(tr, state)), ['waveStart']);
   update(state, 1 / 60);
   assert.ok(!kinds(detectStateEvents(tr, state)).includes('waveStart'));
+  assert.equal(startWave(state).ok, false, 'vor vollständigem Spawn abgelehnt');
+  assert.deepEqual(detectStateEvents(tr, state), [], 'abgelehnter Frühstart ist still');
+  state.spawnQueue = [];
   assert.ok(startWave(state).ok, 'vorzeitig');
   assert.deepEqual(kinds(detectStateEvents(tr, state)), ['waveStart']);
   update(state, 1 / 60);
