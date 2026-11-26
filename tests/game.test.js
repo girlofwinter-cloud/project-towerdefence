@@ -368,6 +368,7 @@ test('Schwierigkeit (B-125): Kanonen-Mix gewinnt die Wiese, Pfeil-Mix verliert e
   for (const dt of [1 / 30, 1 / 60, 1 / 20, 1 / 120]) {
     const s = strategyRun(MIX_CANNON, dt).state;
     assert.equal(s.status, 'won', `Kanonen-Mix dt=${dt}: Status ${s.status} in Welle ${s.wave}`);
+    assert.ok(s.lives >= 2, `Kanonen-Mix dt=${dt}: nur ${s.lives} Leben übrig`);
   }
   for (const dt of [1 / 30, 1 / 60, 1 / 120]) {
     const { state, lost } = strategyRun(MIX_ARROW, dt);
@@ -1387,13 +1388,14 @@ test('Karte Zwei Fronten: Wege gültig, getrennt bis auf ein kurzes Endstück, B
 });
 
 // B-124: Seit den asynchronen Schüben reicht der Kanonen-Mix ohne Fähigkeiten auf Zwei Fronten nicht mehr
-// (früher: Sieg mit 1-9 Leben); er hält aber bis Welle 9. Mit Meteor und Kälteschock gewinnt er ohne Lebensverlust
-// (siehe „Perfektes Spiel möglich“).
-test('Zwei Fronten (B-124): Kanonen-Mix ohne Fähigkeiten verliert, aber nicht vor Welle 9 (dt 1/30, 1/60)', () => {
+// (früher: Sieg mit 1-9 Leben); er hält aber bis in die Spätphase und verliert in Welle 1-8 keine Leben.
+// Mit Meteor und Kälteschock gewinnt er ohne Lebensverlust (siehe „Perfektes Spiel möglich“).
+test('Zwei Fronten (B-124): Kanonen-Mix ohne Fähigkeiten verliert erst in der Spätphase (dt 1/30, 1/60)', () => {
   for (const dt of [1 / 30, 1 / 60]) {
-    const s = mapRun('cannon', dt, 'twin');
+    const { state: s, lost } = strategyRun(MIX_CANNON, dt, 'twin');
     assert.equal(s.status, 'lost', `dt=${dt}: Status ${s.status} mit ${s.lives} Leben`);
-    assert.ok(s.wave >= 9, `dt=${dt}: verloren schon in Welle ${s.wave}`);
+    assert.ok(s.wave >= 15, `dt=${dt}: verloren schon in Welle ${s.wave}`);
+    assert.equal(lost.slice(0, 8).reduce((a, b) => a + b, 0), 0, `dt=${dt}: Leben vor Welle 9 verloren`);
   }
 });
 
@@ -1778,8 +1780,9 @@ const MIX_LIGHTNING = ['cannon', 'arrow', 'lightning', 'frost'];
 test('Strategie (B-125): Blitz-Mix hält auf Wiese und Eiswelt bis zur Spätphase (dt 1/30, 1/60), nicht leichter als der Kanonen-Mix', () => {
   for (const mapId of ['meadow', 'ice']) {
     for (const dt of [1 / 30, 1 / 60]) {
-      const s = strategyRun(MIX_LIGHTNING, dt, mapId).state;
+      const { state: s, lost } = strategyRun(MIX_LIGHTNING, dt, mapId);
       assert.ok(s.status === 'won' || s.wave >= 15, `${mapId} dt=${dt}: verloren schon in Welle ${s.wave}`);
+      assert.equal(lost.slice(0, 9).reduce((a, b) => a + b, 0), 0, `${mapId} dt=${dt}: Leben vor Welle 10 verloren`);
     }
   }
   for (const dt of [1 / 30, 1 / 60]) {
@@ -3074,18 +3077,15 @@ test('B-124: freie Typen kommen in Schüben je Seite, der erste auf der frühen 
       const planned = planLanes(s, raw, wave);
       assert.equal(planned.length, raw.length);
       for (const e of planned) if (fixed[e.type] !== undefined) assert.equal(e.lane, fixed[e.type], `${mapId} W${wave} ${e.type}`);
-      // Reihenfolge der freien Typen in der Rohliste -> Seiten in Blöcken von burst
-      const free = raw.map((e, i) => ({ ...e, i })).filter((e) => fixed[e.type] === undefined);
-      const byIndex = new Map();
-      // planned ist umsortiert: über (type, at ohne Versatz) zuordnen ist mehrdeutig, daher Seiten in Rohreihenfolge neu berechnen
+      // Seiten der freien Typen in Rohreihenfolge (planned ist nach Zeit umsortiert, daher Index i mitgeben)
+      const count = s.paths.length;
       const lanes = planLanes(s, raw.map((e, i) => ({ ...e, i })), wave).filter((e) => fixed[e.type] === undefined).sort((a, b) => a.i - b.i).map((e) => e.lane);
-      for (let k = 0; k < free.length; k++) byIndex.set(k, lanes[k]);
-      for (let k = 0; k < free.length; k++) {
-        const expected = (Math.floor(k / LANE_ASYNC.burst) + (wave % 2) + 1) % 2; // erster Schub auf der frühen Seite
-        assert.equal(byIndex.get(k), expected, `${mapId} W${wave} freier Gegner ${k}`);
-      }
+      lanes.forEach((lane, k) => {
+        const expected = (Math.floor(k / LANE_ASYNC.burst) + (wave % count) + 1) % count; // erster Schub auf der frühen Seite
+        assert.equal(lane, expected, `${mapId} W${wave} freier Gegner ${k}`);
+      });
       // Seiten nicht streng abwechselnd: mindestens ein Schub mit burst Gegnern hintereinander auf einer Seite
-      if (free.length >= LANE_ASYNC.burst) assert.ok(lanes.slice(0, LANE_ASYNC.burst).every((l) => l === lanes[0]));
+      if (lanes.length >= LANE_ASYNC.burst) assert.ok(lanes.slice(0, LANE_ASYNC.burst).every((l) => l === lanes[0]));
     }
   }
 });
