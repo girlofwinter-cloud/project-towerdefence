@@ -1017,3 +1017,20 @@ test('Gegner-Tod: Ereignis nennt den Gegnertyp (Boss weiter eigenes Ereignis)', 
   assert.ok(evs.some((e) => e.kind === 'death' && e.enemy === 'runner'));
   assert.ok(evs.some((e) => e.kind === 'boss'));
 });
+
+test('Pfeil: echter Bogenschuss aus Bow.wav, leiser als Kanone, Lizenz je Datei', () => {
+  const s = SOUND.samples.sounds;
+  assert.deepEqual(s['shot:arrow'].files, ['arrow-1', 'arrow-2', 'arrow-3']);
+  assert.ok(s['shot:arrow'].gain < s['shot:cannon'].gain);
+  const lic = fs.readFileSync(`${ROOT}assets/sounds/LIZENZ.md`, 'utf8');
+  assert.ok(!lic.includes('impactWood_light'), 'alte Holz-Töne entfernt');
+  for (const f of s['shot:arrow'].files) {
+    const row = lic.split('\n').find((l) => l.startsWith(`| ${f}.m4a |`));
+    assert.ok(row, `${f} fehlt in LIZENZ.md`);
+    assert.match(row, /Battle Sound Effects“ von artisticdude/);
+    assert.match(row, /https:\/\/opengameart\.org\/content\/battle-sound-effects/);
+    assert.match(row, /\| Bow\.wav \|/);
+    assert.match(row, /CC0 \(eine der angebotenen Lizenzen\)/);
+    assert.ok(fs.statSync(`${ROOT}assets/sounds/${f}.m4a`).size > 0);
+  }
+});

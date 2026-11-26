@@ -1198,7 +1198,8 @@ export const SOUND = {
   samples: {
     base: 'assets/sounds/',
     sounds: {
-      'shot:arrow':     { files: ['arrow-1', 'arrow-2', 'arrow-3'], gain: 0.3, pitchVar: 0.08 },
+      // Pfeil: echter Bogenschuss (Battle Sound Effects, CC0); feuert oft, daher leise
+      'shot:arrow':     { files: ['arrow-1', 'arrow-2', 'arrow-3'], gain: 0.12, pitchVar: 0.08 },
       // Kanone: Abschussknall (Aufnahme schon tiefer gestimmt und laut gemischt), deutlich lauter als andere Schüsse
       'shot:cannon':    { files: ['cannon-1', 'cannon-2', 'cannon-3'], gain: 0.5, pitchVar: 0.06 },
       'shot:frost':     { files: ['frost-1', 'frost-2', 'frost-3'], gain: 0.2, pitchVar: 0.06 },

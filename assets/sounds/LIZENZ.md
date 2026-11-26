@@ -1,7 +1,9 @@
 # Herkunft und Lizenz der Töne
 
 Die Töne stammen von Kenney (https://kenney.nl), die Todesschreie aus dem „Monster Sound Effects Pack“
-von Ogrebane (OpenGameArt, https://opengameart.org/content/monster-sound-effects-pack). Alle stehen unter der Lizenz
+von Ogrebane (OpenGameArt, https://opengameart.org/content/monster-sound-effects-pack), der Pfeil-Schuss aus
+„Battle Sound Effects“ von artisticdude (OpenGameArt, https://opengameart.org/content/battle-sound-effects,
+mehrfach lizenziert, wir nutzen CC0). Alle stehen unter der Lizenz
 **CC0 1.0** (Creative Commons Zero, gemeinfrei, http://creativecommons.org/publicdomain/zero/1.0/).
 Eine Namensnennung ist nicht nötig, wir nennen Kenney trotzdem gern.
 
@@ -9,9 +11,9 @@ Bearbeitung: von Ogg Vorbis bzw. WAV nach AAC (.m4a, mono, 48 kbit/s) umgewandel
 
 | Datei | Paket | Originaldatei | Lizenz | Bearbeitung |
 |---|---|---|---|---|
-| arrow-1.m4a | Impact Sounds (kenney_impact-sounds) | impactWood_light_000.ogg | CC0 |  |
-| arrow-2.m4a | Impact Sounds (kenney_impact-sounds) | impactWood_light_001.ogg | CC0 |  |
-| arrow-3.m4a | Impact Sounds (kenney_impact-sounds) | impactWood_light_002.ogg | CC0 |  |
+| arrow-1.m4a | „Battle Sound Effects“ von artisticdude (OpenGameArt, https://opengameart.org/content/battle-sound-effects) | Bow.wav | CC0 (eine der angebotenen Lizenzen) | Stereo zu Mono, ab 0,095 s auf 0,33 s gekürzt, Ausblenden 0,08 s, normalisiert |
+| arrow-2.m4a | „Battle Sound Effects“ von artisticdude (OpenGameArt, https://opengameart.org/content/battle-sound-effects) | Bow.wav | CC0 (eine der angebotenen Lizenzen) | Stereo zu Mono, ab 0,095 s auf 0,30 s gekürzt, Ausblenden 0,09 s, um Faktor 0,93 tiefer, normalisiert |
+| arrow-3.m4a | „Battle Sound Effects“ von artisticdude (OpenGameArt, https://opengameart.org/content/battle-sound-effects) | Bow.wav | CC0 (eine der angebotenen Lizenzen) | Stereo zu Mono, ab 0,098 s auf 0,28 s gekürzt, Ausblenden 0,07 s, um Faktor 1,07 höher, normalisiert |
 | cannon-1.m4a | Sci-Fi Sounds (kenney_sci-fi-sounds) | explosionCrunch_000.ogg + lowFrequency_explosion_001.ogg | CC0 | explosionCrunch auf 0,45 s gekürzt (exponentiell abklingend), mit lowFrequency_explosion_001.ogg (0,35 s) gemischt, normalisiert, um Faktor 0,78 tiefer gestimmt (ca. 0,58 s) |
 | cannon-2.m4a | Sci-Fi Sounds (kenney_sci-fi-sounds) | explosionCrunch_001.ogg + lowFrequency_explosion_001.ogg | CC0 | explosionCrunch auf 0,45 s gekürzt (exponentiell abklingend), mit lowFrequency_explosion_001.ogg (0,35 s) gemischt, normalisiert, um Faktor 0,78 tiefer gestimmt (ca. 0,58 s) |
 | cannon-3.m4a | Sci-Fi Sounds (kenney_sci-fi-sounds) | explosionCrunch_004.ogg + lowFrequency_explosion_001.ogg | CC0 | explosionCrunch auf 0,45 s gekürzt (exponentiell abklingend), mit lowFrequency_explosion_001.ogg (0,35 s) gemischt, normalisiert, um Faktor 0,78 tiefer gestimmt (ca. 0,58 s) |
