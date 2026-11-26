@@ -1510,6 +1510,28 @@ test('B-030: lavaGeometry nur auf dem Vulkan; Fluss über die Feldränder verlä
   assert.deepEqual(lavaDetails(null), []);
 });
 
+test('B-030: Tümpel sind ruhige Ovale (keine Acht), Einzeltümpel Kreise, alle vom Weg abgerückt', async () => {
+  const { lavaGeometry, poolOutline } = await import('../src/render-lava.js');
+  const { LAVA_STYLE: L } = await import('../src/config.js');
+  const s = createGame({ mapId: 'volcano' });
+  const g = lavaGeometry('volcano', s.blocked);
+  for (const p of g.pools) {
+    const pts = poolOutline(p, L.poolRadius);
+    assert.equal(pts.length, L.poolPoints);
+    // Oval: Abstand zur Mitte ändert sich monoton zwischen Längs- und Querachse (eine Acht hätte eine Taille)
+    const d = pts.map(([x, y]) => Math.hypot(x - p.cx, y - p.cy));
+    const q = L.poolPoints / 4;
+    const long = p.hy >= p.hx;
+    for (let i = 1; i <= q; i++) assert.ok(long ? d[i] >= d[i - 1] - 1e-9 : d[i] <= d[i - 1] + 1e-9, `Umriss ${i}`);
+    if (p.discs.length === 1) assert.ok(d.every((v) => Math.abs(v - L.poolRadius) < 1e-9), 'Einzeltümpel ist ein Kreis');
+    else assert.ok(Math.max(...d) > Math.min(...d) * 1.3, 'Mehrkachel-Tümpel ist länglich');
+    // Kruste bleibt außerhalb der Wegkacheln (Wegrand verdeckt den Tümpel nicht)
+    for (const [x, y] of poolOutline(p, L.poolRadius + L.crustWidth)) {
+      assert.ok(!s.blocked.has(`${Math.floor(x / TILE)},${Math.floor(y / TILE)}`), `Tümpelrand auf dem Weg bei ${x.toFixed(1)},${y.toFixed(1)}`);
+    }
+  }
+});
+
 test('B-030: Lava und Steinbrücke zeichnen ohne arc/ellipse, save/restore ausgewogen, ohne Lava nichts', async () => {
   const { lavaGeometry, drawLava, drawLavaBridges } = await import('../src/render-lava.js');
   const g = lavaGeometry('volcano', createGame({ mapId: 'volcano' }).blocked);

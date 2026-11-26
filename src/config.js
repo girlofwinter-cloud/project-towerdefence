@@ -312,6 +312,7 @@ export const MAPS = {
     // Gemessen (Strategie-Läufe, dt 1/30 und 1/60, Skript im Scratchpad): Kanonen-Mix auf Plätzen ohne Überhitzung gewinnt
     // mit 4 Leben, dieselben Mischungen auf den besten (oft überhitzten) Plätzen verlieren ab Welle 5. Ohne Lava-Schaden
     // verliert jede Strategie bis Welle 4; ohne Überhitzung brechen bei der Platzwahl nach Abdeckung deutlich weniger Gegner durch.
+    // Perfektes Spiel (10 von 10 Leben) gelingt mit kühlen Plätzen und dem Scharfschützen als drittem Turm (Test in game.test.js).
     // Nicht ahnungslos ändern.
     modifiers: { enemySpeed: 1.15 },
     lavaRiver: VOLCANO_LAVA_RIVER,
@@ -916,11 +917,16 @@ export const LAVA_STYLE = {
   riverWiggle: 3,          // seitlicher Schwung je Kachel, höchstens (deterministisch)
   edgePad: 24,             // Fluss läuft über Ober- und Unterkante hinaus (unter den Rahmen)
   poolRadius: 17,          // Radius je Tümpelkachel (Umriss wie der See: geglättete Hülle der Kreise)
-  poolJoin: 1.15,          // Tümpel aus mehreren Kacheln: Radius mal diesem Faktor (ein Oval statt zwei Kreise)
-  poolShift: 6,            // Tümpel rücken so viele px vom angrenzenden Weg weg (der Wegrand verdeckt sie sonst)
+  poolJoin: 1.15,          // Tümpel aus mehreren Kacheln: Radius mal diesem Faktor (breiteres Oval)
+  poolSpan: 0.8,           // Anteil der halben Kachel-Ausdehnung, um den das Oval in Längsrichtung wächst
+  poolPoints: 32,          // Stützpunkte des Tümpel-Umrisses (Oval)
+  poolShift: 9,            // Tümpel rücken so viele px vom angrenzenden Weg weg (der Wegrand verdeckt sie sonst)
   plate: '#4a2a22',        // Krustenschollen auf der Lava
   plateSize: [4.5, 2.6],   // Halbachsen einer Scholle
   plateEvery: 3,           // jede n-te Flusskachel trägt eine Scholle
+  plateSide: 0.35,         // seitlicher Versatz einer Scholle, höchstens dieser Anteil der Flussbreite (je Richtung halb)
+  plateJitter: 10,         // senkrechter Versatz einer Scholle in px (±halb)
+  sparkOffset: [0.6, 8],   // Glutpunkt neben der Scholle: Anteil des Gegenversatzes, Abstand nach unten in px
   spark: '#fff1b0',        // kleine helle Glutpunkte
   sparkSize: 1.3,
   // Steinbrücke: Steinplatten quer zur Laufrichtung, Brüstung aus Blöcken, Schlagschatten auf der Lava

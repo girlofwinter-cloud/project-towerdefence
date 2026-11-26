@@ -46,6 +46,8 @@ export function createGame({ mapId, ...overrides } = {}) {
   };
   // Alle Wege: Hauptweg (state.path, auch per override) plus extraPaths; ohne extraPaths genau ein Weg.
   if (!overrides.paths) state.paths = [state.path, ...(overrides.path ? [] : extraPaths.map((w) => buildPath(w, TILE)))];
+  // B-030: Wegkacheln direkt neben Lava, einmal berechnet (lavaStep schlägt pro Gegner nur nach)
+  if (!overrides.hotPath) state.hotPath = new Set([...state.blocked].filter((k) => nearLava(state.lava, ...k.split(',').map(Number))));
   return state;
 }
 
@@ -317,13 +319,13 @@ function moveEnemies(state, dt) {
 // (Rate mal dt, also unabhängig vom Zeitschritt), auch der Boss. Wie Kanonen-Splash ignoriert die Lava die Rüstung
 // (kein Direkttreffer). Wer daran stirbt, bringt die normale Belohnung.
 function lavaStep(state, dt) {
-  if (!state.lava || !state.lava.size || !state.enemies.length) return;
+  if (!state.hotPath || !state.hotPath.size || !state.enemies.length) return;
   const amount = LAVA.dps * hpScale(Math.max(1, state.wave)) * dt;
   let hit = false;
   for (const e of state.enemies) {
     const col = Math.floor(e.x / TILE);
     const row = Math.floor(e.y / TILE);
-    if (!state.blocked.has(`${col},${row}`) || !nearLava(state.lava, col, row)) continue;
+    if (!state.hotPath.has(`${col},${row}`)) continue;
     damage(state, e, { damage: amount });
     hit = true;
   }

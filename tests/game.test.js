@@ -2269,6 +2269,88 @@ test('Vulkan: ohne Lava-Schaden verliert auch der Kanonen-Mix ohne Überhitzung 
   } finally { LAVA.dps = before; }
 });
 
+// Perfektes Spiel (Vorgabe: auf jeder Karte muss ein ganzer Durchlauf ohne Lebensverlust möglich sein).
+// Optimierte, aber nachvollziehbare Strategie: Türme nur auf Plätze ohne Überhitzung, jeweils der Platz mit der besten
+// Wegabdeckung für den Turmtyp; erst Kanone und Pfeil, dann früh Scharfschützen gegen Bosse und Trolle, dazu Frost und
+// Blitz; mit Restgold das billigste Upgrade. Meteor auf den vordersten Gegner, sobald er die letzten 12 Kacheln erreicht,
+// Kälteschock in den letzten 6 Kacheln; keine Reparatur. Auf dem Vulkan kommt der Scharfschütze als dritter Turm
+// (der erste Boss in Welle 5 ist schneller), sonst die zweite Kanone (Zwei Fronten: viele Flitzer in Welle 4).
+const PERFECT_ORDER = ['cannon', 'arrow', 'cannon', 'sniper', 'sniper', 'frost', 'sniper', 'lightning'];
+const PERFECT_ORDER_VOLCANO = ['cannon', 'arrow', 'sniper', 'cannon', 'sniper', 'frost', 'sniper', 'lightning'];
+
+function bestCoolSpot(state, rangeTiles) {
+  return rankedSpots(state, rangeTiles, true)[0] || null;
+}
+
+function perfectRun(mapId, dt) {
+  const s = createGame({ mapId });
+  const order = mapId === 'volcano' ? PERFECT_ORDER_VOLCANO : PERFECT_ORDER;
+  let lost = 0;
+  while (s.status === 'playing' && s.wave < MAX_WAVES) {
+    for (let again = true; again;) {
+      again = false;
+      const type = order[s.towers.length % order.length];
+      const spot = s.gold >= TOWER_TYPES[type].cost ? bestCoolSpot(s, TOWER_TYPES[type].range) : null;
+      if (spot) { buildTower(s, type, spot.c, spot.r); again = true; continue; }
+      let best = null;
+      for (const t of s.towers) {
+        const c = upgradeCost(t);
+        if (c !== null && (!best || c < best.c)) best = { id: t.id, c };
+      }
+      if (best && s.gold >= best.c) { upgradeTower(s, best.id); again = true; }
+    }
+    const before = s.lives;
+    startWave(s);
+    for (let k = 0; k < Math.round(600 / dt) && s.waveActive && s.status === 'playing'; k++) {
+      update(s, dt);
+      let front = null;
+      for (const e of s.enemies) {
+        const rest = enemyPath(s, e).length - e.dist;
+        if (!front || rest < front.rest) front = { e, rest };
+      }
+      if (front && front.rest < 12 * TILE) {
+        useAbility(s, 'meteor', front.e.x, front.e.y);
+        if (front.rest < 6 * TILE) useAbility(s, 'freeze');
+      }
+    }
+    lost += before - s.lives;
+  }
+  assert.equal(s.abilities.repair.uses, 0, 'keine Reparatur');
+  return { state: s, lost };
+}
+
+test('Perfektes Spiel möglich: optimierte Strategie gewinnt Welle 20 auf jeder Karte ohne Lebensverlust (dt 1/30, 1/60)', async () => {
+  const { MAP_ORDER } = await import('../src/progress.js');
+  assert.deepEqual([...MAP_ORDER].sort(), Object.keys(MAPS).sort(), 'alle Karten');
+  for (const mapId of MAP_ORDER) {
+    for (const dt of [1 / 30, 1 / 60]) {
+      const { state, lost } = perfectRun(mapId, dt);
+      assert.equal(state.status, 'won', `${mapId} dt=${dt}: Status ${state.status} in Welle ${state.wave}`);
+      assert.equal(state.lives, START_LIVES, `${mapId} dt=${dt}: ${state.lives} von ${START_LIVES} Leben`);
+      assert.equal(lost, 0, `${mapId} dt=${dt}: ${lost} Leben verloren`);
+    }
+  }
+});
+
+test('Vulkan: perfektes Spiel möglich, die Strategie stellt keinen Turm neben die Lava', () => {
+  for (const dt of [1 / 30, 1 / 60]) {
+    const { state } = perfectRun('volcano', dt);
+    assert.equal(state.status, 'won');
+    assert.equal(state.lives, START_LIVES);
+    assert.ok(state.towers.length > 0 && state.towers.every((t) => !t.overheated), 'nur kühle Plätze');
+  }
+});
+
+test('B-030 hotPath: genau die Wegkacheln neben Lava, einmal in createGame; ohne Lava leer', () => {
+  const s = createGame({ mapId: 'volcano' });
+  const expected = [...s.blocked].filter((k) => nearLava(s.lava, ...k.split(',').map(Number)));
+  assert.deepEqual([...s.hotPath].sort(), expected.sort());
+  assert.ok(s.hotPath.has('10,8') && !s.hotPath.has('6,2'));
+  for (const k of s.hotPath) assert.ok(s.blocked.has(k) && !s.lava.has(k));
+  for (const id of Object.keys(MAPS)) if (id !== 'volcano') assert.equal(createGame({ mapId: id }).hotPath.size, 0, id);
+  assert.equal(createGame({ mapId: 'volcano', lava: undefined }).hotPath.size, 0, 'override ohne Lava');
+});
+
 test('B-030 HUD: overheatNote nennt die Überhitzung nur für überhitzte Türme', async () => {
   const { overheatNote, OVERHEAT_NOTE } = await import('../src/hud.js');
   assert.equal(OVERHEAT_NOTE, 'Überhitzt: schießt langsamer');

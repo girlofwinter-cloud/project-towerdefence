@@ -4,13 +4,14 @@
 // Deterministisch (tileRand), keine Verläufe, kein shadowBlur, keine arc/ellipse (wie das Wasser).
 import { TILE, HEIGHT, MAPS, LAVA_STYLE as L } from './config.js';
 import { tileRand } from './decor.js';
-import { riverLine, bridgeList, lakeOutline, openCurve, closedCurve } from './render-water.js';
+import { riverLine, bridgeList, openCurve, closedCurve } from './render-water.js';
 import { outlineOf, lit } from './draw-utils.js';
 
 const center = ([c, r]) => [(c + 0.5) * TILE, (r + 0.5) * TILE];
 
-// Tümpel: zusammenhängende Gruppen der Tümpelkacheln (4er-Nachbarschaft) als { cx, cy, discs, k } wie der See;
-// k = Radiusfaktor, die ganze Gruppe rückt um poolShift vom angrenzenden Weg weg.
+// Tümpel: zusammenhängende Gruppen der Tümpelkacheln (4er-Nachbarschaft) als { cx, cy, discs, k, hx, hy };
+// k = Radiusfaktor, hx/hy = halbe Ausdehnung der Kachelmitten (für das Oval), die ganze Gruppe rückt um poolShift
+// vom angrenzenden Weg weg.
 function poolGroups(tiles, blocked) {
   const groups = [];
   for (const t of tiles) {
@@ -26,7 +27,9 @@ function poolGroups(tiles, blocked) {
     }
     const n = Math.hypot(dx, dy) || 1;
     const discs = g.map(center).map(([x, y]) => [x + (dx / n) * L.poolShift, y + (dy / n) * L.poolShift]);
-    return { cx: discs.reduce((s, d) => s + d[0], 0) / discs.length, cy: discs.reduce((s, d) => s + d[1], 0) / discs.length, discs, k: g.length > 1 ? L.poolJoin : 1 };
+    const xs = discs.map((d) => d[0]), ys = discs.map((d) => d[1]);
+    const hx = (Math.max(...xs) - Math.min(...xs)) / 2, hy = (Math.max(...ys) - Math.min(...ys)) / 2;
+    return { cx: Math.min(...xs) + hx, cy: Math.min(...ys) + hy, discs, k: g.length > 1 ? L.poolJoin : 1, hx, hy };
   });
 }
 
@@ -45,6 +48,16 @@ export function lavaGeometry(mapId, blocked) {
   return { river, pools: poolGroups(m.lavaPools || [], blocked), bridges: bridgeList(bridges, blocked) };
 }
 
+// Umriss eines Tümpels als ruhiges Oval (Lage mit Radius R): Halbachsen = halbe Kachel-Ausdehnung mal poolSpan plus R mal k.
+// Ein Tümpel aus einer Kachel ist ein Kreis mit Radius R.
+export function poolOutline(p, R) {
+  const rx = p.hx * L.poolSpan + R * p.k, ry = p.hy * L.poolSpan + R * p.k;
+  return Array.from({ length: L.poolPoints }, (_, i) => {
+    const a = (i / L.poolPoints) * Math.PI * 2;
+    return [p.cx + Math.cos(a) * rx, p.cy + Math.sin(a) * ry];
+  });
+}
+
 // Eine Lage von Fluss und Tümpeln: Fluss als Linie der Breite w, Tümpel als Umriss mit Radius R (optional zur Mitte um k verkleinert).
 function layer(ctx, g, color, w, R, k = 1) {
   ctx.fillStyle = color;
@@ -57,7 +70,7 @@ function layer(ctx, g, color, w, R, k = 1) {
   }
   for (const p of g.pools) {
     ctx.beginPath();
-    closedCurve(ctx, lakeOutline(p, R * p.k).map(([x, y]) => [p.cx + (x - p.cx) * k, p.cy + (y - p.cy) * k]));
+    closedCurve(ctx, poolOutline(p, R).map(([x, y]) => [p.cx + (x - p.cx) * k, p.cy + (y - p.cy) * k]));
     ctx.fill();
   }
 }
@@ -79,9 +92,9 @@ export function lavaDetails(g) {
   const inner = g.river.slice(1, -1);
   inner.forEach(([x, y], i) => {
     if (i % L.plateEvery !== 1) return;
-    const side = (tileRand(i, 7, 130) - 0.5) * L.riverWidth * 0.35;
-    out.push({ kind: 'plate', x: x + side, y: y + (tileRand(i, 7, 131) - 0.5) * 10, rot: tileRand(i, 7, 132) * Math.PI });
-    out.push({ kind: 'spark', x: x - side * 0.6, y: y + 8, rot: 0 });
+    const side = (tileRand(i, 7, 130) - 0.5) * L.riverWidth * L.plateSide;
+    out.push({ kind: 'plate', x: x + side, y: y + (tileRand(i, 7, 131) - 0.5) * L.plateJitter, rot: tileRand(i, 7, 132) * Math.PI });
+    out.push({ kind: 'spark', x: x - side * L.sparkOffset[0], y: y + L.sparkOffset[1], rot: 0 });
   });
   g.pools.forEach((p, i) => {
     out.push({ kind: 'plate', x: p.cx - 4, y: p.cy + 3, rot: tileRand(i, 9, 133) * Math.PI });
