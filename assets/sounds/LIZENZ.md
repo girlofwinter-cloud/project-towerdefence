@@ -1,7 +1,7 @@
 # Herkunft und Lizenz der Töne
 
-Die Töne stammen von Kenney (https://kenney.nl), die Todesschreie aus dem Monster sound effects pack
-(OpenGameArt, https://opengameart.org/content/monster-sound-effects-pack). Alle stehen unter der Lizenz
+Die Töne stammen von Kenney (https://kenney.nl), die Todesschreie aus dem „Monster Sound Effects Pack“
+von Ogrebane (OpenGameArt, https://opengameart.org/content/monster-sound-effects-pack). Alle stehen unter der Lizenz
 **CC0 1.0** (Creative Commons Zero, gemeinfrei, http://creativecommons.org/publicdomain/zero/1.0/).
 Eine Namensnennung ist nicht nötig, wir nennen Kenney trotzdem gern.
 
@@ -24,12 +24,12 @@ Bearbeitung: von Ogg Vorbis bzw. WAV nach AAC (.m4a, mono, 48 kbit/s) umgewandel
 | lightning-1.m4a | Sci-Fi Sounds (kenney_sci-fi-sounds) | forceField_000.ogg | CC0 | auf 0,3 s gekürzt, ausgeblendet |
 | lightning-2.m4a | Sci-Fi Sounds (kenney_sci-fi-sounds) | forceField_001.ogg | CC0 | auf 0,3 s gekürzt, ausgeblendet |
 | lightning-3.m4a | Sci-Fi Sounds (kenney_sci-fi-sounds) | forceField_002.ogg | CC0 | auf 0,3 s gekürzt, ausgeblendet |
-| death-1.m4a | Monster sound effects pack (OpenGameArt, https://opengameart.org/content/monster-sound-effects-pack) | monster-2.wav | CC0 | Stereo zu Mono, normalisiert |
-| death-2.m4a | Monster sound effects pack (OpenGameArt, https://opengameart.org/content/monster-sound-effects-pack) | monster-3.wav | CC0 | Stereo zu Mono, normalisiert |
-| death-3.m4a | Monster sound effects pack (OpenGameArt, https://opengameart.org/content/monster-sound-effects-pack) | monster-4.wav | CC0 | Stereo zu Mono, normalisiert |
-| death-4.m4a | Monster sound effects pack (OpenGameArt, https://opengameart.org/content/monster-sound-effects-pack) | monster-7.wav | CC0 | Stereo zu Mono, normalisiert |
-| boss-1.m4a | Monster sound effects pack (OpenGameArt, https://opengameart.org/content/monster-sound-effects-pack) | monster-6.wav | CC0 | Stereo zu Mono, normalisiert |
-| boss-2.m4a | Monster sound effects pack (OpenGameArt, https://opengameart.org/content/monster-sound-effects-pack) | monster-8.wav | CC0 | Stereo zu Mono, normalisiert |
+| death-1.m4a | „Monster Sound Effects Pack“ von Ogrebane (OpenGameArt, veröffentlicht am 16.12.2010, monster_sfx_pack.zip, https://opengameart.org/content/monster-sound-effects-pack) | monster-2.wav | CC0 (Public Domain) | Stereo zu Mono, normalisiert |
+| death-2.m4a | „Monster Sound Effects Pack“ von Ogrebane (OpenGameArt, veröffentlicht am 16.12.2010, monster_sfx_pack.zip, https://opengameart.org/content/monster-sound-effects-pack) | monster-3.wav | CC0 (Public Domain) | Stereo zu Mono, normalisiert |
+| death-3.m4a | „Monster Sound Effects Pack“ von Ogrebane (OpenGameArt, veröffentlicht am 16.12.2010, monster_sfx_pack.zip, https://opengameart.org/content/monster-sound-effects-pack) | monster-4.wav | CC0 (Public Domain) | Stereo zu Mono, normalisiert |
+| death-4.m4a | „Monster Sound Effects Pack“ von Ogrebane (OpenGameArt, veröffentlicht am 16.12.2010, monster_sfx_pack.zip, https://opengameart.org/content/monster-sound-effects-pack) | monster-7.wav | CC0 (Public Domain) | Stereo zu Mono, normalisiert |
+| boss-1.m4a | „Monster Sound Effects Pack“ von Ogrebane (OpenGameArt, veröffentlicht am 16.12.2010, monster_sfx_pack.zip, https://opengameart.org/content/monster-sound-effects-pack) | monster-6.wav | CC0 (Public Domain) | Stereo zu Mono, normalisiert |
+| boss-2.m4a | „Monster Sound Effects Pack“ von Ogrebane (OpenGameArt, veröffentlicht am 16.12.2010, monster_sfx_pack.zip, https://opengameart.org/content/monster-sound-effects-pack) | monster-8.wav | CC0 (Public Domain) | Stereo zu Mono, normalisiert |
 | meteor-flight-1.m4a | Sci-Fi Sounds (kenney_sci-fi-sounds) | thrusterFire_000.ogg | CC0 | auf 0,6 s gekürzt, ein- und ausgeblendet |
 | meteor-flight-2.m4a | Sci-Fi Sounds (kenney_sci-fi-sounds) | thrusterFire_001.ogg | CC0 | auf 0,6 s gekürzt, ein- und ausgeblendet |
 | meteor-impact-1.m4a | Sci-Fi Sounds (kenney_sci-fi-sounds) | lowFrequency_explosion_000.ogg | CC0 |  |

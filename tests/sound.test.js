@@ -983,7 +983,7 @@ test('Gegner-Tod: Monster-Schreie für death und boss, Lizenz je Datei, Tonhöhe
   for (const f of [...s.death.files, ...s.boss.files]) {
     const row = lic.split('\n').find((l) => l.startsWith(`| ${f}.m4a |`));
     assert.ok(row, `${f} fehlt in LIZENZ.md`);
-    assert.match(row, /Monster sound effects pack/);
+    assert.match(row, /Monster Sound Effects Pack“ von Ogrebane/);
     assert.match(row, /https:\/\/opengameart\.org\/content\/monster-sound-effects-pack/);
     assert.match(row, /monster-\d+\.wav/);
     assert.match(row, /CC0/);
