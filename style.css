@@ -228,3 +228,12 @@ footer { text-align: center; color: var(--muted); font-size: 0.8rem; padding: 16
   .t-desc, .tower-btn kbd { display: none; }
   .t-name { font-size: .85rem; }
 }
+
+/* ---------- Testseite (test.html bzw. ?test) ---------- */
+#test-panel { border: 2px dashed #e0457b; border-radius: 10px; padding: 8px 10px; margin-bottom: 10px; background: rgba(224, 69, 123, 0.08); }
+#test-panel h3 { margin: 0 0 2px; color: #e0457b; }
+#test-panel .tp-note { margin: 0 0 6px; font-size: 0.8rem; color: var(--muted); }
+#test-panel .tp-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 6px; font-size: 0.85rem; }
+#test-panel .tp-row button { flex: 1; padding: 5px 8px; }
+#test-panel input[type="number"] { width: 4.5em; }
+#test-panel #tp-speeds button.active { outline: 2px solid #e0457b; }

@@ -259,6 +259,13 @@ export const PROGRESS_KEY = 'td-progress-v1';
 // Sterne bei Sieg: Stern i gibt es, wenn der Anteil übriger Leben (an START_LIVES) mindestens STAR_LIVES_SHARE[i] ist.
 // 1 Stern: gewonnen; 2 Sterne: mindestens die Hälfte übrig; 3 Sterne: keine Leben verloren. Niederlage: 0 Sterne.
 export const STAR_LIVES_SHARE = [0, 0.5, 1];
+
+// ---------- Testseite (test.html bzw. index.html?test) ----------
+// Nur für manuelles Testen: Gold-Vorrat bei „Unbegrenztes Gold“ und wählbare Spieltempos.
+export const TEST_TOOLS = {
+  gold: 99999,
+  speeds: [1, 2, 3, 5, 10],
+};
 // Alias für die Standardkarte (bestehender Code und Tests)
 export const WAYPOINTS = MAPS[DEFAULT_MAP_ID].waypoints;
 

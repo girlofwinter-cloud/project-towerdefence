@@ -19,12 +19,17 @@ const ui = { buildType: null, selectedTowerId: null, hover: null, pending: null,
 let mapId;
 let state = createGame();
 
+// Testseite (test.html bzw. index.html?test): alle Karten offen, nichts speichern, Werkzeug-Panel.
+const TEST_MODE = new URLSearchParams(location.search).has('test');
+
 // ---------- Fortschritt (B-093) ----------
 // Schon der Zugriff auf window.localStorage kann werfen (privater Modus): dann ohne Speicher weiter.
 function getStorage() {
+  if (TEST_MODE) return null; // Testmodus: echter Fortschritt bleibt unberührt
   try { return window.localStorage; } catch { return null; }
 }
 const progress = loadProgress(getStorage());
+const mapOpen = (id) => TEST_MODE || isUnlocked(progress, id);
 // Merker: Ergebnis dieses Spiels schon gespeichert? (refreshUI läuft alle 0,1 s)
 let resultSaved = false;
 let resultText = '';
@@ -180,7 +185,7 @@ for (const id of Object.keys(MAPS)) {
 function refreshMapOptions() {
   for (const opt of mapSelect.options) {
     const name = MAPS[opt.value].name;
-    const open = isUnlocked(progress, opt.value);
+    const open = mapOpen(opt.value);
     opt.disabled = !open;
     opt.textContent = open ? `${name} ${starText(mapProgress(progress, opt.value).stars)}` : `🔒 ${name}`;
   }
@@ -188,7 +193,7 @@ function refreshMapOptions() {
 refreshMapOptions();
 mapSelect.value = state.mapId;
 mapSelect.addEventListener('change', () => {
-  if (state.wave !== 0 || state.waveActive || !isUnlocked(progress, mapSelect.value)) { mapSelect.value = state.mapId; return; }
+  if (state.wave !== 0 || state.waveActive || !mapOpen(mapSelect.value)) { mapSelect.value = state.mapId; return; }
   mapId = mapSelect.value;
   restart();
 });
@@ -242,7 +247,7 @@ function doSell() {
 }
 function restart() {
   // Gesperrte Karte: auf die erste Karte zurückfallen.
-  if (mapId !== undefined && !isUnlocked(progress, mapId)) mapId = MAP_ORDER[0];
+  if (mapId !== undefined && !mapOpen(mapId)) mapId = MAP_ORDER[0];
   state = createGame({ mapId });
   resultSaved = false;
   resultText = '';
@@ -365,3 +370,14 @@ function frame(now) {
 }
 refreshUI();
 requestAnimationFrame(frame);
+
+if (TEST_MODE) {
+  import('./test-page.js').then((m) => m.mountTestPanel({
+    getState: () => state,
+    ui,
+    restartOn: (id) => { mapId = id; restart(); },
+    // Weiterspielen nach erzwungenem Spielende: Overlay-Text des alten Ergebnisses verwerfen.
+    resume: () => { resultSaved = false; resultText = ''; },
+    refresh: refreshUI,
+  }));
+}
