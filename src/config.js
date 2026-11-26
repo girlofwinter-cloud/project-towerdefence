@@ -765,9 +765,42 @@ export const WATER_STYLE = {
   riverTop: 6,             // y des oberen (runden) Endes, liegt unter den Baumkronen
   lakeRadius: 21,          // Radius je Seekachel (Umriss = Hülle der Kreise um die Kachelmitten)
   lakePoints: 24,          // Stützpunkte des Seeumrisses
+  lakeHarmonics: 2,        // Hülle geglättet: nur Radius-Harmonische bis zu dieser Ordnung (rund/oval, keine Zipfel)
+  lakeScale: 0.97,         // geglätteter Umriss etwas kleiner, damit er die Seekacheln nur knapp ausfüllt
+  mouthFlare: 7,           // Einmündung: Fluss weitet sich je Seite um so viel px zum See hin
+  mouthLength: 16,         // Länge der Aufweitung oberhalb des Seeufers
+  mudConcave: -40,         // Schlamm an Uferpunkten mit Kreuzprodukt unter dieser Schwelle (Innenkurve)
+  mudGap: 18,              // Mindestabstand zwischen Schlammflecken
+  mudMouth: [[4.5, 2.6], [4, 2.4]], // Halbachsen der Schlammflecken links/rechts der Einmündung
+  mudSpot: [4, 2.4],       // Halbachsen der Schlammflecken an Innenkurven
   glint: 'rgba(255,243,201,0.5)', // Glanzstriche (#fff3c9, Alpha 0,5)
   glintWidth: 1.6,
+  riverGlintAt: [0.45, 0.72],        // Glanzstriche auf dem Fluss (Anteil der Flusslänge)
+  riverGlint: [[-5, -6], [-4, 5]],   // Glanzstrich relativ zum Flusspunkt
+  lakeGlint: [[-14, -12], [-2, -13]], // Glanzstrich relativ zur Seemitte
   pad: '#4aa84a', padFlower: '#ff8fb1', padCenter: '#ffe07a', reed: '#4d8a3a', reedHead: '#7a4a2a',
+  // Ufer des Sees (Nachbesserung B-104): Winkel in Grad um die Seemitte (0 = rechts, 90 = unten), d = Abstand zum Ufer
+  // (positiv = an Land, negativ = im Wasser). Alles rein Optik; Positionen aus shoreDecor (render-water.js).
+  shore: {
+    pads: [[18, -0.5, 1, true], [128, -0.45, 0.85, true], [-35, -0.55, 0.7, false]], // [Winkel, Anteil des Radius (negativ: nach innen), Größe, Blüte]
+    pad: [6.5, 3.4],       // Halbachsen eines Blatts bei Größe 1
+    padNotch: 0.5,         // Kerbe im Blatt (Bogenmaß)
+    padBloom: [2.6, 1.8, 1.1], // Blüte: Blatt-Halbachsen x/y, Mitte
+    reeds: [[8, -1, 4], [148, -1, 3], [-62, 0, 3]], // [Winkel, d, Halme]
+    reedHeights: [17, 13, 20, 11], // Halmhöhen der Reihe nach
+    reedStep: 3.2,         // Abstand der Halme
+    reedWidth: 1.4,
+    reedHead: [1.6, 3.6],  // Rohrkolben (Halbachsen)
+    reedLeaf: '#5da044',   // Blätter am Fuß der Halme
+    reedLeafLen: 8,
+    stones: [[55, 2, 1], [-15, 2, 0.8], [100, 3, 0.9], [180, 1, 0.8]], // [Winkel, d, Größe]
+    stone: '#a9a8ae', stoneTop: '#cfcdd0', stoneSize: [4.5, 2.6],
+    flowers: [[35, 7, 0], [78, 8, 1], [-88, 8, 2], [-40, 9, 1], [118, 8, 0]], // [Winkel, d, Farbe (Index in DECOR_STYLE.flowers)]
+    flowerPetal: 1.3,      // Blütenblatt-Radius
+    flowerRing: 1.7,       // Abstand der Blütenblätter von der Mitte
+    tufts: [[45, 4], [-28, 4], [92, 5], [162, 3], [-75, 3]], // [Winkel, d]
+    tuftHeights: [5, 7, 5.5],
+  },
   groundMargin: 6,         // Plateaus und Büschel halten so viel Abstand zu Wasserkacheln
   // Brücke: Holzbohlen quer zur Laufrichtung, Geländer an beiden Seiten, Schlagschatten auf dem Wasser
   bridge: {

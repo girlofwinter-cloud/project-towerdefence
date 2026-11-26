@@ -1445,6 +1445,40 @@ test('B-104: Render zeichnet mit und ohne Wasser ohne Fehler; Geometrie determin
   } finally { delete globalThis.document; }
 });
 
+test('B-104 Nachbesserung: See rund ohne Zipfel, Uferdeko deterministisch, nie auf Weg, Brunnen oder Baumrahmen', async () => {
+  const { waterGeometry, lakeOutline, shoreDecor, drawWater } = await import('../src/render-water.js');
+  const { WATER_STYLE } = await import('../src/config.js');
+  const s = createGame({ mapId: 'meadow' });
+  const g = waterGeometry('meadow', s.blocked);
+  // Umriss konvex (keine Zipfel/Knubbel) und umschließt alle Seekachel-Mitten
+  const pts = lakeOutline(g.lake, WATER_STYLE.lakeRadius);
+  const n = pts.length;
+  pts.forEach((p, i) => {
+    const a = pts[(i + n - 1) % n], c = pts[(i + 1) % n];
+    assert.ok((p[0] - a[0]) * (c[1] - p[1]) - (p[1] - a[1]) * (c[0] - p[0]) > 0, `Delle im Seeufer bei Punkt ${i}`);
+  });
+  const inside = ([x, y]) => pts.every((p, i) => { const q = pts[(i + 1) % n]; return (q[0] - p[0]) * (y - p[1]) - (q[1] - p[1]) * (x - p[0]) >= 0; });
+  for (const d of g.lake.discs) assert.ok(inside(d), `Seekachel-Mitte ${d} außerhalb`);
+  // Uferdeko: alle Arten vorhanden, deterministisch
+  const items = shoreDecor(g);
+  assert.deepEqual(items, shoreDecor(g));
+  assert.deepEqual(shoreDecor(null), []);
+  for (const k of ['pad', 'reed', 'stone', 'flower', 'tuft']) assert.ok(items.some((p) => p.kind === k), `Art ${k} fehlt`);
+  const tile = (p) => [Math.floor(p.x / TILE), Math.floor(p.y / TILE)];
+  for (const p of items) {
+    const [c, r] = tile(p);
+    assert.ok(!s.blocked.has(`${c},${r}`), `${p.kind} auf dem Weg ${c},${r}`);
+    assert.ok(!(c === 1 && r === 13), `${p.kind} über dem Brunnen`);
+    assert.ok(p.x >= TILE - 2, `${p.kind} im Baumrahmen links (x ${p.x})`);
+    if (p.kind === 'pad') assert.ok(inside([p.x, p.y]), 'Seerose liegt im See');
+  }
+  // Zeichnen ohne arc/ellipse (Kachel-Test der Kleindeko) und mit ausgeglichenem save/restore
+  const m = mockCtx();
+  drawWater(m.ctx, g);
+  assert.equal(m.depth, 0);
+  assert.ok(!m.counts.arc && !m.counts.ellipse, 'Wasser und Ufer zeichnen ohne arc/ellipse');
+});
+
 test('B-104 Randfall (Tester): Render ohne water-Set (undefined/null) wirft auf keiner Karte', async () => {
   const { render } = await import('../src/render.js?ohne-wasser-set');
   globalThis.document = { createElement() { const c = mockCtx(); return { width: 0, height: 0, getContext: () => c.ctx }; } };
