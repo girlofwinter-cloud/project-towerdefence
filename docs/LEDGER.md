@@ -609,3 +609,9 @@ Neue Einträge werden unten angehängt. Bestehende Einträge werden nie geänder
 - Ergebnis: fertig. Neue reine Funktion `resultLines` in `src/progress.js` (kein „Neuer Rekord!“ beim ersten Ergebnis einer Karte, neu „Neue Sterne: ★★☆“), `src/main.js` zeigt die Zeilen als Spans, eigenes CSS für `#overlay-progress` (Meldungen gold hervorgehoben).
 - Tests: 279 Unit-Tests (5 neu), 14 Browser-Tests (neu `tests/e2e/progress.test.mjs`: Sieg schaltet Wald frei, bleibt nach Neuladen). **Geänderter bestehender Test:** Sterne-Grenze in `starsFor: …` aus `STAR_LIVES_SHARE[1] * START_LIVES` abgeleitet (gleiche Werte bei START_LIVES = 10, strenger bei ungeraden Werten; vom Menschen mit B-094 freigegeben).
 - Entscheidungen: `recordResult` unverändert gelassen (kein neues Feld), damit die bestehenden `deepEqual`-Tests unangetastet bleiben; der Vorher-Stand wird stattdessen an `resultLines` übergeben.
+
+## 2026-11-26 · Meldung „Neue Sterne!“ (Wunsch des Menschen, Hinweis aus dem Review von B-094)
+- Rolle(n): Claude (interaktiv)
+- Branch: agent/neue-sterne-text
+- Ergebnis: fertig. „Neue Sterne: ★★☆“ heißt jetzt „Neue Sterne!“ (die Sterne stehen schon in der Rekordzeile).
+- Tests: Erwartete Texte in zwei `resultLines`-Tests angepasst (vom Menschen gewünscht, nicht abgeschwächt); kein Reviewer wegen reiner Textänderung.

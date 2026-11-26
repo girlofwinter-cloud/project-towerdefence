@@ -190,7 +190,7 @@ test('resultLines: späteres besseres Ergebnis meldet „Neuer Rekord!“, gleic
 test('resultLines: erster Sieg meldet Sterne und Freischaltung, ohne „Neuer Rekord!“', () => {
   const p = emptyProgress();
   assert.deepEqual(play(p, { mapId: 'meadow', status: 'won', wave: MAX_WAVES, lives: 1 }), [
-    `Rekord: Welle ${MAX_WAVES} · ★☆☆`, 'Neue Sterne: ★☆☆', 'Neue Karte freigeschaltet: Wald',
+    `Rekord: Welle ${MAX_WAVES} · ★☆☆`, 'Neue Sterne!', 'Neue Karte freigeschaltet: Wald',
   ]);
 });
 
@@ -198,7 +198,7 @@ test('resultLines: mehr Sterne bei gleichem Rekord melden nur „Neue Sterne“'
   const p = emptyProgress();
   play(p, { mapId: 'meadow', status: 'won', wave: MAX_WAVES, lives: 1 });
   assert.deepEqual(play(p, { mapId: 'meadow', status: 'won', wave: MAX_WAVES, lives: START_LIVES }), [
-    `Rekord: Welle ${MAX_WAVES} · ★★★`, 'Neue Sterne: ★★★',
+    `Rekord: Welle ${MAX_WAVES} · ★★★`, 'Neue Sterne!',
   ]);
   // Weniger Sterne als bisher: keine Meldung, Bestwert bleibt
   assert.deepEqual(play(p, { mapId: 'meadow', status: 'won', wave: MAX_WAVES, lives: 1 }), [`Rekord: Welle ${MAX_WAVES} · ★★★`]);
