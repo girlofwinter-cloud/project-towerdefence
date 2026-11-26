@@ -494,7 +494,8 @@ Reihenfolge ist Abhängigkeit: B-062 und B-063 zuerst, dann gemeinsame Sichtprü
 Zielbilder: `docs/design/vollbild-desktop.png`, `vollbild-ring.png`, `vollbild-start.png`, `vollbild-handy-quer.png`, `vollbild-handy-hoch.png`. Empfehlung des designers: Plaketten und Knöpfe wie Variante A (Holz, ruhig), Ringmenü als Donut wie Variante B, Leuchten der Fähigkeitsknöpfe aus B. Freies Bauraster bleibt (feste Bauplätze abgelehnt). B-129 bis B-132 hängen zusammen und laufen als ein Block, sonst ist das Spiel dazwischen unbedienbar. B-133 bis B-137 einzeln. Keine Spiel-Logik außer B-140.
 
 ### B-129: Vollbild-Rahmen (Muss)
-- Status: vorschlag
+- Status: offen
+- Erweitert (2026-11-26): Gestaltung nach `docs/design/stil1-ziel.png` und `stil1-plan.md` C1–C6 (Block C bis E). e2e-Anpassungen vom Menschen freigegeben.
 - Aufwand: L
 - Idee: Seitenleiste und Seitentitel entfernen, der Canvas füllt das Fenster, Seitenverhältnis 20:14 bleibt. Der Rand neben dem Feld wird abgedunkelt gefüllt (sauber machen: B-141). Betrifft `index.html`, `style.css`, `src/main.js` und die e2e-Tests (`#start-wave`, `#shop`, `#tower-info`, `#map-select`, `#pause`, `#speed`, `#sound`, `#abilities`, `#wave-preview`, `.tower-btn`; Testseite hängt ihr Panel an `.board`). Alle Tastaturkürzel bleiben.
 - Akzeptanzkriterien:
@@ -502,14 +503,14 @@ Zielbilder: `docs/design/vollbild-desktop.png`, `vollbild-ring.png`, `vollbild-s
   - Alle Tastaturkürzel (1-5, Leertaste, P, F, M, Q, W, E, U, S, T) funktionieren, `npm test` und `npm run test:e2e` grün.
 
 ### B-130: HUD-Plaketten über dem Feld (Muss)
-- Status: vorschlag
+- Status: offen
 - Aufwand: S
 - Idee: Gold, Welle x/20 und Leben als Holzplaketten oben links über dem Feld, Icon plus Zahl (Icons aus `src/render-icons.js`). Echtes HTML über dem Canvas.
 - Akzeptanzkriterien:
   - Zahlen mindestens 17 px, Kontrast zur Plakette mindestens 7:1, Plaketten verdecken weniger als 6 % der Feldfläche.
 
 ### B-131: Ringmenü zum Bauen (Muss)
-- Status: vorschlag
+- Status: offen
 - Aufwand: L
 - Idee: Klick auf ein leeres Feld öffnet einen Donut-Ring mit 5 Türmen und Preis. Zu teure Türme grau mit roter Zahl. Gestrichelte Reichweite für den fokussierten Turm, Zielfeld weiß umrandet. Nutzt `buildTower`, keine neue Logik.
 - Akzeptanzkriterien:
@@ -517,56 +518,50 @@ Zielbilder: `docs/design/vollbild-desktop.png`, `vollbild-ring.png`, `vollbild-s
   - Esc, Rechtsklick und Tippen daneben schließen. Tasten 1-5 funktionieren weiter. e2e-Test baut einen Turm über den Ring.
 
 ### B-132: Ringmenü für Verbessern, Verkaufen und Zielwahl (Muss)
-- Status: vorschlag
+- Status: offen
 - Aufwand: M
 - Idee: Klick auf einen Turm öffnet einen Ring mit 3 Segmenten (Verbessern mit Preis, Verkaufen mit Rückerstattung, Zielwahl). Tasten U, S, T bleiben. Das alte Turm-Panel `#tower-info` entfällt oder bleibt auf dem Handy als Detailansicht.
 - Akzeptanzkriterien:
   - Wie B-131, Preis und Rückerstattung stimmen mit `upgradeCost` bzw. `SELL_RATIO` überein.
 
 ### B-133: Runde Fähigkeitsknöpfe unten links (Sollte)
-- Status: vorschlag
+- Status: offen
 - Aufwand: M
 - Idee: Meteor, Kälte und Reparatur als runde Knöpfe unten links, Ablauf als Tortenscheibe mit Sekundenzahl, Badge für Ladungen und Taste. Goldenes Leuchten nur, wenn bereit.
 - Akzeptanzkriterien:
   - Durchmesser mindestens 66 px. Bereit, lädt und aus sind im Screenshot auch ohne Farbe unterscheidbar (Zahl und Scheibe).
 
 ### B-134: Wellenfahne am Eingang statt Knopf "Welle starten" (Sollte)
-- Status: vorschlag
+- Status: offen
 - Aufwand: M
 - Idee: Fahne mit der Nummer der nächsten Welle an der ersten Weg-Kachel. Klick startet die Welle (Leertaste bleibt). Vorschau der nächsten Gegner mit Icon und Anzahl. Die große Vorschaukarte nur vor der Welle, danach klein, damit sie nicht 4x2 Kacheln verdeckt.
 - Akzeptanzkriterien:
   - Fahne an jedem der 5 Wege richtig platziert, Vorschau zeigt dieselben Zahlen wie heute `#wave-preview`.
 
 ### B-135: Kleine Knöpfe oben rechts (Sollte)
-- Status: vorschlag
+- Status: offen
 - Aufwand: S
 - Idee: Ton, Tempo und Pause als runde Knöpfe oben rechts.
 - Akzeptanzkriterien:
   - Tippziele mindestens 44 px, Tasten P, F und M funktionieren weiter.
 
 ### B-136: Startbildschirm mit Kartenwahl (Sollte)
-- Status: vorschlag
+- Status: offen
 - Aufwand: M
 - Idee: Titel, Kartenkarten mit Vorschaubild, Name und Sternen, Knopf "Spielen", 3 Kurz-Hinweise zur Bedienung, Tastenhilfe klein. `#map-select` und die Steuerungshilfe wandern hierher. Auf dem Handy ein wischbares Karussell.
 - Akzeptanzkriterien:
   - Neues Spiel startet über "Spielen", gesperrte Karten bleiben gesperrt, e2e-Test deckt die Kartenwahl ab.
 
 ### B-137: Handy-Layout (Sollte)
-- Status: vorschlag
+- Status: offen
 - Aufwand: L
 - Idee: Querformat als Standard (Feld auf volle Höhe, links HUD und Fähigkeiten, rechts Vorschau und Start). Hochformat mit 2x-Zoom, Verschieben mit einem Finger (ab ca. 8 px Bewegung ist es Ziehen, sonst Tippen) und Minikarte; Fähigkeiten und Start in der Daumenzone unten. Im Querformat sind Kacheln nur ca. 28 px groß: Zoom 1,4x erlauben, Zielfeld mit Auswahlrahmen bestätigen.
 - Akzeptanzkriterien:
   - Playwright bei 390x844 und 844x390: kein Tippziel unter 44 px, Ring bleibt an 4 Ecken im Bild, Antippen eines Turms klappt nach dem Verschieben.
 
-### B-138: Größere Figuren mit kräftigerer Kontur (Nett)
-- Status: vorschlag
-- Aufwand: M
-- Idee: Türme und Gegner im Renderer 1,25 bis 1,3x größer als ihr Feld, y-sortiert gezeichnet, 2 px dunkle Kontur nur für Figuren, dezenter Sockel unter Türmen. Treffer-Radien bleiben. Zuerst Probe auf einer Karte. Braucht eine Änderung an `docs/STIL.md` (Kontur), Entscheidung des Menschen.
-- Akzeptanzkriterien:
-  - Screenshot-Vergleich vorher und nachher, keine Treffer-Logik geändert, Frame-Zeit höchstens +10 %.
 
 ### B-139: Scharfes Canvas auf Retina und Handy (Nett)
-- Status: vorschlag
+- Status: offen
 - Aufwand: M
 - Idee: Canvas und Hintergrund-Cache mit `devicePixelRatio` (höchstens 2) rendern. Heute wird das 800x560-Bild nur hochskaliert und ist auf Retina sichtbar weich.
 - Akzeptanzkriterien:
@@ -580,7 +575,7 @@ Zielbilder: `docs/design/vollbild-desktop.png`, `vollbild-ring.png`, `vollbild-s
   - Vom Menschen freigegeben, Regel "perfektes Spiel bis Welle 20" auf allen Karten weiter erfüllt.
 
 ### B-141: Rand-Deko und Vignette (Nett)
-- Status: vorschlag
+- Status: offen
 - Aufwand: S
 - Idee: Bei 1280x800 (Seitenverhältnis 1,6, Feld 1,42) bleiben links und rechts je ca. 70 px Rand. Schmale Wald- und Felsränder hineinzeichnen statt unscharfem Feldbild. Vignette und warmes Licht von oben links als ein Overlay, ohne `mix-blend-mode` (erzeugte im Test eine sichtbare Kachelkante).
 - Akzeptanzkriterien:
@@ -591,6 +586,7 @@ Fläche mit vier Stilen für dieselbe Szene (Wiese, Welle 8): https://claude.ai/
 
 ### B-142: Gemalter Boden-Cache (Wiese)
 - Status: offen
+- Erweitert (2026-11-26): Stärke und Körnung nach `docs/design/stil1-plan.md` G1.
 - Aufwand: M
 - Idee: Einmal pro Karte große Hell-Dunkel-Flecken (eigene Rausch-Funktion), Lichtverlauf von links oben und Vignette in ein Offscreen-Canvas zeichnen, pro Bild nur `drawImage` (Stil 1). Betrifft `src/render*.js`, `src/decor.js`. Braucht eine Änderung an `docs/STIL.md` (Verläufe im Cache erlauben).
 - Akzeptanzkriterien:
@@ -600,27 +596,14 @@ Fläche mit vier Stilen für dieselbe Szene (Wiese, Welle 8): https://claude.ai/
 
 ### B-143: Eingesunkener Weg mit Grasrand
 - Status: offen
+- Erweitert (2026-11-26): breiter Weg nach `docs/design/stil1-plan.md` G2.
 - Aufwand: S
 - Idee: Weg in vier Schichten zeichnen (dunkle Grasfuge, Kontur, Erde, heller Mittelstreifen leicht nach oben versetzt), dazu Kiesel-Strichel (Stil 1).
 - Akzeptanzkriterien:
   - Auf jeder Karte im Screenshot eine dunkle Randfuge von mindestens 3 px auf beiden Wegseiten.
   - Keine Logik-Änderung, `npm test` grün.
 
-### B-144: Dicke Konturen und Team-Sockel für Figuren
-- Status: offen
-- Aufwand: M
-- Idee: Alle Türme und Gegner bekommen eine 2,5 bis 3 px dunkle Kontur (Stil 1). Gegner einen dezenten roten Bodenring, Türme Stufen-Punkte oder Plakette (Stil 3). Überschneidet sich mit B-138 (größere Figuren); zusammen planen. Braucht eine Änderung an `docs/STIL.md` (Kontur).
-- Akzeptanzkriterien:
-  - Kontrast der Figur-Kontur zum Boden mindestens 3:1.
-  - Stufe 1/2/3 im Screenshot ohne Info-Panel unterscheidbar, auch auf Handy 390x844.
 
-### B-145: Rahmenwald und Landmarken statt Streudeko
-- Status: offen
-- Aufwand: S bis M
-- Idee: Bäume dicht am Kartenrand ballen, im Inneren nur wenige große Objekte (Klippen-Plateau, Burgtor mit Fahne und Rauch am Ausgang). Betrifft `src/decor.js`. Klippen dürfen das freie Bauraster nicht verändern, sonst ist es Spiel-Logik (Entscheidung des Menschen).
-- Akzeptanzkriterien:
-  - Mindestens 60 % der Bäume in der äußeren Kachelreihe, höchstens 6 Deko-Objekte im Inneren.
-  - Bestehende Decor-Tests bleiben grün.
 
 ### B-146: Nachtkarte "Mondnacht" (neue Welt, Idee)
 - Status: vorschlag
@@ -638,3 +621,57 @@ Fläche mit vier Stilen für dieselbe Szene (Wiese, Welle 8): https://claude.ai/
   - Im Screenshot sind HUD-Zahlen in Lilita One gesetzt (Desktop und Handy), Lesbarkeit mindestens wie vorher.
   - `OFL.txt` und `LIZENZ.md` liegen neben der Schrift und werden mit ausgeliefert (liegen unter `assets/`).
   - Unit-Test: `contentType('x.ttf')` ist `font/ttf`; e2e: `document.fonts.check('16px "Lilita One"')` wird nach dem Laden wahr; `npm test` grün.
+
+## Stil 1 komplett übernehmen (Plan des designers, 2026-11-26)
+Der Mensch hat entschieden, das Zielbild `docs/design/stil1-ziel.png` komplett zu übernehmen. Plan mit Zeilenverweisen in den Entwurf: `docs/design/stil1-plan.md`, Entwurfscode `docs/design/stil1-entwurf.dc.html`. B-138, B-144 und B-145 gehen in B-150, B-151 und B-153 auf. Abnahme jeweils per Screenshot neben dem Zielbild. Nur Zeichnen, außer wo vermerkt. Blöcke: A = B-142, B-143, B-148, B-149, B-147; B = B-150, B-151, B-152; C = B-129, B-130, B-133, B-134, B-135, B-139, B-141, B-153; D = B-131, B-132, B-136; E = B-154, B-137.
+
+### B-148: Wasser wie im Zielbild (Plan G3)
+- Status: offen
+- Aufwand: M
+- Idee: Fluss mit Sandband, dunkler Kontur, Verlauf und Strichel, See mit Sandellipse und Glanz (Plan G3). Ersetzt die Schichten in `src/render-water.js`, Wasserkacheln bleiben, Seerosen bleiben.
+- Akzeptanzkriterien:
+  - Screenshot Wiese neben dem Zielbild: Fluss und See in Aufbau und Farben gleich.
+  - Bei `prefers-reduced-motion` keine Bewegung, `npm test` grün.
+
+### B-149: Plateaus, Felsen, Brücke (Plan G4)
+- Status: offen
+- Aufwand: M
+- Idee: Klippen-Plateaus als Bodenmalerei, Felsen statt grauer Platte bei Hindernissen, neue Brücke (Plan G4). Klippenwände nur auf gesperrten oder Randkacheln. Bauraster unverändert.
+- Akzeptanzkriterien:
+  - Screenshot Wiese neben dem Zielbild, Hindernisse klar erkennbar, `canBuild` unverändert, `npm test` grün.
+
+### B-150: Türme neu (Plan G6)
+- Status: offen
+- Aufwand: L
+- Idee: Alle 5 Türme nach dem Entwurf (Path2D), dicke Kontur, Sprite-Cache je Typ×Stufe, drehende Teile getrennt, Stufenmarke 1/2/3 als eigener Durchgang (Plan G6, Maße siehe Plan).
+- Akzeptanzkriterien:
+  - Screenshot je Typ neben dem Zielbild; Stufen 1/2/3 auch bei 390x844 unterscheidbar.
+  - Frame-Zeit bei 30 Türmen höchstens +1 ms; Test: Sprite-Cache je Typ×Stufe einmal gebaut.
+
+### B-151: Gegner neu (Plan G7)
+- Status: offen
+- Aufwand: L
+- Idee: Goblin, Flitzer, Troll nach dem Entwurf, übrige Typen (Heiler, Schild, Magier, Skelett, Boss, Nekromantin) in derselben Sprache; Eingefroren-Zustand und Lebensbalken nach Entwurf (Plan G7). Trefferradien unverändert.
+- Akzeptanzkriterien:
+  - Screenshot neben dem Zielbild, alle Typen an der Silhouette unterscheidbar, Kontur Figur/Boden mindestens 3:1, `npm test` grün.
+
+### B-152: Effekte neu (Plan G8)
+- Status: offen
+- Aufwand: M
+- Idee: Stern-Explosion mit Rauch, Pfeil, Kugel, Mündungsfeuer, Scharfschuss, Frost, Blitz und Meteor nach dem Entwurf (Plan G8).
+- Akzeptanzkriterien:
+  - Screenshot mit laufender Welle neben dem Zielbild, keine Allokationen pro Frame neu, `prefers-reduced-motion` beachtet, `npm test` grün.
+
+### B-153: Bäume, Rahmenwald, Burg und Wellenfahne (Plan G5)
+- Status: offen
+- Aufwand: M
+- Idee: Tannen und Apfelbäume nach dem Entwurf, Rahmenwald im Rand neben dem Feld (nach B-129), Burg mit Rauch am Ausgang, Wellenfahne mit Zahl. Streudeko (Fässer, Pfähle, Stamm) entfällt, Blumen als Tupfen. Bäume nur außerhalb des Feldes (Mensch 2026-11-26: Randkacheln bleiben bebaubar).
+- Akzeptanzkriterien:
+  - Screenshot 1280x800 neben dem Zielbild, Kronen ragen höchstens 0,4 Kachel ins Feld, `npm test` grün.
+
+### B-154: Andere Karten im selben Stil (Plan G9)
+- Status: offen
+- Aufwand: M
+- Idee: Eis, Zangenangriff, Zwei Fronten und Vulkan mit derselben Technik und eigener Palette (Plan G9).
+- Akzeptanzkriterien:
+  - Screenshot aller 5 Karten, Kontur Figur/Boden mindestens 3:1, jede Karte erkennbar eigen.

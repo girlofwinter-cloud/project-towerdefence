@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>Gemalt und warm</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Lilita+One&amp;family=Nunito:wght@700;800&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.w1{position:absolute;transform:translate(-50%,-100%);transform-origin:50% 100%}
+.bd1{position:absolute;right:-2px;bottom:4px;width:22px;height:22px;border-radius:50%;border:2.5px solid #2b1a10;font:22px/17px 'Lilita One',sans-serif;color:#2b1a10;text-align:center;box-sizing:border-box;padding-top:1px;font-size:14px}
+.plq{position:absolute;background:linear-gradient(#a4672f,#7a4520);border:3px solid #2b1a10;border-radius:14px;box-shadow:inset 0 2px 0 rgba(255,220,160,.55),inset 0 -3px 0 rgba(0,0,0,.25),0 4px 0 rgba(30,15,5,.45);color:#fff3d2;font-family:'Lilita One',sans-serif}
+.num{font-size:28px;line-height:30px;color:#fff3d2;text-shadow:-2px 0 #2b1a10,2px 0 #2b1a10,0 -2px #2b1a10,0 2px #2b1a10,0 3px 0 #2b1a10}
+.rb{position:absolute;width:48px;height:48px;border-radius:50%;border:3px solid #2b1a10;background:radial-gradient(circle at 35% 30%,#d79a52,#8a5224);box-shadow:inset 0 2px 0 rgba(255,235,190,.6),0 3px 0 rgba(30,15,5,.5);padding:0;cursor:pointer}
+.ab{position:absolute;width:64px;height:64px;border-radius:50%;border:4px solid #2b1a10;box-shadow:inset 0 3px 0 rgba(255,255,255,.35),0 4px 0 rgba(30,15,5,.55);padding:0;cursor:pointer}
+.cap{position:absolute;left:50%;bottom:-12px;transform:translateX(-50%);padding:0 8px;border-radius:9px;background:#2b1a10;color:#fff3d2;font:15px/20px 'Lilita One',sans-serif;white-space:nowrap}
+@keyframes flag1{0%,100%{transform:skewY(0deg) scaleX(1)}50%{transform:skewY(-6deg) scaleX(.94)}}
+@keyframes wat1{to{stroke-dashoffset:-120}}
+@keyframes smk1{0%{transform:translateY(0) scale(.7);opacity:.0}20%{opacity:.7}100%{transform:translateY(-40px) scale(1.5);opacity:0}}
+.fl1{transform-origin:0 50%;animation:flag1 2.4s ease-in-out infinite}
+.wt1{animation:wat1 5s linear infinite}
+.sm1{transform-box:fill-box;transform-origin:50% 100%;animation:smk1 3.4s ease-out infinite}
+@media (prefers-reduced-motion:reduce){.fl1,.wt1,.sm1{animation:none}}
+</style>
+</helmet>
+<div style="width:1280px;height:800px;position:relative;overflow:hidden;background:#4f8a34;font-family:'Nunito',sans-serif">
+<svg width="1280" height="800" viewBox="0 0 1280 800" style="position:absolute;left:0;top:0" aria-hidden="true">
+<defs>
+<filter id="s1-wob" x="-5%" y="-5%" width="110%" height="110%"><feTurbulence type="fractalNoise" baseFrequency="0.022" numOctaves="3" seed="4" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="14" xChannelSelector="R" yChannelSelector="G"/></filter>
+<filter id="s1-mot"><feTurbulence type="fractalNoise" baseFrequency="0.011 0.016" numOctaves="4" seed="9"/><feColorMatrix values="0 0 0 0 0.10  0 0 0 0 0.27  0 0 0 0 0.08  1.9 0 0 0 -0.78"/></filter>
+<filter id="s1-lit"><feTurbulence type="fractalNoise" baseFrequency="0.014 0.02" numOctaves="4" seed="21"/><feColorMatrix values="0 0 0 0 1  0 0 0 0 0.93  0 0 0 0 0.45  1.8 0 0 0 -0.8"/></filter>
+<filter id="s1-grain"><feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="2" seed="2"/><feColorMatrix values="0 0 0 0 0.2  0 0 0 0 0.12  0 0 0 0 0.05  0 0 0 0.6 -0.2"/></filter>
+<linearGradient id="s1-gr" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#9bd25a"/><stop offset=".55" stop-color="#6aa83f"/><stop offset="1" stop-color="#3f7a35"/></linearGradient>
+<radialGradient id="s1-sun" cx="0.1" cy="0.05" r="0.85"><stop offset="0" stop-color="#fff0b0" stop-opacity=".55"/><stop offset=".5" stop-color="#ffd980" stop-opacity=".12"/><stop offset="1" stop-color="#ffd980" stop-opacity="0"/></radialGradient>
+<radialGradient id="s1-vig" cx="0.5" cy="0.5" r="0.75"><stop offset=".55" stop-color="#10240f" stop-opacity="0"/><stop offset="1" stop-color="#0c1a1c" stop-opacity=".72"/></radialGradient>
+<linearGradient id="s1-wat" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6fcbe0"/><stop offset="1" stop-color="#2e86a8"/></linearGradient>
+<linearGradient id="s1-cliff" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#b98c5c"/><stop offset="1" stop-color="#7a5a45"/></linearGradient>
+<linearGradient id="s1-stone" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#e3d2b0"/><stop offset=".6" stop-color="#b9a283"/><stop offset="1" stop-color="#8a7560"/></linearGradient>
+<linearGradient id="s1-wood" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#c88a4c"/><stop offset="1" stop-color="#8a5326"/></linearGradient>
+<linearGradient id="s1-ice" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#e8fbff"/><stop offset=".5" stop-color="#8fd8f2"/><stop offset="1" stop-color="#3b8fcb"/></linearGradient>
+<radialGradient id="s1-orb" cx="0.35" cy="0.3" r="0.8"><stop offset="0" stop-color="#ffffff"/><stop offset=".4" stop-color="#bff6ff"/><stop offset="1" stop-color="#4aa6e8"/></radialGradient>
+<radialGradient id="s1-boom" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="#fffbd0"/><stop offset=".45" stop-color="#ffc93c"/><stop offset="1" stop-color="#e5481f"/></radialGradient>
+<radialGradient id="s1-glow" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="#fff6a8" stop-opacity=".9"/><stop offset="1" stop-color="#fff6a8" stop-opacity="0"/></radialGradient>
+<radialGradient id="s1-iceglow" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="#d8f7ff" stop-opacity=".95"/><stop offset="1" stop-color="#7fd0ff" stop-opacity="0"/></radialGradient>
+</defs>
+<rect width="1280" height="800" fill="url(#s1-gr)"/>
+<rect width="1280" height="800" filter="url(#s1-mot)" opacity=".75"/>
+<rect width="1280" height="800" filter="url(#s1-lit)" opacity=".55"/>
+<!-- Hochplateau oben (Klippe) -->
+<g filter="url(#s1-wob)">
+<path d="M395 -20 H730 V52 Q700 70 640 62 Q560 74 500 60 Q430 70 395 52 Z" fill="#8fc84f" stroke="#2b1a10" stroke-width="4" stroke-linejoin="round"/>
+<path d="M395 52 Q430 70 500 60 Q560 74 640 62 Q700 70 730 52 V92 Q690 108 640 98 Q560 110 500 98 Q430 108 395 92 Z" fill="url(#s1-cliff)" stroke="#2b1a10" stroke-width="4" stroke-linejoin="round"/>
+<path d="M430 66 V92 M480 64 V98 M560 70 V104 M620 66 V96 M690 62 V94" stroke="#5e4331" stroke-width="3" stroke-linecap="round" opacity=".7"/>
+</g>
+<!-- Hochplateau Mitte unten -->
+<g filter="url(#s1-wob)">
+<path d="M575 628 Q640 610 740 622 Q770 640 760 668 Q720 692 650 688 Q590 692 568 664 Z" fill="#92cc52" stroke="#2b1a10" stroke-width="4" stroke-linejoin="round"/>
+<path d="M568 664 Q590 692 650 688 Q720 692 760 668 V706 Q720 730 650 724 Q590 730 568 700 Z" fill="url(#s1-cliff)" stroke="#2b1a10" stroke-width="4" stroke-linejoin="round"/>
+<path d="M600 692 V716 M650 690 V722 M705 688 V716" stroke="#5e4331" stroke-width="3" stroke-linecap="round" opacity=".7"/>
+</g>
+<!-- Fluss -->
+<path d="M150 -10 C160 70 130 150 130 200 S60 290 -10 300" fill="none" stroke="#e8d18a" stroke-width="100" stroke-linecap="round" filter="url(#s1-wob)"/>
+<path d="M150 -10 C160 70 130 150 130 200 S60 290 -10 300" fill="none" stroke="#2b1a10" stroke-width="84" stroke-linecap="round" filter="url(#s1-wob)"/>
+<path d="M150 -10 C160 70 130 150 130 200 S60 290 -10 300" fill="none" stroke="url(#s1-wat)" stroke-width="74" stroke-linecap="round" filter="url(#s1-wob)"/>
+<path class="wt1" d="M150 -10 C160 70 130 150 130 200 S60 290 -10 300" fill="none" stroke="#e8fbff" stroke-width="3" stroke-dasharray="26 40" stroke-linecap="round" opacity=".7" transform="translate(-14,0)"/>
+<path class="wt1" d="M150 -10 C160 70 130 150 130 200 S60 290 -10 300" fill="none" stroke="#e8fbff" stroke-width="3" stroke-dasharray="14 60" stroke-linecap="round" opacity=".6" transform="translate(16,0)"/>
+<!-- See -->
+<g filter="url(#s1-wob)">
+<ellipse cx="196" cy="695" rx="150" ry="86" fill="#e8d18a" stroke="#2b1a10" stroke-width="4"/>
+<ellipse cx="196" cy="695" rx="128" ry="68" fill="url(#s1-wat)" stroke="#2b1a10" stroke-width="3"/>
+</g>
+<ellipse class="wt1" cx="190" cy="690" rx="70" ry="30" fill="none" stroke="#e8fbff" stroke-width="3" stroke-dasharray="30 50" opacity=".6"/>
+<ellipse cx="150" cy="670" rx="40" ry="10" fill="#fff" opacity=".25"/>
+<!-- Weg: eingesunken -->
+<g filter="url(#s1-wob)">
+<path d="{{ g.pathD }}" fill="none" stroke="#3a6a2c" stroke-width="86" stroke-linejoin="round"/>
+<path d="{{ g.pathD }}" fill="none" stroke="#2b1a10" stroke-width="72" stroke-linejoin="round"/>
+<path d="{{ g.pathD }}" fill="none" stroke="#8f5f34" stroke-width="64" stroke-linejoin="round"/>
+<path d="{{ g.pathD }}" fill="none" stroke="#d5a566" stroke-width="54" stroke-linejoin="round" transform="translate(0,-3)"/>
+<path d="{{ g.pathD }}" fill="none" stroke="#e8c185" stroke-width="30" stroke-linejoin="round" transform="translate(-2,-4)" opacity=".8"/>
+</g>
+<path d="{{ g.pathD }}" fill="none" stroke="#fff2c8" stroke-width="3" stroke-dasharray="2 22" stroke-linecap="round" opacity=".7" transform="translate(0,-8)"/>
+<path d="{{ g.pathD }}" fill="none" stroke="#8f5f34" stroke-width="3" stroke-dasharray="2 30" stroke-linecap="round" opacity=".7" transform="translate(0,10)"/>
+<!-- Brücke -->
+<g transform="translate(136,142)">
+<rect x="-52" y="-34" width="104" height="68" rx="6" fill="url(#s1-wood)" stroke="#2b1a10" stroke-width="4"/>
+<path d="M-52 -22 H52 M-52 -10 H52 M-52 2 H52 M-52 14 H52 M-52 26 H52" stroke="#3b2210" stroke-width="2" opacity=".7"/>
+<rect x="-52" y="-40" width="104" height="9" rx="4" fill="#6d3f1b" stroke="#2b1a10" stroke-width="3"/>
+<rect x="-52" y="31" width="104" height="9" rx="4" fill="#8a5326" stroke="#2b1a10" stroke-width="3"/>
+</g>
+<!-- Licht und Vignette -->
+<rect width="1280" height="800" fill="url(#s1-sun)"/>
+<rect width="1280" height="800" fill="url(#s1-vig)"/>
+<rect width="1280" height="800" filter="url(#s1-grain)" opacity=".18"/>
+</svg>
+<div style="position:absolute;left:0;top:0;width:1280px;height:800px">
+<sc-for list="{{ g.flowers }}" as="f" hint-placeholder-count="3"><div style="position:absolute;left:{{ f.x }}px;top:{{ f.y }}px;{{ f.css }}"></div></sc-for>
+<sc-for list="{{ g.rocks }}" as="r" hint-placeholder-count="3"><div class="w1" style="left:{{ r.x }}px;top:{{ r.y }}px;z-index:{{ r.z }};transform:translate(-50%,-100%) scale({{ r.s }})"><svg width="36" height="26" viewBox="0 0 36 26"><ellipse cx="20" cy="23" rx="15" ry="3.5" fill="rgba(30,20,50,.3)"/><path d="M3 22 L6 10 L16 3 L28 6 L33 17 L30 23 Z" fill="#a9a08d" stroke="#2b1a10" stroke-width="2.5" stroke-linejoin="round"/><path d="M7 11 L16 5 L18 12 L8 20 Z" fill="#d6cdb8"/></svg></div></sc-for>
+<sc-for list="{{ g.pines }}" as="t" hint-placeholder-count="3"><div class="w1" style="left:{{ t.x }}px;top:{{ t.y }}px;z-index:{{ t.z }};transform:translate(-50%,-100%) scale({{ t.s }})"><svg width="60" height="96" viewBox="0 0 60 96"><ellipse cx="36" cy="92" rx="22" ry="5" fill="rgba(20,30,40,.35)"/><rect x="26" y="74" width="9" height="18" fill="#6b4524" stroke="#2b1a10" stroke-width="2.5"/><path d="M30 32 L52 76 H8 Z" fill="#2f7a3d" stroke="#2b1a10" stroke-width="3" stroke-linejoin="round"/><path d="M30 14 L48 52 H12 Z" fill="#3d9447" stroke="#2b1a10" stroke-width="3" stroke-linejoin="round"/><path d="M30 2 L43 32 H17 Z" fill="#59b254" stroke="#2b1a10" stroke-width="3" stroke-linejoin="round"/><path d="M30 6 L22 30 M30 20 L19 50" stroke="#a6dc6a" stroke-width="3" stroke-linecap="round" opacity=".8"/></svg></div></sc-for>
+<sc-for list="{{ g.rounds }}" as="t" hint-placeholder-count="3"><div class="w1" style="left:{{ t.x }}px;top:{{ t.y }}px;z-index:{{ t.z }};transform:translate(-50%,-100%) scale({{ t.s }})"><svg width="72" height="90" viewBox="0 0 72 90"><ellipse cx="42" cy="86" rx="26" ry="5.5" fill="rgba(20,30,40,.35)"/><path d="M30 86 L32 56 H42 L44 86 Z" fill="#7a4d27" stroke="#2b1a10" stroke-width="3" stroke-linejoin="round"/><circle cx="22" cy="42" r="18" fill="#3a8c3c" stroke="#2b1a10" stroke-width="3"/><circle cx="50" cy="40" r="19" fill="#3a8c3c" stroke="#2b1a10" stroke-width="3"/><circle cx="36" cy="24" r="22" fill="#52a849" stroke="#2b1a10" stroke-width="3"/><path d="M22 22 Q30 10 44 12" stroke="#b6e276" stroke-width="5" fill="none" stroke-linecap="round" opacity=".9"/><circle cx="28" cy="38" r="3" fill="#d6483a"/><circle cx="52" cy="46" r="3" fill="#d6483a"/></svg></div></sc-for>
+<sc-for list="{{ g.arrow }}" as="t" hint-placeholder-count="2"><div class="w1" style="left:{{ t.x }}px;top:{{ t.y }}px;z-index:{{ t.z }};transform:translate(-50%,-100%) scale(1.15)"><svg width="68" height="90" viewBox="0 0 68 90"><ellipse cx="38" cy="84" rx="28" ry="7" fill="rgba(30,20,50,.35)"/><path d="M12 84 L17 46 H51 L56 84 Z" fill="url(#s1-stone)" stroke="#2b1a10" stroke-width="3" stroke-linejoin="round"/><path d="M16 56 H52 M14 68 H54" stroke="#6b5a48" stroke-width="2"/><path d="M26 84 V68 a8 9 0 0 1 16 0 V84" fill="#4b3526" stroke="#2b1a10" stroke-width="2.5"/><rect x="10" y="38" width="48" height="12" rx="3" fill="url(#s1-wood)" stroke="#2b1a10" stroke-width="3"/><path d="M14 38 V26 H22 V30 H29 V26 H39 V30 H46 V26 H54 V38" fill="#a9703d" stroke="#2b1a10" stroke-width="3" stroke-linejoin="round"/><circle cx="34" cy="24" r="6" fill="#f2c9a0" stroke="#2b1a10" stroke-width="2.5"/><path d="M27 22 L34 8 L41 22 Z" fill="#3c9c52" stroke="#2b1a10" stroke-width="2.5" stroke-linejoin="round"/><path d="M8 22 L34 -2 L60 22 Z" fill="none"/><path d="M45 20 V4 L58 9 L45 14" fill="#d6483a" stroke="#2b1a10" stroke-width="2.5" stroke-linejoin="round"/><path d="M20 50 L23 82" stroke="#fff3d2" stroke-width="3" opacity=".5" stroke-linecap="round"/></svg><div class="bd1" style="background:{{ t.badge }}">{{ t.l }}</div></div></sc-for>
+<sc-for list="{{ g.cannon }}" as="t" hint-placeholder-count="2"><div class="w1" style="left:{{ t.x }}px;top:{{ t.y }}px;z-index:{{ t.z }};transform:translate(-50%,-100%) scale(1.2)"><svg width="72" height="84" viewBox="0 0 72 84"><ellipse cx="38" cy="78" rx="30" ry="7" fill="rgba(30,20,50,.35)"/><path d="M8 78 Q6 54 22 46 H50 Q66 54 64 78 Z" fill="url(#s1-stone)" stroke="#2b1a10" stroke-width="3" stroke-linejoin="round"/><path d="M12 62 H60" stroke="#6b5a48" stroke-width="2"/><g transform="rotate(32 36 40)"><rect x="27" y="6" width="18" height="46" rx="7" fill="#5d4a66" stroke="#2b1a10" stroke-width="3"/><rect x="24" y="2" width="24" height="11" rx="4" fill="#3a2d44" stroke="#2b1a10" stroke-width="3"/><path d="M32 14 V48" stroke="#a48fb8" stroke-width="3" stroke-linecap="round" opacity=".8"/><rect x="26" y="30" width="20" height="5" fill="#d79a2b" stroke="#2b1a10" stroke-width="2"/></g><circle cx="36" cy="50" r="13" fill="url(#s1-wood)" stroke="#2b1a10" stroke-width="3"/><circle cx="36" cy="50" r="4" fill="#3a2d44" stroke="#2b1a10" stroke-width="2"/><circle cx="14" cy="50" r="7" fill="#f2c9a0" stroke="#2b1a10" stroke-width="2.5"/><path d="M7 48 Q14 38 21 48 Z" fill="#c4452f" stroke="#2b1a10" stroke-width="2.5" stroke-linejoin="round"/></svg><div class="bd1" style="background:{{ t.badge }}">{{ t.l }}</div></div></sc-for>
+<sc-for list="{{ g.frost }}" as="t" hint-placeholder-count="1"><div class="w1" style="left:{{ t.x }}px;top:{{ t.y }}px;z-index:{{ t.z }};transform:translate(-50%,-100%) scale(1.15)"><svg width="72" height="92" viewBox="0 0 72 92"><circle cx="36" cy="40" r="34" fill="url(#s1-iceglow)" opacity=".7"/><ellipse cx="38" cy="86" rx="28" ry="6.5" fill="rgba(30,20,50,.35)"/><path d="M10 86 L16 62 H56 L62 86 Z" fill="url(#s1-stone)" stroke="#2b1a10" stroke-width="3" stroke-linejoin="round"/><path d="M12 66 Q22 56 36 62 Q50 56 60 66 L58 72 Q36 66 14 72 Z" fill="#f4fcff" stroke="#2b1a10" stroke-width="2.5" stroke-linejoin="round"/><path d="M18 62 L10 30 L24 44 Z" fill="url(#s1-ice)" stroke="#2b1a10" stroke-width="3" stroke-linejoin="round"/><path d="M54 62 L62 34 L48 46 Z" fill="url(#s1-ice)" stroke="#2b1a10" stroke-width="3" stroke-linejoin="round"/><path d="M36 64 L22 36 L36 2 L50 36 Z" fill="url(#s1-ice)" stroke="#2b1a10" stroke-width="3" stroke-linejoin="round"/><path d="M36 6 L30 34 L36 58" stroke="#fff" stroke-width="3" fill="none" stroke-linecap="round" opacity=".85"/></svg><div class="bd1" style="background:{{ t.badge }}">{{ t.l }}</div></div></sc-for>
+<sc-for list="{{ g.sniper }}" as="t" hint-placeholder-count="1"><div class="w1" style="left:{{ t.x }}px;top:{{ t.y }}px;z-index:{{ t.z }};transform:translate(-50%,-100%) scale(1.2)"><svg width="76" height="104" viewBox="0 0 76 104"><ellipse cx="36" cy="98" rx="24" ry="6" fill="rgba(30,20,50,.35)"/><path d="M16 98 L21 42 H51 L56 98 Z" fill="url(#s1-stone)" stroke="#2b1a10" stroke-width="3" stroke-linejoin="round"/><path d="M19 60 H53 M17 78 H55" stroke="#6b5a48" stroke-width="2"/><rect x="29" y="68" width="14" height="10" rx="2" fill="#3a2a1e" stroke="#2b1a10" stroke-width="2"/><rect x="12" y="34" width="48" height="12" rx="3" fill="url(#s1-wood)" stroke="#2b1a10" stroke-width="3"/><path d="M18 34 V20 H54 V34" fill="#a9703d" stroke="#2b1a10" stroke-width="3" stroke-linejoin="round"/><circle cx="30" cy="22" r="6" fill="#f2c9a0" stroke="#2b1a10" stroke-width="2.5"/><path d="M22 20 Q30 8 38 20 Z" fill="#2f7a3d" stroke="#2b1a10" stroke-width="2.5" stroke-linejoin="round"/><rect x="34" y="22" width="40" height="6" rx="3" fill="#3a2d44" stroke="#2b1a10" stroke-width="2.5"/><circle cx="48" cy="19" r="4" fill="#9fd8f5" stroke="#2b1a10" stroke-width="2.5"/><path d="M12 20 L36 -2 L60 20" fill="none"/><path d="M22 46 L25 94" stroke="#fff3d2" stroke-width="3" opacity=".5" stroke-linecap="round"/></svg><div class="bd1" style="background:{{ t.badge }}">{{ t.l }}</div></div></sc-for>
+<sc-for list="{{ g.tesla }}" as="t" hint-placeholder-count="1"><div class="w1" style="left:{{ t.x }}px;top:{{ t.y }}px;z-index:{{ t.z }};transform:translate(-50%,-100%) scale(1.15)"><svg width="72" height="96" viewBox="0 0 72 96"><circle cx="36" cy="16" r="26" fill="url(#s1-glow)"/><ellipse cx="38" cy="90" rx="28" ry="6.5" fill="rgba(30,20,50,.35)"/><path d="M10 90 L16 66 H56 L62 90 Z" fill="url(#s1-stone)" stroke="#2b1a10" stroke-width="3" stroke-linejoin="round"/><rect x="24" y="30" width="24" height="40" rx="6" fill="#c9794a" stroke="#2b1a10" stroke-width="3"/><path d="M24 40 H48 M24 50 H48 M24 60 H48" stroke="#7a3f1e" stroke-width="3"/><path d="M28 34 V66" stroke="#f3b78a" stroke-width="3" stroke-linecap="round"/><rect x="30" y="24" width="12" height="9" fill="#5d4a66" stroke="#2b1a10" stroke-width="2.5"/><circle cx="36" cy="16" r="11" fill="url(#s1-orb)" stroke="#2b1a10" stroke-width="3"/><path d="M10 14 L20 16 L14 22 M62 12 L52 16 L58 22" stroke="#fff6a8" stroke-width="3" fill="none" stroke-linejoin="round" stroke-linecap="round"/></svg><div class="bd1" style="background:{{ t.badge }}">{{ t.l }}</div></div></sc-for>
+<sc-for list="{{ g.goblins }}" as="e" hint-placeholder-count="3"><div class="w1" style="left:{{ e.x }}px;top:{{ e.y }}px;z-index:{{ e.z }}"><svg width="46" height="50" viewBox="0 0 46 50"><ellipse cx="24" cy="46" rx="15" ry="4" fill="rgba(20,30,40,.4)"/><path d="M14 40 L12 46 H20 L20 38 M30 38 L30 46 H38 L34 40" fill="#4f9a2e" stroke="#2b1a10" stroke-width="2.5" stroke-linejoin="round"/><path d="M12 24 Q12 40 24 40 Q36 40 36 24 Z" fill="#6cc03a" stroke="#2b1a10" stroke-width="3" stroke-linejoin="round"/><path d="M16 34 H32 L30 40 H18 Z" fill="#8a5326" stroke="#2b1a10" stroke-width="2"/><path d="M6 14 L14 18 L12 24 Z M42 14 L34 18 L36 24 Z" fill="#6cc03a" stroke="#2b1a10" stroke-width="2.5" stroke-linejoin="round"/><circle cx="24" cy="18" r="13" fill="#7fd048" stroke="#2b1a10" stroke-width="3"/><circle cx="19" cy="16" r="3.6" fill="#fff" stroke="#2b1a10" stroke-width="1.5"/><circle cx="29" cy="16" r="3.6" fill="#fff" stroke="#2b1a10" stroke-width="1.5"/><circle cx="20" cy="17" r="1.6" fill="#2b1a10"/><circle cx="30" cy="17" r="1.6" fill="#2b1a10"/><path d="M18 23 Q24 28 30 23" stroke="#2b1a10" stroke-width="2.2" fill="#a53a2a" stroke-linecap="round"/><path d="M38 24 L46 10" stroke="#8a5326" stroke-width="5" stroke-linecap="round"/></svg></div></sc-for>
+<sc-for list="{{ g.iced }}" as="e" hint-placeholder-count="1"><div class="w1" style="left:{{ e.x }}px;top:{{ e.y }}px;z-index:{{ e.z }}"><svg width="54" height="56" viewBox="0 0 54 56"><ellipse cx="27" cy="50" rx="17" ry="4" fill="rgba(20,30,40,.4)"/><path d="M14 28 Q14 44 27 44 Q40 44 40 28 Z" fill="#8fd0e8" stroke="#2b1a10" stroke-width="3"/><path d="M8 18 L16 22 L14 28 Z M46 18 L38 22 L40 28 Z" fill="#9fdcf0" stroke="#2b1a10" stroke-width="2.5" stroke-linejoin="round"/><circle cx="27" cy="22" r="13" fill="#a8e2f5" stroke="#2b1a10" stroke-width="3"/><path d="M20 20 H25 M30 20 H35" stroke="#2b1a10" stroke-width="2.5" stroke-linecap="round"/><path d="M5 40 L12 8 L21 36 L28 2 L35 36 L44 10 L50 40 L44 52 H10 Z" fill="#dff7ff" fill-opacity=".55" stroke="#2b1a10" stroke-width="2.5" stroke-linejoin="round"/><path d="M14 12 L18 36" stroke="#fff" stroke-width="3" stroke-linecap="round"/></svg></div></sc-for>
+<sc-for list="{{ g.flitzers }}" as="e" hint-placeholder-count="2"><div class="w1" style="left:{{ e.x }}px;top:{{ e.y }}px;z-index:{{ e.z }}"><svg width="56" height="46" viewBox="0 0 56 46"><ellipse cx="30" cy="42" rx="17" ry="3.5" fill="rgba(20,30,40,.4)"/><path d="M2 14 H14 M0 22 H12 M4 30 H14" stroke="#fff3d2" stroke-width="3" stroke-linecap="round" opacity=".85"/><path d="M18 30 L12 40 M30 32 L36 42" stroke="#2b1a10" stroke-width="5" stroke-linecap="round"/><path d="M18 30 L12 40 M30 32 L36 42" stroke="#e8b928" stroke-width="2" stroke-linecap="round"/><path d="M16 18 Q18 34 32 34 Q44 32 42 20 Q34 12 16 18 Z" fill="#f4cf3a" stroke="#2b1a10" stroke-width="3" stroke-linejoin="round"/><path d="M14 12 L22 6 L26 14 Z" fill="#f4cf3a" stroke="#2b1a10" stroke-width="2.5" stroke-linejoin="round"/><circle cx="38" cy="14" r="10" fill="#ffe266" stroke="#2b1a10" stroke-width="3"/><path d="M32 6 L26 0 L36 4 Z" fill="#ffe266" stroke="#2b1a10" stroke-width="2.5" stroke-linejoin="round"/><circle cx="41" cy="13" r="3.4" fill="#fff" stroke="#2b1a10" stroke-width="1.5"/><circle cx="42" cy="13" r="1.5" fill="#2b1a10"/><path d="M46 17 L52 18" stroke="#2b1a10" stroke-width="3" stroke-linecap="round"/></svg></div></sc-for>
+<sc-for list="{{ g.troll }}" as="e" hint-placeholder-count="1"><div class="w1" style="left:{{ e.x }}px;top:{{ e.y }}px;z-index:{{ e.z }}"><svg width="96" height="104" viewBox="0 0 96 104"><ellipse cx="48" cy="98" rx="34" ry="7" fill="rgba(20,30,40,.45)"/><path d="M26 76 L22 98 H42 L42 78 M56 78 L56 98 H76 L70 76" fill="#8a4a2e" stroke="#2b1a10" stroke-width="3.5" stroke-linejoin="round"/><path d="M14 44 Q10 84 48 86 Q86 84 82 44 Q70 28 48 28 Q26 28 14 44 Z" fill="#b5663e" stroke="#2b1a10" stroke-width="4" stroke-linejoin="round"/><path d="M18 50 Q30 38 48 42 Q66 38 78 50 L74 62 Q48 54 22 62 Z" fill="#7d8896" stroke="#2b1a10" stroke-width="3.5" stroke-linejoin="round"/><path d="M26 52 L30 60 M48 46 V56 M70 52 L66 60" stroke="#c7d0da" stroke-width="3" stroke-linecap="round"/><circle cx="14" cy="60" r="12" fill="#b5663e" stroke="#2b1a10" stroke-width="3.5"/><circle cx="82" cy="60" r="12" fill="#b5663e" stroke="#2b1a10" stroke-width="3.5"/><path d="M84 54 L92 20 L80 24 L76 54" fill="#7a5230" stroke="#2b1a10" stroke-width="3" stroke-linejoin="round"/><path d="M34 26 L28 8 L40 20 M62 26 L68 8 L56 20" fill="#f2e3b8" stroke="#2b1a10" stroke-width="3" stroke-linejoin="round"/><circle cx="48" cy="28" r="17" fill="#c6744a" stroke="#2b1a10" stroke-width="4"/><path d="M36 22 L44 26 M60 22 L52 26" stroke="#2b1a10" stroke-width="3.5" stroke-linecap="round"/><circle cx="41" cy="28" r="3" fill="#ffe266" stroke="#2b1a10" stroke-width="1.5"/><circle cx="55" cy="28" r="3" fill="#ffe266" stroke="#2b1a10" stroke-width="1.5"/><path d="M38 36 Q48 42 58 36 L56 41 H40 Z" fill="#7a2f22" stroke="#2b1a10" stroke-width="2.5" stroke-linejoin="round"/><path d="M41 37 L43 31 M55 37 L53 31" stroke="#f6edd0" stroke-width="3.5" stroke-linecap="round"/><rect x="14" y="-12" width="68" height="12" rx="6" fill="#2b1a10"/><rect x="17" y="-9" width="{{ e.hpw }}" height="6" rx="3" fill="#74d048"/></svg></div></sc-for>
+</div>
+<!-- Landmarke: Burgtor rechts und Wegtor links mit Wellenfahne -->
+<div style="position:absolute;left:1176px;top:{{ fx.gateTop }}px;z-index:700"><svg width="104" height="130" viewBox="0 0 104 130"><ellipse cx="54" cy="122" rx="44" ry="8" fill="rgba(20,30,40,.4)"/><path d="M10 122 V50 H30 V36 H40 V50 H58 V122 Z" fill="url(#s1-stone)" stroke="#2b1a10" stroke-width="4" stroke-linejoin="round"/><path d="M22 122 V90 a14 16 0 0 1 28 0 V122" fill="#33211a" stroke="#2b1a10" stroke-width="3"/><path d="M12 62 H56 M12 78 H20 M40 78 H56" stroke="#6b5a48" stroke-width="2"/><path d="M56 122 V30 H72 V20 H80 V30 H96 V122 Z" fill="url(#s1-stone)" stroke="#2b1a10" stroke-width="4" stroke-linejoin="round"/><path d="M70 30 L84 -4 L98 30 Z" fill="#c4452f" stroke="#2b1a10" stroke-width="3.5" stroke-linejoin="round"/><rect x="76" y="48" width="8" height="18" rx="4" fill="#33211a"/><path d="M84 -4 V-18" stroke="#2b1a10" stroke-width="3"/><path class="fl1" d="M84 -18 L104 -12 L84 -6 Z" fill="#3a7bd5" stroke="#2b1a10" stroke-width="2.5" stroke-linejoin="round"/></svg></div>
+<div style="position:absolute;left:18px;top:{{ fx.flagTop }}px;z-index:700"><svg width="110" height="120" viewBox="0 0 110 120"><ellipse cx="16" cy="112" rx="18" ry="5" fill="rgba(20,30,40,.4)"/><path d="M16 112 V6" stroke="#2b1a10" stroke-width="9" stroke-linecap="round"/><path d="M16 112 V6" stroke="#a9703d" stroke-width="4" stroke-linecap="round"/><circle cx="16" cy="6" r="6" fill="#f2c14e" stroke="#2b1a10" stroke-width="3"/><g class="fl1"><path d="M18 14 H92 L80 34 L92 54 H18 Z" fill="#c4452f" stroke="#2b1a10" stroke-width="4" stroke-linejoin="round"/><path d="M22 18 H86" stroke="#ea7a5a" stroke-width="3" stroke-linecap="round"/><text x="50" y="45" text-anchor="middle" font-family="Lilita One, sans-serif" font-size="30" fill="#fff3d2" stroke="#2b1a10" stroke-width="5" paint-order="stroke" stroke-linejoin="round">9</text></g></svg></div>
+<!-- Rauch aus der Burg und Wellen-Effekte -->
+<svg width="1280" height="800" viewBox="0 0 1280 800" style="position:absolute;left:0;top:0;z-index:900;pointer-events:none" aria-hidden="true">
+<circle class="sm1" cx="1216" cy="574" r="9" fill="#d9d3c8" stroke="#2b1a10" stroke-width="2"/>
+<circle class="sm1" cx="1220" cy="574" r="7" fill="#e6e0d4" style="animation-delay:1.6s"/>
+<!-- Pfeil -->
+<g transform="translate({{ fx.arrowX }},{{ fx.arrowY }}) rotate({{ fx.arrowA }})"><path d="M-14 0 H12" stroke="#2b1a10" stroke-width="5" stroke-linecap="round"/><path d="M-14 0 H12" stroke="#e8c185" stroke-width="2.4" stroke-linecap="round"/><path d="M14 0 L6 -5 V5 Z" fill="#d9dde2" stroke="#2b1a10" stroke-width="2"/><path d="M-14 0 L-19 -5 M-14 0 L-19 5" stroke="#d6483a" stroke-width="3" stroke-linecap="round"/></g>
+<!-- Scharfschuss -->
+<line x1="{{ fx.sx1 }}" y1="{{ fx.sy1 }}" x2="{{ fx.sx2 }}" y2="{{ fx.sy2 }}" stroke="#fff6a8" stroke-width="2" opacity=".85" stroke-dasharray="14 5"/>
+<polygon points="{{ fx.sMuzzle }}" fill="#fff6a8" stroke="#2b1a10" stroke-width="2"/>
+<!-- Kanonenschuss, Explosion -->
+<line x1="{{ fx.cx1 }}" y1="{{ fx.cy1 }}" x2="{{ fx.cx2 }}" y2="{{ fx.cy2 }}" stroke="#2b1a10" stroke-width="3" stroke-dasharray="2 10" stroke-linecap="round" opacity=".6"/>
+<polygon points="{{ fx.cMuzzle }}" fill="#ffe266" stroke="#2b1a10" stroke-width="2.5" stroke-linejoin="round"/>
+<circle cx="{{ fx.ballX }}" cy="{{ fx.ballY }}" r="6" fill="#33283a" stroke="#2b1a10" stroke-width="2"/>
+<circle cx="{{ fx.boomX }}" cy="{{ fx.boomY }}" r="58" fill="url(#s1-glow)"/>
+<circle cx="1000" cy="296" r="15" fill="#6b625b" stroke="#2b1a10" stroke-width="3" opacity=".85"/><circle cx="1030" cy="304" r="12" fill="#80776e" stroke="#2b1a10" stroke-width="3" opacity=".85"/><circle cx="982" cy="316" r="10" fill="#80776e" stroke="#2b1a10" stroke-width="3" opacity=".85"/>
+<polygon points="{{ fx.boom1 }}" fill="#e5481f" stroke="#2b1a10" stroke-width="4" stroke-linejoin="round"/>
+<polygon points="{{ fx.boom2 }}" fill="#ffc93c" stroke="#2b1a10" stroke-width="3" stroke-linejoin="round"/>
+<polygon points="{{ fx.boom3 }}" fill="#fffbd0"/>
+<!-- Frost -->
+<line x1="{{ fx.fx1 }}" y1="{{ fx.fy1 }}" x2="{{ fx.fx2 }}" y2="{{ fx.fy2 }}" stroke="#8fd8f2" stroke-width="7" stroke-linecap="round" opacity=".5"/>
+<line x1="{{ fx.fx1 }}" y1="{{ fx.fy1 }}" x2="{{ fx.fx2 }}" y2="{{ fx.fy2 }}" stroke="#f4fcff" stroke-width="3" stroke-dasharray="10 6" stroke-linecap="round"/>
+<circle cx="{{ fx.iceX }}" cy="{{ fx.iceY }}" r="40" fill="url(#s1-iceglow)"/>
+<polygon points="{{ fx.ice1 }}" fill="#bfeeff" fill-opacity=".8" stroke="#2b1a10" stroke-width="2.5" stroke-linejoin="round"/>
+<polygon points="{{ fx.ice2 }}" fill="#fff"/>
+<!-- Kettenblitz -->
+<polyline points="{{ fx.bolt1 }} {{ fx.bolt2 }}" fill="none" stroke="#7fd0ff" stroke-width="12" stroke-linejoin="round" stroke-linecap="round" opacity=".35"/>
+<polyline points="{{ fx.bolt1 }} {{ fx.bolt2 }}" fill="none" stroke="#2b1a10" stroke-width="6" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="{{ fx.bolt1 }} {{ fx.bolt2 }}" fill="none" stroke="#fffbd0" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+</svg>
+<!-- Licht-Tweak -->
+<div style="position:absolute;left:0;top:0;width:1280px;height:800px;z-index:950;pointer-events:none;background:{{ glow }}"></div>
+<!-- HUD -->
+<div style="position:absolute;left:0;top:0;width:1280px;height:800px;z-index:1000">
+<div class="plq" style="left:92px;top:10px;width:420px;height:56px">
+ <svg width="40" height="40" viewBox="0 0 40 40" style="position:absolute;left:10px;top:7px" aria-hidden="true"><circle cx="20" cy="20" r="15" fill="#f2c14e" stroke="#2b1a10" stroke-width="3.5"/><circle cx="20" cy="20" r="9" fill="none" stroke="#b9851d" stroke-width="3"/><path d="M13 12 Q18 8 24 10" stroke="#fff3d2" stroke-width="3" fill="none" stroke-linecap="round"/></svg>
+ <div class="num" style="position:absolute;left:54px;top:11px">1.240</div>
+ <div style="position:absolute;left:158px;top:8px;width:3px;height:36px;background:#2b1a10;opacity:.5;border-radius:2px"></div>
+ <svg width="36" height="36" viewBox="0 0 36 36" style="position:absolute;left:170px;top:9px" aria-hidden="true"><path d="M8 4 V32" stroke="#2b1a10" stroke-width="6" stroke-linecap="round"/><path d="M8 4 V32" stroke="#e8c185" stroke-width="2.5" stroke-linecap="round"/><path d="M10 6 H30 L25 12 L30 18 H10 Z" fill="#d6483a" stroke="#2b1a10" stroke-width="3" stroke-linejoin="round"/></svg>
+ <div class="num" style="position:absolute;left:212px;top:11px">8<span style="font-size:20px"> / 20</span></div>
+ <div style="position:absolute;left:300px;top:8px;width:3px;height:36px;background:#2b1a10;opacity:.5;border-radius:2px"></div>
+ <svg width="38" height="36" viewBox="0 0 38 36" style="position:absolute;left:312px;top:9px" aria-hidden="true"><path d="M19 32 C4 21 2 12 8 7 C13 3 18 6 19 11 C20 6 25 3 30 7 C36 12 34 21 19 32 Z" fill="#e0393e" stroke="#2b1a10" stroke-width="3.5" stroke-linejoin="round"/><path d="M9 11 Q12 8 15 9" stroke="#ffb4b0" stroke-width="3" fill="none" stroke-linecap="round"/></svg>
+ <div class="num" style="position:absolute;left:358px;top:11px">18</div>
+</div>
+<button class="rb" aria-label="Ton an oder aus" style="left:1090px;top:10px"><svg width="40" height="40" viewBox="0 0 40 40" aria-hidden="true"><path d="M8 16 H14 L22 9 V31 L14 24 H8 Z" fill="#fff3d2" stroke="#2b1a10" stroke-width="2.5" stroke-linejoin="round"/><path d="M27 14 Q32 20 27 26 M31 10 Q38 20 31 30" fill="none" stroke="#2b1a10" stroke-width="2.5" stroke-linecap="round"/></svg></button>
+<button class="rb" aria-label="Tempo ändern" style="left:1146px;top:10px"><svg width="40" height="40" viewBox="0 0 40 40" aria-hidden="true"><path d="M8 11 L20 20 L8 29 Z M20 11 L32 20 L20 29 Z" fill="#fff3d2" stroke="#2b1a10" stroke-width="2.5" stroke-linejoin="round"/></svg></button>
+<button class="rb" aria-label="Pause" style="left:1202px;top:10px"><svg width="40" height="40" viewBox="0 0 40 40" aria-hidden="true"><rect x="10" y="9" width="7" height="22" rx="2" fill="#fff3d2" stroke="#2b1a10" stroke-width="2.5"/><rect x="23" y="9" width="7" height="22" rx="2" fill="#fff3d2" stroke="#2b1a10" stroke-width="2.5"/></svg></button>
+<div class="plq" style="left:16px;top:704px;width:250px;height:84px;border-radius:42px 18px 18px 42px"></div>
+<button class="ab" aria-label="Meteor, bereit" style="left:28px;top:716px;background:radial-gradient(circle at 35% 30%,#ffb04a,#c4381f)"><svg width="46" height="46" viewBox="0 0 46 46" aria-hidden="true"><path d="M8 38 L26 20" stroke="#ffe266" stroke-width="8" stroke-linecap="round" opacity=".6"/><circle cx="29" cy="17" r="11" fill="#7a5a45" stroke="#2b1a10" stroke-width="3"/><path d="M24 12 L30 11" stroke="#d6bfa5" stroke-width="3" stroke-linecap="round"/><path d="M36 22 L42 28 M30 28 L34 36" stroke="#ffe266" stroke-width="3" stroke-linecap="round"/></svg><div class="cap">Meteor</div></button>
+<button class="ab" aria-label="Kälte, lädt noch 14 Sekunden" style="left:104px;top:716px;background:radial-gradient(circle at 35% 30%,#8fd8f2,#2e6fb0)"><svg width="46" height="46" viewBox="0 0 46 46" aria-hidden="true"><path d="M23 6 V40 M8 14 L38 32 M38 14 L8 32" stroke="#2b1a10" stroke-width="7" stroke-linecap="round"/><path d="M23 6 V40 M8 14 L38 32 M38 14 L8 32" stroke="#f4fcff" stroke-width="3.5" stroke-linecap="round"/></svg><div style="position:absolute;left:-4px;top:-4px;width:64px;height:64px;border-radius:50%;background:conic-gradient(rgba(20,30,50,.72) 0 62%,rgba(20,30,50,0) 62% 100%)"></div><div style="position:absolute;left:0;top:0;width:56px;text-align:center;font:24px/56px 'Lilita One',sans-serif;color:#fff3d2;text-shadow:-2px 0 #2b1a10,2px 0 #2b1a10,0 -2px #2b1a10,0 2px #2b1a10">14</div><div class="cap">Kälte</div></button>
+<button class="ab" aria-label="Reparatur, noch zweimal" style="left:180px;top:716px;background:radial-gradient(circle at 35% 30%,#a8e070,#3a8a3c)"><svg width="46" height="46" viewBox="0 0 46 46" aria-hidden="true"><path d="M10 36 L28 18" stroke="#2b1a10" stroke-width="9" stroke-linecap="round"/><path d="M10 36 L28 18" stroke="#e8c185" stroke-width="4.5" stroke-linecap="round"/><path d="M26 8 Q38 6 38 16 L32 14 L28 20 L22 14 Z" fill="#d9dde2" stroke="#2b1a10" stroke-width="2.5" stroke-linejoin="round"/></svg><div style="position:absolute;right:-8px;top:-8px;min-width:26px;height:26px;border-radius:13px;background:#f2c14e;border:3px solid #2b1a10;font:15px/20px 'Lilita One',sans-serif;color:#2b1a10;text-align:center;box-sizing:border-box">2×</div><div class="cap">Reparatur</div></button>
+<button style="position:absolute;left:556px;top:742px;width:168px;height:46px;border-radius:23px;border:3px solid #2b1a10;background:linear-gradient(#ffd45a,#e08a1c);box-shadow:inset 0 2px 0 rgba(255,255,255,.6),0 4px 0 rgba(30,15,5,.5);font:22px/1 'Lilita One',sans-serif;color:#2b1a10;cursor:pointer" aria-label="Nächste Welle starten, Welle 9">Welle 9 starten</button>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"tageszeit":{"editor":"enum","options":["Mittag","Abendgold"],"default":"Mittag"},"$preview":{"width":1280,"height":800}}'>
+class Component extends DCLogic {
+  geo(pal, margin) {
+    const T = 57, X0 = 71;
+    const f = n => Math.round(n * 10) / 10;
+    const cx = c => X0 + (c + 0.5) * T;
+    const cy = r => (r + 0.5) * T;
+    const W = [[-1,2],[5,2],[5,8],[11,8],[11,3],[16,3],[16,11],[20,11]];
+    const at = d => {
+      let rem = d;
+      for (let i = 0; i < W.length - 1; i++) {
+        const a = W[i], b = W[i + 1];
+        const L = Math.abs(b[0] - a[0]) + Math.abs(b[1] - a[1]);
+        if (rem <= L || i === W.length - 2) {
+          const k = rem / L;
+          return { x: cx(a[0] + (b[0] - a[0]) * k), y: cy(a[1] + (b[1] - a[1]) * k), h: a[1] === b[1] };
+        }
+        rem -= L;
+      }
+      return { x: 0, y: 0, h: true };
+    };
+    const pts = W.map(([c, r], i) => [i === 0 ? -40 : (i === W.length - 1 ? 1320 : f(cx(c))), f(cy(r))]);
+    const pathD = 'M ' + pts.map(p => p[0] + ' ' + p[1]).join(' L ');
+    const TW = [['arrow',3,4,2],['cannon',7,6,3],['frost',8,10,2],['sniper',13,5,3],['tesla',14,9,2],['arrow',9,5,1],['cannon',18,8,2]];
+    const badges = ['#d7dde0', '#f2c14e', '#ff8a3d'];
+    const towers = TW.map(([k, c, r, l]) => ({ k, l, badge: badges[l - 1], x: f(cx(c)), y: f(cy(r) + 22), cx: f(cx(c)), cy: f(cy(r)), z: Math.round(cy(r) + 22) }));
+    const kind = k => towers.filter(t => t.k === k);
+    const mk = (d, o) => { const p = at(d); return Object.assign({ x: f(p.x), y: f(p.y + 14), z: Math.round(p.y + 14), cx: f(p.x), cy: f(p.y) }, o || {}); };
+    const goblins = [2.2, 3.0, 8.0, 8.7, 15.8].map(d => mk(d));
+    const iced = [mk(15.0)];
+    const flitzers = [mk(5.4), mk(33)];
+    const troll = [mk(31, { hpw: 40 })];
+    // Gesperrte Kacheln für Deko
+    const blocked = new Set(), near = new Set();
+    const key = (c, r) => c + ',' + r;
+    for (let i = 0; i < W.length - 1; i++) {
+      const a = W[i], b = W[i + 1];
+      for (let c = Math.min(a[0], b[0]); c <= Math.max(a[0], b[0]); c++) for (let r = Math.min(a[1], b[1]); r <= Math.max(a[1], b[1]); r++) blocked.add(key(c, r));
+    }
+    TW.forEach(([k, c, r]) => { blocked.add(key(c, r)); for (let dc = -1; dc <= 1; dc++) for (let dr = -1; dr <= 1; dr++) near.add(key(c + dc, r + dr)); });
+    for (let c = -1; c <= 2; c++) for (let r = 0; r <= 5; r++) blocked.add(key(c, r));
+    for (let c = -1; c <= 4; c++) for (let r = 11; r <= 13; r++) blocked.add(key(c, r));
+    for (let r = 0; r <= 4; r++) blocked.add(key(0, r));
+    for (let r = 1; r <= 3; r++) blocked.add(key(-1, r));
+    for (let r = 10; r <= 12; r++) { blocked.add(key(20, r)); blocked.add(key(19, r)); }
+    for (let c = 10; c <= 13; c++) for (let r = 11; r <= 12; r++) blocked.add(key(c, r));
+    for (let c = 6; c <= 11; c++) blocked.add(key(c, 0));
+    let s = 42;
+    const rnd = () => (s = (s * 16807) % 2147483647) / 2147483647;
+    const trees = [], rocks = [], flowers = [];
+    const c0 = margin === false ? 0 : -1, c1 = margin === false ? 19 : 20;
+    for (let c = c0; c <= c1; c++) for (let r = 0; r <= 13; r++) {
+      if (blocked.has(key(c, r))) continue;
+      const v = rnd(), jx = (rnd() - 0.5) * 22, jy = (rnd() - 0.5) * 16;
+      const x = f(cx(c) + jx), y = f(cy(r) + 24 + jy);
+      const edge = r <= 0 || r >= 13 || c <= 0 || c >= 19;
+      if (v < (edge ? 0.7 : 0.06) && !near.has(key(c, r))) trees.push({ x, y, z: Math.round(y), s: f(0.8 + rnd() * 0.45), pine: rnd() < 0.45 });
+      else if (v < 0.11) rocks.push({ x, y, z: Math.round(y), s: f(0.7 + rnd() * 0.6) });
+      else if (v < 0.3) {
+        const p = pal;
+        flowers.push({ x: f(cx(c) + jx * 1.6), y: f(cy(r) + jy * 2), z: 1, css: 'width:4px;height:4px;border-radius:50%;background:' + p[0] + ';box-shadow:7px 3px 0 ' + p[1] + ',-6px 5px 0 ' + p[2] + ',3px -6px 0 ' + p[0] });
+      }
+    }
+    const pines = trees.filter(t => t.pine), rounds = trees.filter(t => !t.pine);
+    const lanterns = [3.5, 10, 16.5, 21, 26.5, 33.5, 38].map((d, i) => { const p = at(d); return { x: f(p.x + (p.h ? 0 : -40)), y: f(p.y + (p.h ? -40 : 0)), z: Math.round(p.y + 30), d: i }; });
+    const star = (x, y, r1, r2, n, rot) => { const o = []; for (let i = 0; i < n * 2; i++) { const r = i % 2 ? r2 : r1; const a = (rot || 0) + Math.PI * i / n; o.push(f(x + Math.cos(a) * r) + ',' + f(y + Math.sin(a) * r)); } return o.join(' '); };
+    const zig = (a, b, n, amp) => { const dx = b.x - a.x, dy = b.y - a.y, L = Math.hypot(dx, dy), nx = -dy / L, ny = dx / L; const o = []; for (let i = 0; i <= n; i++) { const t = i / n; const w = (i === 0 || i === n) ? 0 : (i % 2 ? 1 : -1) * amp * (0.6 + 0.4 * ((i * 7) % 3) / 2); o.push(f(a.x + dx * t + nx * w) + ',' + f(a.y + dy * t + ny * w)); } return o.join(' '); };
+    const tp = at(31), fp = at(33), ip = at(15);
+    const aT = { x: cx(3), y: cy(4) - 30 }, aG = at(8);
+    const cT = { x: cx(18), y: cy(8) - 14 }, exP = { x: tp.x + 4, y: tp.y - 8 };
+    const fT = { x: cx(8), y: cy(10) - 30 }, sT = { x: cx(13), y: cy(5) - 36 }, tT = { x: cx(14), y: cy(9) - 44 };
+    const fx = {
+      arrowX: f(aT.x + (aG.x - aT.x) * 0.62), arrowY: f(aT.y + (aG.y - 8 - aT.y) * 0.62),
+      arrowA: f(Math.atan2(aG.y - 8 - aT.y, aG.x - aT.x) * 180 / Math.PI),
+      cx1: f(cT.x), cy1: f(cT.y), cx2: f(exP.x), cy2: f(exP.y),
+      ballX: f(cT.x + (exP.x - cT.x) * 0.78), ballY: f(cT.y + (exP.y - cT.y) * 0.78),
+      boomX: f(exP.x), boomY: f(exP.y), boom1: star(exP.x, exP.y, 40, 22, 9, 0.2), boom2: star(exP.x, exP.y, 26, 13, 8, 0.5), boom3: star(exP.x, exP.y, 12, 6, 7, 0.1),
+      fx1: f(fT.x), fy1: f(fT.y), fx2: f(ip.x), fy2: f(ip.y - 6), iceX: f(ip.x), iceY: f(ip.y - 4), ice1: star(ip.x, ip.y - 4, 26, 10, 6, 0.3), ice2: star(ip.x, ip.y - 4, 15, 6, 6, 0.9),
+      bolt1: zig(tT, { x: fp.x, y: fp.y - 8 }, 7, 8), bolt2: zig({ x: fp.x, y: fp.y - 8 }, { x: tp.x, y: tp.y - 14 }, 6, 8),
+      sx1: f(sT.x), sy1: f(sT.y), sx2: f(tp.x - 6), sy2: f(tp.y - 20), sMuzzle: star(sT.x + 6, sT.y, 11, 4, 5, 0.2),
+      cMuzzle: star(cT.x - 6, cT.y - 4, 14, 6, 6, 0.4), tX: f(tT.x), tY: f(tT.y), flagX: 56, flagY: f(cy(2)), gateY: f(cy(11))
+    };
+    return { pathD, arrow: kind('arrow'), cannon: kind('cannon'), frost: kind('frost'), sniper: kind('sniper'), tesla: kind('tesla'), goblins, iced, flitzers, troll, pines, rounds, rocks, flowers, lanterns, fx };
+  }
+  renderVals() {
+    const g = this.geo(['#fff3d2', '#ffd36a', '#f58aa5'], true);
+    g.fx.gateTop = 543;
+    g.fx.flagTop = 63;
+    const abend = (this.props.tageszeit ?? 'Mittag') === 'Abendgold';
+    return { g, fx: g.fx, glow: abend ? 'linear-gradient(135deg,rgba(255,150,40,.32),rgba(120,40,90,.28))' : 'rgba(255,255,255,0)' };
+  }
+}
+</script>
+</body>
+</html>
