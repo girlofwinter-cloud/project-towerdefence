@@ -1020,6 +1020,110 @@ test('B-118: Kartenwechsel blendet aus und wieder ein, Cache je Titel, Ladefehle
   }
 });
 
+// ---------- B-118 Randfälle (Tester) ----------
+async function withTestTracks(fn) {
+  const M = SOUND.music;
+  const saved = M.byMap;
+  M.byMap = { ...saved, ice: { file: 'music-test-ice', gain: 2 }, fork: { file: 'music-test-fork', gain: 1 }, twin: { file: 'music-test-twin', gain: 0.5 } };
+  try { await fn(M); } finally { M.byMap = saved; }
+}
+const activeLoops = (log) => {
+  const started = log.filter((l) => l[0] === 'start' && l[1] === 'source' && l[2].loop).map((l) => l[2]);
+  const stopped = new Set(log.filter((l) => l[0] === 'stop' && l[1] === 'source').map((l) => l[2]));
+  return started.filter((s) => !stopped.has(s));
+};
+
+test('B-118 Rand: schneller Hin-und-her-Wechsel während Laden: jeder Titel einmal geladen, am Ende genau eine Schleife', async () => {
+  await withTestTracks(async (M) => {
+    await withFakeMusic({}, async ({ mod, log, fetched, release, tick }) => {
+      const play = (mapId) => mod.updateMusic({ status: 'playing', paused: false, mapId });
+      mod.setSoundOn(true);
+      mod.unlockAudio();
+      release();
+      await tick();
+      play('meadow'); await tick(); play('meadow');
+      // ohne Warten: ice, twin, ice, meadow, twin (alles noch im Laden)
+      for (const id of ['ice', 'twin', 'ice', 'meadow', 'twin']) play(id);
+      for (let i = 0; i < 3; i++) { play('twin'); await tick(); }
+      play('twin');
+      for (const id of ['meadow', 'ice', 'twin']) assert.equal(fetched.filter((u) => u === musicUrl(M, id)).length, 1, id);
+      const loops = activeLoops(log);
+      assert.equal(loops.length, 1, 'genau eine aktive Schleife');
+      const ramps = log.filter((l) => l[0] === 'gain' && l[1] === 'ramp');
+      assert.ok(Math.abs(ramps.at(-1)[2] - M.gain * 0.5) < 1e-12, 'Faktor des Zieltitels');
+      // alles im Cache: ice -> meadow im selben Frame-Takt wechselt sofort, ohne neues Laden, eine aktive Schleife
+      const n = fetched.length;
+      play('ice'); play('meadow');
+      assert.equal(fetched.length, n, 'kein neues Laden');
+      assert.equal(activeLoops(log).length, 1);
+    });
+  });
+});
+
+test('B-118 Rand: Kartentitel und Rückfall scheitern: still, kein Fehler, kein erneuter Versuch', async () => {
+  await withTestTracks(async (M) => {
+    await withFakeMusic({ musicFails: true }, async ({ mod, log, fetched, release, tick }) => {
+      mod.setSoundOn(true);
+      mod.unlockAudio();
+      release();
+      await tick();
+      for (let i = 0; i < 4; i++) { assert.doesNotThrow(() => mod.updateMusic({ status: 'playing', paused: false, mapId: 'ice' })); await tick(); }
+      assert.equal(fetched.filter((u) => u === musicUrl(M, 'ice')).length, 1);
+      assert.equal(fetched.filter((u) => u === musicUrl(M)).length, 1);
+      assert.equal(fetched.filter((u) => u.includes('music')).length, 2);
+      assert.ok(!log.some((l) => l[0] === 'start' && l[1] === 'source' && l[2].loop), 'keine Musik');
+      // andere Karte danach: nur ihr eigener Titel wird versucht, Rückfall nicht erneut
+      for (let i = 0; i < 3; i++) { mod.updateMusic({ status: 'playing', paused: false, mapId: 'twin' }); await tick(); }
+      assert.equal(fetched.filter((u) => u === musicUrl(M)).length, 1);
+      assert.equal(fetched.filter((u) => u === musicUrl(M, 'twin')).length, 1);
+    });
+  });
+});
+
+test('B-118 Rand: Ton aus während Kartenwechsel, danach an: neuer Titel, eine Schleife', async () => {
+  await withTestTracks(async (M) => {
+    await withFakeMusic({}, async ({ mod, log, release, tick }) => {
+      const play = (mapId) => mod.updateMusic({ status: 'playing', paused: false, mapId });
+      mod.setSoundOn(true);
+      mod.unlockAudio();
+      release();
+      await tick();
+      play('meadow'); await tick(); play('meadow');
+      play('ice'); // lädt
+      mod.setSoundOn(false);
+      for (let i = 0; i < 3; i++) { play('ice'); await tick(); }
+      assert.equal(log.filter((l) => l[0] === 'start' && l[1] === 'source' && l[2].loop).length, 1, 'bei Ton aus kein Wechsel');
+      mod.setSoundOn(true);
+      mod.unlockAudio();
+      await tick();
+      play('ice');
+      const loops = activeLoops(log);
+      assert.equal(loops.length, 1);
+      const ramps = log.filter((l) => l[0] === 'gain' && l[1] === 'ramp');
+      assert.ok(Math.abs(ramps.at(-1)[2] - M.gain * 2) < 1e-12, 'Eis-Titel eingeblendet');
+    });
+  });
+});
+
+test('B-118 Rand: Wechsel nach Sieg (Pegel 0) stoppt alten Titel sofort, neuer bleibt stumm', async () => {
+  await withTestTracks(async (M) => {
+    await withFakeMusic({}, async ({ mod, log, release, tick }) => {
+      mod.setSoundOn(true);
+      mod.unlockAudio();
+      release();
+      await tick();
+      mod.updateMusic({ status: 'playing', paused: false, mapId: 'meadow' }); await tick();
+      mod.updateMusic({ status: 'won', paused: false, mapId: 'meadow' });
+      mod.updateMusic({ status: 'won', paused: false, mapId: 'ice' }); await tick();
+      log.length = 0;
+      mod.updateMusic({ status: 'won', paused: false, mapId: 'ice' });
+      const stop = log.find((l) => l[0] === 'stop' && l[1] === 'source');
+      assert.ok(stop, 'alter Titel gestoppt');
+      assert.ok(!log.some((l) => l[0] === 'gain' && l[1] === 'ramp' && l[2] > 0), 'nichts eingeblendet');
+    });
+  });
+});
+
 test('Kanone: Abschussknall lauter als andere Schüsse, aber leiser als Boss und Meteor', () => {
   const s = SOUND.samples.sounds;
   const cannon = s['shot:cannon'].gain;
