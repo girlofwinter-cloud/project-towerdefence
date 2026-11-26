@@ -8,7 +8,7 @@ import { render, drawTower } from './render.js';
 import { heartStates, abilityView } from './hud.js';
 import { drawIcon } from './render-icons.js';
 import { buildTapStep, aimStep } from './input.js';
-import { loadProgress, saveProgress, recordResult, isUnlocked, mapProgress, starText, resultLines, MAP_ORDER } from './progress.js';
+import { loadProgress, saveProgress, recordResult, isUnlocked, mapProgress, starText, resultLines, startMap, MAP_ORDER } from './progress.js';
 
 const canvas = document.getElementById('game');
 canvas.width = WIDTH;
@@ -36,6 +36,11 @@ function getStorage() {
 }
 const progress = loadProgress(getStorage());
 const mapOpen = (id) => TEST_MODE || isUnlocked(progress, id);
+// Startkarte merken (B-098): zuletzt gewählte bzw. neueste freigeschaltete Karte. Testmodus bleibt bei der ersten.
+if (!TEST_MODE) {
+  mapId = startMap(progress);
+  state = createGame({ mapId });
+}
 // Merker: Ergebnis dieses Spiels schon gespeichert? (refreshUI läuft alle 0,1 s)
 let resultSaved = false;
 let resultText = []; // Zeilen fürs Overlay (resultLines)
@@ -255,6 +260,9 @@ mapSelect.value = state.mapId;
 mapSelect.addEventListener('change', () => {
   if (state.wave !== 0 || state.waveActive || !mapOpen(mapSelect.value)) { mapSelect.value = state.mapId; return; }
   mapId = mapSelect.value;
+  // Gewählte Karte merken (B-098); im Testmodus gibt es keinen Speicher.
+  progress.lastMap = mapId;
+  saveProgress(getStorage(), progress);
   restart();
 });
 $('speed').addEventListener('click', toggleSpeed);

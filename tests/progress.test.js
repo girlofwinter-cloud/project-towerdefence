@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { START_LIVES, PROGRESS_KEY, STAR_LIVES_SHARE, MAX_WAVES } from '../src/config.js';
 import {
-  emptyProgress, loadProgress, saveProgress, recordResult, starsFor, isUnlocked, mapProgress, starText, resultLines, MAP_ORDER,
+  emptyProgress, loadProgress, saveProgress, recordResult, starsFor, isUnlocked, mapProgress, starText, resultLines, MAP_ORDER, startMap, sanitizeProgress,
 } from '../src/progress.js';
 
 // Einfacher Fake-Speicher mit getItem/setItem wie localStorage.
@@ -209,4 +209,61 @@ test('resultLines: Niederlage nach Rekord aus früherem Spiel meldet Rekord, ohn
   play(p, { mapId: 'forest', status: 'lost', wave: 3, lives: 0 });
   const res = recordResult(p, { mapId: 'forest', status: 'lost', wave: 9, lives: 0 });
   assert.deepEqual(resultLines(p, 'forest', res), ['Rekord: Welle 9 · ☆☆☆']);
+});
+
+// ---------- B-098: Startkarte merken ----------
+const won = (...ids) => ({ maps: Object.fromEntries(ids.map((id) => [id, { bestWave: MAX_WAVES, stars: 1 }])) });
+
+test('startMap: leer und nur Wiese gespielt → erste Karte', () => {
+  assert.equal(startMap(emptyProgress()), 'meadow');
+  assert.equal(startMap({ maps: { meadow: { bestWave: 5, stars: 0 } } }), 'meadow');
+  assert.equal(startMap(null), 'meadow');
+});
+
+test('startMap: Wiese und Wald geschafft → neueste freigeschaltete Karte', () => {
+  assert.equal(startMap(won('meadow')), 'forest');
+  assert.equal(startMap(won('meadow', 'forest')), 'ice');
+  assert.equal(startMap(won(...MAP_ORDER)), MAP_ORDER.at(-1));
+});
+
+test('startMap: freigeschaltete lastMap wird genommen', () => {
+  assert.equal(startMap({ ...won('meadow', 'forest'), lastMap: 'meadow' }), 'meadow');
+  assert.equal(startMap({ ...won('meadow', 'forest'), lastMap: 'forest' }), 'forest');
+});
+
+test('startMap: gesperrte, unbekannte oder kaputte lastMap → Rückfall', () => {
+  assert.equal(startMap({ ...won('meadow'), lastMap: 'fork' }), 'forest');
+  assert.equal(startMap({ ...emptyProgress(), lastMap: 'ice' }), 'meadow');
+  for (const bad of ['mars', '', 42, null, {}, ['forest'], '__proto__']) {
+    assert.equal(startMap({ ...won('meadow'), lastMap: bad }), 'forest', String(bad));
+  }
+});
+
+test('sanitizeProgress/Laden: lastMap bleibt nur bei bekannter Karte, alte Stände laden weiter', () => {
+  assert.equal(sanitizeProgress({ maps: {}, lastMap: 'ice' }).lastMap, 'ice');
+  for (const bad of ['mars', 7, null, ['ice'], 'toString']) {
+    assert.equal('lastMap' in sanitizeProgress({ maps: {}, lastMap: bad }), false, String(bad));
+  }
+  // Alter Stand ohne lastMap (B-093): unverändert, Start auf der neuesten freigeschalteten Karte
+  const old = fakeStorage({ [PROGRESS_KEY]: JSON.stringify({ maps: { meadow: { bestWave: MAX_WAVES, stars: 2 } } }) });
+  const p = loadProgress(old);
+  assert.deepEqual(p, { maps: { meadow: { bestWave: MAX_WAVES, stars: 2 } } });
+  assert.equal(startMap(p), 'forest');
+  // Rundreise mit lastMap
+  const s = fakeStorage();
+  assert.equal(saveProgress(s, { ...p, lastMap: 'meadow' }), true);
+  assert.equal(loadProgress(s).lastMap, 'meadow');
+  assert.equal(startMap(loadProgress(s)), 'meadow');
+});
+
+test('recordResult (B-098): Freischalten löscht lastMap, nächster Start auf der neuen Karte', () => {
+  const p = { ...emptyProgress(), lastMap: 'meadow' };
+  assert.equal(startMap(p), 'meadow');
+  // Niederlage schaltet nichts frei: lastMap bleibt
+  recordResult(p, { mapId: 'meadow', status: 'lost', wave: 3, lives: 0 });
+  assert.equal(p.lastMap, 'meadow');
+  const r = recordResult(p, { mapId: 'meadow', status: 'won', wave: MAX_WAVES, lives: START_LIVES });
+  assert.equal(r.unlockedMap, 'forest');
+  assert.equal('lastMap' in p, false);
+  assert.equal(startMap(p), 'forest');
 });

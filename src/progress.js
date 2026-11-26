@@ -12,9 +12,12 @@ export function emptyProgress() {
 const isCount = (v) => Number.isFinite(v) && v >= 0;
 
 // Bereinigt beliebige Daten zu gültigem Fortschritt: unbekannte Karten und falsche Typen fallen weg.
+// lastMap (B-098, zuletzt gewählte Karte) bleibt nur, wenn es eine bekannte Karten-ID ist.
 export function sanitizeProgress(raw) {
   const progress = emptyProgress();
-  const maps = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw.maps : null;
+  const isObj = raw && typeof raw === 'object' && !Array.isArray(raw);
+  if (isObj && MAP_ORDER.includes(raw.lastMap)) progress.lastMap = raw.lastMap;
+  const maps = isObj ? raw.maps : null;
   if (!maps || typeof maps !== 'object' || Array.isArray(maps)) return progress;
   for (const id of MAP_ORDER) {
     const entry = Object.prototype.hasOwnProperty.call(maps, id) ? maps[id] : null;
@@ -67,6 +70,14 @@ export function isUnlocked(progress, mapId) {
   return mapProgress(progress, MAP_ORDER[i - 1]).stars > 0;
 }
 
+// Karte beim Öffnen des Spiels (B-098): zuletzt gewählte, falls freigeschaltet;
+// sonst die neueste freigeschaltete Karte in MAP_ORDER (die erste ist immer offen).
+export function startMap(progress) {
+  if (MAP_ORDER.includes(progress?.lastMap) && isUnlocked(progress, progress.lastMap)) return progress.lastMap;
+  const p = progress ?? emptyProgress();
+  return [...MAP_ORDER].reverse().find((id) => isUnlocked(p, id)) ?? MAP_ORDER[0];
+}
+
 // Trägt ein Spielende ein (verändert progress). Rekord und Sterne werden nie schlechter.
 // Rückgabe: newRecord (Wellenrekord verbessert), newStars (Sterne verbessert), unlockedMap (neu freigeschaltete Karten-ID oder null).
 export function recordResult(progress, { mapId, status, wave, lives }) {
@@ -79,10 +90,13 @@ export function recordResult(progress, { mapId, status, wave, lives }) {
   const reached = isCount(wave) ? Math.floor(wave) : 0;
   const entry = { bestWave: Math.max(old.bestWave, reached), stars: Math.max(old.stars, stars) };
   progress.maps[mapId] = entry;
+  const unlockedMap = next !== null && !wasUnlocked && isUnlocked(progress, next) ? next : null;
+  // Neue Karte freigeschaltet (B-098): gemerkte Karte vergessen, damit der nächste Start dort landet.
+  if (unlockedMap) delete progress.lastMap;
   return {
     newRecord: entry.bestWave > old.bestWave,
     newStars: entry.stars > old.stars,
-    unlockedMap: next !== null && !wasUnlocked && isUnlocked(progress, next) ? next : null,
+    unlockedMap,
   };
 }
 

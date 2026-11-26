@@ -52,3 +52,26 @@ test('Fortschritt: Sieg schaltet die nächste Karte frei, Overlay meldet es, ble
   assert.equal(await optionDisabled('ice'), true);
   assert.deepEqual(errors, []);
 });
+
+test('Startkarte (B-098): neueste freigeschaltete Karte, gewählte Karte bleibt nach Neuladen', async () => {
+  const p2 = await (await browser.newContext()).newPage();
+  const errs = [];
+  p2.on('pageerror', (e) => errs.push(e.message));
+  await p2.goto(url);
+  await p2.waitForSelector('#shop .tower-btn');
+  // Stand ohne lastMap: Wiese geschafft, Wald freigeschaltet
+  await p2.evaluate((k) => localStorage.setItem(k, JSON.stringify({ maps: { meadow: { bestWave: 20, stars: 2 } } })), PROGRESS_KEY);
+  await p2.reload();
+  await p2.waitForSelector('#shop .tower-btn');
+  assert.equal(await p2.locator('#map-select').inputValue(), 'forest');
+  assert.equal(await p2.evaluate(() => window.__game().mapId), 'forest');
+  // Zurück auf Wiese wechseln, neu laden: Wiese bleibt
+  await p2.selectOption('#map-select', 'meadow');
+  assert.equal(await p2.evaluate(() => window.__game().mapId), 'meadow');
+  await p2.reload();
+  await p2.waitForSelector('#shop .tower-btn');
+  assert.equal(await p2.locator('#map-select').inputValue(), 'meadow');
+  assert.equal(await p2.evaluate(() => window.__game().mapId), 'meadow');
+  assert.deepEqual(errs, []);
+  await p2.context().close();
+});
