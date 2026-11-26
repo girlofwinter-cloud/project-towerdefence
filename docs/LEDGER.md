@@ -581,3 +581,11 @@ Neue Einträge werden unten angehängt. Bestehende Einträge werden nie geänder
 - Tests: 252 Unit-Tests und 6 Browser-Tests bestanden. Tester: keine Fehler. Reviewer: nur Ledger-Eintrag als Muss, Rest als B-092
 - Entscheidungen: Neue Dateien `src/render-towers.js` und `src/render-enemies-flat.js`, Paletten in `ENEMY_STYLE`/`TOWER_STYLE` (`src/config.js`). **Angepasste Tests:** `TOP_ALLOWED` je Turmtyp im Grenztest (`tests/render.test.js`, links/rechts/unten weiter streng; Werte als B-092 zu belegen) und in `tests/fx.test.js` entfiel auf ausdrückliche Freigabe des Menschen der Vergleich "Boss-Zeichenspur länger als Schamane" (gilt erst wieder mit B-067; dort vermerkt).
 - Offen: B-092, B-067 (Boss).
+
+## 2026-11-26 · B-093 · Fortschritt speichern: Rekorde, Sterne, Karten freischalten
+- Rolle(n): orchestrator, developer, tester, reviewer (Einzeleintrag, da `src/main.js` und `index.html` berührt)
+- Branch: agent/fortschritt-speichern
+- Runden: 1 von max. 2
+- Ergebnis: fertig. Neues reines Modul `src/progress.js` (`localStorage`, kein Backend), Sterne nach übrigen Leben, Freischaltung in `MAPS`-Reihenfolge, Anzeige im Overlay und in der Kartenauswahl (🔒, Sterne)
+- Tests: 264 Unit-Tests (12 neu in `tests/progress.test.js`, davon 4 vom Tester), e2e 6/6 laut Developer. Tester: PASS. Review: APPROVE, Hinweise als B-094
+- Entscheidungen: Mechanik „Karten freischalten“ vom Menschen am 2026-11-26 freigegeben. `src/game.js` unverändert; gespeichert werden je Karte nur `bestWave` und `stars`; zuletzt gewählte Karte wird nicht gespeichert.
