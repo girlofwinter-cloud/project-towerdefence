@@ -10,7 +10,7 @@ import { drawIcon } from './render-icons.js';
 import { buildTapStep, aimStep } from './input.js';
 import { createSoundTracker, collectSounds, loadSoundOn, saveSoundOn } from './sound-events.js';
 import { unlockAudio, setSoundOn, playSound, updateMusic } from './audio.js';
-import { loadProgress, saveProgress, recordResult, isUnlocked, mapProgress, starText, resultLines, startMap, MAP_ORDER } from './progress.js';
+import { loadProgress, saveProgress, recordResult, isUnlocked, mapProgress, starText, resultLines, startMap, mapAfterResult, MAP_ORDER } from './progress.js';
 
 const canvas = document.getElementById('game');
 canvas.width = WIDTH;
@@ -496,9 +496,13 @@ function saveResult() {
   resultSaved = true;
   const before = { ...mapProgress(progress, state.mapId) };
   const res = recordResult(progress, { mapId: state.mapId, status: state.status, wave: state.wave, lives: state.lives });
+  // Nach einem Sieg die nächste Karte vorwählen: „Neues Spiel“ startet dort, gemerkt auch fürs nächste Öffnen.
+  mapId = mapAfterResult(progress, state.mapId, state.status);
+  if (mapId !== state.mapId) progress.lastMap = mapId;
   saveProgress(getStorage(), progress);
   refreshMapOptions();
   resultText = resultLines(progress, state.mapId, res, before);
+  $('restart').textContent = mapId !== state.mapId ? `Weiter: ${MAPS[mapId].name}` : 'Neues Spiel';
 }
 
 // ---------- Game Loop ----------
@@ -528,7 +532,7 @@ if (TEST_MODE) {
     ui,
     restartOn: (id) => { mapId = id; restart(); },
     // Weiterspielen nach erzwungenem Spielende: Overlay-Text des alten Ergebnisses verwerfen.
-    resume: () => { resultSaved = false; resultText = []; },
+    resume: () => { resultSaved = false; resultText = []; mapId = state.mapId; },
     refresh: refreshUI,
   }));
 }
