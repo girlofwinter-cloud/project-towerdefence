@@ -121,3 +121,16 @@ test('Testseite: forceEnd setzt nur won oder lost', () => {
   assert.equal(s.enemies.length, 0);
   assert.equal(s.waveActive, false);
 });
+
+test('B-121: prepareWave und forceEnd beenden einen laufenden Countdown (kein ungewollter Auto-Start)', () => {
+  const s = createGame();
+  s.autoWaveIn = 3;
+  prepareWave(s, 5);
+  assert.equal(s.autoWaveIn, null);
+  stepGame(s, 1 / 60, 1);
+  for (let i = 0; i < 600; i++) stepGame(s, 1 / 60, 1);
+  assert.equal(s.wave, 4, 'vorbereitete Welle startet erst manuell');
+  s.autoWaveIn = 3;
+  forceEnd(s, 'won');
+  assert.equal(s.autoWaveIn, null);
+});

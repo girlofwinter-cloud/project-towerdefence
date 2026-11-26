@@ -23,6 +23,7 @@ export function prepareWave(state, n) {
   state.wave = wave - 1;
   state.waveActive = false;
   state.waveTime = 0;
+  state.autoWaveIn = null; // B-121: Testseite startet die vorbereitete Welle nicht automatisch
   // Nach einem Spielende mit vollen Leben weiterspielen (sonst endet das Spiel beim ersten Leck).
   if (state.status !== 'playing') state.lives = START_LIVES;
   state.status = 'playing';
@@ -48,6 +49,7 @@ export function forceEnd(state, status) {
   if (status !== 'won' && status !== 'lost') return false;
   clearEnemies(state);
   state.waveActive = false;
+  state.autoWaveIn = null; // B-121: kein Countdown nach Spielende
   state.status = status;
   return true;
 }

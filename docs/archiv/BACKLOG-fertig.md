@@ -579,3 +579,16 @@ Agents lesen diese Datei nur bei konkretem Bedarf.
   - Test: `status` wird erst 'won', wenn alle Wellen gespawnt und alle Gegner tot sind.
   - HUD: Der Knopf „Welle starten“ bleibt während einer Welle bedienbar (bis Welle 20) und zeigt dann den Bonus an (z. B. „Nächste Welle +7“); Leertaste wie bisher. Desktop und Handy prüfen.
   - Balancing per Strategie-Simulation messen (Karten Wiese, Eis, Zangenangriff, Zwei Fronten, Vulkan; dt 1/30 und 1/60): bestehende Strategien unverändert (sie rufen nicht früh), plus eine Strategie, die früh ruft. Ergebnis im Bericht; das Spiel soll nicht deutlich leichter werden.
+
+### B-121: Nächste Welle startet automatisch
+- Status: fertig (Mensch hat am 2026-11-26 entschieden: 5 Sekunden Countdown, immer an, kein Schalter, Countdown sichtbar und per Klick sofort startbar)
+- Aufwand: M
+- Idee: Sind alle Gegner einer Welle besiegt oder durchgelaufen, startet die nächste Welle nach einem Countdown automatisch. Vor Welle 1 bleibt es beim manuellen Start.
+- Akzeptanzkriterien:
+  - `AUTO_WAVE_DELAY = 5` (Sekunden Spielzeit) steht in `src/config.js`.
+  - Nach Wellenende (ab Welle 1, solange `status === 'playing'` und `wave < MAX_WAVES`) läuft ein Countdown in `game.js`; bei 0 startet `startWave`. Pause hält den Countdown an; das Spieltempo gilt auch für ihn.
+  - Klick/Leertaste während des Countdowns startet sofort (kein Frühstart-Bonus, da keine Welle läuft) und beendet den Countdown. Frühstart während laufender Welle (B-005) bleibt unverändert.
+  - Kein Countdown nach Welle 20, nach Sieg oder Niederlage.
+  - HUD: Knopf zeigt während des Countdowns z. B. „Welle 5 in 3…“ (ganze Sekunden, aufgerundet); Wellenvorschau bleibt sichtbar. Desktop und Handy prüfen (Screenshot).
+  - Tests: Countdown startet die Welle nach 5 s, nicht vor Welle 1, Pause hält an, manueller Start bricht den Countdown ab, kein Countdown nach Welle 20/Sieg/Niederlage.
+  - Balancing: Strategie-Simulationen messen (5 Karten, dt 1/30 und 1/60). Ändert sich ein bestehendes Balancing-Testergebnis, Test nicht anpassen, sondern melden (Mensch entscheidet).

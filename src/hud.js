@@ -67,6 +67,9 @@ export function startButtonView(state) {
   if (state.waveActive) {
     if (state.wave >= MAX_WAVES) label = 'Letzte Welle läuft…';
     else label = spawning ? 'Welle läuft…' : `Nächste Welle +${earlyStartBonus(next)}`;
+  } else if (canStart && state.autoWaveIn != null) {
+    // B-121: Countdown bis zum automatischen Start (ganze Sekunden, aufgerundet); Klick startet sofort
+    label = `Welle ${next} in ${Math.max(1, Math.ceil(state.autoWaveIn))}…`;
   }
   return { disabled: !canStart, label, showKey: canStart };
 }
