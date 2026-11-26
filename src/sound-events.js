@@ -16,6 +16,7 @@ export function createSoundTracker() {
     enemies: [],                  // Gegner im letzten Frame (für Tode)
     towers: new Map(),            // B-115: Turm -> Stufe im letzten Frame (Bauen, Ausbauen, Verkaufen)
     waveActive: false,            // B-115: Welle lief im letzten Frame (Wellenstart)
+    wave: 0,                      // B-005: Wellennummer im letzten Frame (vorzeitiger Wellenstart)
     status: 'playing',            // B-115: Status im letzten Frame (Sieg, Niederlage)
     limiter: createLimiter(),
   };
@@ -38,6 +39,7 @@ function absorb(tr, state) {
   tr.lives = state.lives;
   tr.towers = towerLevels(state);
   tr.waveActive = !!state.waveActive;
+  tr.wave = state.wave;
   tr.status = state.status;
 }
 
@@ -115,8 +117,11 @@ export function detectStateEvents(tr, state) {
   if (upgraded) out.push({ kind: 'upgrade' });
   if (sold) out.push({ kind: 'sell' });
   const active = !!state.waveActive;
-  if (active && !tr.waveActive && state.status === 'playing') out.push({ kind: 'waveStart' });
+  // Wellenstart: Welle beginnt, oder (B-005) die nächste Welle startet vorzeitig, während eine läuft
+  const started = !tr.waveActive || state.wave > tr.wave;
+  if (active && started && state.status === 'playing') out.push({ kind: 'waveStart' });
   tr.waveActive = active;
+  tr.wave = state.wave;
   if (state.status !== tr.status && (state.status === 'won' || state.status === 'lost')) out.push({ kind: state.status });
   tr.status = state.status;
   return out;

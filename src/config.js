@@ -517,6 +517,14 @@ export const ENEMY_TYPES = {
   shielded: { name: 'Schildträger', hp: 90, speed: 1.0, reward: 12, leak: 2, radius: 13, color: '#6f86a8', armor: 0.5 },
 };
 
+// B-005: Wer die nächste Welle startet, während eine läuft, bekommt diesen Anteil ihres Wellenbonus sofort.
+export const EARLY_START_BONUS = 0.5;
+
+// B-005: Frühstart-Bonus der Welle `wave` (einzige Stelle der Formel; Spiel-Logik und HUD nutzen sie).
+export function earlyStartBonus(wave) {
+  return Math.floor(waveBonus(wave) * EARLY_START_BONUS);
+}
+
 export function waveBonus(wave) {
   return 10 + wave;
 }

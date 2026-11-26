@@ -753,3 +753,14 @@ Neue Einträge werden unten angehängt. Bestehende Einträge werden nie geänder
 - Tests: 431 bestanden (inkl. 4 Randfall-Tests des Testers), e2e 37/37. Größengrenze der Assets von 2 MB auf 10 MB angehoben (vom Menschen freigegeben, da je Spiel nur der Kartentitel lädt), dafür neu höchstens 3 MB je Musikdatei.
 - Review: APPROVE ohne Muss-Punkte; Hinweis zu nicht getrenntem Gain-Knoten als B-119 (vorschlag).
 - Entscheidungen: Downloads und CC0-Prüfung durch den Menschen; Dateien unverändert nach AAC 96 kbit/s, Lautstärke nur per Config-Faktor.
+
+---
+
+## 2026-11-26 · B-005 · Vorzeitiger Wellenstart mit Gold-Bonus
+- Rolle(n): orchestrator, developer, tester, reviewer
+- Branch: agent/frueher-wellenstart
+- Runden: 2 von max. 2
+- Ergebnis: fertig. Nächste Welle rufbar, sobald alle Gegner der laufenden Welle gespawnt sind; laufende Welle zahlt ihren `waveBonus` sofort, dazu `floor(waveBonus * EARLY_START_BONUS)` (0,5). Gegner behalten die HP ihrer Welle. Knopf „Nächste Welle +N“, Leertaste ohne Tastenwiederholung.
+- Tests: 434 bestanden, e2e 38/38. Zwei Assertions „zweiter Start abgelehnt“ entfernt bzw. nach den Sieg verlegt (widersprechen dem Feature, vom Menschen freigegeben).
+- Review: APPROVE; Runde 2 wegen Tester-Fund (19 Klicks = sofort 715 Gold): Mensch entschied „Frühstart erst nach vollständigem Spawn“. Tastenwiederholung und doppelte Bonus-Formel behoben.
+- Entscheidungen: Simulation (5 Karten, dt 1/30 und 1/60): früh rufen bringt ca. +195 Gold, aber nie mehr Leben als ohne; Spiel wird nicht leichter. Hinweis Lava/Meteor-Skalierung als B-120 (vorschlag).

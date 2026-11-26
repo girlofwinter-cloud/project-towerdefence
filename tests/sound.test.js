@@ -633,7 +633,7 @@ test('B-115: Wellenstart einmal je Welle, nicht bei abgelehntem Start; Sieg und 
   detectStateEvents(tr, state);
   assert.ok(startWave(state).ok);
   assert.deepEqual(kinds(detectStateEvents(tr, state)), ['waveStart']);
-  assert.equal(startWave(state).ok, false);
+  // B-005: Ein zweiter Start während der Welle ist erlaubt (eigener Test); abgelehnter Start: siehe nach dem Sieg
   const seen = [];
   for (let t = 0; t < 2; t += 1 / 60) { update(state, 1 / 60); seen.push(...kinds(detectStateEvents(tr, state))); }
   assert.ok(!seen.includes('waveStart'));
@@ -646,6 +646,7 @@ test('B-115: Wellenstart einmal je Welle, nicht bei abgelehntem Start; Sieg und 
   update(state, 1 / 60);
   assert.equal(state.status, 'won');
   assert.deepEqual(kinds(detectStateEvents(tr, state)), ['won']);
+  assert.equal(startWave(state).ok, false, 'abgelehnter Start');
   assert.deepEqual(detectStateEvents(tr, state), []);
   // Niederlage durch Leck
   const s2 = createGame();
@@ -1362,4 +1363,21 @@ test('Rand: jede Musikdatei höchstens 3 MB (B-118)', () => {
     const size = fs.statSync(`${ROOT}assets/music/${f}`).size;
     assert.ok(size <= 3 * 1024 * 1024, `${f}: ${size} B`);
   }
+});
+
+test('B-005: Vorzeitiger Wellenstart spielt den Wellenstart-Ton, sonst nicht erneut', () => {
+  const state = createGame();
+  const tr = createSoundTracker();
+  detectStateEvents(tr, state);
+  assert.ok(startWave(state).ok);
+  assert.deepEqual(kinds(detectStateEvents(tr, state)), ['waveStart']);
+  update(state, 1 / 60);
+  assert.ok(!kinds(detectStateEvents(tr, state)).includes('waveStart'));
+  assert.equal(startWave(state).ok, false, 'vor vollständigem Spawn abgelehnt');
+  assert.deepEqual(detectStateEvents(tr, state), [], 'abgelehnter Frühstart ist still');
+  state.spawnQueue = [];
+  assert.ok(startWave(state).ok, 'vorzeitig');
+  assert.deepEqual(kinds(detectStateEvents(tr, state)), ['waveStart']);
+  update(state, 1 / 60);
+  assert.ok(!kinds(detectStateEvents(tr, state)).includes('waveStart'));
 });

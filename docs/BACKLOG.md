@@ -81,17 +81,6 @@ Erledigte Einträge (`fertig`) liegen in `docs/archiv/BACKLOG-fertig.md`. Beim A
   - Vor jeder Welle ist je Eingang sichtbar, welche Gegnertypen dort kommen (aus `MAPS.<id>.lanes` und `waveSummary`).
   - Keine Änderung an der Spiel-Logik; Desktop und Handy lesbar (Screenshot).
 
-### B-005: Vorzeitiger Wellenstart mit Gold-Bonus
-- Status: vorschlag
-- Aufwand: M
-- Idee: Wer die nächste Welle startet, während die aktuelle noch läuft, bekommt einen Bonus (Prozentsatz von `waveBonus`). Erfordert mehrere parallele Spawn-Queues. Risiko: Balancing (Gold-Exploit).
-- Akzeptanzkriterien:
-  - `EARLY_START_BONUS = 0.5` steht in `src/config.js`.
-  - `startWave` ist bei laufender Welle erlaubt, solange `state.wave < MAX_WAVES`.
-  - Bonus ist `floor(waveBonus(wave) * EARLY_START_BONUS)`, sofort gutgeschrieben; gilt nicht, wenn keine Welle aktiv ist.
-  - Test: Zwei Wellen laufen parallel, alle Gegner spawnen zum korrekten Zeitpunkt.
-  - Test: `status` wird erst 'won', wenn alle Wellen gespawnt und alle Gegner tot sind.
-
 ### B-007: Fallen-Turm auf dem Weg
 - Status: vorschlag
 - Aufwand: L
@@ -500,3 +489,10 @@ Reihenfolge ist Abhängigkeit: B-062 und B-063 zuerst, dann gemeinsame Sichtprü
 - Idee: Nach `stopMusic` in `src/audio.js` bleibt der alte Gain-Knoten mit `ctx.destination` verbunden (ein toter Knoten je Kartenwechsel, Reviewer-Hinweis zu B-118). `src.onended = () => gain.disconnect()`.
 - Akzeptanzkriterien:
   - Nach einem Kartenwechsel ist der alte Gain getrennt (Fake-Audio-Test in `tests/sound.test.js`).
+
+### B-120: Lava und Meteor nach Gegnerwelle skalieren
+- Status: vorschlag
+- Aufwand: S
+- Idee: Lava-Schaden (`game.js` nearLava/hpScale) und Meteor-Schaden skalieren mit `state.wave`, also der höchsten gestarteten Welle. Nach einem Frühstart (B-005) bekommen Gegner der vorigen Welle dadurch etwas mehr Schaden. Mit der Welle des Gegners skalieren (Tester-Hinweis zu B-005). Balancing: Mensch entscheidet.
+- Akzeptanzkriterien:
+  - Gegner speichern ihre Welle; Lava/Meteor nutzen sie. Test mit zwei parallelen Wellen.

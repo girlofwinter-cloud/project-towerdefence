@@ -5,7 +5,7 @@ import {
   useAbility, abilityCooldownLeft, canBuild, towerAt, towerStats, upgradeCost, sellValue,
 } from './game.js';
 import { render, drawTower } from './render.js';
-import { heartStates, abilityView, overheatNote } from './hud.js';
+import { heartStates, abilityView, overheatNote, startButtonView } from './hud.js';
 import { drawIcon } from './render-icons.js';
 import { buildTapStep, aimStep } from './input.js';
 import { createSoundTracker, collectSounds, loadSoundOn, saveSoundOn } from './sound-events.js';
@@ -369,7 +369,7 @@ window.addEventListener('keydown', (ev) => {
   const ability = Object.keys(ABILITIES).find((a) => ABILITIES[a].key === key);
   if (type) selectBuild(type);
   else if (ability) doAbility(ability);
-  else if (key === ' ') { ev.preventDefault(); doStartWave(); }
+  else if (key === ' ') { ev.preventDefault(); if (!ev.repeat) doStartWave(); } // B-005: gehaltene Taste startet nicht mehrfach
   else if (key === 'escape') { ui.aiming = false; ui.buildType = null; ui.selectedTowerId = null; ui.pending = null; refreshUI(); }
   else if (key === 'u') doUpgrade();
   else if (key === 's') doSell();
@@ -398,9 +398,11 @@ function refreshUI() {
   if ($('pause-icon').dataset.icon !== (state.paused ? 'play' : 'pause')) setIcon($('pause-icon'), state.paused ? 'play' : 'pause');
   mapSelect.disabled = state.wave !== 0 || state.waveActive;
   mapSelect.value = state.mapId;
-  $('start-wave').disabled = state.waveActive || state.status !== 'playing';
-  $('start-label').textContent = state.waveActive ? 'Welle läuft…' : `Welle ${state.wave + 1} starten`;
-  $('start-key').hidden = state.waveActive;
+  // B-005: Während einer Welle bleibt der Knopf bedienbar (vorzeitiger Start mit Bonus), bis zur letzten Welle
+  const sb = startButtonView(state);
+  $('start-wave').disabled = sb.disabled;
+  $('start-label').textContent = sb.label;
+  $('start-key').hidden = !sb.showKey;
 
   // Vorschau der nächsten Welle (nur solange keine Welle läuft)
   const showPreview = !state.waveActive && state.status === 'playing' && state.wave < MAX_WAVES;

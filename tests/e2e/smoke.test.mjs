@@ -72,6 +72,24 @@ test('Welle starten bringt Gegner aufs Feld', async () => {
   assert.deepEqual(errors, []);
 });
 
+test('B-005: Leertaste startet früh, gehaltene Taste (Wiederholung) startet nicht mehrfach', async () => {
+  const before = await page.evaluate(() => window.__game().wave);
+  // Solange Gegner der laufenden Welle noch kommen: Knopf aus, Leertaste wirkungslos
+  assert.equal(await page.locator('#start-wave').isDisabled(), true);
+  await page.evaluate(() => window.dispatchEvent(new KeyboardEvent('keydown', { key: ' ' })));
+  assert.equal(await page.evaluate(() => window.__game().wave), before);
+  await page.evaluate(() => { window.__game().spawnQueue = []; });
+  await page.waitForFunction(() => /^Nächste Welle \+\d+$/.test(document.getElementById('start-label').textContent), null, { timeout: 5000 });
+  await page.evaluate(() => {
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: ' ' }));
+    for (let i = 0; i < 5; i++) window.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', repeat: true }));
+  });
+  assert.equal(await page.evaluate(() => window.__game().wave), before + 1);
+  // Neue Welle spawnt: Knopf wieder aus bis zum vollständigen Spawn
+  assert.equal(await page.locator('#start-label').textContent(), 'Welle läuft…');
+  assert.deepEqual(errors, []);
+});
+
 test('Handy: Bauen per Touch in zwei Schritten, Zoom vergrößert das Spielfeld', async () => {
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, deviceScaleFactor: 2 });
   const m = await ctx.newPage();
