@@ -590,7 +590,7 @@ Zielbilder: `docs/design/vollbild-desktop.png`, `vollbild-ring.png`, `vollbild-s
 Fläche mit vier Stilen für dieselbe Szene (Wiese, Welle 8): https://claude.ai/artifact/DDKsUvgQVD4SJu2VnSqE3W (privat). Kingdom Rush nur als Niveau-Referenz, keine Nachbauten. Empfehlung des designers: Stil 1 "Gemalt und warm" als Hauptrichtung (ca. 70 % des Kingdom-Rush-Niveaus), Stil 2 "Papier-Diorama" als Zweitwahl oder eigene Welt, Stil 4 "Mondnacht" als Nachtkarte, aus Stil 3 "Miniatur-Spielbrett" nur die Team-Sockel. Alle Einträge sind nur Zeichnen, außer wo vermerkt.
 
 ### B-142: Gemalter Boden-Cache (Wiese)
-- Status: vorschlag
+- Status: offen
 - Aufwand: M
 - Idee: Einmal pro Karte große Hell-Dunkel-Flecken (eigene Rausch-Funktion), Lichtverlauf von links oben und Vignette in ein Offscreen-Canvas zeichnen, pro Bild nur `drawImage` (Stil 1). Betrifft `src/render*.js`, `src/decor.js`. Braucht eine Änderung an `docs/STIL.md` (Verläufe im Cache erlauben).
 - Akzeptanzkriterien:
@@ -599,7 +599,7 @@ Fläche mit vier Stilen für dieselbe Szene (Wiese, Welle 8): https://claude.ai/
   - Test in `tests/render.test.js`: Cache wird je Karte nur einmal gebaut.
 
 ### B-143: Eingesunkener Weg mit Grasrand
-- Status: vorschlag
+- Status: offen
 - Aufwand: S
 - Idee: Weg in vier Schichten zeichnen (dunkle Grasfuge, Kontur, Erde, heller Mittelstreifen leicht nach oben versetzt), dazu Kiesel-Strichel (Stil 1).
 - Akzeptanzkriterien:
@@ -607,7 +607,7 @@ Fläche mit vier Stilen für dieselbe Szene (Wiese, Welle 8): https://claude.ai/
   - Keine Logik-Änderung, `npm test` grün.
 
 ### B-144: Dicke Konturen und Team-Sockel für Figuren
-- Status: vorschlag
+- Status: offen
 - Aufwand: M
 - Idee: Alle Türme und Gegner bekommen eine 2,5 bis 3 px dunkle Kontur (Stil 1). Gegner einen dezenten roten Bodenring, Türme Stufen-Punkte oder Plakette (Stil 3). Überschneidet sich mit B-138 (größere Figuren); zusammen planen. Braucht eine Änderung an `docs/STIL.md` (Kontur).
 - Akzeptanzkriterien:
@@ -615,7 +615,7 @@ Fläche mit vier Stilen für dieselbe Szene (Wiese, Welle 8): https://claude.ai/
   - Stufe 1/2/3 im Screenshot ohne Info-Panel unterscheidbar, auch auf Handy 390x844.
 
 ### B-145: Rahmenwald und Landmarken statt Streudeko
-- Status: vorschlag
+- Status: offen
 - Aufwand: S bis M
 - Idee: Bäume dicht am Kartenrand ballen, im Inneren nur wenige große Objekte (Klippen-Plateau, Burgtor mit Fahne und Rauch am Ausgang). Betrifft `src/decor.js`. Klippen dürfen das freie Bauraster nicht verändern, sonst ist es Spiel-Logik (Entscheidung des Menschen).
 - Akzeptanzkriterien:
