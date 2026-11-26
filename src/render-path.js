@@ -1,8 +1,8 @@
 // Weg im Flat-Pop-Stil (B-071): welliger Rand aus Kreisen, Kontur, Saum, Rillen, Steine, helle Mitte.
 // Nur Zeichnen. Wird ausschließlich in den Hintergrund-Cache (bgCanvas) gemalt, nie pro Frame.
-import { TILE, PATH_STYLE } from './config.js';
+import { PATH_STYLE } from './config.js';
 import { tileRand } from './decor.js';
-import { shd } from './draw-utils.js';
+import { shd, lit } from './draw-utils.js';
 
 // Kreis als Teilpfad. roundRect statt arc: so zählt der Weg nicht als Dekoration (render.test.js).
 function circlePath(ctx, x, y, r) {
@@ -43,7 +43,12 @@ function distToPaths(paths, x, y) {
 
 // Größte Ausdehnung des Rands von der Achse (für den Test: Weg-Geometrie aus config.js).
 export function pathReach() {
-  return PATH_STYLE.edgeOffset + PATH_STYLE.waveAmp * (1 + PATH_STYLE.waveHarmonic) + PATH_STYLE.edgeRadius;
+  return Math.max(PATH_STYLE.grooveWidth / 2, contourReach());
+}
+
+// Äußerster Rand der Kontur (Randkreise oder durchgehende Kontur); B-143: die Grasfuge liegt außerhalb davon.
+export function contourReach(P = PATH_STYLE) {
+  return Math.max(P.contourWidth / 2, P.edgeOffset + P.waveAmp * (1 + P.waveHarmonic) + P.edgeRadius);
 }
 
 export function drawPathStyled(ctx, paths, theme) {
@@ -57,6 +62,8 @@ export function drawPathStyled(ctx, paths, theme) {
   const pebbles = [];
   const patches = [];
   const ruts = [];
+  const gravelLight = [];
+  const gravelDark = [];
   let seg = 0;
   for (const pts of lists) {
     for (let i = 0; i < pts.length - 1; i++, seg++) {
@@ -83,6 +90,7 @@ export function drawPathStyled(ctx, paths, theme) {
         }
       }
       if (len > 40) for (const o of [-P.rutOffset, P.rutOffset]) ruts.push([at(16, o), at(len - 16, o)]);
+      for (const [g, list] of [[P.gravelLight, gravelLight], [P.gravelDark, gravelDark]]) list.push([at(0, g.offset), at(len, g.offset)]);
       for (let k = 0, s = 0; s < len; s += P.stoneStep, k++) {
         const edge = tileRand(seg, k, 6) < P.stoneChance;
         if (edge) {
@@ -112,12 +120,13 @@ export function drawPathStyled(ctx, paths, theme) {
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
   strokeAll(ctx, lists, P.shadowWidth, P.shadowColor, P.shadowOffset[0], P.shadowOffset[1]);
-  strokeAll(ctx, lists, TILE, col.outline);
+  strokeAll(ctx, lists, P.grooveWidth, col.groove); // B-143: dunkle Grasfuge
+  strokeAll(ctx, lists, P.contourWidth, col.outline);
   strokeAll(ctx, lists, P.sandWidth, col.main);
   fillCircles(ctx, circles, P.edgeRadius, col.outline);
   fillCircles(ctx, circles, P.edgeInner, band);
-  strokeAll(ctx, lists, P.sandWidth, col.main);
-  if (col.mid !== col.main) strokeAll(ctx, lists, P.midWidth, col.mid);
+  strokeAll(ctx, lists, P.sandWidth, col.main, P.sandShift[0], P.sandShift[1]);
+  if (col.mid !== col.main) strokeAll(ctx, lists, P.midWidth, col.mid, P.midShift[0], P.midShift[1]);
   // Flecken
   for (const [x, y, rx, ry, dark] of patches) {
     ctx.fillStyle = dark ? P.patchDark : P.patchLight;
@@ -133,6 +142,16 @@ export function drawPathStyled(ctx, paths, theme) {
   ctx.beginPath();
   for (const [s, e] of ruts) { ctx.moveTo(s[0], s[1]); ctx.lineTo(e[0], e[1]); }
   ctx.stroke();
+  // Kiesel-Strichel (B-143): kurze helle und dunkle Striche entlang des Wegs
+  ctx.lineCap = 'round';
+  ctx.lineWidth = P.gravelWidth;
+  for (const [g, list, color] of [[P.gravelLight, gravelLight, lit(col.mid, P.gravelLight.mix)], [P.gravelDark, gravelDark, col.edge]]) {
+    ctx.setLineDash(g.dash);
+    ctx.strokeStyle = color;
+    ctx.beginPath();
+    for (const [s, e] of list) { ctx.moveTo(s[0], s[1]); ctx.lineTo(e[0], e[1]); }
+    ctx.stroke();
+  }
   ctx.setLineDash([]);
   // Mittelkiesel und Randsteine
   for (const c of [0, 1]) {

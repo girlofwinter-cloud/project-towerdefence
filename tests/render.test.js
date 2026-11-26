@@ -702,6 +702,29 @@ test('Weg: im Frame-Pfad wird nichts vom Weg gezeichnet, Aufbau bleibt schnell',
   } finally { delete globalThis.document; }
 });
 
+// ---------- Eingesunkener Weg mit Grasrand (B-143) ----------
+test('Weg: dunkle Grasfuge mindestens 3 px ausserhalb der Kontur, dunkler als Erde, auf allen Karten gezeichnet', async () => {
+  const { PATH_STYLE, MAPS } = await import('../src/config.js');
+  const { drawPathStyled, contourReach, pathReach } = await import('../src/render-path.js');
+  const { brightness } = await import('../src/draw-utils.js');
+  for (const id of Object.keys(MAPS)) {
+    const P = { ...PATH_STYLE, ...(MAPS[id].theme.pathStyle || {}) };
+    const col = { ...P.colors, ...(MAPS[id].theme.path || {}) };
+    assert.ok(P.grooveWidth / 2 - contourReach(P) >= 3, `${id}: Fuge nur ${(P.grooveWidth / 2 - contourReach(P)).toFixed(1)} px`);
+    assert.ok(brightness(col.groove) < brightness(col.main) - 0.2, `${id}: Fuge nicht dunkler als Erde`);
+    // Schichtfolge: Fuge zuerst (breiteste Linie), dann Kontur, Erde, helle Mitte nach oben versetzt
+    const s = createGame({ mapId: id });
+    const m = mockCtx();
+    const widths = [];
+    const ctx = new Proxy(m.ctx, { get(t, k) { const v = t[k]; return k === 'stroke' ? () => { widths.push([t.lineWidth, t.strokeStyle]); return v.apply(t); } : (typeof v === 'function' ? v.bind(t) : v); }, set(t, k, v) { t[k] = v; return true; } });
+    drawPathStyled(ctx, s.paths || [s.path], MAPS[id].theme);
+    assert.deepEqual(widths[1], [P.grooveWidth, col.groove], `${id}: Fuge als erste Schicht nach dem Schatten`);
+    assert.deepEqual(widths[2], [P.contourWidth, col.outline], `${id}: Kontur`);
+  }
+  assert.ok(pathReach() >= PATH_STYLE.grooveWidth / 2, 'Fuge zaehlt zur Wegbreite');
+  assert.ok(PATH_STYLE.midShift[1] < 0 && PATH_STYLE.sandShift[1] < 0, 'helle Schichten nach oben versetzt');
+});
+
 // ---------- Weg: Randfaelle (Tester B-071) ----------
 test('Weg: alle Karten rendern ausgewogen, Cache wird einmal gebaut und bei Kartenwechsel neu', async () => {
   const { render } = await import('../src/render.js?wegmaps');

@@ -71,7 +71,7 @@ export const MAPS = {
     water: [...withoutBridges(MEADOW_RIVER, MEADOW_BRIDGES), ...MEADOW_LAKE],
     // B-071: Wegpalette der Wiese (STIL.md); Eiswelt und Zangenangriff haben eigene Wegfarben (B-072, B-073).
     // B-103: decor.flatTrees, damit die Hindernisse im Flat-Pop-Stil erscheinen (Laubbaum, Fels mit Kontur)
-    theme: { treeFrame: true, ground: true, accents: true, light: true, decorStyle: 'flatpop', decor: { flatTrees: true }, path: { main: '#e2c88f', edge: '#8f6a3b', outline: '#4a3418', mid: '#ecd5a0', fringe: '#6fbf4e' } },
+    theme: { treeFrame: true, ground: true, accents: true, light: true, decorStyle: 'flatpop', decor: { flatTrees: true }, path: { main: '#e2c88f', edge: '#8f6a3b', outline: '#4a3418', mid: '#ecd5a0', fringe: '#6fbf4e', groove: '#3a6a2c' } },
   },
   // Eiswelt (B-029, Glatteis): Gegner rutschen schneller, Kanone und Frost sind schwächer. Modifikatoren (enemySpeed, towerDamage je Typ, slowStrength) und kühles Farbschema (theme).
   ice: {
@@ -133,7 +133,7 @@ export const MAPS = {
         scatterChance: 0.1,
         scatterKinds: [['crystal', 0.28], ['snowpile', 0.3], ['rockgroup', 0.16], ['pebbles', 0.12], ['stakes', 0.08], ['sign', 0.06]],
       },
-      path: { main: '#9db3c9', edge: '#4f6682', outline: '#2f4560', mid: '#b4c7d9', fringe: '#ffffff' },
+      path: { main: '#9db3c9', edge: '#4f6682', outline: '#2f4560', mid: '#b4c7d9', fringe: '#ffffff', groove: '#62809a' },
       // Glatter Eisweg: wenige Steine, weißer Glanz statt brauner Spurrillen, kühle Flecken
       pathStyle: {
         stoneChance: 0.14, rutColor: 'rgba(255,255,255,0.5)', rutWidth: 2.2,
@@ -203,7 +203,7 @@ export const MAPS = {
         scatterChance: 0.09,
         scatterKinds: [['leafpile', 0.3], ['rockgroup', 0.2], ['log', 0.14], ['stump', 0.14], ['sign', 0.1], ['mushroom', 0.12]],
       },
-      path: { main: '#d6ab70', edge: '#7d5632', outline: '#4a3018', mid: '#e8c88e', fringe: '#e0803a' },
+      path: { main: '#d6ab70', edge: '#7d5632', outline: '#4a3018', mid: '#e8c88e', fringe: '#e0803a', groove: '#666529' },
     },
     extraPaths: [
       [
@@ -291,7 +291,7 @@ export const MAPS = {
         scatterChance: 0.1,
         scatterKinds: [['mushroom', 0.18], ['stump', 0.18], ['log', 0.16], ['rockgroup', 0.18], ['sign', 0.12], ['pebbles', 0.18]],
       },
-      path: { main: '#dcc08a', edge: '#86603a', outline: '#3e2a14', mid: '#e8d2a0', fringe: '#a6cf5a' },
+      path: { main: '#dcc08a', edge: '#86603a', outline: '#3e2a14', mid: '#e8d2a0', fringe: '#a6cf5a', groove: '#4a6e2c' },
     },
   },
   // Vulkan (B-030): schwerste Karte nach Zwei Fronten. Ein Lavafluss quert die Karte (eine Brücke), dazu Lavatümpel neben
@@ -356,7 +356,7 @@ export const MAPS = {
         scatterChance: 0.11,
         scatterKinds: [['ember', 0.26], ['ash', 0.22], ['rockgroup', 0.24], ['stump', 0.12], ['pebbles', 0.16]],
       },
-      path: { main: '#8b7468', edge: '#2d1f20', outline: '#1f1415', mid: '#9c857a', fringe: '#2e2325' },
+      path: { main: '#8b7468', edge: '#2d1f20', outline: '#1f1415', mid: '#9c857a', fringe: '#2e2325', groove: '#211718' },
       pathStyle: {
         rutColor: 'rgba(45,31,32,0.35)', stoneColors: ['#5a4a48', '#7a6a66'], pebbleColors: ['#6a5650', '#a08a80'],
         stoneShadow: 'rgba(20,10,12,0.45)', patchDark: 'rgba(45,31,32,0.16)', patchLight: 'rgba(255,190,140,0.12)',
@@ -720,20 +720,28 @@ export const TOWER_STYLE = {
 // Rand ragt höchstens `overhangMax` darüber hinaus (Test in tests/render.test.js).
 export const PATH_STYLE = {
   overhangMax: 4,          // so weit darf der Rand über die halbe Kachel hinausragen
-  edgeOffset: 15.5,        // Abstand der Randkreise von der Wegachse (Mittelwert)
-  edgeRadius: 5.2,         // Radius der Kontur-Kreise (außen)
-  edgeInner: 3.6,          // Radius des helleren Randbands
-  waveAmp: 2,              // Amplitude der Welle in px
+  edgeOffset: 13,          // Abstand der Randkreise von der Wegachse (Mittelwert); B-143: schmaler, damit die Fuge sichtbar bleibt
+  edgeRadius: 4.4,         // Radius der Kontur-Kreise (außen)
+  edgeInner: 2.8,          // Radius des helleren Randbands
+  waveAmp: 1.4,            // Amplitude der Welle in px
   waveHarmonic: 0.4,       // Anteil der zweiten, schnelleren Welle
   waveLength: 0.11,        // Wellenzahl der Grundwelle (rad pro px)
   circleStep: 4.5,         // Abstand der Randkreise entlang des Wegs
+  // B-143: eingesunkener Weg (Stil "Gemalt und warm"): dunkle Grasfuge, Kontur, Erde, helle Mitte nach oben versetzt
+  grooveWidth: 46,         // Breite der dunklen Grasfuge (außen um die Kontur)
+  contourWidth: 36,        // Breite der durchgehenden Kontur (die Randkreise ragen etwas darüber)
   sandWidth: 32,           // Breite der Sandfläche (liegt über den Randkreisen)
+  sandShift: [0, -1.5],    // Versatz der oberen Erdschicht (Weg wirkt eingesunken)
   midWidth: 20,            // Breite der helleren Wegmitte
+  midShift: [-1, -2],      // Versatz des hellen Mittelstreifens nach oben links (Licht)
+  gravelWidth: 1.5,        // Kiesel-Strichel: Strichbreite
+  gravelLight: { offset: -4, dash: [1, 11], mix: 0.6 }, // helle Strichel: Abstand zur Achse, Muster, Aufhellung der Wegmitte
+  gravelDark: { offset: 5, dash: [1, 15] },             // dunkle Strichel in der Randfarbe (col.edge)
   shadowWidth: 44,         // Breite des Schlagschattens auf dem Gras
   shadowOffset: [2, 4],    // Versatz des Schlagschattens
   shadowColor: 'rgba(43,27,61,0.3)',
   bandShade: 0.12,         // Randband = Wegfarbe um diesen Anteil zum Schattenton gemischt
-  fringeStep: 6,           // Abstand der Gras-Säume entlang des Wegs (0 = kein Saum)
+  fringeStep: 0,           // Abstand der Gras-Säume entlang des Wegs (0 = kein Saum); B-143: die Grasfuge ersetzt den Saum
   fringeRadius: 3.4,       // Radius eines Saumpunkts
   fringeOffset: [21, 24],  // Abstand der Saumpunkte von der Achse (von, bis)
   rutOffset: 7.5,          // Abstand der Spurrillen von der Achse
@@ -753,7 +761,7 @@ export const PATH_STYLE = {
   patchDark: 'rgba(143,106,59,0.14)',  // dunkle Bodenflecken auf dem Weg
   patchLight: 'rgba(255,248,214,0.22)', // helle Bodenflecken auf dem Weg
   // Standardfarben (heutiger Look), solange eine Karte kein theme.path liefert.
-  colors: { main: '#dcc189', edge: '#8f7140', outline: '#8f7140', mid: '#dcc189', fringe: null },
+  colors: { main: '#dcc189', edge: '#8f7140', outline: '#8f7140', mid: '#dcc189', fringe: null, groove: '#3a6a2c' },
 };
 
 // Baumrahmen der Wiese (B-077): runde Kronen im Randring, rein Hintergrundoptik. Maße in px bei 1x.
