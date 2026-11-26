@@ -107,3 +107,59 @@ for (const [width, height] of [[390, 844], [360, 740]]) {
     await ctx.close();
   });
 }
+
+// B-056 Nachbesserung: Knopftexte der Leiste brechen nicht ab, Kürzel sind auf dem Handy aus,
+// zugängliche Namen bleiben vollständig.
+for (const [width, height] of [[390, 844], [360, 740]]) {
+  test(`Handy ${width}x${height}: Knöpfe der Turm-Leiste ohne Überlauf, Kürzel unsichtbar`, async () => {
+    const { ctx, page } = await openMobileWithTower({ width, height });
+    for (const sel of ['#upgrade', '#sell', '#target-mode']) {
+      const m = await page.locator(sel).evaluate((e) => ({
+        sw: e.scrollWidth, cw: e.clientWidth, sh: e.scrollHeight, ch: e.clientHeight,
+        // Kinder dürfen nicht über den Knopf hinausragen
+        inside: [...e.querySelectorAll('*')].every((c) => {
+          const r = c.getBoundingClientRect(), b = e.getBoundingClientRect();
+          return r.width === 0 || (r.left >= b.left - 0.5 && r.right <= b.right + 0.5 && r.top >= b.top - 0.5 && r.bottom <= b.bottom + 0.5);
+        }),
+      }));
+      assert.ok(m.sw <= m.cw, `${sel} Breite ${m.sw} > ${m.cw}`);
+      assert.ok(m.sh <= m.ch, `${sel} Höhe ${m.sh} > ${m.ch}`);
+      assert.ok(m.inside, `${sel}: Inhalt ragt heraus`);
+      for (const key of await page.locator(`${sel} .key`).all()) assert.ok(await key.isHidden(), `${sel}: Kürzel sichtbar`);
+    }
+    assert.doesNotMatch(await page.locator('#target-mode').innerText(), /\(T\)/);
+    assert.doesNotMatch(await page.locator('#upgrade').innerText(), /[()]/);
+    assert.match(await page.locator('#upgrade').getAttribute('aria-label'), /^Verbessern für \d+ Gold/);
+    assert.match(await page.locator('#sell').getAttribute('aria-label'), /^Verkaufen für \d+ Gold/);
+    assert.match(await page.locator('#target-mode').getAttribute('aria-label'), /^Ziel: Erster/);
+    await ctx.close();
+  });
+}
+
+// B-070: Shop-Karten nutzen die Farben aus SHOP_CARD (die der Kontrast-Test prüft); "zu teuer" sichtbar markiert
+test('Shop-Karten: Farben aus SHOP_CARD, zu teure Karte mit eigenem Rahmen und Preisfarbe', async () => {
+  const { SHOP_CARD: C } = await import('../../src/config.js');
+  const rgb = (hex) => `rgb(${[1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)).join(', ')})`;
+  const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+  const page = await ctx.newPage();
+  await page.goto(url);
+  await page.waitForSelector('#shop .tower-btn');
+  await page.evaluate(() => { window.__game().gold = 60; });
+  await page.waitForSelector('.tower-btn[data-type="sniper"].poor');
+  const style = (sel) => page.locator(sel).evaluate((e) => {
+    const s = getComputedStyle(e);
+    return { bg: s.backgroundColor, color: s.color, border: s.borderTopColor };
+  });
+  const card = await style('.tower-btn[data-type="arrow"]');
+  assert.equal(card.bg, rgb(C.bg));
+  assert.equal(card.color, rgb(C.name));
+  assert.equal((await style('.tower-btn[data-type="arrow"] .t-cost')).color, rgb(C.cost));
+  assert.equal((await style('.tower-btn[data-type="arrow"] .t-desc')).color, rgb(C.desc));
+  const kbd = await style('.tower-btn[data-type="arrow"] kbd');
+  assert.deepEqual([kbd.color, kbd.bg], [rgb(C.keyText), rgb(C.keyBg)]);
+  assert.equal((await style('.tower-btn[data-type="sniper"]')).border, rgb(C.poorEdge));
+  assert.equal((await style('.tower-btn[data-type="sniper"] .t-cost')).color, rgb(C.costPoor));
+  await page.locator('.tower-btn[data-type="frost"]').click();
+  assert.equal((await style('.tower-btn[data-type="frost"]')).bg, rgb(C.bgActive));
+  await ctx.close();
+});

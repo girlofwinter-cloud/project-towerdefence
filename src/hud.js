@@ -27,3 +27,19 @@ export function abilityView(def, uses, left) {
   const charges = badge ? `, noch ${remaining} ${remaining === 1 ? 'Ladung' : 'Ladungen'}` : '';
   return { state, fill, badge, aria: `${def.name}, ${status}${charges}` };
 }
+
+// Relative Leuchtdichte einer Hex-Farbe (#rrggbb) nach WCAG 2.x.
+export function relativeLuminance(hex) {
+  const lin = (i) => {
+    const v = parseInt(hex.slice(i, i + 2), 16) / 255;
+    return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
+  };
+  return 0.2126 * lin(1) + 0.7152 * lin(3) + 0.0722 * lin(5);
+}
+
+// Kontrastverhältnis zweier Hex-Farben (1 bis 21), Reihenfolge egal.
+export function contrastRatio(a, b) {
+  const la = relativeLuminance(a);
+  const lb = relativeLuminance(b);
+  return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
+}

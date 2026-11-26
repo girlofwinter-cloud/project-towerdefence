@@ -1333,3 +1333,31 @@ test('B-069 Randfälle (Tester): alle Icons zeichnen in jeder Anzeigegröße mit
     }
   }
 });
+
+// B-070: Kontrast der Shop-Karten (WCAG relative luminance)
+test('contrastRatio: bekannte WCAG-Werte (Schwarz/Weiß 21:1, gleiche Farbe 1:1, symmetrisch)', async () => {
+  const { contrastRatio, relativeLuminance } = await import('../src/hud.js');
+  assert.equal(relativeLuminance('#000000'), 0);
+  assert.equal(relativeLuminance('#ffffff'), 1);
+  assert.ok(Math.abs(contrastRatio('#000000', '#ffffff') - 21) < 1e-9);
+  assert.equal(contrastRatio('#5a3a22', '#5a3a22'), 1);
+  assert.equal(contrastRatio('#ff9e8f', '#4e321d'), contrastRatio('#4e321d', '#ff9e8f'));
+  // Referenz: #777777 auf Weiß ist knapp unter 4,5:1 (4,48)
+  assert.ok(Math.abs(contrastRatio('#777777', '#ffffff') - 4.48) < 0.01);
+});
+
+test('Shop-Karten: Name, Preis (auch zu teuer), Beschreibung und Tasten-Badge mit mindestens 4,5:1', async () => {
+  const { contrastRatio } = await import('../src/hud.js');
+  const { SHOP_CARD: C } = await import('../src/config.js');
+  assert.ok(C.minContrast >= 4.5);
+  for (const bg of [C.bg, C.bgActive]) {
+    for (const key of ['name', 'cost', 'costPoor', 'desc']) {
+      const r = contrastRatio(C[key], bg);
+      assert.ok(r >= C.minContrast, `${key} ${C[key]} auf ${bg}: ${r.toFixed(2)}`);
+    }
+  }
+  assert.ok(contrastRatio(C.keyText, C.keyBg) >= C.minContrast, 'Tasten-Badge');
+  // Zu teuer ist vom normalen Preis unterscheidbar (andere Farbe), Rahmen eigenständig
+  assert.notEqual(C.costPoor, C.cost);
+  assert.notEqual(C.poorEdge, C.bg);
+});
