@@ -1,7 +1,7 @@
 // Spiel-Logik: kompletter Zustand + update(). Kein DOM, kein Canvas -> in Node testbar.
 import {
   TILE, COLS, ROWS, START_GOLD, START_LIVES, MAX_WAVES, SELL_RATIO, MAX_LEVEL, MAX_SUBSTEP, TARGET_MODES,
-  MAPS, DEFAULT_MAP_ID, TOWER_TYPES, ABILITIES, WIDTH, HEIGHT, ENEMY_TYPES, LAVA, FX_STYLE, waveFor, waveBonus, hpScale, meteorDamage,
+  MAPS, DEFAULT_MAP_ID, TOWER_TYPES, ABILITIES, WIDTH, HEIGHT, ENEMY_TYPES, LAVA, FX_STYLE, EARLY_START_BONUS, waveFor, waveBonus, hpScale, meteorDamage,
 } from './config.js';
 import { buildPath, pointAt, pathTiles } from './path.js';
 
@@ -165,15 +165,37 @@ export function sellTower(state, id) {
 
 // ---------- Wellen ----------
 
+// B-005: Bonus für den vorzeitigen Start der Welle `wave` (nur während eine Welle läuft).
+export function earlyStartBonus(wave) {
+  return Math.floor(waveBonus(wave) * EARLY_START_BONUS);
+}
+
+// Startet die nächste Welle. Läuft schon eine, startet sie vorzeitig (B-005): ihre Gegner kommen zusätzlich in die
+// Spawn-Liste (Zeiten relativ zu ihrem eigenen Start, jeder Eintrag trägt seine Wellennummer). Die laufende Welle
+// bekommt ihren normalen Wellenbonus sofort, dazu gibt es den Frühstart-Bonus. Jede Welle zahlt ihren Bonus genau einmal:
+// die zuletzt gestartete beim Ende aller Wellen (waveEndCheck), jede frühere beim Frühstart ihrer Nachfolgerin.
 export function startWave(state) {
   if (state.status !== 'playing') return { ok: false, reason: 'Spiel ist vorbei' };
-  if (state.waveActive) return { ok: false, reason: 'Welle läuft bereits' };
   if (state.wave >= MAX_WAVES) return { ok: false, reason: 'Alle Wellen geschafft' };
+  const early = state.waveActive;
+  if (early) state.gold += waveBonus(state.wave);
   state.wave += 1;
-  state.waveActive = true;
-  state.waveTime = 0;
-  state.spawnQueue = waveFor(state.wave);
-  return { ok: true, wave: state.wave };
+  const wave = state.wave;
+  if (!early) {
+    state.waveActive = true;
+    state.waveTime = 0;
+    state.spawnQueue = waveFor(wave).map((e) => ({ ...e, wave }));
+    return { ok: true, wave, bonus: 0 };
+  }
+  const offset = state.waveTime;
+  const added = waveFor(wave).map((e) => ({ ...e, at: e.at + offset, wave }));
+  // Stabil nach Zeit sortieren: spawnStep arbeitet die Liste von vorne ab
+  state.spawnQueue = [...state.spawnQueue, ...added].sort((a, b) => a.at - b.at);
+  const bonus = earlyStartBonus(wave);
+  state.gold += bonus;
+  const pos = pointAt(state.path, TILE);
+  state.effects.push({ kind: 'coin', x: pos.x, y: pos.y, text: `+${bonus}`, ttl: 0.8, max: 0.8 });
+  return { ok: true, wave, bonus };
 }
 
 // Weg eines neuen Gegners: feste Seite laut MAPS[mapId].lanes (B-099), sonst abwechselnd über alle Wege.
@@ -303,7 +325,8 @@ function spawnStep(state, dt) {
   if (!state.waveActive) return;
   state.waveTime += dt;
   while (state.spawnQueue.length && state.spawnQueue[0].at <= state.waveTime) {
-    spawnEnemy(state, state.spawnQueue.shift().type);
+    const next = state.spawnQueue.shift();
+    spawnEnemy(state, next.type, next.wave ?? state.wave); // HP-Skalierung der eigenen Welle
   }
 }
 

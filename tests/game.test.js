@@ -1,12 +1,12 @@
 // Unit-Tests der Spiel-Logik (game.js, path.js, config.js). Ausführen: npm test
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createGame, mapModifiers, update, buildTower, upgradeTower, sellTower, startWave, spawnEnemy, canBuild, towerStats, upgradeCost, togglePause, stepGame, setTargetMode, pickTarget, enemyPath, chainTargets, laneFor, nearLava } from '../src/game.js';
+import { createGame, mapModifiers, update, buildTower, upgradeTower, sellTower, startWave, earlyStartBonus, spawnEnemy, canBuild, towerStats, upgradeCost, togglePause, stepGame, setTargetMode, pickTarget, enemyPath, chainTargets, laneFor, nearLava } from '../src/game.js';
 
-import { livesText } from '../src/hud.js';
+import { livesText, startButtonView } from '../src/hud.js';
 
 import { buildPath, pointAt, pathTiles } from '../src/path.js';
-import { TOWER_TYPES, MAX_WAVES, START_GOLD, START_LIVES, LOW_LIVES, WAYPOINTS, MAPS, DEFAULT_MAP_ID, TILE, COLS, ROWS, TARGET_MODES, waveFor, waveBonus, waveSummary, hpScale, ENEMY_TYPES, SPEED_STEPS, MAX_SUBSTEP } from '../src/config.js';
+import { TOWER_TYPES, MAX_WAVES, START_GOLD, START_LIVES, LOW_LIVES, WAYPOINTS, MAPS, DEFAULT_MAP_ID, TILE, COLS, ROWS, TARGET_MODES, EARLY_START_BONUS, waveFor, waveBonus, waveSummary, hpScale, ENEMY_TYPES, SPEED_STEPS, MAX_SUBSTEP } from '../src/config.js';
 
 import { run, freeTileNearPath, mockCtx, recordEnemy } from './helpers.js';
 
@@ -80,7 +80,7 @@ test('Verkaufen erstattet 70 % der Investition', () => {
 test('Welle starten spawnt Gegner über die Zeit', () => {
   const s = createGame();
   assert.ok(startWave(s).ok);
-  assert.equal(startWave(s).ok, false, 'zweite Welle parallel nicht erlaubt');
+  // B-005: Ein zweiter Start während der Welle ist jetzt erlaubt (vorzeitiger Wellenstart, eigene Tests unten)
   run(s, 0.1);
   assert.equal(s.enemies.length, 1);
   run(s, 3);
@@ -2516,4 +2516,129 @@ test('B-112 Tester: Gegner genau auf dem Rand wird getroffen (edge-Schaden), Kra
   assert.equal(s.waveActive, false, 'Krater-Effekt hält die Welle nicht offen');
   assert.ok(s.effects.some((f) => f.meteor), 'Krater lebt weiter, nur Darstellung');
   assert.ok(Number.isFinite(meteorDamage(undefined)) && meteorDamage(NaN, NaN) === meteorDamage(1, 0));
+});
+
+// ---------- B-005: Vorzeitiger Wellenstart ----------
+
+test('B-005: Frühstart-Bonus = floor(waveBonus * EARLY_START_BONUS), nur während einer Welle, mit Münz-Text', () => {
+  assert.equal(EARLY_START_BONUS, 0.5);
+  const s = createGame();
+  const gold = s.gold;
+  const first = startWave(s);
+  assert.equal(first.bonus, 0, 'ohne laufende Welle kein Bonus');
+  assert.equal(s.gold, gold);
+  run(s, 1);
+  const before = s.gold;
+  const coins = s.effects.filter((e) => e.kind === 'coin').length;
+  const res = startWave(s);
+  assert.ok(res.ok);
+  assert.equal(res.wave, 2);
+  assert.equal(res.bonus, earlyStartBonus(2));
+  assert.equal(res.bonus, Math.floor(waveBonus(2) * EARLY_START_BONUS));
+  // sofort: Frühstart-Bonus der neuen Welle + normaler Wellenbonus der laufenden Welle
+  assert.equal(s.gold, before + res.bonus + waveBonus(1));
+  const fx = s.effects.filter((e) => e.kind === 'coin');
+  assert.equal(fx.length, coins + 1);
+  assert.equal(fx.at(-1).text, `+${res.bonus}`);
+});
+
+test('B-005: Jede Welle zahlt ihren Wellenbonus genau einmal', () => {
+  const s = createGame();
+  const gold = s.gold;
+  startWave(s);
+  startWave(s);
+  startWave(s);
+  const early = earlyStartBonus(2) + earlyStartBonus(3);
+  assert.equal(s.gold, gold + early + waveBonus(1) + waveBonus(2));
+  s.spawnQueue = [];
+  s.enemies = [];
+  update(s, 0.016);
+  assert.equal(s.waveActive, false);
+  assert.equal(s.gold, gold + early + waveBonus(1) + waveBonus(2) + waveBonus(3));
+  update(s, 0.016);
+  assert.equal(s.gold, gold + early + waveBonus(1) + waveBonus(2) + waveBonus(3), 'nicht doppelt');
+});
+
+test('B-005: Zwei Wellen parallel spawnen relativ zum Start ihrer Welle, Gegner behalten die HP ihrer Welle', () => {
+  const s = createGame();
+  startWave(s);
+  const t0 = 2;
+  const seen = [];
+  const dt = 1 / 120;
+  for (let t = 0; t < t0 - dt / 2; t += dt) update(s, dt);
+  const already = s.enemies.length + s.kills;
+  startWave(s);
+  const w1 = waveFor(1).filter((e) => e.at > s.waveTime);
+  const w2 = waveFor(2);
+  const tStart = s.waveTime;
+  const ids = new Set(s.enemies.map((e) => e.id));
+  for (let k = 0; k < 120 * 60 && s.spawnQueue.length; k++) {
+    update(s, dt);
+    for (const e of s.enemies) {
+      if (ids.has(e.id)) continue;
+      ids.add(e.id);
+      seen.push({ time: s.waveTime, type: e.type, maxHp: e.maxHp });
+    }
+  }
+  assert.ok(already > 0);
+  assert.equal(seen.length, w1.length + w2.length);
+  const hp = (type, w) => Math.round(ENEMY_TYPES[type].hp * hpScale(w));
+  // Erwartete Spawns beider Wellen, nach Zeit sortiert (Welle 1 absolut, Welle 2 ab ihrem Start)
+  const expected = [
+    ...w1.map((e) => ({ at: e.at, type: e.type, maxHp: hp(e.type, 1) })),
+    ...w2.map((e) => ({ at: tStart + e.at, type: e.type, maxHp: hp(e.type, 2) })),
+  ].sort((a, b) => a.at - b.at);
+  const bySpawn = (list) => list.map((e) => `${e.type}:${e.maxHp}`).sort();
+  assert.deepEqual(bySpawn(seen), bySpawn(expected));
+  for (const e of expected) {
+    const hit = seen.find((x) => x.type === e.type && x.maxHp === e.maxHp && Math.abs(x.time - e.at) <= dt + 1e-9);
+    assert.ok(hit, `Spawn ${e.type} (HP ${e.maxHp}) bei ${e.at.toFixed(2)} s`);
+  }
+  assert.ok(hp('grunt', 2) > hp('grunt', 1), 'Welle 2 ist zäher');
+});
+
+test('B-005: Gegner einer früheren Welle behalten ihre HP-Skalierung, auch nach späterem Start', () => {
+  const s = createGame({ wave: 4 });
+  startWave(s); // Welle 5
+  s.spawnQueue = [{ type: 'grunt', at: 5, wave: 5 }];
+  startWave(s); // Welle 6 vorzeitig
+  s.spawnQueue = s.spawnQueue.filter((e) => e.wave === 5);
+  run(s, 6);
+  const g = s.enemies.find((e) => e.type === 'grunt');
+  assert.ok(g);
+  assert.equal(g.maxHp, Math.round(ENEMY_TYPES.grunt.hp * hpScale(5)));
+});
+
+test("B-005: 'won' erst, wenn alle Wellen gespawnt und alle Gegner besiegt sind; kein Start über MAX_WAVES", () => {
+  const s = createGame({ wave: MAX_WAVES - 2 });
+  startWave(s);
+  assert.ok(startWave(s).ok, 'letzte Welle vorzeitig');
+  assert.equal(s.wave, MAX_WAVES);
+  assert.equal(startWave(s).ok, false, 'keine Welle über MAX_WAVES');
+  // Spawn-Liste leer, aber noch Gegner da: nicht gewonnen
+  s.spawnQueue = [];
+  spawnEnemy(s, 'grunt', MAX_WAVES - 1);
+  update(s, 0.016);
+  assert.equal(s.status, 'playing');
+  // Gegner weg, aber noch ein Eintrag der vorletzten Welle in der Liste: nicht gewonnen
+  s.enemies = [];
+  s.spawnQueue = [{ type: 'grunt', at: s.waveTime + 100, wave: MAX_WAVES - 1 }];
+  update(s, 0.016);
+  assert.equal(s.status, 'playing');
+  s.spawnQueue = [];
+  update(s, 0.016);
+  assert.equal(s.status, 'won');
+});
+
+test('B-005: HUD-Knopf bleibt während der Welle bedienbar und zeigt den Frühstart-Bonus', () => {
+  const s = createGame();
+  assert.deepEqual(startButtonView(s), { disabled: false, label: 'Welle 1 starten', showKey: true });
+  startWave(s);
+  assert.deepEqual(startButtonView(s), { disabled: false, label: `Nächste Welle +${earlyStartBonus(2)}`, showKey: true });
+  const last = createGame({ wave: MAX_WAVES - 1 });
+  startWave(last);
+  assert.deepEqual(startButtonView(last), { disabled: true, label: 'Letzte Welle läuft…', showKey: false });
+  last.status = 'lost';
+  last.waveActive = false;
+  assert.equal(startButtonView(last).disabled, true);
 });
