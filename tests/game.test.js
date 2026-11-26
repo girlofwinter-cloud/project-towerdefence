@@ -950,7 +950,7 @@ test('Zweitkarte: Weg-Kacheln blockiert, Gegner erreichen das Ziel', () => {
 });
 
 // ---------- Hindernisse (B-028) ----------
-// Seit B-098 (Wald entfernt) hat keine Karte Hindernisse; die Mechanik wird per Override geprüft.
+// Seit B-098 (Wald entfernt) hatte keine Karte Hindernisse, seit B-103 hat jede wenige; die Mechanik wird zusätzlich per Override geprüft.
 const OBST = [[0, 0], [7, 5], [13, 1]];
 const withObstacles = () => createGame({ obstacles: new Set(OBST.map(([c, r]) => `${c},${r}`)) });
 test('Hindernisse: liegen im Feld, nie auf dem Weg', async () => {
@@ -982,10 +982,29 @@ test('Hindernisse: canBuild lehnt ab, daneben normal; Karten ohne Hindernisse un
   for (let rr = 0; rr < 14 && !free; rr++) for (let cc = 0; cc < 20; cc++) if (canBuild(f, cc, rr).ok) { free = [cc, rr]; break; }
   assert.equal(buildTower(f, 'arrow', ...free).ok, true);
   const m = createGame();
-  assert.equal(m.obstacles.size, 0);
-  assert.equal(createGame({ mapId: 'ice' }).obstacles.size, 0);
+  assert.equal(m.obstacles.size, MAPS.meadow.obstacles.length); // B-103: Karten-Hindernisse aus config
+  assert.equal(createGame({ mapId: 'ice' }).obstacles.size, MAPS.ice.obstacles.length);
   assert.equal(canBuild(m, 0, 0).ok, true);
   assert.equal(canBuild(f, 1, 2).reason, 'Auf dem Weg kann nicht gebaut werden');
+});
+
+// B-103: jede Karte hat wenige Hindernisse (2 bis 4), nie auf einem Weg, nicht direkt an Tor oder Ziel, nicht bebaubar.
+test('B-103: jede Karte hat 2 bis 4 Hindernisse, nie auf Weg/Tor/Ziel, canBuild lehnt sie ab', () => {
+  for (const [id, m] of Object.entries(MAPS)) {
+    assert.ok(m.obstacles.length >= 2 && m.obstacles.length <= 4, `${id}: ${m.obstacles.length} Hindernisse`);
+    const s = createGame({ mapId: id });
+    assert.equal(s.obstacles.size, m.obstacles.length);
+    // Tor und Ziel: erste und letzte Kachel jedes Wegs, auf das Feld geklemmt
+    const ends = [m.waypoints, ...(m.extraPaths || [])].flatMap((w) => [w[0], w[w.length - 1]])
+      .map(([c, r]) => [Math.min(COLS - 1, Math.max(0, c)), Math.min(ROWS - 1, Math.max(0, r))]);
+    for (const [c, r] of m.obstacles) {
+      assert.ok(!s.blocked.has(`${c},${r}`), `${id} ${c},${r} auf dem Weg`);
+      for (const [ec, er] of ends) assert.ok(Math.max(Math.abs(ec - c), Math.abs(er - r)) > 1, `${id} ${c},${r} an Tor/Ziel ${ec},${er}`);
+      const res = canBuild(s, c, r);
+      assert.equal(res.ok, false, `${id} ${c},${r} bebaubar`);
+      assert.match(res.reason, /Baum|Fels/);
+    }
+  }
 });
 
 test('Hindernisse: Goblin erreicht trotz Hindernissen das Ziel', () => {

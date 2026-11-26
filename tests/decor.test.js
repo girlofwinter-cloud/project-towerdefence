@@ -441,13 +441,13 @@ test('Eis: Palette aus config (Boden, Weg dunkler als Schnee, Tanne, Kristall), 
   assert.equal(themed('twin', 'treeFrame', TREE_FRAME).snow, null);
 });
 
-test('Eis: Balancing und Logik unveraendert (Modifikatoren, keine Hindernisse, alles bebaubar ausser Weg)', async () => {
+test('Eis: Balancing und Logik unveraendert (Modifikatoren, Hindernisse aus B-103, alles bebaubar ausser Weg und Hindernis)', async () => {
   const { canBuild } = await import('../src/game.js');
   assert.deepEqual(MAPS.ice.modifiers, { enemySpeed: 1.14, towerDamage: { cannon: 0.95, frost: 0.7 }, slowStrength: 0.85 });
-  assert.equal(MAPS.ice.obstacles, undefined);
+  assert.deepEqual(MAPS.ice.obstacles, [[2, 2], [9, 12], [16, 12]]); // B-103
   const g = createGame({ mapId: 'ice' });
-  assert.equal(g.obstacles.size, 0);
-  for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) assert.equal(canBuild(g, c, r).ok, !g.blocked.has(`${c},${r}`), `${c},${r}`);
+  assert.equal(g.obstacles.size, 3);
+  for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) assert.equal(canBuild(g, c, r).ok, !g.blocked.has(`${c},${r}`) && !g.obstacles.has(`${c},${r}`), `${c},${r}`);
 });
 
 test('treeFrame Eis: nur Tannen, deterministisch, in zwei Reihen, Kronen nie auf dem Weg', async () => {

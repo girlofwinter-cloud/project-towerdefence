@@ -46,8 +46,11 @@ export const MAPS = {
       [16, 11],
       [20, 11],
     ],
+    // B-103: wenige Hindernisse (Art aus obstacleKind in decor.js): Fels, Baum
+    obstacles: [[8, 1], [12, 12]],
     // B-071: Wegpalette der Wiese (STIL.md); Eiswelt und Zangenangriff haben eigene Wegfarben (B-072, B-073).
-    theme: { treeFrame: true, ground: true, accents: true, light: true, islands: true, decorStyle: 'flatpop', path: { main: '#e2c88f', edge: '#8f6a3b', outline: '#4a3418', mid: '#ecd5a0', fringe: '#6fbf4e' } },
+    // B-103: decor.flatTrees, damit die Hindernisse im Flat-Pop-Stil erscheinen (Laubbaum, Fels mit Kontur)
+    theme: { treeFrame: true, ground: true, accents: true, light: true, islands: true, decorStyle: 'flatpop', decor: { flatTrees: true }, path: { main: '#e2c88f', edge: '#8f6a3b', outline: '#4a3418', mid: '#ecd5a0', fringe: '#6fbf4e' } },
   },
   // Eiswelt (B-029, Glatteis): Gegner rutschen schneller, Kanone und Frost sind schwächer. Modifikatoren (enemySpeed, towerDamage je Typ, slowStrength) und kühles Farbschema (theme).
   ice: {
@@ -66,7 +69,9 @@ export const MAPS = {
     ],
     modifiers: { enemySpeed: 1.14, towerDamage: { cannon: 0.95, frost: 0.7 }, slowStrength: 0.85 },
     // B-073: Eiswelt im Flat-Pop-Stil (STIL.md): Schneeboden mit Verwehungen, Tannen mit Schneekappe, glatter blaugrauer Weg
-    // (dunkler als der Schnee), Eiskristalle und Eisfelsen als Streu-Deko, kühles Licht. Keine Hindernisse.
+    // (dunkler als der Schnee), Eiskristalle und Eisfelsen als Streu-Deko, kühles Licht.
+    // B-103: wenige Hindernisse: Fels, zwei Tannen
+    obstacles: [[2, 2], [9, 12], [16, 12]],
     theme: {
       grass: ['#cfe6f2', '#d9edf6'], blade: '#9cc3d8',
       treeFrame: {
@@ -103,6 +108,7 @@ export const MAPS = {
         bush: '#eef7fd', berry: '#7fe0ff', rock: '#8aa6bd', moss: '#ffffff',
         flowers: ['#ffffff', '#bff0ff', '#7fe0ff'], flowerCore: '#4aa8d0', stem: '#8fb6cc', tuft: '#8fb6cc', tuftLight: '#c9e4f2',
         pebble: '#9db3c9', wood: '#b9c7d6', woodDark: '#6a7f96', crystal: '#7fe0ff',
+        obstacleGround: 'rgba(47,69,96,0.22)', // B-103: kühler Fleck unter Hindernissen statt Grün
         scatterChance: 0.1,
         scatterKinds: [['crystal', 0.28], ['snowpile', 0.3], ['rockgroup', 0.16], ['pebbles', 0.12], ['stakes', 0.08], ['sign', 0.06]],
       },
@@ -139,6 +145,8 @@ export const MAPS = {
     // Pfeil-Mix über beide Wege gewinnt mit 2 bis 8 Leben, nur die obere Seite verteidigt verliert in Welle 13 bis 14.
     // Bei enemySpeed 1,02 verliert auch die Strategie über beide Wege. Nicht ahnungslos ändern.
     modifiers: { towerDamage: { cannon: 0.92 } },
+    // B-103: wenige Hindernisse: Baum, Fels, Baum, Baum
+    obstacles: [[10, 1], [11, 2], [15, 11], [1, 6]],
     // B-072: Zangenangriff im Flat-Pop-Stil (STIL.md Hochland/Herbst): Herbstbäume, Felsgruppen, Laubhaufen.
     theme: {
       treeFrame: {
@@ -230,6 +238,8 @@ export const MAPS = {
     // Kanonen-Mix über beide Wege gewinnt mit 3 bis 4 Leben, eine Seite allein verliert in Welle 2. Bei 0,85 wird es
     // für gute Platzierung zu leicht (10 Leben), bei 1,0 verliert jede Strategie bis Welle 10.
     modifiers: { enemySpeed: 0.9 },
+    // B-103: wenige Hindernisse: Baum, Fels, Baum
+    obstacles: [[1, 6], [6, 1], [12, 12]],
     // Spätsommer im Flat-Pop-Stil: gemischter Baumrahmen, warmes Gras, Pilze, Baumstümpfe und Wegweiser.
     theme: {
       treeFrame: {

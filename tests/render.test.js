@@ -82,7 +82,7 @@ test('Render: gezeichnete Dekoration verlaesst ihre Kachel nicht und ragt nie au
     // (seit B-072 hat fork selbst einen Rahmen: dessen theme wird fuer diesen Test kurz entfernt)
     const forkTheme = MAPS.fork.theme;
     delete MAPS.fork.theme;
-    const s = createGame({ mapId: 'fork' });
+    const s = createGame({ mapId: 'fork', obstacles: new Set() }); // B-103: ohne Karten-Hindernisse (eigener Test)
     try { render({ drawImage() {} }, s, {}); } finally { MAPS.fork.theme = forkTheme; }
     const eps = 1e-9;
     const kinds = {};
@@ -1142,11 +1142,22 @@ test('B-072: Hindernisse im neuen Stil (Kontur), nur im Hintergrund-Cache; Wiese
     const plainBg = mockCtx(); // gleicher Hintergrund ohne Hindernisse zum Vergleich
     globalThis.document = { createElement() { const c = { width: 0, height: 0, getContext: () => plainBg.ctx }; return c; } };
     const { render: render2 } = await import('../src/render.js?welten-hindernis-ohne');
-    render2(mockCtx().ctx, createGame({ mapId: 'fork' }), {});
+    render2(mockCtx().ctx, createGame({ mapId: 'fork', obstacles: new Set() }), {}); // B-103: fork hat eigene Hindernisse
     assert.ok(n - (plainBg.counts.arcTo || 0) >= OBST_FORK.size * 4, `je Hindernis ein Bodenfleck (${n})`);
     render(main.ctx, s, {});
     assert.equal(main.counts.arcTo || 0, 0, 'Frame-Pfad zeichnet keine Hindernisse');
   } finally { delete globalThis.document; }
+});
+
+// B-103: Jede Karte mit Hindernissen zeichnet sie im Flat-Pop-Stil (drawObstacleFlat statt altem Quadrat).
+test('B-103: Karten mit Hindernissen nutzen flatpop mit flatTrees, Eis mit kühlem Bodenfleck', async () => {
+  const { themed, DECOR_STYLE } = await import('../src/config.js');
+  for (const [id, m] of Object.entries(MAPS)) {
+    if (!(m.obstacles || []).length) continue;
+    assert.equal(m.theme?.decorStyle, 'flatpop', id);
+    assert.equal(themed(id, 'decor', DECOR_STYLE).flatTrees, true, id);
+  }
+  assert.notEqual(themed('ice', 'decor', DECOR_STYLE).obstacleGround, DECOR_STYLE.obstacleGround);
 });
 
 // ---------- Eiswelt (B-073) ----------
