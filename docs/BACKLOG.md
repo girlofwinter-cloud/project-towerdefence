@@ -489,3 +489,99 @@ Reihenfolge ist Abhängigkeit: B-062 und B-063 zuerst, dann gemeinsame Sichtprü
 - Akzeptanzkriterien:
   - (3) `startMap` gegen unsanitisierte Eingabe ohne `maps` härten (wirft heute TypeError; in der Praxis nicht erreichbar).
   - Keine festen Zahlen im Staub-Code; Shop bei 390x844 und 200 % Schrift ohne horizontales Abschneiden; `npm test` grün.
+
+## Vollbild-Layout (Zielbild vom designer, 2026-11-26)
+Zielbilder: `docs/design/vollbild-desktop.png`, `vollbild-ring.png`, `vollbild-start.png`, `vollbild-handy-quer.png`, `vollbild-handy-hoch.png`. Empfehlung des designers: Plaketten und Knöpfe wie Variante A (Holz, ruhig), Ringmenü als Donut wie Variante B, Leuchten der Fähigkeitsknöpfe aus B. Freies Bauraster bleibt (feste Bauplätze abgelehnt). B-129 bis B-132 hängen zusammen und laufen als ein Block, sonst ist das Spiel dazwischen unbedienbar. B-133 bis B-137 einzeln. Keine Spiel-Logik außer B-140.
+
+### B-129: Vollbild-Rahmen (Muss)
+- Status: vorschlag
+- Aufwand: L
+- Idee: Seitenleiste und Seitentitel entfernen, der Canvas füllt das Fenster, Seitenverhältnis 20:14 bleibt. Der Rand neben dem Feld wird abgedunkelt gefüllt (sauber machen: B-141). Betrifft `index.html`, `style.css`, `src/main.js` und die e2e-Tests (`#start-wave`, `#shop`, `#tower-info`, `#map-select`, `#pause`, `#speed`, `#sound`, `#abilities`, `#wave-preview`, `.tower-btn`; Testseite hängt ihr Panel an `.board`). Alle Tastaturkürzel bleiben.
+- Akzeptanzkriterien:
+  - Bei 1280x800, 1366x768, 390x844 und 844x390 kein Scrollbalken, Feld so groß wie möglich (1280x800: Feldhöhe 800 px), geprüft per `getBoundingClientRect`.
+  - Alle Tastaturkürzel (1-5, Leertaste, P, F, M, Q, W, E, U, S, T) funktionieren, `npm test` und `npm run test:e2e` grün.
+
+### B-130: HUD-Plaketten über dem Feld (Muss)
+- Status: vorschlag
+- Aufwand: S
+- Idee: Gold, Welle x/20 und Leben als Holzplaketten oben links über dem Feld, Icon plus Zahl (Icons aus `src/render-icons.js`). Echtes HTML über dem Canvas.
+- Akzeptanzkriterien:
+  - Zahlen mindestens 17 px, Kontrast zur Plakette mindestens 7:1, Plaketten verdecken weniger als 6 % der Feldfläche.
+
+### B-131: Ringmenü zum Bauen (Muss)
+- Status: vorschlag
+- Aufwand: L
+- Idee: Klick auf ein leeres Feld öffnet einen Donut-Ring mit 5 Türmen und Preis. Zu teure Türme grau mit roter Zahl. Gestrichelte Reichweite für den fokussierten Turm, Zielfeld weiß umrandet. Nutzt `buildTower`, keine neue Logik.
+- Akzeptanzkriterien:
+  - Segmente mindestens 44 px (Handy 46 px), der Ring bleibt an allen 4 Feldecken im Bild (wird nach innen verschoben).
+  - Esc, Rechtsklick und Tippen daneben schließen. Tasten 1-5 funktionieren weiter. e2e-Test baut einen Turm über den Ring.
+
+### B-132: Ringmenü für Verbessern, Verkaufen und Zielwahl (Muss)
+- Status: vorschlag
+- Aufwand: M
+- Idee: Klick auf einen Turm öffnet einen Ring mit 3 Segmenten (Verbessern mit Preis, Verkaufen mit Rückerstattung, Zielwahl). Tasten U, S, T bleiben. Das alte Turm-Panel `#tower-info` entfällt oder bleibt auf dem Handy als Detailansicht.
+- Akzeptanzkriterien:
+  - Wie B-131, Preis und Rückerstattung stimmen mit `upgradeCost` bzw. `SELL_RATIO` überein.
+
+### B-133: Runde Fähigkeitsknöpfe unten links (Sollte)
+- Status: vorschlag
+- Aufwand: M
+- Idee: Meteor, Kälte und Reparatur als runde Knöpfe unten links, Ablauf als Tortenscheibe mit Sekundenzahl, Badge für Ladungen und Taste. Goldenes Leuchten nur, wenn bereit.
+- Akzeptanzkriterien:
+  - Durchmesser mindestens 66 px. Bereit, lädt und aus sind im Screenshot auch ohne Farbe unterscheidbar (Zahl und Scheibe).
+
+### B-134: Wellenfahne am Eingang statt Knopf "Welle starten" (Sollte)
+- Status: vorschlag
+- Aufwand: M
+- Idee: Fahne mit der Nummer der nächsten Welle an der ersten Weg-Kachel. Klick startet die Welle (Leertaste bleibt). Vorschau der nächsten Gegner mit Icon und Anzahl. Die große Vorschaukarte nur vor der Welle, danach klein, damit sie nicht 4x2 Kacheln verdeckt.
+- Akzeptanzkriterien:
+  - Fahne an jedem der 5 Wege richtig platziert, Vorschau zeigt dieselben Zahlen wie heute `#wave-preview`.
+
+### B-135: Kleine Knöpfe oben rechts (Sollte)
+- Status: vorschlag
+- Aufwand: S
+- Idee: Ton, Tempo und Pause als runde Knöpfe oben rechts.
+- Akzeptanzkriterien:
+  - Tippziele mindestens 44 px, Tasten P, F und M funktionieren weiter.
+
+### B-136: Startbildschirm mit Kartenwahl (Sollte)
+- Status: vorschlag
+- Aufwand: M
+- Idee: Titel, Kartenkarten mit Vorschaubild, Name und Sternen, Knopf "Spielen", 3 Kurz-Hinweise zur Bedienung, Tastenhilfe klein. `#map-select` und die Steuerungshilfe wandern hierher. Auf dem Handy ein wischbares Karussell.
+- Akzeptanzkriterien:
+  - Neues Spiel startet über "Spielen", gesperrte Karten bleiben gesperrt, e2e-Test deckt die Kartenwahl ab.
+
+### B-137: Handy-Layout (Sollte)
+- Status: vorschlag
+- Aufwand: L
+- Idee: Querformat als Standard (Feld auf volle Höhe, links HUD und Fähigkeiten, rechts Vorschau und Start). Hochformat mit 2x-Zoom, Verschieben mit einem Finger (ab ca. 8 px Bewegung ist es Ziehen, sonst Tippen) und Minikarte; Fähigkeiten und Start in der Daumenzone unten. Im Querformat sind Kacheln nur ca. 28 px groß: Zoom 1,4x erlauben, Zielfeld mit Auswahlrahmen bestätigen.
+- Akzeptanzkriterien:
+  - Playwright bei 390x844 und 844x390: kein Tippziel unter 44 px, Ring bleibt an 4 Ecken im Bild, Antippen eines Turms klappt nach dem Verschieben.
+
+### B-138: Größere Figuren mit kräftigerer Kontur (Nett)
+- Status: vorschlag
+- Aufwand: M
+- Idee: Türme und Gegner im Renderer 1,25 bis 1,3x größer als ihr Feld, y-sortiert gezeichnet, 2 px dunkle Kontur nur für Figuren, dezenter Sockel unter Türmen. Treffer-Radien bleiben. Zuerst Probe auf einer Karte. Braucht eine Änderung an `docs/STIL.md` (Kontur), Entscheidung des Menschen.
+- Akzeptanzkriterien:
+  - Screenshot-Vergleich vorher und nachher, keine Treffer-Logik geändert, Frame-Zeit höchstens +10 %.
+
+### B-139: Scharfes Canvas auf Retina und Handy (Nett)
+- Status: vorschlag
+- Aufwand: M
+- Idee: Canvas und Hintergrund-Cache mit `devicePixelRatio` (höchstens 2) rendern. Heute wird das 800x560-Bild nur hochskaliert und ist auf Retina sichtbar weich.
+- Akzeptanzkriterien:
+  - Bei DPR 2 ist `canvas.width` doppelt so groß wie die CSS-Breite, der Screenshot zeigt scharfe Konturen, Frame-Zeit gemessen.
+
+### B-140: Welle früher rufen während der Welle (Spiel-Logik, nur nach Freigabe)
+- Status: vorschlag
+- Aufwand: S
+- Idee: Die Fahne bzw. ein "Früher!"-Knopf ruft die nächste Welle, während die aktuelle noch läuft (in den Handy-Zielbildern zu sehen). Das ist eine Mechanik-Änderung, ein Bonus wäre Balancing. Abgrenzung zum vorhandenen Frühstart-Bonus (B-123) klären.
+- Akzeptanzkriterien:
+  - Vom Menschen freigegeben, Regel "perfektes Spiel bis Welle 20" auf allen Karten weiter erfüllt.
+
+### B-141: Rand-Deko und Vignette (Nett)
+- Status: vorschlag
+- Aufwand: S
+- Idee: Bei 1280x800 (Seitenverhältnis 1,6, Feld 1,42) bleiben links und rechts je ca. 70 px Rand. Schmale Wald- und Felsränder hineinzeichnen statt unscharfem Feldbild. Vignette und warmes Licht von oben links als ein Overlay, ohne `mix-blend-mode` (erzeugte im Test eine sichtbare Kachelkante).
+- Akzeptanzkriterien:
+  - Screenshot 1280x800 ohne sichtbare Naht, Frame-Zeit unverändert.
