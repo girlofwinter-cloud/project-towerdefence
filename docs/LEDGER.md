@@ -846,3 +846,9 @@ Neue Einträge werden unten angehängt. Bestehende Einträge werden nie geänder
 - Ergebnis: Der designer liefert Entwürfe künftig als klickbare Prototypen in Claude Design (Design-Artefakt). Neu: `.claude/skills/design/prototyp-format.md` (Formatregeln) und `sprites.mjs` (Grafik-Export). Geändert: `.claude/skills/design/SKILL.md` (Abschnitt Prototyp), `.claude/agents/designer.md` (darf Prototyp-Dateien im Scratchpad schreiben).
 - Entscheidungen: Auf Wunsch des Menschen. Der designer hat kein Artifact-Tool, darum veröffentlicht der Orchestrator. Änderung an `.claude/`: Merge entscheidet der Mensch.
 - Tests: keine Spielcode-Änderung; `sprites.mjs` im Hauptordner getestet (31 PNGs).
+
+## 2026-11-26 · Design · Stil-Exploration in Claude Design
+- Rolle(n): designer, orchestrator. Branch: agent/design-stil-exploration
+- Ergebnis: Erste freie Exploration in Claude Design: vier Stile für dieselbe Szene (Gemalt und warm, Papier-Diorama, Miniatur-Spielbrett, Mondnacht), Kingdom Rush nur als Niveau-Referenz. Fläche: https://claude.ai/artifact/DDKsUvgQVD4SJu2VnSqE3W. Dazu der klickbare Vollbild-Prototyp: https://claude.ai/artifact/9Z7wufcqkXe4gCsCPen62P. Neu im Backlog: B-142 bis B-146 (`vorschlag`).
+- Entscheidungen: Empfehlung des designers: Stil 1 als Hauptrichtung. Stil 3 (CSS-3D-Neigung) nicht als Ganzes, weil Klick- und Bauraster betroffen wären. Die Flächen sind vom Orchestrator nicht selbst angesehen (Format läuft nur in Claude Design).
+- Tests: keine Codeänderung.
