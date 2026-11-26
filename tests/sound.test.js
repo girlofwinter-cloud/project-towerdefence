@@ -732,3 +732,422 @@ test('B-115: planSound findet Ereignis-Aufnahmen; audio.js spielt sie oder die S
     }
   });
 });
+
+// ---------- B-116: Hintergrundmusik ----------
+import { musicUrl, musicLevel, musicRamp, findLoopPoints } from '../src/sound-events.js';
+
+test('B-116: Musik-Datei, Lizenz, Größe und Zahlen in SOUND.music; leiser als die Effekte', () => {
+  const M = SOUND.music;
+  const url = musicUrl();
+  assert.equal(url, 'assets/music/music-old-tower-inn.m4a');
+  const size = fs.statSync(`${ROOT}${url}`).size;
+  assert.ok(size > 100 * 1024 && size <= 1.5 * 1024 * 1024, `Größe ${size}`);
+  const lic = fs.readFileSync(`${ROOT}assets/sounds/LIZENZ.md`, 'utf8');
+  for (const s of ['music-old-tower-inn.m4a', 'The Old Tower Inn', 'RandomMind', 'https://opengameart.org/content/medieval-the-old-tower-inn']) assert.ok(lic.includes(s), s);
+  assert.ok(!sampleUrls().some((u) => u.url === url), 'Musik nicht unter den Effekten');
+  for (const k of ['gain', 'pausedFactor', 'fadeIn', 'fadeOut', 'fadeChange', 'silence', 'minLoop']) assert.ok(M[k] > 0, k);
+  assert.ok(M.pausedFactor <= 1 && M.fadeIn >= 1 && M.silence < 0.01);
+  // Musik läuft ohne Master: deutlich leiser als der leiseste Ereignis-Ton und als der Master selbst
+  const minEvent = Math.min(...Object.values(SOUND.eventSamples.sounds).map((s) => s.gain)) * SOUND.masterGain;
+  assert.ok(M.gain < minEvent * 0.75 && M.gain < SOUND.masterGain);
+});
+
+test('B-116: musicLevel und musicRamp (Ton an/aus, Pause, Sieg/Niederlage, Ein-/Ausblenden)', () => {
+  const M = SOUND.music;
+  assert.equal(musicLevel({ soundOn: true, status: 'playing', paused: false }), M.gain);
+  assert.ok(Math.abs(musicLevel({ soundOn: true, status: 'playing', paused: true }) - M.gain * M.pausedFactor) < 1e-12);
+  assert.equal(musicLevel({ soundOn: false, status: 'playing', paused: false }), 0);
+  assert.equal(musicLevel({ soundOn: true, status: 'won', paused: false }), 0);
+  assert.equal(musicLevel({ soundOn: true, status: 'lost', paused: true }), 0);
+  assert.equal(musicRamp(M.gain, M.gain), null, 'unverändert: nichts tun');
+  assert.equal(musicRamp(0, 0), null);
+  assert.deepEqual(musicRamp(0, M.gain), { target: M.gain, time: M.fadeIn });
+  assert.deepEqual(musicRamp(M.gain, 0), { target: 0, time: M.fadeOut });
+  assert.deepEqual(musicRamp(M.gain, M.gain * M.pausedFactor), { target: M.gain * M.pausedFactor, time: M.fadeChange });
+  assert.equal(musicRamp(0, NaN), null);
+  // Ablauf: Start -> Sieg -> neues Spiel blendet wieder ein
+  let level = 0;
+  const step = (s) => { const r = musicRamp(level, musicLevel(s)); if (r) level = r.target; return r; };
+  assert.equal(step({ soundOn: true, status: 'playing' }).time, M.fadeIn);
+  assert.equal(step({ soundOn: true, status: 'playing' }), null);
+  assert.equal(step({ soundOn: true, status: 'won' }).time, M.fadeOut);
+  assert.equal(step({ soundOn: true, status: 'playing' }).time, M.fadeIn);
+});
+
+test('B-116: findLoopPoints schneidet Stille an den Rändern ab', () => {
+  const sr = 100;
+  const sig = (len, from, to, v = 0.5) => Float32Array.from({ length: len }, (_, i) => (i >= from && i < to ? v : 0));
+  // Stille 0,3 s vorne, 0,5 s hinten
+  let p = findLoopPoints([sig(500, 30, 450)], sr, 0.001, 1);
+  assert.ok(Math.abs(p.start - 0.3) < 1e-9 && Math.abs(p.end - 4.5) < 1e-9);
+  // Stereo: der lautere Kanal zählt
+  p = findLoopPoints([sig(500, 100, 300), sig(500, 20, 480)], sr, 0.001, 1);
+  assert.ok(Math.abs(p.start - 0.2) < 1e-9 && Math.abs(p.end - 4.8) < 1e-9);
+  // Grenzwert: Werte unter dem Grenzwert gelten als Stille, negative zählen per Betrag
+  const a = sig(500, 0, 500, 0.0009); a[50] = -0.01; a[400] = 0.01;
+  p = findLoopPoints([a], sr, 0.001, 1);
+  assert.ok(Math.abs(p.start - 0.5) < 1e-9 && Math.abs(p.end - 4.01) < 1e-9);
+  // keine Stille: ganze Länge
+  assert.deepEqual(findLoopPoints([sig(500, 0, 500)], sr, 0.001, 1), { start: 0, end: 5 });
+  // ganz still, zu kurz, leer, ungültig: ganze Länge
+  assert.deepEqual(findLoopPoints([sig(500, 0, 0)], sr, 0.001, 1), { start: 0, end: 5 });
+  assert.deepEqual(findLoopPoints([sig(500, 200, 250)], sr, 0.001, 1), { start: 0, end: 5 });
+  assert.deepEqual(findLoopPoints([], sr), { start: 0, end: 0 });
+  assert.deepEqual(findLoopPoints([sig(10, 0, 10)], 0), { start: 0, end: 0 });
+  // Standardwerte aus SOUND.music
+  p = findLoopPoints([sig(500, 30, 450)], sr);
+  assert.ok(Math.abs(p.start - 0.3) < 1e-9);
+});
+
+// Web Audio nachgebaut mit Rampen-Protokoll; Laden der Effekte steuerbar (release)
+async function withFakeMusic({ musicFails = false } = {}, fn) {
+  const log = [];
+  const fetched = [];
+  let release;
+  const effectsDone = new Promise((r) => { release = r; });
+  const param = (name) => ({
+    name, value: 0,
+    setValueAtTime(v, t) { log.push([name, 'set', v, t]); },
+    linearRampToValueAtTime(v, t) { log.push([name, 'ramp', v, t]); this.value = v; },
+    exponentialRampToValueAtTime() {},
+    cancelScheduledValues(t) { log.push([name, 'cancel', t]); },
+  });
+  const node = (kind) => ({ kind, outs: [], connect(n) { this.outs.push(n); }, start(...a) { log.push(['start', kind, this, a]); }, stop() {} });
+  const sr = 100;
+  const musicBuf = {
+    numberOfChannels: 2, sampleRate: sr, length: 1000,
+    getChannelData: (c) => Float32Array.from({ length: 1000 }, (_, i) => (i >= 50 + c * 10 && i < 900 ? 0.3 : 0)),
+  };
+  let ctx;
+  class FakeCtx {
+    constructor() { ctx = this; this.state = 'running'; this.currentTime = 10; this.sampleRate = sr; this.destination = { kind: 'destination' }; }
+    createGain() { return { ...node('gain'), gain: param('gain') }; }
+    createBuffer(_c, len) { return { getChannelData: () => new Float32Array(len) }; }
+    createBufferSource() { return { ...node('source'), playbackRate: { value: 1 } }; }
+    createBiquadFilter() { return { ...node('filter'), frequency: param('filter'), Q: { value: 0 } }; }
+    createOscillator() { return { ...node('osc'), frequency: param('osc') }; }
+    decodeAudioData(data) { return Promise.resolve(data.url.includes('music') ? musicBuf : { url: data.url }); }
+    resume() { this.state = 'running'; return Promise.resolve(); }
+    suspend() { this.state = 'suspended'; return Promise.resolve(); }
+  }
+  const hadWindow = 'window' in globalThis;
+  const origFetch = globalThis.fetch;
+  globalThis.window = { AudioContext: FakeCtx };
+  globalThis.fetch = async (url) => {
+    fetched.push(url);
+    if (url.includes('music')) {
+      if (musicFails) return { ok: false, status: 404 };
+      return { ok: true, arrayBuffer: async () => ({ url }) };
+    }
+    await effectsDone;
+    return { ok: true, arrayBuffer: async () => ({ url }) };
+  };
+  const tick = () => new Promise((r) => setTimeout(r, 10));
+  try {
+    const mod = await import(`../src/audio.js?b116=${Math.random()}`);
+    await fn({ mod, log, fetched, release, tick, getCtx: () => ctx });
+  } finally {
+    globalThis.fetch = origFetch;
+    if (hadWindow) globalThis.window = undefined; else delete globalThis.window;
+  }
+}
+
+test('B-116: Musik lädt erst nach Nutzeraktion und nach den Effekten, Schleife ohne Stille, eigener Gain', async () => {
+  await withFakeMusic({}, async ({ mod, log, fetched, release, tick, getCtx }) => {
+    const M = SOUND.music;
+    const play = { status: 'playing', paused: false };
+    mod.setSoundOn(true);
+    mod.updateMusic(play); // vor der Nutzeraktion: nichts
+    await tick();
+    assert.equal(fetched.length, 0);
+    mod.unlockAudio();
+    mod.updateMusic(play);
+    await tick();
+    assert.ok(fetched.length > 0 && !fetched.some((u) => u.includes('music')), 'Effekte zuerst, Musik wartet');
+    release();
+    await tick();
+    mod.updateMusic(play);
+    await tick();
+    assert.equal(fetched.filter((u) => u === musicUrl()).length, 1);
+    mod.updateMusic(play);
+    const start = log.find((l) => l[0] === 'start' && l[1] === 'source');
+    assert.ok(start, 'Musik gestartet');
+    const src = start[2];
+    assert.equal(src.loop, true);
+    assert.ok(Math.abs(src.loopStart - 0.5) < 1e-9 && Math.abs(src.loopEnd - 9) < 1e-9, 'Stille weggeschnitten');
+    assert.ok(Math.abs(start[3][1] - 0.5) < 1e-9, 'startet bei loopStart');
+    const g = src.outs[0];
+    assert.equal(g.kind, 'gain');
+    assert.deepEqual(g.outs, [getCtx().destination], 'direkt zum Ausgang, nicht über den Effekt-Tiefpass');
+    const ramps = () => log.filter((l) => l[0] === 'gain' && l[1] === 'ramp');
+    assert.deepEqual(ramps().at(-1), ['gain', 'ramp', M.gain, 10 + M.fadeIn], 'sanft einblenden');
+    // gleicher Zustand: keine neue Rampe
+    const n = ramps().length;
+    mod.updateMusic(play);
+    assert.equal(ramps().length, n);
+    // Pause leiser, Sieg aus, neues Spiel wieder einblenden
+    mod.updateMusic({ status: 'playing', paused: true });
+    assert.ok(Math.abs(ramps().at(-1)[2] - M.gain * M.pausedFactor) < 1e-12);
+    mod.updateMusic({ status: 'won', paused: false });
+    assert.deepEqual(ramps().at(-1), ['gain', 'ramp', 0, 10 + M.fadeOut]);
+    mod.updateMusic(play);
+    assert.deepEqual(ramps().at(-1), ['gain', 'ramp', M.gain, 10 + M.fadeIn]);
+    // Ton aus: sofort stumm; wieder an: neu einblenden, dieselbe Schleife läuft weiter
+    mod.setSoundOn(false);
+    assert.deepEqual(log.filter((l) => l[0] === 'gain' && l[1] === 'set').at(-1), ['gain', 'set', 0, 10]);
+    mod.updateMusic(play);
+    mod.setSoundOn(true);
+    mod.unlockAudio();
+    await tick();
+    mod.updateMusic(play);
+    assert.deepEqual(ramps().at(-1), ['gain', 'ramp', M.gain, 10 + M.fadeIn]);
+    assert.equal(log.filter((l) => l[0] === 'start' && l[1] === 'source' && l[2].loop).length, 1, 'nur eine Schleife');
+  });
+});
+
+test('B-116: Fehler beim Laden der Musik bleibt still, Effekte spielen weiter', async () => {
+  await withFakeMusic({ musicFails: true }, async ({ mod, log, fetched, release, tick }) => {
+    mod.setSoundOn(true);
+    mod.unlockAudio();
+    release();
+    await tick();
+    for (let i = 0; i < 3; i++) { assert.doesNotThrow(() => mod.updateMusic({ status: 'playing', paused: false })); await tick(); }
+    assert.equal(fetched.filter((u) => u.includes('music')).length, 1, 'kein erneuter Versuch');
+    assert.ok(!log.some((l) => l[0] === 'start' && l[1] === 'source' && l[2].loop), 'keine Musik');
+    assert.ok(!log.some((l) => l[0] === 'start' && l[1] === 'osc'), 'keine Synthese-Musik');
+    log.length = 0;
+    mod.playSound({ kind: 'won' });
+    assert.ok(log.some((l) => l[0] === 'start' && l[1] === 'source'), 'Effekt spielt');
+  });
+});
+
+test('Kanone: Abschussknall lauter als andere Schüsse, aber leiser als Boss und Meteor', () => {
+  const s = SOUND.samples.sounds;
+  const cannon = s['shot:cannon'].gain;
+  for (const t of Object.keys(TOWER_TYPES)) if (t !== 'cannon') assert.ok(cannon >= 1.5 * s[`shot:${t}`].gain, t);
+  for (const k of ['boss', 'meteorImpact', 'meteorFlight']) assert.ok(cannon < s[k].gain, k);
+  // Synthese-Ersatz: tiefer, kräftiger Bumm (Grundton unter 150 Hz, lauteste Lage der Kanone über allen anderen Schüssen)
+  const peak = (layers) => Math.max(...layers.map((l) => l.gain));
+  const osc = SOUND.shots.cannon.find((l) => l.type === 'osc');
+  assert.ok(osc.freq < 150 && osc.endFreq < osc.freq);
+  for (const t of Object.keys(SOUND.shots)) if (t !== 'cannon') assert.ok(peak(SOUND.shots.cannon) > peak(SOUND.shots[t]), t);
+});
+
+test('Kanone: gemeinsame Schuss-Grenze verschluckt Kanonenschüsse nicht, eigene Grenze gilt weiter', () => {
+  const L = SOUND.limit;
+  assert.deepEqual(SOUND.totalExemptShots, ['cannon']);
+  const lim = createLimiter();
+  // gemeinsame Grenze mit anderen Schüssen füllen
+  const others = ['arrow', 'frost', 'sniper', 'lightning'];
+  let n = 0;
+  for (const tower of others) if (allowEvent(lim, { kind: 'shot', tower }, 0)) n++;
+  assert.equal(n, L.total);
+  assert.equal(allowEvent(lim, { kind: 'shot', tower: 'arrow' }, 0.01), false);
+  // Kanone trotzdem erlaubt, aber nur einmal pro eigenem Fenster
+  assert.equal(allowEvent(lim, { kind: 'shot', tower: 'cannon' }, 0.01), true);
+  assert.equal(allowEvent(lim, { kind: 'shot', tower: 'cannon' }, 0.02), false);
+  assert.equal(allowEvent(lim, { kind: 'shot', tower: 'cannon' }, 0.01 + L.window + 0.001), true);
+  // collectSounds: viele Pfeile zuerst im Frame, Kanone trotzdem zu hören
+  const state = createGame();
+  const tr = createSoundTracker();
+  collectSounds(tr, state, 0);
+  for (const tower of others) for (let i = 0; i < 10; i++) state.projectiles.push({ towerType: tower });
+  state.projectiles.push({ towerType: 'cannon' });
+  state.time += 0.05;
+  const shots = collectSounds(tr, state, 5).filter((e) => e.kind === 'shot');
+  assert.ok(shots.some((e) => e.tower === 'cannon'));
+  assert.equal(shots.filter((e) => e.tower !== 'cannon').length, L.total);
+});
+
+test('Kanone: Ton beim Abschuss (neues Geschoss), kein Ton beim Aufschlag', () => {
+  const state = createGame();
+  const tr = createSoundTracker();
+  detectSoundEvents(tr, state);
+  const ball = { towerType: 'cannon' };
+  state.projectiles.push(ball);
+  state.time += 0.02;
+  assert.deepEqual(detectSoundEvents(tr, state), [{ kind: 'shot', tower: 'cannon' }]);
+  // Aufschlag: Geschoss verschwindet, Explosions-Effekt ohne Meteor erscheint -> still
+  state.projectiles.length = 0;
+  state.effects.push({ kind: 'explosion', x: 0, y: 0, t: 0 });
+  state.time += 0.02;
+  assert.deepEqual(detectSoundEvents(tr, state), []);
+});
+
+test('Gegner-Tod: Monster-Schreie für death und boss, Lizenz je Datei, Tonhöhe je Gegnertyp', () => {
+  const s = SOUND.samples.sounds;
+  assert.deepEqual(s.death.files, ['death-1', 'death-2', 'death-3', 'death-4']);
+  assert.deepEqual(s.boss.files, ['boss-1', 'boss-2']);
+  const lic = fs.readFileSync(`${ROOT}assets/sounds/LIZENZ.md`, 'utf8');
+  assert.ok(!lic.includes('impactSoft'), 'alte Aufprall-Töne entfernt');
+  for (const f of [...s.death.files, ...s.boss.files]) {
+    const row = lic.split('\n').find((l) => l.startsWith(`| ${f}.m4a |`));
+    assert.ok(row, `${f} fehlt in LIZENZ.md`);
+    assert.match(row, /Monster Sound Effects Pack“ von Ogrebane/);
+    assert.match(row, /https:\/\/opengameart\.org\/content\/monster-sound-effects-pack/);
+    assert.match(row, /monster-\d+\.wav/);
+    assert.match(row, /CC0/);
+  }
+  // Boss lauter und tiefer als normale Tode; Begrenzung Tod bleibt 2 pro 0,1 s
+  assert.ok(s.boss.gain > s.death.gain);
+  assert.ok(s.boss.rate < 1);
+  assert.deepEqual(SOUND.limitOverrides.death, { window: 0.1, perWindow: 2 });
+  // kleine/schnelle Gegner höher, schwere tiefer
+  const r = s.death.enemyRate;
+  assert.ok(r.runner > r.grunt && r.grunt > 1 && r.tank < 1);
+  const bufs = new Map([['death', ['a']], ['boss', ['b']]]);
+  const mid = () => 0.5; // keine Zufalls-Variation
+  assert.ok(Math.abs(planSound({ kind: 'death', enemy: 'runner' }, bufs, mid).rate - r.runner) < 1e-9);
+  assert.ok(Math.abs(planSound({ kind: 'death', enemy: 'tank' }, bufs, mid).rate - r.tank) < 1e-9);
+  assert.equal(planSound({ kind: 'death' }, bufs, mid).rate, 1);
+  assert.equal(planSound({ kind: 'death', enemy: 'unbekannt' }, bufs, mid).rate, 1);
+  assert.ok(Math.abs(planSound({ kind: 'boss' }, bufs, mid).rate - s.boss.rate) < 1e-9);
+});
+
+test('Gegner-Tod: Ereignis nennt den Gegnertyp (Boss weiter eigenes Ereignis)', () => {
+  const state = createGame();
+  const tr = createSoundTracker();
+  const g = spawnEnemy(state, 'runner') ?? state.enemies.at(-1);
+  const b = spawnEnemy(state, 'boss') ?? state.enemies.at(-1);
+  detectSoundEvents(tr, state);
+  g.hp = 0;
+  b.hp = 0;
+  update(state, 1 / 60);
+  const evs = detectSoundEvents(tr, state);
+  assert.ok(evs.some((e) => e.kind === 'death' && e.enemy === 'runner'));
+  assert.ok(evs.some((e) => e.kind === 'boss'));
+});
+
+test('Pfeil: echter Bogenschuss aus Bow.wav, leiser als Kanone, Lizenz je Datei', () => {
+  const s = SOUND.samples.sounds;
+  assert.deepEqual(s['shot:arrow'].files, ['arrow-1', 'arrow-2', 'arrow-3']);
+  assert.ok(s['shot:arrow'].gain < s['shot:cannon'].gain);
+  const lic = fs.readFileSync(`${ROOT}assets/sounds/LIZENZ.md`, 'utf8');
+  assert.ok(!lic.includes('impactWood_light'), 'alte Holz-Töne entfernt');
+  for (const f of s['shot:arrow'].files) {
+    const row = lic.split('\n').find((l) => l.startsWith(`| ${f}.m4a |`));
+    assert.ok(row, `${f} fehlt in LIZENZ.md`);
+    assert.match(row, /Battle Sound Effects“ von artisticdude/);
+    assert.match(row, /https:\/\/opengameart\.org\/content\/battle-sound-effects/);
+    assert.match(row, /\| Bow\.wav \|/);
+    assert.match(row, /CC0 \(eine der angebotenen Lizenzen\)/);
+    assert.ok(fs.statSync(`${ROOT}assets/sounds/${f}.m4a`).size > 0);
+  }
+});
+
+// ---------- Tester: Randfälle Musik und Töne ----------
+import { ENEMY_TYPES } from '../src/config.js';
+
+// Musik bis zum Start bringen (Ton an, Nutzeraktion, Effekte geladen)
+async function startFakeMusic({ mod, release, tick }) {
+  const play = { status: 'playing', paused: false };
+  mod.setSoundOn(true);
+  mod.unlockAudio();
+  release();
+  await tick();
+  mod.updateMusic(play);
+  await tick();
+  mod.updateMusic(play);
+}
+const loops = (log) => log.filter((l) => l[0] === 'start' && l[1] === 'source' && l[2].loop);
+
+test('Rand B-116: Ton aus vor der ersten Aktion -> keine Musik, kein Laden; erst nach Einschalten', async () => {
+  await withFakeMusic({}, async ({ mod, log, fetched, release, tick }) => {
+    const play = { status: 'playing', paused: false };
+    mod.setSoundOn(false);
+    mod.unlockAudio(); // Nutzeraktion bei Ton aus
+    release();
+    for (let i = 0; i < 3; i++) { mod.updateMusic(play); await tick(); }
+    assert.equal(fetched.length, 0, 'nichts geladen');
+    assert.equal(loops(log).length, 0, 'keine Musik');
+    // Ton-Knopf: an + Nutzeraktion
+    mod.setSoundOn(true);
+    mod.unlockAudio();
+    await tick();
+    mod.updateMusic(play);
+    await tick();
+    mod.updateMusic(play);
+    assert.equal(loops(log).length, 1, 'jetzt startet die Musik');
+  });
+});
+
+test('Rand B-116: Ton an/aus mehrfach schnell -> genau eine Musik-Quelle, endet eingeblendet', async () => {
+  await withFakeMusic({}, async (h) => {
+    const { mod, log } = h;
+    const M = SOUND.music;
+    await startFakeMusic(h);
+    const play = { status: 'playing', paused: false };
+    for (let i = 0; i < 6; i++) {
+      mod.setSoundOn(false);
+      mod.updateMusic(play);
+      mod.setSoundOn(true);
+      mod.unlockAudio();
+      if (i % 2) mod.updateMusic(play); // manchmal ohne Frame dazwischen
+    }
+    mod.setSoundOn(false);
+    mod.setSoundOn(true);
+    mod.unlockAudio();
+    mod.updateMusic(play);
+    assert.equal(loops(log).length, 1, 'keine doppelte Schleife');
+    const ramps = log.filter((l) => l[0] === 'gain' && l[1] === 'ramp');
+    assert.equal(ramps.at(-1)[2], M.gain);
+    // endet aus: zuletzt auf 0 gesetzt, keine Rampe danach
+    mod.setSoundOn(false);
+    const n = log.filter((l) => l[0] === 'gain' && l[1] === 'ramp').length;
+    mod.updateMusic(play);
+    assert.equal(log.filter((l) => l[0] === 'gain' && l[1] === 'ramp').length, n, 'bei Ton aus keine Rampe');
+  });
+});
+
+test('Rand B-116: Kartenwechsel mitten im Ausblenden blendet vom aktuellen Wert wieder ein', async () => {
+  await withFakeMusic({}, async (h) => {
+    const { mod, log } = h;
+    const M = SOUND.music;
+    await startFakeMusic(h);
+    mod.updateMusic({ status: 'lost', paused: false });
+    const src = loops(log)[0][2];
+    const g = src.outs[0].gain;
+    g.value = M.gain / 2; // Ausblenden halb fertig
+    mod.updateMusic({ status: 'playing', paused: false }); // neues state-Objekt der neuen Karte
+    const tail = log.filter((l) => l[0] === 'gain').slice(-3);
+    assert.deepEqual(tail[1], ['gain', 'set', M.gain / 2, 10], 'kein Sprung');
+    assert.deepEqual(tail[2], ['gain', 'ramp', M.gain, 10 + M.fadeIn]);
+    assert.equal(loops(log).length, 1);
+  });
+});
+
+test('Rand B-116: Testseiten-Cheat "Sieg erzwingen" -> Musik aus, neues Spiel -> wieder an', () => {
+  const M = SOUND.music;
+  const s = createGame();
+  let level = 0;
+  const step = (st) => { const r = musicRamp(level, musicLevel({ soundOn: true, status: st.status, paused: st.paused })); if (r) level = r.target; return r; };
+  assert.equal(step(s).target, M.gain);
+  assert.ok(forceEnd(s, 'won'));
+  assert.deepEqual(step(s), { target: 0, time: M.fadeOut });
+  togglePause(s); // Pause nach Spielende bleibt aus
+  assert.equal(step(s), null);
+  assert.deepEqual(step(createGame()), { target: M.gain, time: M.fadeIn });
+  assert.ok(forceEnd(s, 'lost'));
+  assert.equal(musicLevel({ soundOn: true, status: s.status, paused: false }), 0);
+});
+
+test('Rand Tod: enemyRate deckt alle Gegnertypen (außer Boss) ab, keine unbekannten Namen', () => {
+  const r = SOUND.samples.sounds.death.enemyRate;
+  const types = Object.keys(ENEMY_TYPES).filter((t) => t !== 'boss');
+  assert.deepEqual(Object.keys(r).sort(), types.sort());
+  for (const v of Object.values(r)) assert.ok(v > 0.5 && v < 2);
+  // Extremwerte mit Variation bleiben im hörbaren Bereich
+  const bufs = new Map([['death', ['a']]]);
+  for (const t of [...types, 'unbekannt', undefined, null]) {
+    for (const rnd of [() => 0, () => 0.999999]) {
+      const p = planSound({ kind: 'death', enemy: t }, bufs, rnd);
+      assert.ok(Number.isFinite(p.rate) && p.rate > 0.5 && p.rate < 2, `${t}: ${p.rate}`);
+    }
+  }
+});
+
+test('Rand: Gesamtgröße assets (Effekte und Musik) höchstens 2 MB', () => {
+  const sum = (dir) => fs.readdirSync(`${ROOT}${dir}`).reduce((a, f) => a + fs.statSync(`${ROOT}${dir}/${f}`).size, 0);
+  const total = sum('assets/sounds') + sum('assets/music');
+  assert.ok(total <= 2 * 1024 * 1024, `assets ${total} B`);
+});

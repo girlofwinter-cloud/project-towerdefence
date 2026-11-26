@@ -48,7 +48,7 @@ function towerLevels(state) {
 }
 
 // Ereignisse seit dem letzten Aufruf (ohne Begrenzung):
-// { kind: 'shot', tower }, { kind: 'death' }, { kind: 'boss' }, { kind: 'meteorFlight' }, { kind: 'meteorImpact' },
+// { kind: 'shot', tower }, { kind: 'death', enemy }, { kind: 'boss' }, { kind: 'meteorFlight' }, { kind: 'meteorImpact' },
 // { kind: 'lifeLost' } (einmal je Frame, auch wenn mehrere Leben verloren gehen; Reparatur = mehr Leben = still)
 export function detectSoundEvents(tr, state) {
   const out = [];
@@ -81,7 +81,7 @@ export function detectSoundEvents(tr, state) {
   const alive = new Set(now);
   for (const e of tr.enemies) {
     if (alive.has(e) || !(e.hp <= 0)) continue;
-    out.push({ kind: e.type === 'boss' ? 'boss' : 'death' });
+    out.push(e.type === 'boss' ? { kind: 'boss' } : { kind: 'death', enemy: e.type });
   }
   tr.enemies = now.slice();
   if (Number.isFinite(state.lives) && Number.isFinite(tr.lives) && state.lives < tr.lives) out.push({ kind: 'lifeLost' });
@@ -181,7 +181,8 @@ export function allowEvent(lim, ev, now) {
   const key = soundKey(ev);
   if (ev.kind !== 'shot' || SOUND.totalExempt.includes(ev.kind)) return allowSound(lim, key, now);
   const total = totalSlot(lim, now);
-  if (total.count >= lim.limit.total) return false;
+  // Kanone (totalExemptShots): nie von der gemeinsamen Grenze verschluckt, zählt aber mit
+  if (total.count >= lim.limit.total && !SOUND.totalExemptShots.includes(ev.tower)) return false;
   if (!allowSound(lim, key, now)) return false;
   total.count += 1;
   return true;
@@ -232,6 +233,44 @@ export function planSound(ev, buffers, rnd = Math.random, samples = SAMPLE_GROUP
   const list = def && buffers && typeof buffers.get === 'function' ? buffers.get(key) : null;
   if (!list || list.length === 0) return { type: 'synth' };
   const i = Math.min(list.length - 1, Math.floor(rnd() * list.length));
-  const rate = 1 + (rnd() * 2 - 1) * (def.pitchVar || 0);
+  // Grund-Tonhöhe (rate) und je Gegnertyp (enemyRate), dazu zufällige Variation
+  const base = (def.rate ?? 1) * (def.enemyRate?.[ev.enemy] ?? 1);
+  const rate = base * (1 + (rnd() * 2 - 1) * (def.pitchVar || 0));
   return { type: 'sample', buffer: list[i], gain: def.gain, rate };
+}
+
+// ---------- B-116: Hintergrundmusik (reine Logik) ----------
+export function musicUrl(cfg = SOUND.music) {
+  return `${cfg.base}${cfg.file}.m4a`;
+}
+
+// Ziel-Lautstärke der Musik: aus bei Ton aus und nach Sieg/Niederlage, bei Pause leiser.
+export function musicLevel({ soundOn, status, paused }, cfg = SOUND.music) {
+  if (!soundOn || status !== 'playing') return 0;
+  return paused ? cfg.gain * cfg.pausedFactor : cfg.gain;
+}
+
+// Übergang von current zu next: null = nichts zu tun, sonst { target, time } (Dauer der linearen Rampe in s).
+// Von 0 aus einblenden (fadeIn), auf 0 ausblenden (fadeOut), sonst fadeChange.
+export function musicRamp(current, next, cfg = SOUND.music) {
+  if (!Number.isFinite(next) || Math.abs(next - current) < 1e-9) return null;
+  const time = !(current > 0) ? cfg.fadeIn : next <= 0 ? cfg.fadeOut : cfg.fadeChange;
+  return { target: next, time };
+}
+
+// Schleifenpunkte ohne Stille an den Rändern. channels: Liste von Sample-Arrays (gleich lang).
+// Liefert { start, end } in Sekunden; ganz still, ungültig oder kürzer als minLoop -> ganze Länge.
+export function findLoopPoints(channels, sampleRate, threshold = SOUND.music.silence, minLoop = SOUND.music.minLoop) {
+  const n = channels && channels.length ? Math.min(...channels.map((c) => c.length)) : 0;
+  const whole = { start: 0, end: sampleRate > 0 ? n / sampleRate : 0 };
+  if (!(n > 0) || !(sampleRate > 0)) return whole;
+  const loud = (i) => channels.some((c) => Math.abs(c[i]) > threshold);
+  let a = 0;
+  while (a < n && !loud(a)) a++;
+  if (a >= n) return whole;
+  let e = n - 1;
+  while (e > a && !loud(e)) e--;
+  const start = a / sampleRate;
+  const end = (e + 1) / sampleRate;
+  return end - start >= minLoop ? { start, end } : whole;
 }

@@ -539,3 +539,11 @@ Agents lesen diese Datei nur bei konkretem Bedarf.
 - Akzeptanzkriterien:
   - Erkennung in `src/sound-events.js` (rein, getestet); `game.js` unverändert. Kein Ton bei abgelehntem Bau oder Ausbau.
   - Dateien und Lizenz wie B-114.
+
+### B-116: Hintergrundmusik
+- Status: fertig
+- Aufwand: M
+- Idee: Wunsch des Menschen am 2026-11-26: ruhige Musikschleife (frei lizenziert, CC0) im Hintergrund, leiser als die Effekte.
+- Akzeptanzkriterien:
+  - Startet erst nach der ersten Nutzeraktion, nahtlose Schleife, mit dem Ton-Knopf aus; kein Lautstärkeregler (Wunsch des Menschen).
+  - Datei höchstens ca. 1,5 MB, Lizenz in `assets/sounds/LIZENZ.md`.

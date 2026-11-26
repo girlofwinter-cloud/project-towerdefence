@@ -718,3 +718,10 @@ Neue Einträge werden unten angehängt. Bestehende Einträge werden nie geänder
 - Ergebnis: fertig. `npm run testserver [-- <branch>] [--dir <ordner>] [--no-open]` liefert Spiel und Testseite auf Port 8091 direkt aus Git (Standard `origin/main`), holt höchstens alle 10 s neue Commits, öffnet die Testseite. `scripts/serve.mjs` bekommt eine austauschbare Lesefunktion; `npm start` unverändert, Pfad-Ausbruch jetzt 403.
 - Tests: 405 Unit-Tests (5 neu in `tests/testserver.test.js`), 37 Browser-Tests. Kein Tester/Reviewer (nur Werkzeug, keine Spieldateien); Orchestrator hat den Code selbst geprüft (execFile ohne Shell, Ref-Prüfung, nur 127.0.0.1).
 - Entscheidungen: `package.json` geändert (neues Skript, keine Abhängigkeit); Merge ausdrücklich vom Menschen erlaubt.
+
+## 2026-11-26 · B-116 und Klang-Feinschliff · Hintergrundmusik, Kanone, Todesschreie, Pfeil
+- Rolle(n): orchestrator, developer, tester, reviewer
+- Branch: agent/musik
+- Ergebnis: fertig. B-116: „The Old Tower Inn“ (RandomMind, OpenGameArt, CC0) als leise Schleife (Stille am Ende per loopStart/loopEnd übersprungen), Einblenden nach erster Nutzeraktion, bei Sieg/Niederlage aus, Ton-Knopf schaltet mit ab. Nach Anhören durch den Menschen: Musik leiser (0,025); Kanone als echter Abschussknall (Kenney explosionCrunch + Tiefton, tiefer gestimmt), lauter, nie von der gemeinsamen Grenze verschluckt; Tod als kurzes Monster-Geschrei (Ogrebane, CC0, Tonhöhe je Gegnertyp), Boss-Schrei; Pfeil als echter Bogenschuss (artisticdude, CC0).
+- Tests: 422 Unit-Tests, 37 Browser-Tests. Tester: PASS (6 Tests ergänzt), Review: APPROVE. Keine bestehenden Tests geändert.
+- Entscheidungen: Lizenzen hat der Mensch per Screenshot bestätigt; Dateien lädt der Mensch selbst. Musik in `assets/music/` (eigene Größengrenze), Kanonen-Tonhöhe in der Datei statt in `SOUND` (bestehender Test). Der Testserver (`npm run testserver -- agent/musik`) wurde zum Anhören vor dem Merge genutzt.

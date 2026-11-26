@@ -2,9 +2,11 @@
 // Nutzeraktion), sonst Synthese (Oszillatoren, Rauschen-Buffer, Hüllkurven) als Ersatz.
 // Ohne Web Audio (Node, alte Browser) tun alle Funktionen nichts.
 import { SOUND } from './config.js';
-import { sampleUrls, planSound } from './sound-events.js';
+import { sampleUrls, planSound, musicUrl, musicLevel, musicRamp, findLoopPoints } from './sound-events.js';
 
-const audio = { ctx: null, master: null, noise: null, on: SOUND.defaultOn, buffers: new Map() };
+const audio = { ctx: null, master: null, noise: null, on: SOUND.defaultOn, buffers: new Map(), samplesSettled: false };
+// B-116: Musik. state: 'idle' -> 'loading' -> 'ready' | 'failed'; level = zuletzt angesteuerte Lautstärke
+const music = { state: 'idle', buffer: null, loop: null, src: null, gain: null, level: 0 };
 
 function AudioCtor() {
   if (typeof window === 'undefined') return null;
@@ -38,31 +40,102 @@ export function unlockAudio() {
 // Setzt nur den An/Aus-Zustand; den Context erzeugt erst unlockAudio() bei einer Nutzeraktion.
 export function setSoundOn(on) {
   audio.on = !!on;
+  if (!audio.on) musicSilence(); // beim Wiedereinschalten neu einblenden
   if (!audio.on && audio.ctx && audio.ctx.state === 'running') audio.ctx.suspend().catch(() => {});
 }
 
 // Lädt alle Aufnahmen im Hintergrund. Fehler (fehlende Datei, Dekodieren) bleiben still: dann Synthese.
 function loadSamples(ctx) {
-  if (typeof fetch !== 'function' || typeof ctx.decodeAudioData !== 'function') return;
-  for (const { key, url } of sampleUrls()) {
-    Promise.resolve()
-      .then(() => fetch(url))
-      .then((res) => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return res.arrayBuffer();
-      })
-      .then((data) => new Promise((resolve, reject) => {
-        // Promise- und alte Callback-Form (Safari) zugleich abdecken
-        const p = ctx.decodeAudioData(data, resolve, reject);
-        if (p && typeof p.then === 'function') p.then(resolve, reject);
-      }))
-      .then((buf) => {
-        if (!buf) return;
-        if (!audio.buffers.has(key)) audio.buffers.set(key, []);
-        audio.buffers.get(key).push(buf);
-      })
-      .catch(() => { /* fehlt oder defekt: Synthese bleibt der Ersatz */ });
-  }
+  if (typeof fetch !== 'function' || typeof ctx.decodeAudioData !== 'function') { audio.samplesSettled = true; return; }
+  const loads = sampleUrls().map(({ key, url }) => loadBuffer(ctx, url)
+    .then((buf) => {
+      if (!buf) return;
+      if (!audio.buffers.has(key)) audio.buffers.set(key, []);
+      audio.buffers.get(key).push(buf);
+    })
+    .catch(() => { /* fehlt oder defekt: Synthese bleibt der Ersatz */ }));
+  // B-116: Musik erst laden, wenn alle Effekt-Dateien fertig (oder gescheitert) sind
+  Promise.all(loads).then(() => { audio.samplesSettled = true; });
+}
+
+// Datei holen und dekodieren (Promise mit AudioBuffer)
+function loadBuffer(ctx, url) {
+  return Promise.resolve()
+    .then(() => fetch(url))
+    .then((res) => {
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res.arrayBuffer();
+    })
+    .then((data) => new Promise((resolve, reject) => {
+      // Promise- und alte Callback-Form (Safari) zugleich abdecken
+      const p = ctx.decodeAudioData(data, resolve, reject);
+      if (p && typeof p.then === 'function') p.then(resolve, reject);
+    }));
+}
+
+// ---------- B-116: Hintergrundmusik ----------
+// Musik laden (still bei Fehlern: dann eben keine Musik, keine Synthese-Musik)
+function loadMusic(ctx) {
+  music.state = 'loading';
+  if (typeof fetch !== 'function' || typeof ctx.decodeAudioData !== 'function') { music.state = 'failed'; return; }
+  loadBuffer(ctx, musicUrl())
+    .then((buf) => {
+      if (!buf || typeof buf.getChannelData !== 'function') throw new Error('kein Buffer');
+      const chans = [];
+      for (let c = 0; c < buf.numberOfChannels; c++) chans.push(buf.getChannelData(c));
+      music.loop = findLoopPoints(chans, buf.sampleRate);
+      music.buffer = buf;
+      music.state = 'ready';
+    })
+    .catch(() => { music.state = 'failed'; });
+}
+
+// Schleife starten (Gain bei 0, eingeblendet wird über updateMusic). Eigener Gain direkt zum Ausgang.
+function startMusic(ctx) {
+  music.gain = ctx.createGain();
+  music.gain.gain.value = 0;
+  music.gain.connect(ctx.destination);
+  const src = ctx.createBufferSource();
+  src.buffer = music.buffer;
+  src.loop = true;
+  src.loopStart = music.loop.start;
+  src.loopEnd = music.loop.end;
+  src.connect(music.gain);
+  src.start(ctx.currentTime, music.loop.start);
+  music.src = src;
+  music.level = 0;
+}
+
+// Musik sofort stumm (Ton aus); nächstes updateMusic blendet wieder ein
+function musicSilence() {
+  if (!music.gain || !audio.ctx) return;
+  try {
+    const p = music.gain.gain;
+    p.cancelScheduledValues(audio.ctx.currentTime);
+    p.setValueAtTime(0, audio.ctx.currentTime);
+  } catch { /* Musik ist Beiwerk */ }
+  music.level = 0;
+}
+
+// Pro Frame aus main.js: lädt die Musik (nach den Effekten), startet sie und blendet je nach Spielstatus.
+export function updateMusic({ status, paused } = {}) {
+  const ctx = audio.ctx;
+  if (!audio.on || !ctx || ctx.state !== 'running') return;
+  try {
+    if (music.state === 'idle' && audio.samplesSettled) loadMusic(ctx);
+    if (music.state !== 'ready') return;
+    if (!music.src) startMusic(ctx);
+    const r = musicRamp(music.level, musicLevel({ soundOn: audio.on, status, paused }));
+    if (!r) return;
+    const p = music.gain.gain;
+    const t = ctx.currentTime;
+    // laufende Rampe am aktuellen Wert abholen (sonst Sprung)
+    const from = Number.isFinite(p.value) ? p.value : music.level;
+    p.cancelScheduledValues(t);
+    p.setValueAtTime(from, t);
+    p.linearRampToValueAtTime(r.target, t + r.time);
+    music.level = r.target;
+  } catch { music.state = 'failed'; /* Musik ist Beiwerk: Fehler nie ins Spiel durchreichen */ }
 }
 
 // Aufnahme abspielen: Variante mit Tonhöhe (playbackRate) und Lautstärke über den Master (Tiefpass)
