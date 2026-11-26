@@ -746,6 +746,16 @@ Neue Einträge werden unten angehängt. Bestehende Einträge werden nie geänder
 
 ---
 
+## 2026-11-26 · B-118 · Eigene Hintergrundmusik je Welt
+- Rolle(n): orchestrator, developer, tester, reviewer
+- Branch: agent/musik-je-welt
+- Ergebnis: fertig. Vier neue CC0-Titel (Eiswelt: Beyond the Frozen Veil, Zangenangriff: Medieval Exploration, Zwei Fronten: Minstrel Dance, Vulkan: Medieval Battle), Wiese behält The Old Tower Inn. `SOUND.music.byMap` mit Lautstärkefaktor je Karte (RMS-Messung, -6,5 bis +5,4 dB Abweichung), Überblenden beim Kartenwechsel, Puffer-Cache, Rückfall bei Ladefehler.
+- Tests: 431 bestanden (inkl. 4 Randfall-Tests des Testers), e2e 37/37. Größengrenze der Assets von 2 MB auf 10 MB angehoben (vom Menschen freigegeben, da je Spiel nur der Kartentitel lädt), dafür neu höchstens 3 MB je Musikdatei.
+- Review: APPROVE ohne Muss-Punkte; Hinweis zu nicht getrenntem Gain-Knoten als B-119 (vorschlag).
+- Entscheidungen: Downloads und CC0-Prüfung durch den Menschen; Dateien unverändert nach AAC 96 kbit/s, Lautstärke nur per Config-Faktor.
+
+---
+
 ## 2026-11-26 · B-005 · Vorzeitiger Wellenstart mit Gold-Bonus
 - Rolle(n): orchestrator, developer, tester, reviewer
 - Branch: agent/frueher-wellenstart

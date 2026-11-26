@@ -245,14 +245,36 @@ export function planSound(ev, buffers, rnd = Math.random, samples = SAMPLE_GROUP
 }
 
 // ---------- B-116: Hintergrundmusik (reine Logik) ----------
-export function musicUrl(cfg = SOUND.music) {
-  return `${cfg.base}${cfg.file}.m4a`;
+// B-118: URL des Titels für eine Karte; Karten ohne Eintrag in byMap (oder ohne mapId) -> Rückfall cfg.file
+export function musicUrl(cfg = SOUND.music, mapId) {
+  const byMap = cfg.byMap || {};
+  const name = mapId != null && Object.hasOwn(byMap, mapId) ? byMap[mapId].file : cfg.file;
+  return `${cfg.base}${name}.m4a`;
+}
+
+// B-118: Lautstärkefaktor eines Titels (nach URL, damit der Rückfalltitel seinen eigenen Faktor behält);
+// Titel ohne Eintrag oder ohne gültigen Faktor -> 1
+export function musicGainFactor(url, cfg = SOUND.music) {
+  for (const [id, entry] of Object.entries(cfg.byMap || {})) {
+    if (musicUrl(cfg, id) === url && Number.isFinite(entry.gain) && entry.gain >= 0) return entry.gain;
+  }
+  return 1;
+}
+
+// B-118: welcher Titel laufen soll. failed: URLs, deren Laden gescheitert ist.
+// Kartentitel gescheitert -> Rückfalltitel; auch der gescheitert -> null (keine Musik).
+export function pickMusicUrl(mapId, failed = [], cfg = SOUND.music) {
+  const bad = new Set(failed);
+  for (const url of [musicUrl(cfg, mapId), musicUrl(cfg)]) if (!bad.has(url)) return url;
+  return null;
 }
 
 // Ziel-Lautstärke der Musik: aus bei Ton aus und nach Sieg/Niederlage, bei Pause leiser.
-export function musicLevel({ soundOn, status, paused }, cfg = SOUND.music) {
+// B-118: url = laufender Titel, dessen Faktor (musicGainFactor) auf gain wirkt.
+export function musicLevel({ soundOn, status, paused, url }, cfg = SOUND.music) {
   if (!soundOn || status !== 'playing') return 0;
-  return paused ? cfg.gain * cfg.pausedFactor : cfg.gain;
+  const gain = cfg.gain * musicGainFactor(url, cfg);
+  return paused ? gain * cfg.pausedFactor : gain;
 }
 
 // Übergang von current zu next: null = nichts zu tun, sonst { target, time } (Dauer der linearen Rampe in s).
