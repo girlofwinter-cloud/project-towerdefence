@@ -78,6 +78,14 @@ export function startMap(progress) {
   return [...MAP_ORDER].reverse().find((id) => isUnlocked(p, id)) ?? MAP_ORDER[0];
 }
 
+// Karte fürs nächste Spiel nach einem Spielende: nach einem Sieg die nächste Karte in MAP_ORDER,
+// falls es sie gibt und sie offen ist; sonst (Niederlage, letzte Karte) bleibt die Karte.
+export function mapAfterResult(progress, mapId, status) {
+  const next = MAP_ORDER[MAP_ORDER.indexOf(mapId) + 1];
+  if (status !== 'won' || !MAP_ORDER.includes(mapId) || !next) return mapId;
+  return isUnlocked(progress, next) ? next : mapId;
+}
+
 // Trägt ein Spielende ein (verändert progress). Rekord und Sterne werden nie schlechter.
 // Rückgabe: newRecord (Wellenrekord verbessert), newStars (Sterne verbessert), unlockedMap (neu freigeschaltete Karten-ID oder null).
 export function recordResult(progress, { mapId, status, wave, lives }) {

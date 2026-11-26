@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { START_LIVES, PROGRESS_KEY, STAR_LIVES_SHARE, MAX_WAVES } from '../src/config.js';
 import {
-  emptyProgress, loadProgress, saveProgress, recordResult, starsFor, isUnlocked, mapProgress, starText, resultLines, MAP_ORDER, startMap, sanitizeProgress,
+  emptyProgress, loadProgress, saveProgress, recordResult, starsFor, isUnlocked, mapProgress, starText, resultLines, MAP_ORDER, startMap, sanitizeProgress, mapAfterResult,
 } from '../src/progress.js';
 
 // Einfacher Fake-Speicher mit getItem/setItem wie localStorage.
@@ -316,4 +316,22 @@ test('B-030 Randfall (Tester): alter Spielstand ohne volcano lädt; Vulkan offen
   const notYet = loadProgress(old(0));
   assert.equal(isUnlocked(notYet, 'volcano'), false);
   assert.equal(startMap(loadProgress(fakeStorage({ [PROGRESS_KEY]: JSON.stringify({ maps: {}, lastMap: 'volcano' }) }))), 'meadow', 'gesperrter Vulkan als lastMap fällt zurück');
+});
+
+test('mapAfterResult: Sieg → nächste Karte, sonst gleiche Karte', () => {
+  const p = emptyProgress();
+  // Niederlage: Karte bleibt
+  recordResult(p, { mapId: M0, status: 'lost', wave: 3, lives: 0 });
+  assert.equal(mapAfterResult(p, M0, 'lost'), M0);
+  // Sieg schaltet frei und wählt die nächste Karte
+  recordResult(p, { mapId: M0, status: 'won', wave: MAX_WAVES, lives: START_LIVES });
+  assert.equal(mapAfterResult(p, M0, 'won'), M1);
+  // Erneuter Sieg auf schon geschaffter Karte: ebenfalls weiter
+  assert.equal(mapAfterResult(p, M0, 'won'), M1);
+  // Nächste Karte noch gesperrt (kein Stern eingetragen): Karte bleibt
+  assert.equal(mapAfterResult(emptyProgress(), M0, 'won'), M0);
+  // Letzte Karte und unbekannte Karte: bleibt
+  const last = MAP_ORDER.at(-1);
+  assert.equal(mapAfterResult(won(...MAP_ORDER), last, 'won'), last);
+  assert.equal(mapAfterResult(p, 'gibtsnicht', 'won'), 'gibtsnicht');
 });

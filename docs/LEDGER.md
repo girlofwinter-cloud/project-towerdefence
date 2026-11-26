@@ -791,3 +791,11 @@ Neue Einträge werden unten angehängt. Bestehende Einträge werden nie geänder
 - Ergebnis: fertig. Gegner speichern ihre Welle (`enemy.wave`); Lava und Meteor skalieren damit (Rückfall `state.wave`). Ohne Frühstart unverändert.
 - Tests: 3 neue, alle grün; Strategie-Simulationen unverändert.
 - Review: APPROVE. Hinweis: Meteor-Tooltip zeigt bei zwei Wellen den Schaden der neueren Welle (Obergrenze), bleibt so.
+
+---
+
+## 2026-11-26 · B-122 · Nach Sieg nächste Karte vorwählen
+- Rolle(n): orchestrator (direkter Nutzerwunsch, kleine Änderung ohne Balancing)
+- Branch: agent/naechste-karte
+- Ergebnis: fertig. Neues `mapAfterResult` in `progress.js`; nach einem Sieg ist die nächste offene Karte gewählt (auch gemerkt als `lastMap`), der Overlay-Knopf heißt dann „Weiter: <Karte>“. Niederlage/letzte Karte: wie bisher.
+- Tests: 1 neuer Unit-Test, e2e-Fortschrittstest erweitert; 463 + 38 e2e grün.

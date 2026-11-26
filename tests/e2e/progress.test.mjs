@@ -50,6 +50,11 @@ test('Fortschritt: Sieg schaltet die nächste Karte frei, Overlay meldet es, ble
   assert.ok(!lines.includes('Neuer Rekord!'), 'Erstes Ergebnis: keine Rekordmeldung');
   assert.equal(await optionDisabled('ice'), false);
   assert.ok(await page.evaluate((k) => localStorage.getItem(k), PROGRESS_KEY));
+  // Nach dem Sieg ist die nächste Karte vorgewählt: der Knopf nennt sie und startet dort
+  assert.equal(await page.locator('#restart').textContent(), 'Weiter: Eiswelt');
+  await page.locator('#restart').click();
+  assert.equal(await page.evaluate(() => window.__game().mapId), 'ice');
+  assert.equal(await page.locator('#map-select').inputValue(), 'ice');
   await page.reload();
   await page.waitForSelector('#shop .tower-btn');
   assert.equal(await optionDisabled('ice'), false);
