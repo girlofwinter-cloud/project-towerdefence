@@ -129,6 +129,10 @@ function stopMusic(ctx) {
   p.cancelScheduledValues(t);
   p.setValueAtTime(from, t);
   if (r) p.linearRampToValueAtTime(0, t + r.time);
+  // B-119: nach dem Ende Quelle und Gain trennen, sonst bleibt je Kartenwechsel ein toter Knoten am Ausgang
+  src.onended = () => {
+    try { src.disconnect(); gain.disconnect(); } catch { /* Musik ist Beiwerk */ }
+  };
   src.stop(t + (r ? r.time : 0));
 }
 
