@@ -616,6 +616,12 @@ Neue Einträge werden unten angehängt. Bestehende Einträge werden nie geänder
 - Ergebnis: fertig. „Neue Sterne: ★★☆“ heißt jetzt „Neue Sterne!“ (die Sterne stehen schon in der Rekordzeile).
 - Tests: Erwartete Texte in zwei `resultLines`-Tests angepasst (vom Menschen gewünscht, nicht abgeschwächt); kein Reviewer wegen reiner Textänderung.
 
+## 2026-11-26 · Doku · LERNEN.md: Grundlagen (npm, Git, Branches, Pull Requests)
+- Rolle(n): Claude (interaktiv, auf Wunsch des Menschen)
+- Branch: agent/lernen-grundlagen (eigener Worktree, da im Hauptordner parallel unfertige B-067-Arbeit liegt)
+- Ergebnis: fertig. Neuer Abschnitt 9 in `docs/LERNEN.md`: `npm start`/Server, zwei Arten von Pipeline, Commits, Branches, Pull Requests, Lehre aus PR #57, Git-Befehle.
+- Tests: nur Doku, keine Code-Änderung.
+
 ## 2026-11-26 · B-067 und B-068 · Boss Oger-König, Projektile und Effekte (Design-Overhaul, Block)
 - Rolle(n): orchestrator, developer (je Eintrag), danach einmal tester und reviewer über den Block (`src/main.js` berührt)
 - Branch: agent/boss-effekte
