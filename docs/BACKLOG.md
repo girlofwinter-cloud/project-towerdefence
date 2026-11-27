@@ -47,10 +47,12 @@ Erledigte Einträge (`fertig`) liegen in `docs/archiv/BACKLOG-fertig.md`. Beim A
 Problem: Kanone (Fläche + Rückstoß) und Frost (Verlangsamung) decken fast alles ab; Pfeil und Blitz haben kaum eine eigene Aufgabe.
 Idee: Jeder neue Gegner bremst gezielt Kanone oder Frost aus und belohnt einen anderen Turm. Bis zur Freigabe steht der Status auf `entwurf`, die Pipeline nimmt nur `offen`.
 Wer gegen wen: Fledermaus → Pfeil, Blitz, Scharfschütze | Irrlicht → Blitz, Pfeil | Panzerkäfer → Pfeil, Blitz | Glutling → Blitz, Pfeil, Scharfschütze.
-Reihenfolge (je Zeile eine eigene Sitzung mit `/pipeline`, dazwischen `/clear`). Spur C kann parallel in einer zweiten Sitzung laufen, weil sie nur `render*`/`*-fx.js` berührt. Spur A und B ändern beide `game.js`/`config.js` und laufen deshalb nacheinander:
-- Spur A, Gegner: 1. B-170 → 2. B-167 → 3. B-168 → 4. B-169 → 5. B-171 (braucht alle vier)
-- Spur B, Stufe-3-Fähigkeiten (nach Spur A, weil sie Schale und Glutling nutzt): 6. B-175 → 7. B-176, danach `npm run test:balance` mit den Messungen aus B-171
-- Spur C, Optik: B-172 (designer, sofort möglich) → B-173 und B-174 (nach B-175/B-176 für die Fähigkeits-Optik)
+Reihenfolge (neu 27.11., freigegeben; je Zeile eine Sitzung mit `/pipeline`, dazwischen `/clear`). **Balancing erst ganz am Ende:** Die Logik-Einträge bauen nur die Mechanik mit vorläufigen Werten in `config.js` und Unit-Tests; `npm run test:balance` darf dort rot werden, wenn es nur um Zahlen geht (im Ledger vermerken, kein Merge auf main bis Schritt 5, alles auf einem Sammel-Branch `agent/stufe3-und-gegner`).
+Zwei developer parallel (je eigene Sitzung, eigener Unter-Branch von `agent/stufe3-und-gegner`, in den Sammel-Branch mergen; beide ändern `game.js`/`config.js`, aber an getrennten Stellen: Türme bzw. Gegner/Wellen):
+- Spur T, Türme: 1. B-175 → 2. B-176
+- Spur G, Gegner: 1. B-179 (Elite-Gegner, Wellen) → 2. B-180 Logik (Phasen der Nekromantin)
+- Danach gemeinsam: Balancing-Sitzung, alles zusammen messen und Werte einstellen, dann PR und Merge auf main.
+- Spur O, designer (sofort, parallel): Skizzen Stufe 3 (B-172), Entwurf Nekromantin (B-180), dazu Effekt-Skizzen für die Stufe-3-Fähigkeiten (Mehrfachschuss, Gewitter, Brandfläche, Eisboden, Markierung) und das Elite-Abzeichen (B-179). Umsetzung der Optik (B-173, B-174, Optik B-180) nach den Logik-Schritten.
 
 ### B-172: Stufe 3 als eigene Gestalt: Skizzen für alle fünf Türme (Design)
 - Status: entwurf
@@ -82,25 +84,25 @@ Reihenfolge (je Zeile eine eigene Sitzung mit `/pipeline`, dazwischen `/clear`).
 - Akzeptanzkriterien: wie B-173. Mit 20 Türmen der Stufe 3 bleibt die Bildrate auf dem Handy-Testprofil stabil.
 
 ### B-175: Stufe 3 kann etwas Neues: Grundgerüst, Pfeil und Blitz (Spiel-Logik)
-- Status: entwurf
+- Status: offen
 - Aufwand: M
 - Idee: Jeder Turm bekommt auf Stufe 3 eine feste neue Fähigkeit (`TOWER_TYPES[typ].master` in `config.js`, Text in der Turm-Info wie bei `special`). Einfacher als die Pfadwahl aus B-039; die bleibt als spätere Erweiterung möglich. Die Kosten für Stufe 3 dürfen dafür steigen (Wert über B-171 messen). Zuerst die beiden schwachen Türme:
   - Pfeil "Adlerhorst", **Mehrfachschuss**: schießt gleichzeitig auf bis zu 3 Ziele in Reichweite (Ziel 2 und 3 mit z. B. 60 % Schaden). Das Aufwärmen gilt für das Hauptziel. Stark gegen Fledermaus-Schwärme und Panzerkäfer.
-  - Blitz "Sturmspule", **Überladung**: Jeder 4. Schlag betäubt alle Getroffenen der Kette kurz (z. B. 0,4 s, Bosse 0,1 s). Das wirkt auch auf Glutlinge, ist also der einzige Stopp gegen sie.
+  - Blitz "Sturmspule", **Gewitter** (Wunsch des Menschen statt Überladung): Alle 3 s schlägt zusätzlich ein Blitz in den dichtesten Gegnerpulk in Reichweite ein und macht Flächenschaden (trifft auch Flieger). Werte in `config.js`. Messung 27.11.: im Mix (Kanone, Pfeil, Blitz, Frost) ist der Blitz konkurrenzfähig, als Hauptturm (2× Blitz) fällt die Strategie auf Wiese schon in Welle 5. Falls nötig auch die Grundwerte anheben.
 - Akzeptanzkriterien:
-  - Tests: Die Fähigkeit wirkt nur auf Stufe 3; Mehrfachschuss trifft verschiedene Ziele und nie dasselbe doppelt; Überladung zählt die Schläge je Turm, betäubt die ganze Kette und berücksichtigt den Boss-Faktor.
+  - Tests: Die Fähigkeit wirkt nur auf Stufe 3; Mehrfachschuss trifft verschiedene Ziele und nie dasselbe doppelt; Gewitter hält seinen Takt je Turm ein, trifft das Zentrum des dichtesten Pulks und alle Gegner im Radius, auch Flieger.
   - In der Turm-Info steht schon auf Stufe 2 "Auf Stufe 3: ..." als Vorschau.
   - `npm run test:balance` ist grün; die Wirkung wird in B-171 mitgemessen.
 
 ### B-176: Stufe 3 kann etwas Neues: Kanone, Frost, Scharfschütze (Spiel-Logik)
-- Status: entwurf
+- Status: offen
 - Aufwand: M
 - Idee: Wie B-175 für die übrigen Türme. Die Kanone bekommt bewusst nur eine kleine Fähigkeit, weil sie heute schon zu stark ist; Frost und Scharfschütze bekommen eine, die das Zusammenspiel mit anderen Türmen belohnt.
   - Kanone "Mörserfestung", **Brandfläche**: Die Explosion hinterlässt 2 s lang brennenden Boden mit geringem Schaden über Zeit (z. B. 15 % des Treffers je Sekunde). Gegen die Panzerkäfer-Schale zählt Brandschaden nicht als Treffer.
-  - Frost "Eiszitadelle", **Spröde**: Eingefrorene und verlangsamte Gegner nehmen von allen Türmen z. B. 20 % mehr Schaden (nicht der Glutling). Frost wird so zum Verstärker statt zum Allheilmittel.
+  - Frost "Eiszitadelle", **Eisboden** (Wunsch des Menschen statt Spröde): Am Treffpunkt bleibt z. B. 3 s lang eine Eisfläche (Radius in `config.js`), die jeden Gegner darauf verlangsamt, auch Nachzügler. Glutling und Flieger sind nicht betroffen.
   - Scharfschütze "Falkenauge", **Markieren**: Das getroffene Ziel ist 3 s lang markiert und nimmt von allen Türmen z. B. 25 % mehr Schaden. Gut gegen Bosse und Trolle zusammen mit Pfeil und Blitz.
 - Akzeptanzkriterien:
-  - Tests: Brandfläche (Dauer, Schaden, zählt nicht für die Schale), Spröde und Markieren (Aufschlag nur solange der Zustand gilt; Spröde und Markieren zusammen multiplizieren sich, Obergrenze in `config.js`).
+  - Tests: Brandfläche (Dauer, Schaden, zählt nicht für die Schale), Eisboden (Dauer, Radius, verlangsamt nur am Boden, nicht Glutling/Flieger, kein Stapeln mit normalem Frost über das Maximum) und Markieren (Aufschlag nur solange das Ziel markiert ist).
   - Die Turm-Info zeigt die Fähigkeit, und der Zustand ist am Gegner sichtbar (Optik aus B-173/B-174).
   - Die Strategie "nur Kanone + Frost" darf durch Stufe 3 nicht wieder zur besten werden (Messung aus B-171).
 
@@ -115,3 +117,25 @@ Reihenfolge (je Zeile eine eigene Sitzung mit `/pipeline`, dazwischen `/clear`).
   - Tests in `tests/game.test.js`: die drei Ereignisse entstehen genau in diesen Fällen (nicht bei Pfeil auf Glutling, nicht bei Lava auf Käfer).
   - Tests in `tests/fx.test.js`: Zeichnen ausgewogen (save/restore), robust bei kaputten Werten, abgeschwächt bei `prefers-reduced-motion`.
   - `npm test` grün, `npm run test:balance` unverändert grün.
+
+### B-179: Gegner fordernder machen, passend zu den Stufe-3-Fähigkeiten (Balancing)
+- Status: offen
+- Aufwand: M
+- Idee: Spieltest 27.11.: Die neuen Gegner machen Spaß, aber für einen guten Spieler ist nur Welle 5 knapp, der Rest ist leicht. Türme dürfen stärker werden (B-175/B-176), die Gegner sollen aber mitwachsen, ohne dass das Spiel zu schwer wird. Lieber mehr Abwechslung als nur mehr HP:
+  - **Elite-Gegner** ab etwa Welle 8: einzelne Gegner einer Welle bekommen eine Eigenschaft (z. B. schneller, Schild, Selbstheilung) und tragen ein sichtbares Abzeichen. Werte in `config.js`.
+  - **Gemischtere Wellen** in der Mitte (Welle 6 bis 12), damit nicht nur Welle 5 die einzige harte Stelle ist. Die Spitze bei Welle 5 eher glätten als verschärfen.
+  - Erst danach, falls nötig: HP-Zuwachs leicht anheben.
+- Akzeptanzkriterien:
+  - Läuft im selben Block wie B-175/B-176 oder direkt danach und wird gemeinsam gemessen: Stärkste Strategie (Kanonen-Mix mit Fähigkeiten) und perfektes Spiel gewinnen weiter auf jeder Karte; einfache Strategien verlieren spätestens in der Spätphase.
+  - Tests für Elite-Eigenschaften in `tests/game`; `npm run test:balance` grün.
+
+### B-180: Nekromantin als echter Endboss (Balancing + Optik)
+- Status: offen
+- Aufwand: M
+- Idee: Spieltest 27.11.: Die Nekromantin wirkt nicht wie ein Endboss (heute 1000 HP, ruft alle 8 s zwei Skelette). Zwei Teile:
+  - **Buff:** z. B. unter 50 % HP eine zweite Phase: ruft schneller und mehr Skelette, kurzer Schutzschild beim Phasenwechsel. Zusätzlich HP oder Rüstung anheben, nach Messung. Werte in `config.js`.
+  - **Design:** neuer Entwurf durch den `designer` (`/design`): größer als normale Gegner, Umhang, Stab mit Leuchten, Aura am Boden, eigener Effekt beim Phasenwechsel und Lebensbalken als Boss-Leiste. Erst Skizze in Claude Design, dann Bauvorlage.
+- Akzeptanzkriterien:
+  - Tests: Phasenwechsel genau einmal bei der Schwelle, Beschwörungstakt der zweiten Phase, Schild-Dauer.
+  - Gemeinsam mit B-179 messen: perfektes Spiel gewinnt weiter auf jeder Karte.
+  - Optik nach Design-System „Gemalt und warm“; Screenshot Desktop und Handy.
