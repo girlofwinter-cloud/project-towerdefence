@@ -17,6 +17,8 @@ export const START_LIVES = 10;
 // Ab dieser Lebensanzahl (oder weniger) warnt das HUD in Rot.
 export const LOW_LIVES = 3;
 export const MAX_WAVES = 20;
+// HP-Zuwachs je Welle: früh (bis 5), Mitte (6-10), spät (ab 11)
+export const HP_GROWTH = { early: 1.15, mid: 1.26, late: 1.12 }; // late 1.11 -> 1.12 (Balancing 27.11.)
 export const SELL_RATIO = 0.7;
 export const MAX_LEVEL = 3;
 // Aufrüstkosten: Anteil der Baukosten je aktueller Stufe (Stufe 1→2, 2→3), mal Stufe
@@ -688,7 +690,7 @@ export function hpScale(wave) {
   const early = Math.min(wave, 5) - 1;
   const mid = Math.max(Math.min(wave, 10) - 5, 0);
   const late = Math.max(wave - 10, 0);
-  return Math.pow(1.15, early) * Math.pow(1.26, mid) * Math.pow(1.11, late);
+  return Math.pow(HP_GROWTH.early, early) * Math.pow(HP_GROWTH.mid, mid) * Math.pow(HP_GROWTH.late, late);
 }
 
 // Spätphase (B-013): ab dieser Welle laufen Heiler in der Troll-Gruppe mit, ab der Welle danach kommen
