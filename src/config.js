@@ -19,6 +19,8 @@ export const LOW_LIVES = 3;
 export const MAX_WAVES = 20;
 export const SELL_RATIO = 0.7;
 export const MAX_LEVEL = 3;
+// Aufrüstkosten: Anteil der Baukosten je aktueller Stufe (Stufe 1→2, 2→3), mal Stufe
+export const UPGRADE_COST_FACTOR = { 1: 0.75, 2: 0.75 };
 // Zielregeln der Türme (Reihenfolge = Umschalt-Reihenfolge) mit deutschen Anzeigenamen
 export const TARGET_MODES = ['first', 'last', 'strong', 'close'];
 export const TARGET_MODE_NAMES = { first: 'Erster', last: 'Letzter', strong: 'Stärkster', close: 'Nächster' };
@@ -724,7 +726,6 @@ export function newEnemyCount(type, wave, mapId) {
 export const WAVE_EXTRAS = {
   6: { tank: 1 },
   7: { healer: 1 },
-  8: { tank: 1 },
   9: { shielded: 1 },
   11: { healer: 1 },
   12: { shielded: 1 },
@@ -735,9 +736,9 @@ export const WAVE_EXTRAS = {
 // swift: Tempo mal speed; shield: einmaliger Schild (wie der Magier-Schild) von wardShare * maxHp;
 // regen: heilt healPerSec * maxHp pro Sekunde. Elite-Gegner bringen rewardFactor mal so viel Gold. Flag enemy.elite fürs Abzeichen.
 export const ELITE = {
-  from: 8, count: 1, every: 3, max: 4,
+  from: 10, count: 1, every: 3, max: 3,
   types: ['grunt', 'runner', 'tank', 'shielded'],
-  traits: ['swift', 'shield', 'regen'],
+  traits: ['shield', 'regen'], // 'swift' (Werte unten) zu stark gegen Zwei Fronten, Balancing 27.11.
   swift: { speed: 1.35 },
   shield: { wardShare: 0.3 },
   regen: { healPerSec: 0.03 },
@@ -801,8 +802,10 @@ export function waveFor(wave, mapId) {
   }
   extra('wisp');
   // B-127: Bosse in jeder 5. Welle; in Welle NECRO_WAVE kommt die Nekromantin statt des Oger-Königs
-  if (wave % 5 === 0) add(wave === NECRO_WAVE ? 'necro' : 'boss', Math.floor(wave / 10) + 1, 3);
-  if (wave === MAX_WAVES) add('necro', FINAL_WAVE_NECROS, 3);
+  // Letzte Welle: die Nekromantinnen ersetzen ebenso viele Oger-Könige
+  const finalNecros = wave === MAX_WAVES ? FINAL_WAVE_NECROS : 0;
+  if (wave % 5 === 0) add(wave === NECRO_WAVE ? 'necro' : 'boss', Math.floor(wave / 10) + 1 - finalNecros, 3);
+  add('necro', finalNecros, 3);
   markElites(list, wave);
   return list;
 }

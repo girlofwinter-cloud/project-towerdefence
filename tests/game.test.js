@@ -3398,7 +3398,7 @@ test('B-179: Elite-Gegner erst ab ELITE.from, Anzahl wächst bis ELITE.max, nur 
       traits.add(e.elite);
     }
   }
-  assert.equal(ELITE.from, 8);
+  assert.equal(ELITE.from, 10); // Balancing 27.11.: ab Welle 10
   assert.ok(eliteCount(20) > eliteCount(8));
   assert.deepEqual([...traits].sort(), [...ELITE.traits].sort(), 'alle Eigenschaften kommen vor');
   assert.deepEqual(waveFor(12), waveFor(12), 'feste Auswahl, kein Zufall');

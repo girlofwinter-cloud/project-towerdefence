@@ -4,7 +4,7 @@ import {
   MAPS, DEFAULT_MAP_ID, LANE_ASYNC, TOWER_TYPES, ABILITIES, WIDTH, HEIGHT, ENEMY_TYPES, LAVA, FX_STYLE, AUTO_WAVE_DELAY, earlyStartBonus, waveFor, waveBonus, hpScale, meteorDamage, isBoss,
 } from './config.js';
 import { buildPath, pointAt, pathTiles } from './path.js';
-import { ELITE } from './config.js'; // B-179: Elite-Gegner
+import { ELITE, UPGRADE_COST_FACTOR } from './config.js'; // B-179: Elite-Gegner, Aufrüstkosten
 
 // Map-Modifikatoren mit Standardwerten (1 = unverändert); unbekannte Karte = Standardkarte.
 export function mapModifiers(mapId) {
@@ -101,7 +101,7 @@ export function masterInfo(tower) {
 
 export function upgradeCost(tower) {
   if (tower.level >= MAX_LEVEL) return null;
-  return Math.round(TOWER_TYPES[tower.type].cost * 0.75 * tower.level);
+  return Math.round(TOWER_TYPES[tower.type].cost * UPGRADE_COST_FACTOR[tower.level] * tower.level);
 }
 
 export function sellValue(tower) {
