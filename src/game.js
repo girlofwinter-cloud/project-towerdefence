@@ -29,6 +29,7 @@ export function createGame({ mapId, ...overrides } = {}) {
     enemies: [],
     projectiles: [],
     effects: [],
+    grounds: [], // B-176: Bodenflächen der Stufe 3 (Brand und Eis): { kind, x, y, r, until, ... }
     status: 'playing', // 'playing' | 'won' | 'lost'
     paused: false, // Pause: update() ändert nichts, Bauen bleibt erlaubt
     kills: 0,
@@ -383,6 +384,7 @@ export function update(state, dt) {
   healStep(state);
   wardStep(state);
   summonStep(state);
+  groundsStep(state, dt);
   towersStep(state, dt);
   projectilesStep(state, dt);
   effectsStep(state, dt);
@@ -644,6 +646,7 @@ function shoot(state, tower, stats, target, factor) {
     splash: stats.splash ? stats.splash * TILE : 0,
     slow: stats.slow || 0,
     slowDuration: stats.slowDuration || 0,
+    master: masterOf(tower), // B-176: Stufe-3-Fähigkeit beim Treffer (Brandfläche, Eisboden, Markieren)
   });
 }
 
@@ -725,6 +728,8 @@ function hit(state, p, target) {
     }
     if (p.knockback && target && !isDodger(target) && !isFlying(target)) knockBack(state, target, p); // B-167/B-168: Flieger und Irrlicht nie zurückwerfen
     state.effects.push({ kind: 'explosion', x: p.tx, y: p.ty, r: p.splash, ttl: 0.3, max: 0.3 });
+    const m = p.master;
+    if (m?.burnDuration) addGround(state, { kind: 'fire', x: p.tx, y: p.ty, r: p.splash, until: state.time + m.burnDuration, dps: p.damage * m.burnShare });
   } else if (target && !dodged) {
     damage(state, target, p, true);
     const tower = p.freezeEvery ? state.towers.find((t) => t.id === p.towerId) : null;
@@ -732,6 +737,32 @@ function hit(state, p, target) {
       tower.hitCount = (tower.hitCount || 0) + 1;
       // B-170: Treffer zählt auch bei Glutlingen, eingefroren werden sie aber nicht
       if (tower.hitCount % p.freezeEvery === 0 && !isBoss(target) && !isSlowImmune(target)) target.frozenUntil = state.time + p.freezeDuration;
+    }
+    const m = p.master;
+    if (m?.iceDuration) addGround(state, { kind: 'ice', x: p.tx, y: p.ty, r: m.iceRadius * TILE, until: state.time + m.iceDuration, slow: p.slow, linger: m.iceLinger });
+    if (m?.markDuration) { target.markedUntil = state.time + m.markDuration; target.markBonus = m.markBonus; }
+  }
+}
+
+function addGround(state, g) {
+  (state.grounds ||= []).push(g);
+}
+
+// B-176: Bodenflächen wirken auf Bodengegner darin. Brand: Schaden über Zeit (ohne Rüstung, zählt nicht gegen die Schale,
+// Irrlicht ausgenommen wie beim Splash). Eis: Verlangsamung wie der Frost, nie stärker als 1 - slow (kein Stapeln).
+function groundsStep(state, dt) {
+  if (!state.grounds?.length) return;
+  state.grounds = state.grounds.filter((g) => state.time < g.until);
+  for (const g of state.grounds) {
+    for (const e of state.enemies) {
+      if (e.hp <= 0 || isFlying(e) || Math.hypot(e.x - g.x, e.y - g.y) > g.r) continue;
+      if (g.kind === 'fire') {
+        if (!isDodger(e)) damage(state, e, { damage: g.dps * dt, dot: true });
+      } else if (g.kind === 'ice' && !isSlowImmune(e)) {
+        const f = 1 - g.slow;
+        e.slowFactor = state.time < e.slowUntil ? Math.min(e.slowFactor, f) : f;
+        e.slowUntil = Math.max(e.slowUntil || 0, state.time + g.linger);
+      }
     }
   }
 }
@@ -752,8 +783,9 @@ function knockBack(state, e, p) {
 // wirkt unabhängig von der Rüstung unverändert.
 function damage(state, enemy, p, direct = false) {
   // B-169: Solange die Schale hält, nimmt jeder Treffer (nicht Lava) eine Schicht und macht 0 Schaden (vor Rüstung und Schild).
-  const shelled = enemy.shell > 0 && !p.lava && crackShell(state, enemy);
+  const shelled = enemy.shell > 0 && !p.lava && !p.dot && crackShell(state, enemy);
   let dmg = shelled ? 0 : direct ? p.damage * (p.ignoreArmor ? 1 : 1 - (enemy.armor || 0)) : p.damage;
+  if (!p.lava && state.time < (enemy.markedUntil || 0)) dmg *= 1 + enemy.markBonus; // B-176: markiert (Falkenauge)
   // B-126: Der Schild des Magiers schluckt den Schaden (nach der Rüstung) zuerst, der Rest geht auf die HP.
   if (enemy.ward > 0) {
     const absorbed = Math.min(enemy.ward, dmg);

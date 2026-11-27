@@ -493,6 +493,9 @@ export const TOWER_TYPES = {
     // Rückstoß: das getroffene Ziel wird knockback Kacheln auf seinem Weg zurückgeworfen (Boss nur Faktor bossKnockbackFactor),
     // danach knockbackCooldown Sekunden Schutzzeit.
     special: { knockback: 0.5, bossKnockbackFactor: 0.5, knockbackCooldown: 6 },
+    // B-176 Stufe 3 "Mörserfestung", Brandfläche: die Explosion hinterlässt burnDuration Sekunden brennenden Boden
+    // (Radius = Splash), Schaden je Sekunde burnShare (Anteil des Treffers); zählt nicht als Treffer gegen die Schale.
+    master: { name: 'Mörserfestung', burnDuration: 2, burnShare: 0.15 },
   },
   frost: {
     name: 'Frostturm',
@@ -509,6 +512,9 @@ export const TOWER_TYPES = {
     hitsAir: false,
     // Einfrieren: jeder freezeEvery-te Treffer des Turms stoppt das Ziel für freezeDuration Sekunden (Boss immun).
     special: { freezeEvery: 5, freezeDuration: 0.6 },
+    // B-176 Stufe 3 "Eiszitadelle", Eisboden: am Treffpunkt iceDuration Sekunden eine Eisfläche (Radius iceRadius Kacheln),
+    // die Bodengegner darauf wie der Frost verlangsamt; die Wirkung hält iceLinger Sekunden nach (nicht Glutling/Flieger).
+    master: { name: 'Eiszitadelle', iceDuration: 3, iceRadius: 0.8, iceLinger: 0.25 },
   },
   sniper: {
     name: 'Scharfschütze',
@@ -523,6 +529,8 @@ export const TOWER_TYPES = {
     hitsAir: true,
     // Rüstungsbrecher: gegen Gegner, deren Basis-HP (ENEMY_TYPES[type].hp, ohne Wellen-Skalierung) >= bonusMinHp ist, Faktor bonusDamage auf den Schaden; ignoriert dabei Rüstung.
     special: { bonusMinHp: 300, bonusDamage: 1.5, ignoreArmor: true },
+    // B-176 Stufe 3 "Falkenauge", Markieren: das getroffene Ziel nimmt markDuration Sekunden lang markBonus (Anteil) mehr Schaden von allen Türmen.
+    master: { name: 'Falkenauge', markDuration: 3, markBonus: 0.25 },
   },
   lightning: {
     name: 'Blitzturm',
@@ -561,6 +569,9 @@ const SPECIAL_TEXTS = {
 // B-175: Stufe-3-Fähigkeiten (master.text), ebenfalls aus den Werten gebaut.
 const MASTER_TEXTS = {
   arrow: (m) => `${m.name}, Mehrfachschuss: Schießt zugleich auf bis zu ${m.multiTargets} Ziele, die Nebenziele mit ${pct(m.extraDamage)} Schaden.`,
+  cannon: (m) => `${m.name}, Brandfläche: Die Explosion lässt den Boden ${num(m.burnDuration)} s brennen (${pct(m.burnShare)} des Treffers je Sekunde).`,
+  frost: (m) => `${m.name}, Eisboden: Am Treffpunkt bleibt ${num(m.iceDuration)} s eine Eisfläche, die Gegner darauf verlangsamt (nicht Glutlinge und Flieger).`,
+  sniper: (m) => `${m.name}, Markieren: Das Ziel nimmt ${num(m.markDuration)} s lang ${pct(m.markBonus)} mehr Schaden von allen Türmen.`,
   lightning: (m) => `${m.name}, Gewitter: Alle ${num(m.stormEvery)} s schlägt ein Blitz in den dichtesten Gegnerpulk ein (${pct(m.stormDamage)} des Turmschadens im Umkreis von ${num(m.stormRadius)} Kacheln, auch Flieger).`,
 };
 for (const [type, build] of Object.entries(MASTER_TEXTS)) TOWER_TYPES[type].master.text = build(TOWER_TYPES[type].master);
