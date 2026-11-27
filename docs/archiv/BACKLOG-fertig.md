@@ -781,3 +781,21 @@ Agents lesen diese Datei nur bei konkretem Bedarf.
 - Akzeptanzkriterien:
   - Screenshot aller 5 Karten, Kontur Figur/Boden mindestens 3:1, jede Karte erkennbar eigen.
 
+### B-137: Handy-Layout: Querformat über den ganzen Bildschirm (Sollte)
+- Status: fertig
+- Entscheidung Mensch 2026-11-27: Auf dem Handy ganze Karte sichtbar, kein Scrollen, kein Zoom. Querformat ist das Handy-Layout; Bedienung schwebt in den Ecken (keine Spalten, keine Leisten). Im Hochformat nur der Hinweis "Bitte Handy drehen". Ersetzt die frühere Idee (Hochformat mit Wischen/Zoom/Minikarte, Querformat mit Spalten).
+- Skizze (Claude Design): https://claude.ai/artifact/MagK7pf7N7MYZwY8UNWxcj, Fläche "Querformat Vollbild (gewählt)", Tweak `variante` = "Ecken". Die anderen Flächen (Hochformat gedreht/ungedreht, Quer mit Spalten) sind verworfene Vergleiche.
+- Aufwand: L
+- Idee:
+  - Feld in voller Höhe mittig (bei 844x390: 557x390, Kachel ca. 28 px), keine Drehung, Logik bleibt 20x14.
+  - Links und rechts läuft die gemalte Landschaft (Gras, Baumrand der Karte) bis an den Bildschirmrand; keine Holzspalten. Umsetzung offen: Hintergrund seitlich breiter zeichnen oder Seiten per CSS füllen (developer entscheidet, nur Optik).
+  - Bedienung schwebt über der Landschaft: oben links HUD-Plakette (Gold, Welle, Leben), oben rechts Tempo und Pause (Sound ins Pausemenü), links darunter die drei Fähigkeiten, unten rechts runder Wellenknopf mit Fortschritt. Info-Plakette (Turmwerte, Bauhinweis) nur bei Bedarf rechts.
+  - Safe-Area/Notch beachten (`viewport-fit=cover`, `env(safe-area-inset-*)`), dort keine Bedienung.
+  - Bauen per Tipp auf Kachel: Auswahlrahmen + Bau-Ring (wie heute), Ring wird am Rand ins Feld geschoben.
+  - Hochformat: Vollbild-Hinweis "Bitte Handy drehen" mit Symbol, Spiel pausiert solange.
+  - Das heutige Hochformat mit seitlichem Wischen entfällt; die Browser-Tests dazu (`tests/e2e/handy.test.mjs`) müssen angepasst werden (vor der Umsetzung Freigabe des Menschen einholen; nicht abschwächen, sondern auf das neue Verhalten umschreiben).
+  - Offen für den developer/designer: HUD-Zahlen kompakter (Token `num-compact`, ca. 22 px statt 28); Fähigkeiten ohne Text nur mit `aria-label`, ggf. kurze Beschriftung bei langem Druck.
+- Akzeptanzkriterien:
+  - Playwright bei 844x390 und 932x430 (Touch): ganze Karte sichtbar, Seite scrollt nicht, kein Zoom nötig, alle Bedienelemente im Fenster und außerhalb der Safe-Area, kein Tippziel unter 44 px, Bau-Ring an allen 4 Feldecken im Bild, Bauen und Turm antippen klappen.
+  - Bei 390x844: Hinweis "Bitte Handy drehen" sichtbar, Spiel pausiert; nach Drehen läuft es weiter.
+  - Desktop (1280x800) unverändert (Screenshot-Vergleich), `npm test` und `npm run test:e2e` grün.

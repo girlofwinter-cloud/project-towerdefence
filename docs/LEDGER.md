@@ -20,3 +20,9 @@ Anhängen ohne die Datei zu lesen: `cat >> docs/LEDGER.md <<'EOF' … EOF`. Übe
 - Tests: npm test 520 grün, test:balance 18 grün; Testcode nur verschoben (normalisierter Vergleich identisch).
 - Entscheidungen: Freigegeben vom Menschen ("alles in einem Block"). Stop-Hook und CI-Schritt sind geschützt, dafür liegt ein Patch bereit, den der Mensch anwendet. Bis dahin läuft test:balance nicht in der CI, darum erst nach dem Patch mergen.
 - Offen: Patch für `.claude/hooks/test-gate.mjs` und `.github/workflows/ci.yml` anwenden, PR mergen (Mensch).
+
+## 2026-11-27 · B-137 · Handy-Layout Querformat Vollbild
+- Ergebnis: fertig, Branch agent/handy-quer. Handy nur Querformat: Feld in voller Höhe, Landschaft bis zum Rand, Bedienung schwebt in den Ecken, Safe-Area frei; Hochformat mit Touch zeigt "Bitte Handy drehen", pausiert, `#app` inert. Wischen und Zoom auf dem Handy entfernt.
+- Tests: npm test 523 grün, e2e 88 grün (lokal ohne test:balance, Vorgabe Mensch). Handy-e2e neu geschrieben, buttons/panel/panel-polish/ring/smoke auf Querformat bzw. Fenster ohne Touch umgestellt, neu `handy-randfaelle.test.mjs` (tester).
+- Entscheidungen: Mensch hat Testumbau und Merge freigegeben. Review APPROVE; tester fand Überlappung mit Safe-Area, behoben (Feld wird bei Notch etwas kleiner). Schmale Desktop-Fenster im Hochformat ohne Touch zeigen jetzt das alte Kompakt-Layout statt Wischen (bewusst). Kacheln quer ca. 28 px statt 44 px, folgt aus der Entscheidung.
+- Offen: B-167 in IDEEN (Wisch-Helfer entfernen, Token für Bedienspalte).
