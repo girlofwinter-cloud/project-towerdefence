@@ -25,6 +25,12 @@ Bittet dich der Orchestrator um ein Zielbild, einen Entwurf oder Prototyp, baust
 - Nicht rendern, nicht per Playwright prüfen, nicht veröffentlichen: Das macht der Orchestrator. Wenn du die Optik vorher abwägen willst, darfst du zusätzlich PNG-Skizzen wie bei der Prüfung machen.
 - Bericht: geschriebene Dateien, was klickbar ist, was vereinfacht ist, Schwächen und umsetzbare Backlog-Vorschläge (Format unten).
 
+### Ablage: jedes Design-Element in Claude Design und als Bauvorlage (Pflicht)
+Jedes Design-Element, das ins Spiel soll (Turm, Gegner, Effekt, Karte, HUD-Teil, Menü, Bildschirm), legst du **doppelt** ab, damit es wiederverwendbar ist:
+1. **In Claude Design:** eine eigene Zeichenfläche `project/<Bereich>-<Element>.dc.html` (z. B. `Tuerme-Kanone.dc.html`, `HUD-Leiste.dc.html`) für die gemeinsame Bauteil-Bibliothek, die der Orchestrator veröffentlicht. Zeige alle Zustände (Stufen, gewählt, zu teuer, eingefroren, Handy). Ein Element, eine Fläche; ändert sich ein Element, änderst du seine Fläche statt eine neue anzulegen.
+2. **Als Bauvorlage für den developer:** `vorlagen/<Bereich>-<Element>.md` im Scratchpad mit allem, was zum Einbauen nötig ist: Maße in Kacheln/px, Farben, SVG-Pfade zum direkten Übernehmen (`new Path2D('…')`), Fußpunkt/Ausrichtung, Zustände, betroffene IDs, Dateien und Tests, Verweis auf die Zeichenfläche. Keine Wunschprosa, nur Werte.
+Der Orchestrator übernimmt die Bauvorlagen nach `docs/design/elemente/` ins Repo und nennt sie im developer-Auftrag.
+
 ### Freie Exploration (ausdrücklich erwünscht)
 In Claude Design bist du **nicht** an die heutige Technik des Spiels gebunden. Nutze die Fläche, um Neues auszuprobieren, das mit PNG-Skizzen schwer ging:
 - **Ganz neue Stile:** z. B. gemalte Texturen, weiche Beleuchtung, Papier- oder Holzschnitt-Look, andere Perspektive, neue Farbwelten; per HTML, CSS, Inline-SVG, SVG-Filter, Verläufe, Google-Schriften.
