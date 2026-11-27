@@ -137,6 +137,7 @@ Erzeugt aus `tokens.json` mit `node scripts/design-tokens.mjs`. Nicht von Hand �
 | `cooldown` | display | 24px | 1 | 12 | Sekunden im Fähigkeitsknopf (.ab-num). |
 | `map-name` | display | 24px | 1.1 | Eiswelt | Name auf der Kartenkarte, cream mit Umriss. |
 | `wave-button` | display | 22px | 1 | Welle 8 starten | Wellenknopf, ink auf Gold. |
+| `num-compact` | display | 22px | 24px | 140 | HUD-Zahlen in der Plakette oben links im Handy-Querformat (B-137), Symbole 22 px, / 20 in 15 px. |
 | `num-small` | display | 20px | 22px | / 20 | Kleine Zahl in der HUD-Leiste, +Gold beim Münzflug, Turmname im Panel. |
 | `ring-title` | display | 19px | 1.1 | Kanone | Turmname in der Info-Plakette am Ringmenü. |
 | `message` | display | 18px | 1.3 | Nicht genug Gold | Meldung (#message). |
@@ -232,7 +233,8 @@ Knopf- und Feldgrößen. Tippziel nie unter 44 px.
 | `size-wave-h` | `46px` | Wellenknopf Höhe. |
 | `size-wave-min-w` | `168px` | Wellenknopf Mindestbreite. |
 | `size-wave-h-mobile` | `52px` | Wellenknopf Handy hochkant (volle Breite). |
-| `size-wave-h-compact` | `56px` | Wellenknopf Handy quer (zweizeilig, 18 px Schrift). |
+| `size-wave-h-compact` | `56px` | Wellenknopf Handy quer bis B-137 (zweizeilig, 18 px Schrift); seit B-137 rund, siehe size-wave-round. |
+| `size-wave-round` | `104px` | Runder Wellenknopf unten rechts im Handy-Querformat (B-137), Schrift 18 px zweizeilig, Fortschritt 18 px vom Rand; schmaler, wenn die Seite neben dem Feld knapp ist. |
 | `size-round` | `48px` | Runder Knopf (Hilfe, Ton, Tempo, Pause). |
 | `size-hud-h` | `56px` | Holzleiste Höhe. |
 | `size-ability-mobile` | `56px` | Fähigkeitsknopf auf dem Handy. |

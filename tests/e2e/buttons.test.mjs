@@ -37,10 +37,11 @@ async function openPage(viewport, mobile) {
 const heights = (page, sel) => page.$$eval(sel, (els) => els
   .filter((e) => e.offsetParent !== null).map((e) => e.getBoundingClientRect().height));
 
-test('Handy 390x844: Fähigkeits-, Zoom-, Pause- und Tempo-Knopf >= 44 px, keine Tastenkürzel sichtbar', async () => {
-  const { ctx, page } = await openPage({ width: 390, height: 844 }, true);
-  const hs = await heights(page, '.abilities button, #zoom, #pause, #speed');
-  assert.equal(hs.length, 6, 'drei Fähigkeiten plus Zoom, Pause, Tempo sichtbar');
+// B-137: Handy = Querformat (Hochformat zeigt nur den Drehhinweis), Zoom-Knopf entfallen, dafür Ton-Knopf geprüft
+test('Handy 844x390: Fähigkeits-, Ton-, Pause- und Tempo-Knopf >= 44 px, keine Tastenkürzel sichtbar', async () => {
+  const { ctx, page } = await openPage({ width: 844, height: 390 }, true);
+  const hs = await heights(page, '.abilities button, #sound, #pause, #speed');
+  assert.equal(hs.length, 6, 'drei Fähigkeiten plus Ton, Pause, Tempo sichtbar');
   for (const h of hs) assert.ok(h >= MIN_TOUCH, `Knopfhöhe ${h} >= ${MIN_TOUCH}`);
   const visibleKeys = await page.$$eval('.key', (els) => els.filter((e) => e.offsetParent !== null).length);
   assert.equal(visibleKeys, 0, 'Tastenkürzel ausgeblendet');
@@ -76,8 +77,8 @@ async function pauseBannerTexts(page) {
   };
 }
 
-test('B-096 Handy 390x844: Turmkarten-Kürzel und "P drücken" unsichtbar, Banner nennt Weiter', async () => {
-  const { ctx, page } = await openPage({ width: 390, height: 844 }, true);
+test('B-096 Handy 844x390: Turmkarten-Kürzel und "P drücken" unsichtbar, Banner nennt Weiter', async () => {
+  const { ctx, page } = await openPage({ width: 844, height: 390 }, true);
   const { text, kbdVisible } = await pauseBannerTexts(page);
   assert.equal(kbdVisible, 0, 'keine Kürzel auf den Turmkarten');
   assert.doesNotMatch(text, /P drücken/);

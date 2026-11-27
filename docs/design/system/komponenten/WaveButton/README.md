@@ -8,7 +8,7 @@ Der Wellenknopf startet die nächste Welle; die einzige goldene Fläche im HUD u
 
 **Zustände:** normal · Hover (brightness 1.08) · gedrückt (`translateY(2px)`, `shadow-gold-pressed`) · bereit und keine Welle läuft (`.ready`, pulsiert 1,6 s bis `shadow-gold-ready`; ohne Puls bei reduced motion) · Welle läuft (`disabled` + `.running`: Holz `wood-btn` → `wood-b`, Schrift `cream` mit `0 2px 0 ink`, `shadow-disabled`; Fortschrittsleiste 4 px in `wave-progress` unten, Breite = `--wave-fill` × (Breite − 28 px)).
 
-**Handy:** hochkant volle Breite, `size-wave-h-mobile` (52 px); quer `size-wave-h-compact` (56 px), zweizeilig, Schrift 18 px. Vorschau und Kartenwahl sind dort ausgeblendet.
+**Handy (B-137):** nur quer; rund unten rechts, `size-wave-round` (104 px, schmaler bei knapper Seite), zweizeilig, Schrift 18 px, Fortschritt 18 px vom Rand und 14 px über dem Boden. Schmales Fenster ohne Touch: volle Breite `size-wave-h-mobile` (52 px). Vorschau und Kartenwahl sind dort ausgeblendet.
 
 **Kontrast:** ink auf gold-btn-b 6,2:1; cream auf wood-b 7,0:1.
 

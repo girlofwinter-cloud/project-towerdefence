@@ -7,13 +7,12 @@ import {
 import { renderView, drawTower, paintedStatus, paintedImage, setPaintedExtent, flagBoxes } from './render.js';
 import { abilityView, overheatNote, startButtonView, waveProgress } from './hud.js';
 import { drawIcon } from './render-icons.js';
-import { buildTapStep, aimStep, fieldPoint, canvasSize, moveFocusTile } from './input.js';
+import { buildTapStep, aimStep, fieldPoint, canvasSize, moveFocusTile, rotatePauseStep } from './input.js';
 import { createSoundTracker, collectSounds, loadSoundOn, saveSoundOn } from './sound-events.js';
 import { unlockAudio, setSoundOn, playSound, updateMusic } from './audio.js';
 import { loadProgress, saveProgress, recordResult, isUnlocked, mapProgress, starText, resultLines, startMap, mapAfterResult, starsFor, MAP_ORDER } from './progress.js';
 import { mountStartScreen, endView, starsHtml, STAR_COUNT } from './screens.js';
 import { ringRadius, tileCenterPx, ringCenter, infoOnLeft, pickTower, buildRingView, towerRingView } from './ring-menu.js';
-import { mountViewport } from './viewport.js';
 
 const canvas = document.getElementById('game');
 canvas.width = VIEW_WIDTH; // Stil 1: Feld + Rand (Wald, Burg, Fahne); HiDPI-Größe setzt fitCanvas()
@@ -26,11 +25,16 @@ for (const [k, v] of Object.entries({ 'view-w': VIEW_WIDTH, 'view-h': VIEW_HEIGH
 }
 
 // ---------- HiDPI ----------
-// Die Anzeigegröße des Canvas legt allein style.css fest (Vollbild: --cw x --ch, Handy: Nah/Übersicht, siehe viewport.js).
+// Die Anzeigegröße des Canvas legt allein style.css fest (Vollbild und Handy quer: --cw x --ch).
 // Hier nur der Backing-Store = Anzeigegröße x Pixeldichte (höchstens VIEW_FIT.maxDpr und maxSide je Seite, canvasSize in input.js);
 // frame() zeichnet mit setTransform(view.sx, ...) weiter in Canvas-Einheiten (VIEW_WIDTH x VIEW_HEIGHT).
 const view = { sx: 1, sy: 1 };
 const compactQuery = window.matchMedia('(max-width: 759.98px), (max-height: 519.98px)'); // = Kompakt-Schwelle in style.css
+// B-137: Handy quer (Feld mittig, Landschaft bis an den Rand) und Drehhinweis im Hochformat, gleiche Abfragen wie style.css
+const landscapeQuery = window.matchMedia('(max-height: 519.98px) and (orientation: landscape)');
+const rotateQuery = window.matchMedia('(max-width: 759.98px) and (orientation: portrait) and (pointer: coarse)');
+// Gemalte Seitenzonen (scharf, deckungsgleich mit dem Canvas): Vollbild und Handy quer; sonst unscharfes Bild dahinter
+const paintedSides = () => !compactQuery.matches || landscapeQuery.matches;
 function fitCanvas() {
   const s = canvasSize(canvas.clientWidth, Infinity, window.devicePixelRatio || 1, compactQuery.matches ? VIEW_FIT.maxSide : Infinity);
   if (canvas.width !== s.width || canvas.height !== s.height) { canvas.width = s.width; canvas.height = s.height; }
@@ -52,12 +56,12 @@ watchDpr();
 if (document.fonts && document.fonts.load) document.fonts.load('14px "Lilita One"').catch(() => {});
 // C-Abnahme 1: Seitenzonen. Im Vollbild ist #backdrop dieselbe gemalte Fläche wie der Canvas (render.js rastert Canvas plus
 // Seitenzonen in einem Bild, der Canvas zeigt davon den Ausschnitt 1:1), daher keine Naht an der Canvas-Kante.
-// Kompakt (Handy) scrollt der Canvas: dort bleibt das unscharfe, verkleinerte Bild dahinter.
+// Handy quer genauso (Landschaft bis an den Rand); nur das schmale Fenster (Kompakt) behält das unscharfe, verkleinerte Bild.
 const backdrop = document.getElementById('backdrop');
 let backdropFor = null;
 // Seitenzonen in Geräte-px messen und an render.js melden (auf PAINTED_STYLE.sideZone.quantum aufgerundet: seltener neu rastern)
 function measureExtent() {
-  if (compactQuery.matches) { setPaintedExtent(null); return; }
+  if (!paintedSides()) { setPaintedExtent(null); return; }
   const r = canvas.getBoundingClientRect();
   if (!(r.width > 0)) return;
   const k = canvas.width / r.width, q = PAINTED_STYLE.sideZone.quantum;
@@ -67,7 +71,7 @@ function measureExtent() {
 function drawBackdrop() {
   const img = paintedImage(state.mapId);
   if (!img) return;
-  const compact = compactQuery.matches;
+  const compact = !paintedSides();
   const key = `${img.key}|${compact}|${window.innerWidth}x${window.innerHeight}`;
   if (backdropFor === key) return;
   backdropFor = key;
@@ -105,6 +109,7 @@ function drawBackdrop() {
 afterFit = measureExtent;
 measureExtent();
 compactQuery.addEventListener('change', measureExtent);
+landscapeQuery.addEventListener('change', measureExtent);
 
 const $ = (id) => document.getElementById(id);
 const ui = { hudDim: false, buildType: null, selectedTowerId: null, ring: null, ringPreview: null, upgradeHover: false, upgradePreview: null, hover: null, pending: null, aiming: false, hoverPx: null, speed: SPEED_STEPS[0], message: '', messageKind: 'error', messageTtl: 0 };
@@ -318,6 +323,12 @@ function placeRing(el, col, row) {
     left: Math.max(cr.left, clips ? sr.left : -Infinity, 0), top: Math.max(cr.top, clips ? sr.top : -Infinity, 0),
     right: Math.min(cr.right, clips ? sr.right : Infinity, window.innerWidth), bottom: Math.min(cr.bottom, clips ? sr.bottom : Infinity, window.innerHeight),
   };
+  // B-137 Handy quer: Ring am Rand ins Feld schieben (nicht in den Baumrand unter der Bedienung in den Ecken)
+  if (landscapeQuery.matches) {
+    const k = cr.width / VIEW_WIDTH, m = FRAME_MARGIN * k;
+    bounds.left = Math.max(bounds.left, cr.left + m); bounds.right = Math.min(bounds.right, cr.right - m);
+    bounds.top = Math.max(bounds.top, cr.top + m); bounds.bottom = Math.min(bounds.bottom, cr.bottom - m);
+  }
   const R = ringRadius((cr.width / VIEW_WIDTH) * TILE, compactQuery.matches);
   const t = tileCenterPx(col, row, cr.width);
   const p = { x: cr.left + t.x, y: cr.top + t.y };
@@ -517,8 +528,17 @@ const startScreen = mountStartScreen($('start-screen'), {
 });
 $('to-maps').addEventListener('click', () => startScreen.show(true));
 if (!TEST_MODE) startScreen.show();
-// C6 Handy: Feld wischen, Zoom-Knopf Nah/Übersicht (viewport.js)
-mountViewport({ board: $('app'), stage: document.querySelector('.stage'), canvas, zoomBtn: $('zoom'), zoomLabel: $('zoom-label') });
+// B-137: Drehhinweis im Hochformat pausiert das Spiel; nach dem Drehen weiter, wenn die Pause vom Hinweis kam
+let pausedByRotate = false;
+function applyRotateHint() {
+  const s = rotatePauseStep({ portrait: rotateQuery.matches, paused: state.paused, playing: state.status === 'playing', byHint: pausedByRotate });
+  if (s.pause !== null && s.pause !== state.paused) togglePause(state);
+  pausedByRotate = s.byHint;
+  $('app').inert = rotateQuery.matches; // Tastaturfokus nicht unter dem Hinweis
+  refreshUI();
+}
+rotateQuery.addEventListener('change', applyRotateHint);
+if (rotateQuery.matches) applyRotateHint();
 $('sound').addEventListener('click', toggleSound);
 
 function toggleSound() {

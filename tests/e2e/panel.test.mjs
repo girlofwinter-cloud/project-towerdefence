@@ -58,21 +58,22 @@ for (const [width, height] of [[1280, 800], [1366, 768]]) {
 const MIN_TOUCH = 44;
 const MIN_CANVAS = 280;
 
-// Handy: Pfeilturm auf Kachel (0,0) per Touch bauen (Tipp Kachel, Tipp Ringknopf), dritter Tipp wählt ihn aus
+// Schmales Fenster (Kompakt-Ansicht, Turm-Leiste unten): Pfeilturm auf Kachel (0,0) bauen, dritter Klick wählt ihn aus.
+// B-137: Handy im Hochformat zeigt nur noch den Drehhinweis; die Leiste bleibt für schmale Fenster ohne Touch (Handy quer: handy.test.mjs).
 async function openMobileWithTower(viewport) {
-  const ctx = await browser.newContext({ viewport, hasTouch: true, isMobile: true });
+  const ctx = await browser.newContext({ viewport });
   const page = await ctx.newPage();
   await page.goto(url);
   await enterGame(page);
-  await build(page, 'arrow', 0, 0, { touch: true });
+  await build(page, 'arrow', 0, 0);
   const box = await page.locator('#game').boundingBox();
   const tile = (col, row) => tileCenter(box, col, row);
-  await openTower(page, 0, 0, { touch: true });
+  await openTower(page, 0, 0);
   return { ctx, page, tile };
 }
 
 for (const [width, height] of [[390, 844], [360, 740]]) {
-  test(`Handy ${width}x${height}: Turm-Leiste unten mit Name, Stufe und Knöpfen im Bild, Feld bleibt sichtbar`, async () => {
+  test(`Schmales Fenster ${width}x${height}: Turm-Leiste unten mit Name, Stufe und Knöpfen im Bild, Feld bleibt sichtbar`, async () => {
     const { ctx, page, tile } = await openMobileWithTower({ width, height });
     assert.match(await page.locator('#ti-name').textContent(), /Pfeilturm · Stufe 1/);
     assert.ok(await page.locator('#ti-name').isVisible(), 'Turmname sichtbar');
@@ -90,22 +91,22 @@ for (const [width, height] of [[390, 844], [360, 740]]) {
     assert.ok(vis.visible >= Math.min(MIN_CANVAS, vis.full), `Feld sichtbar ${vis.visible} von ${vis.full}`);
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth), width, 'kein horizontaler Scroll');
     // Schließen per ×
-    await page.locator('#ti-close').tap();
+    await page.locator('#ti-close').click();
     assert.ok(await page.locator('#tower-info').isHidden());
     assert.equal(await page.evaluate(() => window.__ui.selectedTowerId), null);
     // Wieder wählen, dann Tipp aufs leere Feld schließt ebenfalls
-    await page.touchscreen.tap(...tile(0, 0));
+    await page.mouse.click(...tile(0, 0));
     await page.waitForSelector('#tower-info:not([hidden])');
-    await page.touchscreen.tap(...tile(1, 4));
+    await page.mouse.click(...tile(1, 4));
     assert.ok(await page.locator('#tower-info').isHidden());
     await ctx.close();
   });
 }
 
-// B-056 Nachbesserung: Knopftexte der Leiste brechen nicht ab, Kürzel sind auf dem Handy aus,
+// B-056 Nachbesserung: Knopftexte der Leiste brechen nicht ab, Kürzel sind im schmalen Fenster aus,
 // zugängliche Namen bleiben vollständig.
 for (const [width, height] of [[390, 844], [360, 740]]) {
-  test(`Handy ${width}x${height}: Knöpfe der Turm-Leiste ohne Überlauf, Kürzel unsichtbar`, async () => {
+  test(`Schmales Fenster ${width}x${height}: Knöpfe der Turm-Leiste ohne Überlauf, Kürzel unsichtbar`, async () => {
     const { ctx, page } = await openMobileWithTower({ width, height });
     for (const sel of ['#upgrade', '#sell', '#target-mode']) {
       const m = await page.locator(sel).evaluate((e) => ({

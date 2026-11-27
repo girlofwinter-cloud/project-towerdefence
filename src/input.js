@@ -57,3 +57,15 @@ export function canvasSize(availW, availH, dpr, maxSide = Infinity) {
   const height = Math.round(cssH * k);
   return { cssW, cssH, dpr: d, width, height, sx: width / VIEW_WIDTH, sy: height / VIEW_HEIGHT };
 }
+
+// B-137: Drehhinweis im Hochformat (Handy). portrait = Hinweis sichtbar, paused/playing aus dem Spielzustand,
+// byHint = die aktuelle Pause kam vom Hinweis. Liefert { pause: true | false | null (nichts ändern), byHint }.
+// Nach dem Drehen läuft das Spiel nur weiter, wenn der Hinweis selbst pausiert hat (eigene Pause des Spielers bleibt).
+export function rotatePauseStep({ portrait, paused, playing, byHint }) {
+  if (portrait) {
+    if (playing && !paused) return { pause: true, byHint: true };
+    return { pause: null, byHint: byHint && paused };
+  }
+  if (byHint && paused && playing) return { pause: false, byHint: false };
+  return { pause: null, byHint: false };
+}
