@@ -8,7 +8,7 @@ import { livesText, startButtonView } from '../src/hud.js';
 import { buildPath, pointAt, pathTiles } from '../src/path.js';
 import { TOWER_TYPES, MAX_WAVES, START_GOLD, START_LIVES, LOW_LIVES, WAYPOINTS, MAPS, DEFAULT_MAP_ID, TILE, COLS, ROWS, TARGET_MODES, EARLY_START_MAX, LANE_ASYNC, waveFor, waveBonus, waveSummary, hpScale, ENEMY_TYPES, SPEED_STEPS, MAX_SUBSTEP, isBoss, NECRO_WAVE } from '../src/config.js';
 
-import { run, freeTileNearPath, mockCtx, recordEnemy } from './helpers.js';
+import { run, freeTileNearPath, mockCtx, recordEnemy, enemyExtent } from './helpers.js';
 
 test('Pfad: Länge und Positionen', () => {
   const path = buildPath([[0, 0], [3, 0], [3, 2]], 10);
@@ -680,10 +680,9 @@ test('B-006 Render: Healer/Schildträger zeichnen ausgewogen, innerhalb des Radi
       const r = await recordEnemy({ type, id: 5 }, time);
       assert.equal(r.depth, 0, `${type}: save/restore`);
       assert.equal(r.props.globalAlpha, undefined);
-      for (const p of r.figure) {
-        if (p.depth === 0) continue;
-        assert.ok(Math.hypot(p.x - r.e.x, p.y - r.e.y) + p.ext <= 1.4 * r.e.radius, `${type}: Figur zu gross`);
-      }
+      // Stil 1: Figur in Goblin-Größe (Entwurf 46 x 50 px bei Kachel 57), Schatten-Ellipse großzügig mitgezählt
+      const x = enemyExtent(r);
+      assert.ok(x.w <= 1.1 && x.h <= 1.2, `${type}: Figur zu gross (${x.w.toFixed(2)} x ${x.h.toFixed(2)} Kacheln)`);
     }
   }
   const radiiOf = (type, time) => {
@@ -2129,7 +2128,7 @@ test('B-104: canBuild lehnt Wasser ab ("Hier ist Wasser"), kein Gold weg; Gegner
     assert.deepEqual(canBuild(s, c, r), { ok: false, reason: 'Hier ist Wasser' });
   }
   const g0 = s.gold;
-  assert.equal(buildTower(s, 'arrow', 1, 5).reason, 'Hier ist Wasser');
+  assert.equal(buildTower(s, 'arrow', 0, 4).reason, 'Hier ist Wasser'); // Stil 1: Fluss biegt bei Zeile 4 nach links ab
   assert.equal(s.gold, g0);
   assert.equal(canBuild(s, 1, 2).reason, 'Auf dem Weg kann nicht gebaut werden', 'Brücke ist Weg');
   assert.equal(canBuild(s, 0, 5).ok, true, 'Ufer daneben bebaubar');
@@ -2137,6 +2136,14 @@ test('B-104: canBuild lehnt Wasser ab ("Hier ist Wasser"), kein Gold weg; Gegner
   const e = spawnEnemy(s, 'grunt', 1);
   run(s, 3);
   assert.ok(e.x > 2 * TILE, 'Goblin hat die Brücke überquert');
+});
+
+test('Stil 1: Wiese hat nach dem Umbau von Fluss und See gleich viele Bauplätze wie vorher (226), 13 Wasserkacheln', () => {
+  const s = createGame({ mapId: 'meadow' });
+  let n = 0;
+  for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) if (canBuild(s, c, r).ok) n++;
+  assert.equal(n, 226);
+  assert.equal(s.water.size, 13);
 });
 
 // ---------- B-103/B-104 Randfälle (Tester) ----------
@@ -3318,4 +3325,24 @@ test('B-127: Nekromantin ist immun gegen Einfrieren und bekommt nur anteiligen R
   b.tower.cooldown = 0; update(b.s, 0.001);
   for (let i = 0; i < 200 && b.s.projectiles.length; i++) update(b.s, 0.01);
   assert.ok(Math.abs(before - b.e.dist - cfg('cannon').knockback * TILE * cfg('cannon').bossKnockbackFactor) < 1e-6);
+});
+
+test('C-Abnahme 5: waveProgress füllt den Wellenknopf mit dem Anteil besiegter Gegner der laufenden Welle', async () => {
+  const { waveProgress } = await import('../src/hud.js');
+  const s = createGame();
+  assert.deepEqual(waveProgress(s, 7), { peak: 0, fill: 0 }, 'ohne Welle leer, Merker zurückgesetzt');
+  startWave(s);
+  const total = s.spawnQueue.length;
+  let v = waveProgress(s, 0);
+  assert.deepEqual(v, { peak: total, fill: 0 }, 'Start: nichts besiegt');
+  spawnEnemy(s, 'tank');
+  s.spawnQueue.shift(); // ein Gegner aus der Warteschlange ist jetzt auf dem Feld: offen bleibt gleich
+  assert.equal(waveProgress(s, v.peak).fill, 0);
+  s.enemies.length = 0; // besiegt
+  v = waveProgress(s, v.peak);
+  assert.equal(v.peak, total);
+  assert.ok(Math.abs(v.fill - 1 / total) < 1e-9, 'ein Gegner von allen besiegt');
+  s.spawnQueue = [];
+  assert.equal(waveProgress(s, v.peak).fill, 1, 'alle besiegt');
+  assert.ok(waveProgress(s, NaN).fill === 0 && waveProgress({ waveActive: true }, 0).fill === 0, 'ungültige Werte');
 });

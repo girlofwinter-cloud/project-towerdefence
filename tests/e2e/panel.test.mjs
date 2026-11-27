@@ -5,6 +5,7 @@ import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 import { createServer } from '../../scripts/serve.mjs';
+import { tileCenter, enterGame, build, openRing, openTower } from './tile.mjs';
 
 const require = createRequire(import.meta.url);
 const { chromium } = require('playwright');
@@ -23,64 +24,57 @@ after(async () => {
   server?.close();
 });
 
-// Testseite (unbegrenztes Gold), Blitzturm (längster Spezialtext) auf Kachel (0,0) bauen und anklicken
-async function openWithTower(viewport) {
+// Testseite (unbegrenztes Gold), Blitzturm (längster Spezialtext) auf Kachel (col,row) über den Bau-Ring bauen und anklicken
+async function openWithTower(viewport, col = 0, row = 0) {
   const ctx = await browser.newContext({ viewport });
   const page = await ctx.newPage();
   await page.goto(`${url}?test`);
   await page.waitForSelector('#test-panel');
-  await page.locator('.tower-btn[data-type="lightning"]').click();
-  const box = await page.locator('#game').boundingBox();
-  const at = [box.x + 20 * box.width / 800, box.y + 20 * box.width / 800];
-  await page.mouse.click(...at);
-  await page.mouse.click(...at);
-  await page.waitForSelector('#tower-info:not([hidden])');
+  await build(page, 'lightning', col, row);
+  await openTower(page, col, row);
   // Längste Zielregel einstellen (Stärkster)
   await page.keyboard.press('t');
   await page.keyboard.press('t');
   return { ctx, page };
 }
 
-const bottom = (page, sel) => page.locator(sel).evaluate((e) => e.getBoundingClientRect().bottom);
-
+// C4: Turm-Ring an den Feldecken (0,0) und (19,13): Name und alle Knöpfe ganz im Fenster, ohne Scrollen
 for (const [width, height] of [[1280, 800], [1366, 768]]) {
-  test(`Desktop ${width}x${height}: Turm gewählt, Verkaufen und alle Turmkarten ohne Scrollen sichtbar`, async () => {
-    const { ctx, page } = await openWithTower({ width, height });
-    assert.equal(await page.evaluate(() => window.scrollY), 0);
-    assert.match(await page.locator('#target-mode').textContent(), /Stärkster/);
-    for (const sel of ['#ti-name', '#upgrade', '#sell', '#target-mode']) {
-      assert.ok(await page.locator(sel).isVisible(), `${sel} sichtbar`);
-      const b = await bottom(page, sel);
-      assert.ok(b < height, `${sel} endet bei ${b}`);
-    }
-    const last = await bottom(page, '#shop .tower-btn:last-child');
-    assert.ok(last <= height, `Letzter Turm endet bei ${last}`);
-    await ctx.close();
-  });
+  for (const [col, row] of [[0, 0], [19, 13]]) {
+    test(`Desktop ${width}x${height}: Turm (${col},${row}) gewählt, Turm-Ring ohne Scrollen ganz sichtbar`, async () => {
+      const { ctx, page } = await openWithTower({ width, height }, col, row);
+      assert.equal(await page.evaluate(() => window.scrollY), 0);
+      assert.match(await page.locator('#target-mode').textContent(), /Stärkster/);
+      for (const sel of ['#ti-name', '#upgrade', '#sell', '#target-mode', '#ti-close']) {
+        assert.ok(await page.locator(sel).isVisible(), `${sel} sichtbar`);
+        const r = await page.locator(sel).evaluate((e) => e.getBoundingClientRect().toJSON());
+        assert.ok(r.left >= 0 && r.top >= 0 && r.right <= width && r.bottom < height, `${sel} liegt im Fenster: ${JSON.stringify(r)}`);
+      }
+      await ctx.close();
+    });
+  }
 }
 
 const MIN_TOUCH = 44;
 const MIN_CANVAS = 280;
 
-// Handy: Pfeilturm auf Kachel (0,0) per Touch bauen (zwei Tipps), dritter Tipp wählt ihn aus
+// Handy: Pfeilturm auf Kachel (0,0) per Touch bauen (Tipp Kachel, Tipp Ringknopf), dritter Tipp wählt ihn aus
 async function openMobileWithTower(viewport) {
   const ctx = await browser.newContext({ viewport, hasTouch: true, isMobile: true });
   const page = await ctx.newPage();
   await page.goto(url);
-  await page.waitForSelector('#shop .tower-btn');
-  await page.locator('.tower-btn[data-type="arrow"]').tap();
+  await enterGame(page);
+  await build(page, 'arrow', 0, 0, { touch: true });
   const box = await page.locator('#game').boundingBox();
-  const s = box.width / 800;
-  const tile = (col, row) => [box.x + (col + 0.5) * 40 * s, box.y + (row + 0.5) * 40 * s];
-  for (let i = 0; i < 3; i++) await page.touchscreen.tap(...tile(0, 0));
-  await page.waitForSelector('#tower-info:not([hidden])');
+  const tile = (col, row) => tileCenter(box, col, row);
+  await openTower(page, 0, 0, { touch: true });
   return { ctx, page, tile };
 }
 
 for (const [width, height] of [[390, 844], [360, 740]]) {
   test(`Handy ${width}x${height}: Turm-Leiste unten mit Name, Stufe und Knöpfen im Bild, Feld bleibt sichtbar`, async () => {
     const { ctx, page, tile } = await openMobileWithTower({ width, height });
-    assert.match(await page.locator('#ti-name').textContent(), /Pfeilturm \(Stufe 1\)/);
+    assert.match(await page.locator('#ti-name').textContent(), /Pfeilturm · Stufe 1/);
     assert.ok(await page.locator('#ti-name').isVisible(), 'Turmname sichtbar');
     for (const sel of ['#upgrade', '#sell', '#target-mode', '#ti-close']) {
       const r = await page.locator(sel).evaluate((e) => e.getBoundingClientRect().toJSON());
@@ -136,15 +130,17 @@ for (const [width, height] of [[390, 844], [360, 740]]) {
   });
 }
 
-// B-070: Shop-Karten nutzen die Farben aus SHOP_CARD (die der Kontrast-Test prüft); "zu teuer" sichtbar markiert
-test('Shop-Karten: Farben aus SHOP_CARD, zu teure Karte mit eigenem Rahmen und Preisfarbe', async () => {
+// B-070: Turmknöpfe nutzen die Farben aus SHOP_CARD (die der Kontrast-Test prüft); "zu teuer" sichtbar markiert.
+// C4: geprüft im geöffneten Bau-Ring; "aktiv" = Baumodus per Taste (Ring zu).
+test('Bau-Ring: Farben aus SHOP_CARD, zu teurer Knopf mit eigenem Rahmen und Preisfarbe', async () => {
   const { SHOP_CARD: C } = await import('../../src/config.js');
   const rgb = (hex) => `rgb(${[1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)).join(', ')})`;
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
   const page = await ctx.newPage();
   await page.goto(url);
-  await page.waitForSelector('#shop .tower-btn');
+  await enterGame(page);
   await page.evaluate(() => { window.__game().gold = 60; });
+  await openRing(page, 0, 0);
   await page.waitForSelector('.tower-btn[data-type="sniper"].poor');
   const style = (sel) => page.locator(sel).evaluate((e) => {
     const s = getComputedStyle(e);
@@ -159,7 +155,9 @@ test('Shop-Karten: Farben aus SHOP_CARD, zu teure Karte mit eigenem Rahmen und P
   assert.deepEqual([kbd.color, kbd.bg], [rgb(C.keyText), rgb(C.keyBg)]);
   assert.equal((await style('.tower-btn[data-type="sniper"]')).border, rgb(C.poorEdge));
   assert.equal((await style('.tower-btn[data-type="sniper"] .t-cost')).color, rgb(C.costPoor));
-  await page.locator('.tower-btn[data-type="frost"]').click();
+  assert.equal(await page.locator('.tower-btn[data-type="sniper"]').getAttribute('aria-disabled'), 'true');
+  await page.keyboard.press('Escape');
+  await page.keyboard.press('3');
   assert.equal((await style('.tower-btn[data-type="frost"]')).bg, rgb(C.bgActive));
   await ctx.close();
 });

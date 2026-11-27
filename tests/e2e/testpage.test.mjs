@@ -4,6 +4,7 @@ import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 import { createServer } from '../../scripts/serve.mjs';
+import { enterGame } from './tile.mjs';
 import { TEST_TOOLS, PROGRESS_KEY } from '../../src/config.js';
 
 const require = createRequire(import.meta.url);
@@ -29,7 +30,8 @@ after(async () => {
 
 test('Normale Seite hat kein Test-Panel', async () => {
   await page.goto(url);
-  await page.waitForSelector('#shop .tower-btn');
+  await enterGame(page);
+  await page.waitForSelector('#shop .tower-btn', { state: 'attached' });
   assert.equal(await page.locator('#test-panel').count(), 0);
 });
 
@@ -74,12 +76,10 @@ test('Testseite: nach Spielende weiterspielen, Overlay verschwindet', async () =
   assert.equal(await page.locator('#overlay-progress').textContent(), '');
 });
 
-test('Testseite Desktop 1280x800: Panel unter dem Spielfeld, alle Turm-Buttons ohne Scrollen sichtbar', async () => {
+// C4: Turmleiste entfällt (Bau-Ring an den Feldecken prüft tests/e2e/ring.test.mjs)
+test('Testseite Desktop 1280x800: Panel im Spiel-Bereich', async () => {
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.goto(`${url}?test`);
   await page.waitForSelector('#test-panel');
   assert.equal(await page.locator('.board #test-panel').count(), 1);
-  const btns = page.locator('#shop .tower-btn');
-  const box = await btns.nth((await btns.count()) - 1).boundingBox();
-  assert.ok(box.y + box.height <= 800, `Letzter Turm endet bei ${box.y + box.height}`);
 });

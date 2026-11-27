@@ -6,6 +6,7 @@ import { createRequire } from 'node:module';
 import { createServer } from '../../scripts/serve.mjs';
 import { PROGRESS_KEY, START_LIVES, MAX_WAVES } from '../../src/config.js';
 import { MAP_ORDER } from '../../src/progress.js';
+import { enterGame, build, openTower } from './tile.mjs';
 
 // Karten über MAP_ORDER-Indizes (B-101), damit Änderungen an der Kartenliste die Tests nicht brechen.
 const [M0, M1] = MAP_ORDER;
@@ -26,7 +27,8 @@ before(async () => {
   page.on('pageerror', (e) => errors.push(e.message));
   page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
   await page.goto(url);
-  await page.waitForSelector('#shop .tower-btn');
+  await enterGame(page);
+  await page.waitForSelector('#shop .tower-btn', { state: 'attached' });
 });
 
 after(async () => {
@@ -56,7 +58,8 @@ test('Fortschritt: Sieg schaltet die nächste Karte frei, Overlay meldet es, ble
   assert.equal(await page.evaluate(() => window.__game().mapId), 'ice');
   assert.equal(await page.locator('#map-select').inputValue(), 'ice');
   await page.reload();
-  await page.waitForSelector('#shop .tower-btn');
+  await enterGame(page);
+  await page.waitForSelector('#shop .tower-btn', { state: 'attached' });
   assert.equal(await optionDisabled('ice'), false);
   assert.equal(await optionDisabled('fork'), true);
   assert.deepEqual(errors, []);
@@ -67,18 +70,21 @@ test('Startkarte (B-101): neueste freigeschaltete Karte, gewählte Karte bleibt 
   const errs = [];
   p2.on('pageerror', (e) => errs.push(e.message));
   await p2.goto(url);
-  await p2.waitForSelector('#shop .tower-btn');
+  await enterGame(p2);
+  await p2.waitForSelector('#shop .tower-btn', { state: 'attached' });
   // Stand ohne lastMap: erste Karte geschafft, zweite freigeschaltet
   await p2.evaluate(([k, m0, w]) => localStorage.setItem(k, JSON.stringify({ maps: { [m0]: { bestWave: w, stars: 2 } } })), [PROGRESS_KEY, M0, MAX_WAVES]);
   await p2.reload();
-  await p2.waitForSelector('#shop .tower-btn');
+  await enterGame(p2);
+  await p2.waitForSelector('#shop .tower-btn', { state: 'attached' });
   assert.equal(await p2.locator('#map-select').inputValue(), M1);
   assert.equal(await p2.evaluate(() => window.__game().mapId), M1);
   // Zurück auf die erste Karte wechseln, neu laden: sie bleibt
   await p2.selectOption('#map-select', M0);
   assert.equal(await p2.evaluate(() => window.__game().mapId), M0);
   await p2.reload();
-  await p2.waitForSelector('#shop .tower-btn');
+  await enterGame(p2);
+  await p2.waitForSelector('#shop .tower-btn', { state: 'attached' });
   assert.equal(await p2.locator('#map-select').inputValue(), M0);
   assert.equal(await p2.evaluate(() => window.__game().mapId), M0);
   assert.deepEqual(errs, []);
@@ -90,10 +96,12 @@ test('Startkarte (B-101 Randfall): Kartenwechsel während laufender Welle wird a
   const errs = [];
   p3.on('pageerror', (e) => errs.push(e.message));
   await p3.goto(url);
-  await p3.waitForSelector('#shop .tower-btn');
+  await enterGame(p3);
+  await p3.waitForSelector('#shop .tower-btn', { state: 'attached' });
   await p3.evaluate(([k, m0, m1, w]) => localStorage.setItem(k, JSON.stringify({ maps: { [m0]: { bestWave: w, stars: 2 } }, lastMap: m1 })), [PROGRESS_KEY, M0, M1, MAX_WAVES]);
   await p3.reload();
-  await p3.waitForSelector('#shop .tower-btn');
+  await enterGame(p3);
+  await p3.waitForSelector('#shop .tower-btn', { state: 'attached' });
   assert.equal(await p3.evaluate(() => window.__game().mapId), M1);
   await p3.locator('#start-wave').click();
   assert.equal(await p3.evaluate(() => window.__game().waveActive), true);
@@ -121,15 +129,10 @@ test('Ohne ResizeObserver (ältere Browser): Seite startet ohne Fehler, Turm-Pan
   await p4.goto(`${url}?test`);
   await p4.waitForSelector('#test-panel');
   assert.equal(await p4.evaluate(() => typeof window.ResizeObserver), 'undefined');
-  await p4.locator('.tower-btn[data-type="frost"]').click();
   await p4.evaluate(() => window.scrollTo(0, 0));
-  const box = await p4.locator('#game').boundingBox();
-  const at = [box.x + 20 * box.width / 800, box.y + 20 * box.width / 800];
-  await p4.mouse.click(...at);
-  await p4.mouse.click(...at);
+  await build(p4, 'frost', 0, 0);
   await p4.keyboard.press('Escape');
-  await p4.mouse.click(...at);
-  await p4.waitForSelector('#tower-info:not([hidden])');
+  await openTower(p4, 0, 0);
   assert.deepEqual(errs, []);
   await ctx.close();
 });

@@ -1,341 +1,546 @@
-/* Cartoon-Holz-Optik (Prototyp): dunkle Holzleisten, goldene Kanten, Wald-Hintergrund. */
+/* Stil 1 "Gemalt und warm" – Vollbild (C1), Holzleiste (C2), Fähigkeiten und Wellenstart (C3).
+   Maße aus docs/design/stil1-entwurf.dc.html (Z.15–20, Z.151–168). Lage rechnet :root aus --u (main.js setzt nur --view-w/-h, --field-w/-h, --frame):
+   --cx/--cy/--cw/--ch Canvas, --fx/--fy/--fw/--fh Feld, --fr/--fb Abstand Feld bis rechter/unterer Fensterrand. */
+@font-face {
+  font-family: 'Lilita One';
+  src: url('assets/fonts/LilitaOne-Regular.ttf') format('truetype');
+  font-display: swap;
+}
 :root {
-  --bg: #1f3a24;
-  --panel: #5a3a22;
-  --panel-dark: #3b2415;
-  --panel-edge: #2a170c;
+  --ink: #2b1a10;          /* Kontur überall */
+  --cream: #fff3d2;        /* Schrift hell */
+  --wood-a: #a4672f;       /* Plakette oben */
+  --wood-b: #7a4520;       /* Plakette unten */
+  --btn-a: #d79a52;        /* runder Knopf Licht */
+  --btn-b: #8a5224;        /* runder Knopf Schatten */
   --gold: #f2c14e;
-  --text: #fff4dc;
-  --muted: #d1bb94;
-  --accent: #7fd24a;
-  --accent-dark: #3f8a22;
-  --line: #2a170c;
+  --hl: #ffe266;           /* Auswahl, Fokus */
+  --muted: #e8d3a8;
+  --bad: #ff6b5a;
+  --display: 'Lilita One', 'Trebuchet MS', sans-serif;
+  /* C1 Lage, nur CSS (kein Warten auf resize): --u = CSS-px je Spiel-px. --view-w/-h, --field-w/-h, --frame setzt main.js einmal aus config.js.
+     Seitenzonen mindestens --side-min breit (Fähigkeiten, Türme), Bänder oben/unten mindestens --band-min hoch (HUD, Wellenknopf). */
+  --view-w: 900; --view-h: 660; --field-w: 800; --field-h: 560; --frame: 50;
+  --side-min: 100px; --band-min: 58px;
+  --u: min(100vw / var(--view-w), 100vh / var(--view-h), (100vw - 2 * var(--side-min)) / var(--field-w), (100vh - 2 * var(--band-min)) / var(--field-h));
+  --cw: calc(var(--u) * var(--view-w));  --ch: calc(var(--u) * var(--view-h));
+  --cx: calc((100vw - var(--cw)) / 2);   --cy: calc((100vh - var(--ch)) / 2);
+  --fw: calc(var(--u) * var(--field-w)); --fh: calc(var(--u) * var(--field-h));
+  --fx: calc(var(--cx) + var(--u) * var(--frame)); --fy: calc(var(--cy) + var(--u) * var(--frame));
+  --fr: var(--fx); --fb: var(--fy); /* symmetrisch */
 }
 * { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; overflow: hidden; }
 body {
-  margin: 0;
+  background: #1d3a1f;
+  color: var(--cream);
   font-family: 'Trebuchet MS', 'Segoe UI', system-ui, sans-serif;
-  background: radial-gradient(ellipse at top, #2f5a34 0%, var(--bg) 70%) fixed;
-  color: var(--text);
+  -webkit-tap-highlight-color: transparent;
 }
-header { text-align: center; padding: 10px 16px 0; }
-h1 { font-size: 1.5rem; margin: 0; color: var(--gold); text-shadow: 0 2px 0 var(--panel-edge), 0 0 12px rgba(0,0,0,.5); letter-spacing: .5px; }
-
-/* HUD-Leiste über dem Spielfeld (nicht im Bild): Gold / Welle / Leben */
-.hud {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 22px;
-  margin-bottom: 8px;
-  padding: 6px 20px 8px;
-  background: linear-gradient(#6b4529, var(--panel-dark));
-  border: 3px solid var(--panel-edge);
-  border-radius: 12px;
-  box-shadow: inset 0 0 0 2px #8a5e38, 0 4px 10px rgba(0,0,0,.45);
-  font-size: 1.35rem;
-  font-weight: 700;
-  text-shadow: 0 2px 0 var(--panel-edge);
-  white-space: nowrap;
-}
-.hud-item { display: inline-flex; align-items: center; gap: 7px; }
-.hud b { color: #ffe27a; min-width: 1ch; }
-/* Icons (B-069): per Canvas gezeichnet (src/render-icons.js), Größe aus ICON.sizes */
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .ico { display: inline-block; vertical-align: middle; flex: none; }
-#hearts { display: inline-flex; gap: 1px; }
-#pause-banner .ico { margin-right: 4px; }
-h1 .ico, #overlay-title .ico { vertical-align: -4px; } /* B-096: Burg, Trophäe, Totenkopf auf Schrifthöhe */
-#lives-box.low { color: #ff5a5a; animation: pulse 1s ease-in-out infinite; }
-@keyframes pulse { 50% { opacity: 0.45; } }
-/* B-123: Münzen springen beim Frühstart-Bonus aus der Goldanzeige */
-.hud-item { position: relative; }
-.hud-item.gold-gain > b { animation: gold-gain 0.6s ease-out; }
+:focus-visible { outline: 3px solid var(--hl); outline-offset: 3px; }
+
+/* ---------- C1 Bühne ---------- */
+#app { position: fixed; inset: 0; overflow: hidden; }
+/* C-Abnahme 1: Seitenzonen = scharfe gemalte Fortsetzung des Canvas (main.js setzt Bild und Lage, Canvas-Ausschnitt deckungsgleich) */
+#backdrop { position: absolute; left: 0; top: 0; width: 100%; height: 100%; }
+.stage { position: absolute; left: var(--cx); top: var(--cy); width: var(--cw); height: var(--ch); }
+canvas#game {
+  display: block; width: 100%; height: 100%; cursor: crosshair; touch-action: manipulation;
+}
+canvas#game.over-flag { cursor: pointer; } /* Maus über der Wellenfahne */
+
+/* ---------- Bausteine aus dem Entwurf ---------- */
+.plq { /* Z.16 */
+  background: linear-gradient(var(--wood-a), var(--wood-b));
+  border: 3px solid var(--ink); border-radius: 14px;
+  box-shadow: inset 0 2px 0 rgba(255,220,160,.55), inset 0 -3px 0 rgba(0,0,0,.25), 0 4px 0 rgba(30,15,5,.45);
+  color: var(--cream); font-family: var(--display);
+}
+.num { /* Z.17 */
+  font-family: var(--display); font-weight: 400; font-size: 28px; line-height: 30px; color: var(--cream);
+  text-shadow: -2px 0 var(--ink), 2px 0 var(--ink), 0 -2px var(--ink), 0 2px var(--ink), 0 3px 0 var(--ink);
+}
+.num small { font-size: 20px; }
+.rb { /* Z.18 */
+  position: relative; display: inline-grid; place-items: center; width: 48px; height: 48px; padding: 0; flex: none;
+  border-radius: 50%; border: 3px solid var(--ink); cursor: pointer; list-style: none;
+  background: radial-gradient(circle at 35% 30%, var(--btn-a), var(--btn-b));
+  box-shadow: inset 0 2px 0 rgba(255,235,190,.6), 0 3px 0 rgba(30,15,5,.5);
+}
+.rb::-webkit-details-marker { display: none; }
+.rb:hover { filter: brightness(1.1); }
+.rb:active { transform: translateY(2px); box-shadow: inset 0 2px 0 rgba(255,235,190,.6), 0 1px 0 rgba(30,15,5,.5); }
+.rb-q { font: 26px/1 var(--display); color: var(--cream); text-shadow: -2px 0 var(--ink), 2px 0 var(--ink), 0 -2px var(--ink), 0 2px var(--ink); }
+.rb-badge { position: absolute; right: -8px; bottom: -6px; min-width: 26px; height: 22px; padding: 0 4px; border-radius: 11px; border: 2.5px solid var(--ink); background: var(--gold); color: var(--ink); font: 14px/17px var(--display); text-align: center; }
+/* Holzknopf (Texte): Wellenstart-Stil in Braun bzw. Gold */
+.wbtn {
+  font: 17px/1 var(--display); color: var(--cream); cursor: pointer; padding: 0 14px; min-height: 40px;
+  border: 3px solid var(--ink); border-radius: 20px; white-space: nowrap;
+  background: linear-gradient(#b97a3e, #7a4520);
+  box-shadow: inset 0 2px 0 rgba(255,235,190,.5), 0 3px 0 rgba(30,15,5,.5);
+  text-shadow: 0 2px 0 var(--ink);
+  display: inline-flex; align-items: center; justify-content: center; gap: 4px;
+}
+.wbtn-gold { background: linear-gradient(#ffd45a, #e08a1c); color: var(--ink); text-shadow: none; }
+.wbtn:disabled { filter: grayscale(.8) brightness(.8); cursor: default; }
+.wbtn:active:not(:disabled) { transform: translateY(2px); }
+
+/* ---------- C2 HUD ---------- */
+.hud {
+  position: absolute; z-index: 10; pointer-events: none;
+  left: var(--fx); top: max(2px, calc((var(--fy) - 56px) / 2));
+  height: 56px; display: flex; align-items: center; gap: 12px; padding: 0 18px 0 8px;
+  transition: opacity .15s;
+}
+.hud.dim { opacity: .35; } /* Maus über dem Feld darunter (main.js) */
+.hud-item { position: relative; display: inline-flex; align-items: center; gap: 6px; }
+.hud-ico { flex: none; }
+.sep { width: 3px; height: 36px; background: var(--ink); opacity: .5; border-radius: 2px; }
+#gold { min-width: 76px; }
+#wave { min-width: 70px; }
+#lives { min-width: 30px; }
+#lives-box.low #lives { color: var(--bad); animation: pulse 1s ease-in-out infinite; }
+@keyframes pulse { 50% { opacity: .45; } }
+/* B-123: Münzen aus der Goldanzeige (unverändert übernommen) */
+.hud-item.gold-gain > b { animation: gold-gain .6s ease-out; }
 @keyframes gold-gain { 30% { transform: scale(1.35); color: #fff6c2; } }
 .gold-pop { position: absolute; inset: 0; pointer-events: none; z-index: 5; }
 .gold-coin { position: absolute; left: 3px; top: calc(50% - 8px); opacity: 0; animation-name: coin-burst; animation-timing-function: linear; animation-fill-mode: forwards; }
 .gold-coin .ico { display: block; filter: drop-shadow(0 1px 0 rgba(0,0,0,.5)); }
-/* Herausschießen (schnell, abbremsend), dann mit Schwerkraft fallen und verblassen */
 @keyframes coin-burst {
   0% { opacity: 1; transform: translate(0, 0) scale(.5) rotate(0); animation-timing-function: cubic-bezier(.15,.8,.35,1); }
   45% { opacity: 1; transform: translate(var(--dx), var(--dy)) scale(1.1) rotate(calc(var(--spin) * 200deg)); animation-timing-function: cubic-bezier(.5,0,.9,.5); }
   100% { opacity: 0; transform: translate(calc(var(--dx) * 1.15), calc(var(--dy) + var(--fall))) scale(.8) rotate(calc(var(--spin) * 420deg)); }
 }
-.gold-pop > b { position: absolute; left: calc(100% + 6px); top: -4px; white-space: nowrap; font-size: 1.1rem; color: #ffe27a; animation: gold-text 1.3s ease-out forwards; }
+.gold-pop > b { position: absolute; left: calc(100% + 6px); top: -4px; white-space: nowrap; font: 20px var(--display); color: #ffe27a; text-shadow: 0 2px 0 var(--ink); animation: gold-text 1.3s ease-out forwards; }
 @keyframes gold-text { 0% { opacity: 0; transform: translateY(6px); } 20% { opacity: 1; } 70% { opacity: 1; } 100% { opacity: 0; transform: translateY(-26px); } }
+
+.top-buttons {
+  position: absolute; z-index: 12; right: var(--fr); top: max(4px, calc((var(--fy) - 48px) / 2));
+  display: flex; gap: 8px; align-items: center;
+}
+#sound .ic-off, #sound[aria-pressed="false"] .ic-on { display: none; }
+#sound[aria-pressed="false"] .ic-off { display: block; }
+#pause .ic-play, #pause[data-paused="true"] .ic-pause { display: none; }
+#pause[data-paused="true"] .ic-play { display: block; }
+#pause[data-paused="true"] { box-shadow: 0 0 0 3px var(--hl), inset 0 2px 0 rgba(255,235,190,.6), 0 3px 0 rgba(30,15,5,.5); }
+#zoom { display: none; }
+.help { position: relative; }
+.help-pop { position: absolute; right: 0; top: 58px; width: 360px; padding: 10px 14px; font: 15px/1.35 'Trebuchet MS', sans-serif; }
+.help-pop ul { margin: 0; padding-left: 18px; }
+.help-pop li { margin: 3px 0; }
+kbd { font: 12px/1.4 ui-monospace, monospace; color: var(--cream); background: rgba(0,0,0,.35); border: 1px solid var(--ink); border-radius: 4px; padding: 0 5px; }
+
+/* ---------- C3 Fähigkeiten (Z.164–167), C-Abnahme 2: waagerecht unten links im unteren Band ---------- */
+.abilities {
+  position: absolute; z-index: 10; left: calc(var(--fx) + 8px); bottom: max(0px, calc((var(--fb) - 58px) / 2)); top: auto; transform: none;
+  width: auto; height: 58px; padding: 0 14px; border-radius: 29px; display: flex; flex-direction: row; align-items: center; gap: 14px;
+}
+.ab { /* Z.19 */
+  position: relative; width: 52px; height: 52px; padding: 0; flex: none; border-radius: 50%; border: 4px solid var(--ink); cursor: pointer;
+  box-shadow: inset 0 3px 0 rgba(255,255,255,.35), 0 4px 0 rgba(30,15,5,.55);
+  display: grid; place-items: center; color: var(--cream);
+}
+.ab[data-ability="meteor"] { background: radial-gradient(circle at 35% 30%, #ffb04a, #c4381f); }
+.ab[data-ability="freeze"] { background: radial-gradient(circle at 35% 30%, #8fd8f2, #2e6fb0); }
+.ab[data-ability="repair"] { background: radial-gradient(circle at 35% 30%, #a8e070, #3a8a3c); }
+.ab > svg { grid-area: 1 / 1; }
+/* Abklingen: dunkler Kuchen für die Restzeit (--fill 0..1 aus abilityView), Sekunden groß darüber */
+.ab-cd { position: absolute; inset: -4px; border-radius: 50%; pointer-events: none;
+  background: conic-gradient(rgba(20,30,50,.72) 0 calc((1 - var(--fill, 1)) * 100%), rgba(20,30,50,0) 0 100%); }
+.ab-num { position: absolute; inset: 0; display: grid; place-items: center; font: 24px/1 var(--display); color: var(--cream);
+  text-shadow: -2px 0 var(--ink), 2px 0 var(--ink), 0 -2px var(--ink), 0 2px var(--ink); pointer-events: none; }
+.ab-num:empty, .ab-badge:empty { display: none; }
+.ab-badge { position: absolute; right: -10px; top: -10px; min-width: 26px; height: 26px; padding: 0 3px; border-radius: 13px; background: var(--gold); border: 3px solid var(--ink); font: 15px/20px var(--display); color: var(--ink); text-align: center; }
+.cap { /* Z.20 */
+  position: absolute; left: 50%; bottom: -6px; transform: translateX(-50%); padding: 0 6px; border-radius: 8px;
+  background: var(--ink); color: var(--cream); font: 13px/16px var(--display); white-space: nowrap; pointer-events: none;
+}
+.ab > .key-badge { position: absolute; left: -8px; top: -8px; min-width: 22px; height: 22px; border-radius: 11px; background: var(--ink); color: var(--cream); font: 14px/22px var(--display); text-align: center; }
+.ab[data-state="used"] > svg { filter: grayscale(1) brightness(.7); }
+.ab[data-state="used"] { filter: saturate(.3); }
+.ab:disabled { cursor: default; }
+.ab:not(:disabled):hover { filter: brightness(1.12); }
+.ab.aiming { box-shadow: 0 0 0 4px var(--hl), 0 0 18px 6px rgba(255,226,102,.7), 0 4px 0 rgba(30,15,5,.55); }
+.ab.pop { animation: ab-ready .5s ease-out 1; } /* main.js setzt .pop beim Wechsel lädt -> bereit */
+@keyframes ab-ready { 50% { transform: scale(1.12); } }
+
+/* ---------- C3 Wellenstart (Z.168), Kartenwahl, Vorschau: Band unter dem Feld ---------- */
+.wave-row {
+  position: absolute; z-index: 10; left: var(--fx); width: var(--fw);
+  bottom: max(4px, calc((var(--fb) - 46px) / 2)); height: 46px; pointer-events: none;
+  display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 12px; align-items: center;
+}
+.wave-row > * { pointer-events: auto; }
+.wave-btn {
+  grid-column: 2; position: relative;
+  min-width: 168px; height: 46px; padding: 0 22px; border-radius: 23px; border: 3px solid var(--ink); white-space: nowrap; cursor: pointer;
+  background: linear-gradient(#ffd45a, #e08a1c); box-shadow: inset 0 2px 0 rgba(255,255,255,.6), 0 4px 0 rgba(30,15,5,.5);
+  font: 22px/1 var(--display); color: var(--ink);
+}
+.wave-btn .key { display: none; } /* Kürzel steht im title */
+.wave-btn:hover:not(:disabled) { filter: brightness(1.08); }
+.wave-btn:active:not(:disabled) { transform: translateY(2px); box-shadow: inset 0 2px 0 rgba(255,255,255,.6), 0 2px 0 rgba(30,15,5,.5); }
+.wave-btn:disabled { background: linear-gradient(#b97a3e, #7a4520); color: var(--cream); text-shadow: 0 2px 0 var(--ink); cursor: default;
+  box-shadow: inset 0 2px 0 rgba(255,235,190,.4), 0 4px 0 rgba(30,15,5,.45); } /* C-Abnahme 4: Holzton statt Grau */
+/* C-Abnahme 5: Fortschritt der laufenden Welle (Anteil besiegter Gegner, main.js setzt --wave-fill 0..1) */
+.wave-btn::after { content: ''; position: absolute; left: 14px; bottom: 3px; height: 4px; border-radius: 2px; pointer-events: none;
+  width: calc((100% - 28px) * var(--wave-fill, 0)); background: #ffd45a; }
+.wave-btn:not(.running)::after { display: none; }
+/* Bereit und keine Welle läuft: sanftes Pulsieren als Hinweis auf die nächste Aktion */
+.wave-btn.ready { animation: wave-ready 1.6s ease-in-out infinite; }
+@keyframes wave-ready { 50% { box-shadow: inset 0 2px 0 rgba(255,255,255,.6), 0 4px 0 rgba(30,15,5,.5), 0 0 0 6px rgba(255,212,90,.45); } }
+#wave-preview {
+  grid-column: 3; justify-self: start; max-width: 100%; height: 34px; margin: 0; padding: 0 12px;
+  border-radius: 17px; font: 15px/28px var(--display); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+#wave-preview[hidden] { display: none; }
+/* C-Abnahme 3: Kartenwahl vor Welle 1 im oberen Band zwischen Holzleiste und runden Knöpfen (4 Knöpfe à 48 + 3 x 8 Abstand) */
+.map-pick { position: absolute; z-index: 11; right: calc(var(--fr) + 4 * 48px + 3 * 8px + 16px); top: max(2px, calc((var(--fy) - 38px) / 2)); height: 38px; padding: 0 6px 0 12px; border-radius: 19px; display: flex; align-items: center; gap: 8px; font-size: 16px; }
+.map-pick select { font: 15px var(--display); color: var(--ink); background: #fff3d2; border: 2px solid var(--ink); border-radius: 12px; padding: 3px 6px; max-width: 170px; }
+.map-pick:has(select:disabled) { display: none; } /* nur vor Welle 1 wählbar */
+
+/* ---------- C4: Turmknöpfe (im Bau-Ring, Lage siehe Block C4 am Ende) ---------- */
+.tower-btn {
+  position: relative; width: 60px; height: 60px; padding: 0; border-radius: 50%; border: 4px solid var(--ink); cursor: pointer;
+  background-color: var(--card-bg); background-image: radial-gradient(circle at 35% 30%, rgba(255,255,255,.22), rgba(0,0,0,.18));
+  color: var(--card-name); box-shadow: inset 0 3px 0 rgba(255,255,255,.3), 0 4px 0 rgba(30,15,5,.55);
+  display: grid; place-items: center;
+}
+.tower-btn .t-icon { width: 48px; height: 48px; border-radius: 50%; background: var(--card-icon-bg); }
+.tower-btn .t-desc { color: var(--card-desc); }
+.tower-btn .t-name, .tower-btn .t-desc { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.tower-btn .t-cost { position: absolute; left: 50%; bottom: -15px; transform: translateX(-50%); display: inline-flex; align-items: center; gap: 2px; padding: 0 6px; border-radius: 9px; background: var(--ink); color: var(--card-cost); font: 15px/20px var(--display); white-space: nowrap; }
+.tower-btn .t-cost .ico { width: 16px; height: 16px; } /* C-Abnahme 12 */
+.tower-btn kbd.key { position: absolute; left: -8px; top: -8px; font: 13px/18px var(--display); padding: 0 5px; background: var(--card-key-bg); color: var(--card-key-text); border-radius: 9px; border: 0; }
+.tower-btn.active { background-color: var(--card-bg-active); box-shadow: 0 0 0 4px var(--hl), 0 0 16px 4px rgba(255,226,102,.6), 0 4px 0 rgba(30,15,5,.55); }
+.tower-btn.poor .t-icon { filter: grayscale(1) brightness(.8); }
+.tower-btn.poor { border-color: var(--card-poor-edge); }
+.tower-btn.poor .t-cost { color: var(--card-cost-poor); text-decoration: line-through; text-decoration-thickness: 2px; } /* nicht nur Farbe */
+.tower-btn:hover { filter: brightness(1.08); }
+
+#overlay[hidden] { display: none; }
+
+/* ---------- Meldungen, Pause, Spielende ---------- */
+#message {
+  position: absolute; left: 50%; top: calc(var(--fy) - var(--cy) + 10px); transform: translateX(-50%); margin: 0; z-index: 14;
+  padding: 4px 16px; border-radius: 16px; border: 3px solid var(--ink); background: #b8432f; color: var(--cream);
+  font: 18px/1.3 var(--display); box-shadow: 0 3px 0 rgba(30,15,5,.5); pointer-events: none; white-space: nowrap;
+}
+#message:empty { display: none; }
+#message.info { background: #4f8a34; }
+#pause-banner {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 14; pointer-events: none;
+  padding: 12px 30px; text-align: center; font: 34px/1.1 var(--display); color: var(--cream); text-shadow: 0 3px 0 var(--ink);
+  background: linear-gradient(var(--wood-a), var(--wood-b)); border: 3px solid var(--ink); border-radius: 18px;
+  box-shadow: inset 0 2px 0 rgba(255,220,160,.55), 0 6px 0 rgba(30,15,5,.45);
+}
+#pause-banner .key { font-size: 16px; opacity: .8; }
+#pause-banner[hidden] { display: none; }
+#overlay {
+  position: absolute; inset: 0; z-index: 20; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  background: rgba(16, 28, 14, .7);
+}
+#overlay h2 { margin: 0 0 8px; font: 56px/1 var(--display); color: var(--gold); text-shadow: 0 4px 0 var(--ink); }
+#overlay-title .ico { vertical-align: -4px; }
+#overlay-stats { font-size: 18px; }
+#overlay-progress { display: flex; flex-direction: column; align-items: center; gap: 4px; margin: 0 0 14px; }
+#overlay-progress:empty { display: none; }
+#overlay-progress .result-line { font-size: 17px; color: #f3e6c8; }
+#overlay-progress .result-highlight { font-weight: 700; color: var(--gold); text-shadow: 0 2px 0 var(--ink); }
+#restart { min-height: 48px; font-size: 22px; padding: 0 26px; border-radius: 24px; }
+
+/* Tastenkürzel nur mit Tastatur */
+.key[hidden] { display: none; }
+.touch-hint { display: none; }
+@media (hover: none), (pointer: coarse), (max-width: 700px) {
+  .key, #pause-banner .key, .ab > .key-badge, .tower-btn kbd.key { display: none; } .touch-hint { display: inline; } #pause-banner .touch-hint { display: block; font-size: 18px; }
+}
 @media (prefers-reduced-motion: reduce) {
   .gold-coin { display: none; }
-  .hud-item.gold-gain > b { animation: none; }
+  .hud-item.gold-gain > b, .wave-btn.ready, .ab.pop, #lives-box.low #lives { animation: none; }
   .gold-pop > b { animation: gold-text-still 1.3s linear forwards; }
   @keyframes gold-text-still { 0%, 80% { opacity: 1; } 100% { opacity: 0; } }
 }
-#pause-hint { color: var(--gold); }
-#pause-hint[hidden] { display: none; }
 
-#pause-banner {
-  /* Nur Anzeige: Klicks gehen durchs Banner aufs Spielfeld, Bauen bleibt möglich. */
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  padding: 12px 28px;
-  font-size: 1.6rem;
-  font-weight: 800;
-  text-align: center;
-  color: var(--gold);
-  background: linear-gradient(#6b4529, var(--panel-dark));
-  border: 3px solid var(--panel-edge);
-  box-shadow: inset 0 0 0 2px #8a5e38, 0 6px 16px rgba(0,0,0,.5);
-  border-radius: 12px;
-  text-shadow: 0 2px 0 var(--panel-edge);
-  pointer-events: none;
-}
-#pause-banner[hidden] { display: none; }
-
-main {
-  display: flex;
-  gap: 16px;
-  padding: 12px 16px 16px;
-  justify-content: center;
-  align-items: flex-start;
-  flex-wrap: wrap;
-}
-.board { max-width: 800px; width: 100%; }
-.stage { position: relative; }
-canvas#game {
-  display: block;
-  width: 100%;
-  height: auto;
-  border-radius: 12px;
-  border: 4px solid var(--panel-edge);
-  box-shadow: 0 0 0 3px #8a5e38, 0 8px 24px rgba(0,0,0,.55);
-  cursor: crosshair;
-}
-#message {
-  position: absolute;
-  top: 8px;
-  left: 50%;
-  transform: translateX(-50%);
-  margin: 0;
-  color: #fff;
-  background: rgba(120, 30, 20, 0.85);
-  border: 2px solid #3a0e08;
-  padding: 4px 14px;
-  border-radius: 14px;
-  font-weight: 600;
-  pointer-events: none;
-}
-#message:empty { display: none; }
-#message.info { background: rgba(40, 90, 30, 0.9); border-color: #123208; }
-
-/* Zoom (nur mobil per Button): Spielfeld doppelt so breit, im Rahmen verschiebbar */
-#zoom { display: none; }
-.zoomed .scroller { overflow: auto; max-height: 60vh; overscroll-behavior: contain; border-radius: 12px; }
-.zoomed canvas#game { width: 200%; max-width: none; }
-#zoom[aria-pressed="true"] { outline: 3px solid var(--gold); background: linear-gradient(#8f6339, #6b4529); color: var(--text); }
-#overlay {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  background: rgba(10, 20, 10, 0.75);
-  border-radius: 12px;
-}
-#overlay[hidden], #tower-info[hidden] { display: none; }
-#overlay h2 { font-size: 2.8rem; margin: 0 0 8px; color: var(--gold); text-shadow: 0 3px 0 var(--panel-edge); }
-/* Ergebnis am Spielende (B-094): Rekordzeile, darunter hervorgehobene Meldungen */
-#overlay-progress { display: flex; flex-direction: column; align-items: center; gap: 4px; margin: 0 0 14px; }
-#overlay-progress:empty { display: none; }
-#overlay-progress .result-line { font-size: 1.05rem; color: #f3e6c8; }
-#overlay-progress .result-highlight { font-weight: 700; color: var(--gold); text-shadow: 0 2px 0 var(--panel-edge); }
-
-/* Seitenleiste: Holzpanel */
-aside {
-  width: 290px;
-  background: linear-gradient(#64412a, var(--panel));
-  border: 4px solid var(--panel-edge);
-  box-shadow: inset 0 0 0 2px #8a5e38, 0 8px 24px rgba(0,0,0,.5);
-  border-radius: 12px;
-  padding: 12px;
-}
-aside h3 { margin: 10px 0 6px; font-size: 1rem; color: var(--gold); text-shadow: 0 1px 0 var(--panel-edge); text-transform: uppercase; letter-spacing: 1px; }
-button {
-  font: inherit;
-  font-weight: 600;
-  color: var(--text);
-  background: linear-gradient(#7a5233, #5a3a22);
-  border: 2px solid var(--panel-edge);
-  border-radius: 8px;
-  padding: 8px 10px;
-  cursor: pointer;
-  text-shadow: 0 1px 0 var(--panel-edge);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.2), 0 3px 0 var(--panel-edge);
-}
-button:hover:not(:disabled) { filter: brightness(1.15); }
-button:active:not(:disabled) { transform: translateY(2px); box-shadow: inset 0 1px 0 rgba(255,255,255,.2), 0 1px 0 var(--panel-edge); }
-button:disabled { opacity: 0.55; cursor: default; }
-button.primary {
-  background: linear-gradient(#92e05a, var(--accent-dark));
-  color: #fff;
-  font-size: 1.05rem;
-  padding: 10px;
-}
-.controls { display: flex; flex-wrap: wrap; gap: 6px; }
-.controls button { padding: 6px 10px; white-space: nowrap; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
-.controls .primary { flex: 1 1 100%; }
-.controls button:not(.primary) { flex: 1; }
-.abilities { display: flex; gap: 6px; margin-top: 8px; }
-/* Fähigkeitsknöpfe (B-058): großes Symbol, Kurzname, Ladungs-Abzeichen, Abklingbalken unten */
-.abilities button { position: relative; overflow: hidden; flex: 1; padding: 4px 4px 8px; font-size: .78rem; line-height: 1.1; min-height: 44px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; }
-.abilities button.aiming { outline: 2px solid #ff8a3d; }
-.ab-label { white-space: nowrap; }
-.ab-label .key { font-size: .68rem; color: var(--muted); }
-.ab-badge { position: absolute; top: 2px; right: 3px; padding: 0 4px; border-radius: 6px; font-size: .68rem; background: var(--gold); color: var(--panel-edge); text-shadow: none; }
-.ab-badge:empty { display: none; }
-.ab-bar { position: absolute; left: 0; right: 0; bottom: 0; height: 5px; background: rgba(0,0,0,.45); }
-.ab-fill { display: block; height: 100%; width: calc(var(--fill, 1) * 100%); background: var(--accent); }
-/* Bereit: hell mit grünem Balken. Lädt: entsättigt und dunkel, Balken füllt sich gold. */
-.abilities button[data-state="ready"]:not(:disabled) { box-shadow: inset 0 0 0 2px var(--accent), 0 3px 0 var(--panel-edge); }
-.abilities button[data-state="charging"] .ico,
-.abilities button[data-state="used"] .ico { filter: grayscale(1) brightness(.6); }
-.abilities button[data-state="charging"] .ab-fill { background: var(--gold); }
-.abilities button[data-state="charging"]:disabled,
-.abilities button[data-state="used"]:disabled { opacity: .8; }
-/* Tastenkürzel-Hinweise nur mit Tastatur (auf Touch-Geräten und schmalen Bildschirmen aus) */
-.key[hidden] { display: none; }
-/* Gegenstück: Hinweise nur für Touch/schmale Bildschirme (z. B. "Tippe auf Weiter" im Pause-Banner) */
-.touch-hint { display: none; }
-@media (hover: none), (pointer: coarse), (max-width: 700px) { .key { display: none; } .touch-hint { display: inline; } #pause-banner .touch-hint { display: block; font-size: 1.1rem; } }
-.map-pick { flex: 1 1 100%; display: flex; align-items: center; gap: 8px; }
-.map-pick select { flex: 1; padding: 6px; }
-#wave-preview { margin: 8px 0 0; padding: 4px 8px; font-size: .8rem; color: var(--muted); background: rgba(0,0,0,.25); border-radius: 6px; }
-#wave-preview[hidden] { display: none; }
-#shop { display: flex; flex-direction: column; gap: 6px; }
-.tower-btn {
-  display: grid;
-  grid-template-columns: 44px 1fr auto;
-  grid-template-areas: 'icon name cost' 'icon desc desc';
-  gap: 0 8px;
-  text-align: left;
-  align-items: center;
-  padding: 4px 10px 4px 5px;
-}
-/* Shop-Karten (B-070): flache Flächen, Farben als --card-* aus SHOP_CARD (config.js, gesetzt in main.js) */
-.tower-btn { background: var(--card-bg); color: var(--card-name); }
-.tower-btn:hover:not(:disabled) { filter: none; border-color: var(--gold); }
-.tower-btn.active { outline: 3px solid var(--gold); background: var(--card-bg-active); }
-/* Zu teuer: roter Rahmen, Vorschau grau getönt, Preis rot (nicht nur über Farbe) */
-.tower-btn.poor { border-color: var(--card-poor-edge); box-shadow: inset 0 0 0 1px var(--card-poor-edge), 0 3px 0 var(--panel-edge); }
-.tower-btn.poor .t-icon { filter: grayscale(.85) brightness(.85); }
-.tower-btn.poor .t-cost { color: var(--card-cost-poor); }
-.tower-btn kbd { color: var(--card-key-text); background: var(--card-key-bg); }
-.t-icon { grid-area: icon; width: 44px; height: 44px; border-radius: 8px; background: var(--card-icon-bg); border: 2px solid var(--panel-edge); }
-/* Name und Tasten-Badge einzeilig (sonst bricht "Scharfschütze 4" um und die Karte wird höher, B-097) */
-.t-name { grid-area: name; font-weight: 700; white-space: nowrap; }
-.tower-btn kbd { padding: 0 4px; }
-.t-cost { grid-area: cost; display: inline-flex; align-items: center; gap: 3px; white-space: nowrap; color: var(--card-cost); font-weight: 700; }
-.t-desc { grid-area: desc; font-size: 0.74rem; line-height: 1.2; font-weight: 400; color: var(--card-desc); display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; min-height: 2.4em; } /* immer zwei Zeilen hoch: alle Karten gleich hoch */
-/* Turm-Panel (B-057): flache Holzleiste direkt unter dem Spielfeld.
-   Links Name und Werte, rechts die drei Knöpfe, darunter der Spezialtext über die volle Breite. */
-#tower-info {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  grid-template-areas: 'name actions' 'stats actions' 'special special';
-  gap: 2px 10px;
-  align-items: center;
-  margin-top: 8px;
-  padding: 6px 10px;
-  background: linear-gradient(#64412a, var(--panel));
-  border: 3px solid var(--panel-edge);
-  border-radius: 10px;
-  box-shadow: inset 0 0 0 2px #8a5e38, 0 4px 10px rgba(0,0,0,.45);
-}
-#tower-info h3 { grid-area: name; margin: 0; font-size: 1rem; color: var(--gold); text-shadow: 0 1px 0 var(--panel-edge); }
-#tower-info p { color: var(--muted); font-size: 0.85rem; margin: 0; }
-#ti-stats { grid-area: stats; }
-#ti-special { grid-area: special; font-size: 0.78rem; line-height: 1.25; }
-#ti-special:empty { display: none; }
-#ti-close { display: none; }
-.ti-actions { grid-area: actions; display: flex; gap: 6px; }
-.ti-actions button { padding: 6px 10px; font-size: .85rem; white-space: nowrap; display: inline-flex; align-items: center; justify-content: center; gap: 4px; }
-.ti-actions .act-cost { display: inline-flex; align-items: center; white-space: nowrap; }
-/* Rechts leicht negativ: das Münzbild hat transparenten Rand, sonst wirkt es wie ein Leerzeichen vor ")" (B-097) */
-.ti-actions .act-cost .ico { margin: 0 -1px 0 3px; }
-.ti-actions .key { font-weight: 400; color: var(--muted); }
-kbd {
-  font-size: 0.72rem;
-  color: var(--text);
-  background: rgba(0,0,0,.35);
-  border: 1px solid var(--panel-edge);
-  border-radius: 4px;
-  padding: 0 5px;
-}
-.help { margin-top: 10px; color: var(--muted); font-size: 0.85rem; }
-.help summary { cursor: pointer; color: var(--gold); font-weight: 600; }
-.help ul { padding-left: 18px; }
-footer { text-align: center; color: var(--muted); font-size: 0.8rem; padding: 16px; opacity: .7; }
-@media (max-width: 1140px) { aside { width: 100%; max-width: 800px; } }
-
-/* Mobil: Platz fürs Spielfeld, kompakte Leiste, Hilfe weg (keine Tastatur) */
-@media (max-width: 700px) {
-  header, footer, .help { display: none; }
-  main { padding: 6px; gap: 8px; }
-  .hud { gap: 10px; padding: 3px 10px 5px; font-size: 1rem; margin-bottom: 6px; }
-  #hearts { gap: 0; }
-  #hearts .ico { width: 12px; height: 12px; } /* Platz für bis zu 10 Herzen */
-  .hud .ico-hud { width: 18px; height: 18px; }
-  canvas#game { border-width: 2px; border-radius: 8px; box-shadow: none; }
-  #overlay { border-radius: 8px; }
-  #overlay h2 { font-size: 2rem; }
-  aside { padding: 8px; display: flex; flex-direction: column; border-width: 3px; }
-  aside h3 { display: none; }
-  .controls { order: 1; gap: 6px; }
-  .controls button { padding: 7px 6px; font-size: .9rem; min-height: 44px; }
-  .abilities { order: 1; margin-top: 6px; }
-  .abilities button { padding: 3px 2px 7px; font-size: .72rem; }
-  #zoom { display: inline-flex; min-height: 44px; }
-  #wave-preview { order: 2; margin-top: 6px; }
-  /* Turm-Panel als feste Leiste (Schublade) am unteren Rand (B-056): Name, Werte, Schließen, drei Knöpfe.
-     Schließen per ×, Tipp aufs leere Feld oder Esc. */
-  #tower-info {
-    position: fixed;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    z-index: 20;
-    margin: 0;
-    grid-template-columns: minmax(0, 1fr) 44px;
-    grid-template-areas: 'name close' 'stats close' 'actions actions';
-    gap: 2px 8px;
-    padding: 6px 8px calc(8px + env(safe-area-inset-bottom));
-    border-width: 3px 0 0;
-    border-radius: 12px 12px 0 0;
-    box-shadow: inset 0 2px 0 #8a5e38, 0 -6px 16px rgba(0,0,0,.5);
-  }
-  #ti-special { display: none; }
-  #ti-close { grid-area: close; display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; padding: 0; font-size: 1.6rem; line-height: 1; }
-  .ti-actions { margin-top: 4px; }
-  .ti-actions button { flex: 1 1 0; min-width: 0; min-height: 44px; padding: 4px; font-size: .8rem; line-height: 1.15; white-space: normal; flex-direction: column; gap: 1px; text-align: center; }
-  /* Zweizeilig: "Verbessern" / "38 Münze", ohne Klammern (B-056) */
-  .ti-actions .paren { display: none; }
-  /* Platz unter der Seite, damit die Leiste nichts endgültig verdeckt */
-  /* Höhe aus main.js (ResizeObserver auf #tower-info, enthält schon env(safe-area-inset-bottom) im Padding); 140px als Rückfall */
-  body:has(#tower-info:not([hidden])) main { padding-bottom: calc(var(--tower-info-h, 140px) + 8px); }
-  #shop { order: 4; display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 8px; }
-  .tower-btn { grid-template-columns: 40px 1fr; grid-template-areas: 'icon name' 'icon cost'; gap: 0 6px; padding: 4px 6px 4px 4px; }
-  .t-icon { width: 40px; height: 40px; }
-  .t-desc, .tower-btn kbd { display: none; }
-  .t-name { font-size: .85rem; }
-}
-
-/* ---------- Testseite (test.html bzw. ?test) ---------- */
-/* Leiste unter dem Spielfeld, damit die Seitenleiste (Turm-Shop) nicht nach unten rutscht. */
-#test-panel { margin-top: 8px; border: 2px dashed #e0457b; border-radius: 10px; padding: 2px 10px 6px; background: rgba(60, 30, 20, 0.85); }
+/* ---------- Testseite ---------- */
+#test-panel { position: absolute; z-index: 30; left: 8px; bottom: 8px; width: min(440px, calc(100vw - 16px)); border: 2px dashed #e0457b; border-radius: 10px; padding: 2px 10px 6px; background: rgba(60, 30, 20, .9); font-size: 13px; }
 #test-panel h3 { margin: 0; font-size: 1rem; color: #e0457b; text-transform: uppercase; letter-spacing: 1px; cursor: help; }
-#test-panel .tp-row { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; margin-top: 6px; font-size: 0.85rem; }
+#test-panel .tp-row { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; margin-top: 6px; }
 #test-panel .tp-row > button { flex: 1 1 auto; padding: 3px 10px; }
 #test-panel .tp-speeds { display: flex; align-items: center; gap: 4px; margin-left: auto; }
 #test-panel .tp-speeds button { padding: 4px 8px; }
 #test-panel input[type="number"] { width: 4.5em; }
 #test-panel .tp-speeds button.active { outline: 2px solid #e0457b; }
+
+/* ---------- Kompakt (Handy, Grundlage bis Block E/C6): untereinander, scrollbar. Schwelle = LAYOUT in config.js ---------- */
+@media (max-width: 759.98px), (max-height: 519.98px) {
+:root { --u: calc((100vw - 12px) / var(--view-w)); }
+html, body { overflow: auto; height: auto; }
+#app { position: static; display: flex; flex-direction: column; align-items: stretch; gap: 8px; padding: 6px 6px calc(10px + env(safe-area-inset-bottom)); }
+#backdrop { position: fixed; left: -32px; top: -32px; width: calc(100% + 64px); height: calc(100% + 64px); filter: blur(18px) brightness(.42) saturate(.9); }
+.stage { position: relative; left: 0; top: 0; width: 100%; height: auto; order: 2; }
+canvas#game, #game { height: auto; border-radius: 10px; }
+.hud { position: relative; left: 0; top: 0; order: 1; align-self: flex-start; height: 44px; padding: 0 10px 0 4px; gap: 6px; }
+.hud .num { font-size: 22px; }
+.hud-ico { width: 30px; height: 30px; }
+#gold { min-width: 52px; } #wave { min-width: 54px; }
+.top-buttons { position: absolute; right: 6px; top: 4px; transform: none; gap: 6px; }
+.help { display: block; } /* C-Abnahme 9: "?" als fünfter runder Knopf */
+.top-buttons .rb { width: 56px; height: 56px; }
+.help-pop { position: fixed; left: 8px; right: 8px; top: auto; width: auto; z-index: 30; }
+#zoom { display: inline-grid; }
+.wave-row { position: relative; order: 3; left: 0; bottom: 0; width: 100%; height: auto; display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+.wave-btn, #wave-preview, .map-pick { position: static; transform: none; max-width: none; }
+.wave-btn { position: relative; } /* Bezug für die Fortschrittsfüllung */
+.wave-btn:active:not(:disabled) { transform: translateY(2px); }
+.abilities { position: relative; order: 4; left: 0; top: 0; bottom: auto; height: auto; transform: none; width: auto; flex-direction: row; justify-content: center; padding: 10px 14px 22px; gap: 24px; border-radius: 22px; align-self: center; }
+.ab { width: 56px; height: 56px; }
+.cap { bottom: -14px; font: 15px/20px var(--display); padding: 0 8px; }
+body:has(#tower-info:not([hidden])) #app { padding-bottom: calc(var(--tower-info-h, 140px) + 8px); }
+#test-panel { position: relative; z-index: auto; order: 6; left: 0; bottom: 0; width: auto; }
+
+#app { min-height: 100%; }
+.wave-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+.hud { align-self: stretch; justify-content: space-around; }
+.top-buttons { position: static; order: 3; justify-content: center; }
+.map-pick { position: static; order: 3; align-self: center; }
+/* C-Abnahme 11: bis Block E Feld und Leisten senkrecht mittig statt Leerraum unten */
+#app { justify-content: center; min-height: 100vh; min-height: 100dvh; }
+}
+
+/* ---------- C5: Startbildschirm und Spielende-Plakette (Bauvorlagen Start-Kartenwahl.md, Overlay-Spielende.md) ---------- */
+#start-screen { position: fixed; inset: 0; z-index: 40; display: flex; flex-direction: column; align-items: center; padding-top: 70px; background: rgba(16,28,14,.45); overflow: auto; }
+#start-screen[hidden] { display: none; }
+body.on-start .hud, body.on-start .abilities, body.on-start .wave-row, body.on-start .stage, body.on-start #shop, body.on-start #tower-info,
+body.on-start #speed, body.on-start #pause, body.on-start #zoom { visibility: hidden; }
+body.on-start .top-buttons { z-index: 41; } /* Ton und Hilfe bleiben erreichbar */
+.start-title { position: relative; margin: 0; width: 640px; max-width: calc(100vw - 16px); height: 86px; flex: none; border-radius: 22px; display: flex; align-items: center; justify-content: center; gap: 12px; font: 50px/1 var(--display); font-weight: 400;
+  text-shadow: -3px 0 #2b1a10, 3px 0 #2b1a10, 0 -3px #2b1a10, 0 3px #2b1a10, 0 5px 0 #2b1a10; }
+.start-castle { flex: none; margin-top: -8px; }
+.map-cards { display: flex; gap: 20px; margin-top: 54px; }
+.map-card { position: relative; width: 196px; height: 290px; padding: 12px; border-radius: 18px; display: flex; flex-direction: column; align-items: center; gap: 6px; cursor: pointer; flex: none;
+  transition: transform .12s ease-out; }
+.map-thumb { width: 172px; height: 120px; border-radius: 10px; border: 3px solid #2b1a10; box-sizing: border-box; flex: none; }
+.map-name { font: 24px/1.1 var(--display); color: #fff3d2; text-shadow: -2px 0 #2b1a10, 2px 0 #2b1a10, 0 -2px #2b1a10, 0 2px #2b1a10; margin-top: 4px; }
+.map-stars { display: flex; gap: 4px; }
+.map-best { font: 14px 'Trebuchet MS', sans-serif; color: #e8d3a8; text-align: center; }
+.map-card:hover:not(:disabled) { filter: brightness(1.08); }
+.map-card:focus-visible, .map-card.current { transform: translateY(-6px); box-shadow: 0 0 0 4px #ffe266, 0 10px 0 rgba(30,15,5,.45); outline: none; }
+.map-card:disabled { cursor: default; } .map-card:disabled .map-thumb { filter: grayscale(1) brightness(.45); } .map-card:disabled .map-name { color: #c9b89a; }
+.map-lock { position: absolute; left: calc(50% - 22px); top: 50px; }
+.start-hint { margin: 26px 0 0; font: 16px 'Trebuchet MS', sans-serif; color: #fff3d2; text-shadow: 0 2px 0 #2b1a10; }
+.start-keys { margin: 8px 0 0; font: 14px 'Trebuchet MS', sans-serif; color: #e8d3a8; text-shadow: 0 2px 0 #2b1a10; text-align: center; }
+.start-keys kbd { font: 13px/18px var(--display); padding: 0 5px; border-radius: 6px; background: #2b1a10; color: #fff3d2; }
+@media (hover: none), (pointer: coarse), (max-width: 700px) { .start-hint .no-touch { display: none; } }
+@media (max-width: 1100px) { .map-card { width: 172px; } .map-thumb { width: 148px; height: 104px; } .map-cards { gap: 12px; } }
+
+#overlay { background: rgba(16,28,14,.7); }
+.end-card { position: relative; width: 520px; max-width: calc(100vw - 56px); padding: 64px 24px 22px; border-radius: 22px; text-align: center; }
+.end-ribbon { position: absolute; left: -20px; top: -34px; width: calc(100% + 40px); height: auto; overflow: visible; }
+.end-ribbon text { font: 44px var(--display); }
+.end-stars { display: flex; justify-content: center; gap: 10px; margin: 0 0 8px; }
+.end-stars:empty { display: none; }
+.end-stars svg { animation: star-pop .35s ease-out both; } .end-stars svg:nth-child(2) { animation-delay: .15s; } .end-stars svg:nth-child(3) { animation-delay: .3s; }
+@keyframes star-pop { from { transform: scale(0); } 70% { transform: scale(1.2); } }
+#overlay-stats { font: 18px 'Trebuchet MS', sans-serif; color: #fff3d2; margin: 0 0 6px; }
+.end-card #overlay-progress { margin: 0; }
+.end-actions { display: flex; justify-content: center; gap: 12px; margin-top: 14px; }
+.end-actions .wbtn { min-height: 46px; font-size: 22px; padding: 0 22px; border-radius: 23px; }
+@media (prefers-reduced-motion: reduce) { .end-stars svg { animation: none; } .map-card { transition: none; } }
+
+@media (max-width: 759.98px), (max-height: 519.98px) {
+  #start-screen { position: fixed; padding: 64px 8px 16px; }
+  body.on-start .top-buttons { position: fixed; right: 6px; top: 6px; }
+  .start-title { width: 100%; height: 64px; font-size: 32px; gap: 8px; } .start-castle { width: 44px; height: 50px; }
+  .map-cards { flex-wrap: wrap; justify-content: center; gap: 12px; margin-top: 18px; } .map-card { width: 168px; height: 250px; } .map-thumb { width: 144px; height: 100px; }
+  .map-lock { top: 40px; }
+  #overlay { position: fixed; z-index: 30; }
+  .end-card { padding: 48px 16px 18px; } .end-ribbon text { font-size: 50px; }
+  .end-stars svg { width: 44px; height: 44px; }
+  .end-actions .wbtn { font-size: 19px; padding: 0 16px; }
+}
+
+/* ---------- C4: Ringmenü (Bauvorlagen Menue-Ring-Bauen.md, Menue-Ring-Turm.md) ----------
+   Ring liegt in .stage; main.js setzt --rx/--ry (Ringmitte), --R (Radius aus RING_MENU) und --dx/--dy (Kachel relativ zur Mitte). */
+/* 1 px statt 0: der Ring zählt so als sichtbares Element (Barrierefreiheit, Browser-Tests); Mitte bleibt bei --rx/--ry */
+.ring { position: absolute; z-index: 16; left: calc(var(--rx, 0px) - .5px); top: calc(var(--ry, 0px) - .5px); width: 1px; height: 1px; --R: 68px; }
+.ring[hidden] { display: none; }
+.ring-yard { position: absolute; left: calc(-1 * (var(--R) + 38px)); top: calc(-1 * (var(--R) + 38px)); width: calc(2 * var(--R) + 76px); height: calc(2 * var(--R) + 76px);
+  border-radius: 50%; background: radial-gradient(circle, rgba(43,26,16,.38) 0 45%, rgba(43,26,16,0) 70%); pointer-events: none; }
+.ring-dot { position: absolute; left: calc(var(--dx, 0px) - 5px); top: calc(var(--dy, 0px) - 5px); width: 10px; height: 10px; border-radius: 50%; background: #fff3d2; border: 3px solid #2b1a10; pointer-events: none; }
+.ring-btn { position: absolute; left: -30px; top: -30px; transform: rotate(var(--a)) translate(var(--R)) rotate(calc(-1 * var(--a))); animation: ring-in .14s ease-out; }
+@keyframes ring-in { from { opacity: 0; transform: rotate(var(--a)) translate(calc(var(--R) * .5)) rotate(calc(-1 * var(--a))) scale(.6); } }
+.ring-btn:hover, .ring-btn:focus-visible { box-shadow: 0 0 0 4px #ffe266, 0 0 16px 4px rgba(255,226,102,.6), 0 4px 0 rgba(30,15,5,.55); z-index: 1; outline: none; }
+.ring-btn[aria-disabled="true"] { cursor: not-allowed; }
+
+.rbtn { position: absolute; left: -30px; top: -30px; width: 60px; height: 60px; padding: 0; border-radius: 50%; border: 4px solid #2b1a10; cursor: pointer;
+  display: grid; place-items: center; background: radial-gradient(circle at 35% 30%, #d79a52, #8a5224); box-shadow: inset 0 3px 0 rgba(255,255,255,.35), 0 4px 0 rgba(30,15,5,.55);
+  transform: rotate(var(--a)) translate(var(--R)) rotate(calc(-1 * var(--a))); animation: ring-in .14s ease-out; }
+.rbtn-gold { background: radial-gradient(circle at 35% 30%, #ffe27a, #e08a1c); }
+.rbtn-red { background: radial-gradient(circle at 35% 30%, #e88a6a, #a8412c); }
+.rbtn-small { width: 44px; height: 44px; left: -22px; top: -22px; font: 26px/1 var(--display); color: #fff3d2; background: #2b1a10; border-color: #2b1a10; }
+.rbtn .cap { bottom: -15px; display: inline-flex; align-items: center; gap: 2px; font-size: 15px; line-height: 20px; }
+.rbtn .cap .ico { width: 16px; height: 16px; }
+.rbtn:disabled { filter: grayscale(.85) brightness(.85); cursor: default; }
+.rbtn:disabled .act-cost { color: #ff9e8f; text-decoration: line-through; }
+.rbtn:hover:not(:disabled), .rbtn:focus-visible { box-shadow: 0 0 0 4px #ffe266, 0 4px 0 rgba(30,15,5,.55); outline: none; z-index: 1; }
+.ring-acts { display: contents; } /* Desktop: nur Hülle */
+.ring-info { position: absolute; left: calc(var(--R) + 44px); top: -46px; width: 240px; padding: 8px 12px; font-family: 'Trebuchet MS', sans-serif; }
+.ring-tower.info-left .ring-info { left: auto; right: calc(var(--R) + 44px); }
+.ring-info h3 { margin: 0 0 2px; font: 19px/1.1 var(--display); color: #fff3d2; text-shadow: 0 2px 0 #2b1a10; }
+.ring-info p { margin: 0; font-size: 13px; line-height: 1.3; color: #e8d3a8; }
+#ti-special:empty { display: none; }
+@media (prefers-reduced-motion: reduce) { .ring-btn, .rbtn { animation: none; } }
+@media (max-width: 759.98px), (max-height: 519.98px) {
+  .ring-btn { width: 48px; height: 48px; left: -24px; top: -24px; } .ring-btn .t-icon { width: 38px; height: 38px; }
+  /* Handy: Turm-Ring wird zur festen Leiste unten, Knöpfe in einer Reihe */
+  #tower-info.ring { position: fixed; left: 0; right: 0; bottom: 0; top: auto; width: auto; height: auto; z-index: 20; display: grid;
+    grid-template-columns: minmax(0,1fr) 44px; grid-template-areas: 'info close' 'acts acts'; gap: 6px 8px; padding: 8px 8px calc(10px + env(safe-area-inset-bottom));
+    background: linear-gradient(#a4672f, #7a4520); border-top: 3px solid #2b1a10; border-radius: 14px 14px 0 0; }
+  #tower-info.ring[hidden] { display: none; }
+  #tower-info .ring-yard { display: none; }
+  #tower-info .ring-info { position: static; grid-area: info; width: auto; padding: 0; background: none; border: 0; box-shadow: none; }
+  #tower-info .rbtn { position: static; transform: none; animation: none; width: auto; height: 52px; border-radius: 26px; display: flex; justify-content: center; gap: 4px; }
+  #tower-info #ti-close { grid-area: close; width: 44px; height: 44px; }
+  #tower-info .rbtn .cap { position: static; transform: none; margin-left: 4px; }
+  #tower-info .rbtn svg { width: 32px; height: 32px; flex: none; }
+  #ti-special { display: none; }
+  #tower-info .ring-acts { grid-area: acts; display: flex; gap: 6px; } #tower-info .ring-acts .rbtn { flex: 1 1 0; min-width: 0; }
+}
+/* ---------- C6 Handy (Bauvorlagen Handy-Hoch.md, Handy-Quer.md): ersetzt die Kompakt-Ansicht getrennt nach Ausrichtung ----------
+   Hochformat: Feld füllt die Höhe, seitlich wischen (viewport.js), Dock unten. Querformat: Feld mittig, Spalten links/rechts.
+   C4 Ringmenü: Bau-Ring liegt über dem Feld (keine Turmleiste mehr, --shop-w: 0), Turm-Ring wird im Hochformat zur Leiste im Dock,
+   im Querformat zur rechten Spalte. */
+.swipe-hint, .vp-edges { display: none; }
+#zoom .ic-in, #zoom[aria-pressed="true"] .ic-out { display: none; }
+#zoom[aria-pressed="true"] .ic-in { display: block; }
+@media (max-width: 759.98px), (max-height: 519.98px) { #zoom { display: none; } }
+
+@media (max-width: 759.98px) and (orientation: portrait) {
+  :root { --safe-t: env(safe-area-inset-top, 0px); --safe-b: env(safe-area-inset-bottom, 0px); --shop-w: 0px;
+    --field-vh: calc(100vh - 216px - var(--safe-t) - var(--safe-b)); --uh: calc(var(--field-vh) / 560); --u: var(--uh); }
+  @supports (height: 100dvh) { :root { --field-vh: calc(100dvh - 216px - var(--safe-t) - var(--safe-b)); } }
+  html, body { overflow: hidden; height: 100%; }
+  #app, body:has(#tower-info:not([hidden])) #app { position: fixed; inset: 0; display: block; padding: 0; min-height: 0; }
+  .zoomed-out { --u: calc((100vw - 12px - var(--shop-w)) / 900); } /* Übersicht: ganzes Feld sichtbar */
+  /* Dock unten (Fläche hinter Fähigkeiten, Zoom und Wellenknopf) */
+  #app::after { content: ''; position: fixed; left: 0; right: 0; bottom: 0; z-index: 9; height: calc(160px + var(--safe-b)); pointer-events: none;
+    background: linear-gradient(var(--wood-a), var(--wood-b)); border-top: 3px solid var(--ink); border-radius: 16px 16px 0 0; box-shadow: inset 0 2px 0 rgba(255,220,160,.55); }
+  /* Feld: Rand oben/unten abgeschnitten, links/rechts beim Wischen sichtbar */
+  .stage { position: absolute; left: 0; right: 0; width: auto; top: calc(56px + var(--safe-t)); height: var(--field-vh); order: 0;
+    display: flex; align-items: flex-start; overflow-x: auto; overflow-y: hidden; touch-action: pan-x; overscroll-behavior-x: contain; scrollbar-width: none; }
+  .stage::-webkit-scrollbar { display: none; }
+  canvas#game, #game { flex: none; width: calc(900 * var(--u)); height: calc(660 * var(--u)); max-width: none; margin: calc(-50 * var(--u)) var(--shop-w) 0 0; border-radius: 0; touch-action: pan-x; }
+  .zoomed-out .stage { overflow: hidden; align-items: center; }
+  .zoomed-out canvas#game { margin: 0 0 0 6px; border-radius: 10px; }
+  /* Kopfleiste: HUD kompakt links, drei runde Knöpfe rechts */
+  .hud { position: absolute; left: 6px; top: calc(6px + var(--safe-t)); order: 0; align-self: auto; justify-content: flex-start; height: 44px; padding: 0 8px 0 4px; gap: 6px; border-radius: 12px; }
+  .hud .sep { display: none; }
+  .hud .num { font-size: 20px; line-height: 22px; } .num small { font-size: 14px; }
+  .hud-ico { width: 28px; height: 28px; } .hud-item { gap: 2px; } .hud .num { white-space: nowrap; }
+  #gold { min-width: 40px; } #wave { min-width: 44px; } #lives { min-width: 22px; }
+  .top-buttons { position: absolute; right: 6px; top: calc(6px + var(--safe-t)); order: 0; transform: none; gap: 6px; justify-content: flex-end; }
+  .top-buttons .rb { width: 44px; height: 44px; } .top-buttons .rb > svg { width: 32px; height: 32px; }
+  .help { display: none; }
+  /* Dock: Zeile 1 Fähigkeiten 3 x 56 + Zoom 44, Zeile 2 Wellenknopf volle Breite */
+  #zoom { display: inline-grid; position: absolute; right: 4px; top: calc(var(--field-vh) + 60px); } /* Dock Zeile 1 rechts (Bezug: .top-buttons) */
+  .abilities { position: fixed; left: 10px; top: auto; bottom: calc(94px + var(--safe-b)); order: 0; align-self: auto; transform: none; width: auto; height: 56px;
+    padding: 0; gap: 18px; justify-content: flex-start; background: none; border: 0; border-radius: 0; box-shadow: none; }
+  .ab { width: 56px; height: 56px; }
+  .cap { bottom: -12px; font: 13px/16px var(--display); padding: 0 6px; }
+  .wave-row { position: fixed; left: 10px; right: 10px; bottom: calc(10px + var(--safe-b)); width: auto; height: 52px; display: block; order: 0; }
+  .wave-btn { width: 100%; min-width: 0; height: 52px; border-radius: 26px; font-size: 22px; }
+  #wave-preview, .map-pick { display: none; }
+  /* Turm-Ring: Leiste genau über dem Dock (gleiche Höhe), Dock-Inhalt solange ausgeblendet; das Feld bleibt frei */
+  #tower-info.ring { height: calc(160px + var(--safe-b)); box-sizing: border-box; align-content: start; overflow-y: auto; }
+  body:has(#tower-info:not([hidden])) :is(.abilities, .wave-row, #zoom) { visibility: hidden; }
+  /* Meldung, Pause, Spielende fest im Fenster (der Feldbehälter wischt) */
+  #message { position: fixed; top: calc(66px + var(--safe-t)); max-width: calc(100vw - 90px); white-space: normal; text-align: center; }
+  #pause-banner { position: fixed; top: calc(56px + var(--safe-t) + var(--field-vh) / 2); }
+  #overlay { position: fixed; inset: 0; z-index: 30; background: rgba(16,28,14,.78); overflow: auto; }
+  /* Wisch-Hinweis und Schattenkanten (Klassen swiped, can-left, can-right aus viewport.js) */
+  .swipe-hint { display: block; position: fixed; left: 50%; bottom: calc(172px + var(--safe-b)); transform: translateX(-50%); z-index: 11; pointer-events: none;
+    padding: 4px 16px; border-radius: 16px; border: 3px solid var(--ink); background: linear-gradient(#b97a3e, #7a4520); box-shadow: 0 3px 0 rgba(30,15,5,.5);
+    color: var(--cream); font: 15px/1.3 var(--display); text-shadow: 0 2px 0 var(--ink); white-space: nowrap; animation: swipe-wiggle 2.4s ease-in-out infinite; }
+  .swiped .swipe-hint, .zoomed-out .swipe-hint, body.on-start .swipe-hint, body:has(#tower-info:not([hidden])) .swipe-hint, body:has(#overlay:not([hidden])) .swipe-hint { display: none; }
+  body.on-start #app::after { display: none; }
+  .vp-edges { display: block; position: fixed; left: 0; right: 0; top: calc(56px + var(--safe-t)); height: var(--field-vh); z-index: 8; pointer-events: none; }
+  .vp-edges::before, .vp-edges::after { content: ''; position: absolute; top: 0; bottom: 0; width: 18px; opacity: 0; transition: opacity .15s; }
+  .vp-edges::before { left: 0; background: linear-gradient(90deg, rgba(0,0,0,.35), transparent); }
+  .vp-edges::after { right: 0; background: linear-gradient(270deg, rgba(0,0,0,.35), transparent); }
+  .can-left .vp-edges::before, .can-right .vp-edges::after { opacity: 1; }
+  .zoomed-out .vp-edges { display: none; }
+  #test-panel { position: fixed; left: 6px; bottom: calc(166px + var(--safe-b)); width: calc(100vw - 80px); max-height: 40vh; overflow: auto; z-index: 25; order: 0; }
+  /* Startbildschirm: alle fünf Karten ohne Scrollen (2 Spalten), nur der Ton-Knopf oben rechts */
+  #start-screen { padding: calc(6px + var(--safe-t)) 8px calc(12px + var(--safe-b)); }
+  body.on-start .top-buttons { position: fixed; right: 6px; top: calc(6px + var(--safe-t)); }
+  body.on-start #speed, body.on-start #pause { display: none; }
+  .start-title { align-self: flex-start; width: calc(100% - 56px); height: 48px; font-size: 24px; gap: 6px; border-radius: 16px; }
+  .start-castle { width: 34px; height: 38px; margin-top: -4px; }
+  .map-cards { display: grid; grid-template-columns: repeat(2, minmax(0, 172px)); justify-content: center; gap: 10px; margin-top: 12px; }
+  .map-card { width: auto; height: auto; padding: 8px 8px 10px; gap: 4px; border-radius: 16px; }
+  .map-card:last-child:nth-child(odd) { grid-column: 1 / -1; justify-self: center; width: calc((100% - 10px) / 2); }
+  .map-thumb { width: 100%; height: auto; aspect-ratio: 16 / 10; object-fit: cover; }
+  .map-name { font-size: 20px; margin-top: 2px; } .map-stars svg { width: 20px; height: 20px; } .map-best { font-size: 13px; line-height: 1.2; }
+  .map-lock { top: 34px; }
+  .start-hint { margin-top: 14px; }
+}
+/* Schmal (unter 380 px): HUD kleiner, Welle ohne "/ 20" */
+@media (max-width: 379.98px) and (orientation: portrait) {
+  .hud .num { font-size: 18px; } .hud-ico { width: 24px; height: 24px; } #wave small { display: none; } #wave { min-width: 26px; }
+}
+
+@media (max-height: 519.98px) and (orientation: landscape) {
+  :root { --u: min(100vh / 560, (100vw - 224px) / 800); --side: max(112px, calc((100vw - 800 * var(--u)) / 2)); --shop-w: 0px; }
+  html, body { overflow: hidden; height: 100%; }
+  #app, body:has(#tower-info:not([hidden])) #app { position: fixed; inset: 0; display: block; padding: 0; min-height: 0; }
+  #app::before, #app::after { content: ''; position: fixed; top: 0; bottom: 0; width: var(--side); z-index: 1; pointer-events: none; background: rgba(16,28,14,.35); }
+  #app::before { left: 0; } #app::after { right: 0; }
+  body.on-start #app::before, body.on-start #app::after { display: none; }
+  /* Feld 800u x 560u mittig, Rand abgeschnitten */
+  .stage { position: absolute; left: var(--side); top: calc((100vh - 560 * var(--u)) / 2); width: calc(800 * var(--u)); height: calc(560 * var(--u)); overflow: hidden; order: 0; }
+  canvas#game, #game { position: absolute; left: calc(-50 * var(--u)); top: calc(-50 * var(--u)); width: calc(900 * var(--u)); height: calc(660 * var(--u)); max-width: none; border-radius: 0; }
+  /* Spalte links: HUD senkrecht, Fähigkeiten senkrecht */
+  .hud { position: absolute; left: 6px; top: 6px; width: calc(var(--side) - 12px); height: auto; order: 0; align-self: auto; flex-direction: column; align-items: stretch; justify-content: flex-start; gap: 2px; padding: 6px 8px; }
+  .hud .sep { display: none; } .hud .num { font-size: 22px; line-height: 26px; } .hud-ico { width: 26px; height: 26px; }
+  .hud-item { height: 32px; gap: 6px; } #gold, #wave, #lives { min-width: 0; } .hud .num { white-space: nowrap; } #wave small { font-size: 15px; }
+  .abilities { position: absolute; left: calc((var(--side) - 76px) / 2); top: 128px; bottom: auto; order: 0; align-self: auto; transform: none; width: 76px; height: auto;
+    flex-direction: column; align-items: center; gap: 22px; padding: 8px 0 18px; border-radius: 38px; }
+  .ab { width: 48px; height: 48px; } .cap { font-size: 12px; line-height: 16px; bottom: -12px; }
+  /* Spalte rechts: runde Knöpfe 2 x 2, Wellenknopf unten (Bau-Ring liegt über dem Feld) */
+  .top-buttons { position: absolute; right: 6px; top: 6px; width: calc(var(--side) - 12px); order: 0; transform: none; display: grid; grid-template-columns: 44px 44px; justify-content: center; gap: 8px; }
+  .top-buttons .rb { width: 44px; height: 44px; } .top-buttons .rb > svg { width: 32px; height: 32px; }
+  .help, #zoom { display: none; }
+  .wave-row { position: absolute; right: 6px; bottom: 8px; left: auto; width: calc(var(--side) - 12px); height: auto; display: block; order: 0; }
+  .wave-btn { width: 100%; min-width: 0; height: 56px; padding: 0 8px; font-size: 18px; white-space: normal; line-height: 1.05; }
+  #wave-preview, .map-pick { display: none; }
+  /* Turm-Ring: rechte Spalte über den Knöpfen (statt Leiste unten, die das Feld verdecken würde) */
+  #tower-info.ring { left: auto; right: 0; top: 0; bottom: 0; width: var(--side); border-top: 0; border-left: 3px solid #2b1a10; border-radius: 14px 0 0 14px;
+    align-content: start; padding: 8px 8px calc(8px + env(safe-area-inset-bottom)); overflow-y: auto; box-sizing: border-box; }
+  #tower-info h3 { font-size: 16px; } #tower-info p { font-size: 12px; }
+  #tower-info .ring-acts { flex-direction: column; } #tower-info .ring-acts .rbtn { flex: none; height: 44px; }
+  #message { top: 10px; max-width: calc(100% - 20px); white-space: normal; text-align: center; }
+  #overlay { position: fixed; inset: 0; z-index: 30; background: rgba(16,28,14,.78); overflow: auto; }
+  #test-panel { position: fixed; left: var(--side); bottom: 0; width: calc(100vw - 2 * var(--side)); max-height: 40vh; overflow: auto; z-index: 25; order: 0; }
+  /* Startbildschirm: Titel oben, fünf Karten in einer Reihe */
+  #start-screen { padding: 6px 8px 10px; }
+  body.on-start .top-buttons { position: fixed; right: 6px; top: 6px; display: flex; width: auto; }
+  body.on-start #speed, body.on-start #pause { display: none; }
+  .start-title { width: min(520px, calc(100vw - 120px)); height: 46px; font-size: 26px; gap: 8px; border-radius: 16px; }
+  .start-castle { width: 32px; height: 36px; margin-top: -4px; }
+  .map-cards { flex-wrap: nowrap; justify-content: center; gap: 8px; margin-top: 12px; }
+  .map-card { width: min(160px, calc((100vw - 48px) / 5)); height: auto; padding: 8px 8px 10px; gap: 4px; border-radius: 16px; }
+  .map-thumb { width: 100%; height: auto; aspect-ratio: 16 / 10; object-fit: cover; }
+  .map-name { font-size: 18px; } .map-stars svg { width: 18px; height: 18px; } .map-best { font-size: 12px; line-height: 1.2; }
+  .map-lock { top: 26px; }
+  .start-hint { margin-top: 12px; }
+}
+/* Querformat schmal (Spalten unter 130 px, z. B. 740x360): HUD-Zahlen kleiner */
+@media (max-height: 519.98px) and (orientation: landscape) and (max-width: 799.98px) {
+  .hud .num { font-size: 19px; } .hud-ico { width: 22px; height: 22px; } .hud-item { gap: 4px; } #wave small { font-size: 13px; }
+}
+@media (prefers-reduced-motion: reduce) { .swipe-hint { animation: none; } }
+@keyframes swipe-wiggle { 0%, 70%, 100% { transform: translateX(-50%); } 80% { transform: translateX(calc(-50% - 6px)); } 90% { transform: translateX(calc(-50% + 6px)); } }

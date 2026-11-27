@@ -868,3 +868,9 @@ Neue Einträge werden unten angehängt. Bestehende Einträge werden nie geänder
 - Ergebnis: Kopie des Design-Systems unter `docs/design/system/` (README, tokens.json, daraus erzeugt `TOKENS.md` und `tokens.css` per `scripts/design-tokens.mjs`, 7 Bauteile mit Richtlinien und Markup, `bauteile.css`, 11 Icons, `vorschau.html` mit allen Bauteilen). Grund: Die Rollen haben kein Artifact-Tool und kommen an das private Artefakt nicht heran.
 - Verweise: je eine Zeile in den fünf Rollen, CLAUDE.md (Architektur) und design-Skill (neuer Schritt 7: Repo-Kopie und Claude Design im selben PR abgleichen).
 - Tests: keine neuen (nur Doku und ein Erzeugungsskript), `npm test` grün. Vorschauseite im Browser geprüft: 7 Bauteile, keine Skriptfehler; Lilita One fehlt auf main bis zum Stil-1-Merge (Ersatzschrift).
+
+## 2026-11-27 · Stil · Stil 1 „Gemalt und warm“
+- Rolle(n): orchestrator. Branch: agent/gemalt-karten, PR #92
+- Ergebnis: Stil-1-Umbau umgesetzt. Auf ausdrücklichen Wunsch des Menschen gilt einmalig eine Merge-Ausnahme vor unabhängiger Tester-/Reviewer-Freigabe.
+- Entscheidungen: Copilot-Agenten konnten gpt-6-luna nicht starten (`400 model_not_supported`). Der Mensch holt Tester- und Review-Runde in Claude Code nach, sobald es wieder verfügbar ist.
+- Tests: `npm test` 534/534; `npm run test:e2e` 78/78; GitHub-CI für HEAD 3120a5b1 grün.

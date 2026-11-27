@@ -38,6 +38,7 @@ test('Testserver: Pfade normalisieren und Ausbruch ablehnen', () => {
   assert.equal(safePath('/a\\..\\b'), null);
   assert.equal(safePath('/a\0b'), null);
   assert.equal(contentType('assets/sounds/a.m4a'), 'audio/mp4');
+  assert.equal(contentType('assets/fonts/LilitaOne-Regular.ttf'), 'font/ttf'); // B-147
 });
 
 test('Testserver: createServer mit Fake-Lesefunktion', async () => {

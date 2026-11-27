@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import { update, canBuild } from '../src/game.js';
 import { buildPath } from '../src/path.js';
-import { WAYPOINTS, TILE, ENEMY_TYPES } from '../src/config.js';
+import { WAYPOINTS, TILE, ENEMY_TYPES, FIGURE_STYLE } from '../src/config.js';
 
 
 // Hilfsfunktion: Spiel n Sekunden in kleinen Schritten laufen lassen
@@ -52,10 +52,10 @@ export async function recordEnemy(over, time = 1, path = buildPath(WAYPOINTS, TI
   const world = []; // { x, y, ext, hp }
   let m = [1, 0, 0, 1, 0, 0];
   let depth = 0;
-  const HP = new Set(['#300', '#4cd964', '#ffcc00', '#ff3b30']);
+  const HP = new Set([FIGURE_STYLE.hp.back, FIGURE_STYLE.hp.good, FIGURE_STYLE.hp.mid, FIGURE_STYLE.hp.low]); // Stil 1: Lebensbalken
   const tp = (x, y) => [m[0] * x + m[2] * y + m[4], m[1] * x + m[3] * y + m[5]];
   const scaleOf = () => Math.max(Math.hypot(m[0], m[1]), Math.hypot(m[2], m[3]));
-  const add = (x, y, ext, box) => { const [wx, wy] = tp(x, y); world.push({ x: wx, y: wy, ext, box, hp: HP.has(props.fillStyle), depth }); };
+  const add = (x, y, ext, box) => { const [wx, wy] = tp(x, y); world.push({ x: wx, y: wy, ext, box, hp: depth === 0 && HP.has(props.fillStyle), depth }); }; // Balken liegt außerhalb der Figur-Ebene
   const ctx = new Proxy({}, {
     get(_, k) {
       if (k in props) return props[k];
@@ -86,4 +86,16 @@ export async function withoutRandom(fn) {
   const orig = Math.random;
   Math.random = () => { throw new Error('Math.random verboten'); };
   try { return await fn(); } finally { Math.random = orig; }
+}
+
+// Stil 1: Ausdehnung der Figur (ohne Lebensbalken) aus recordEnemy, in Kacheln relativ zum Gegner
+export function enemyExtent(r) {
+  let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+  for (const p of r.figure) {
+    if (p.depth === 0) continue;
+    const ex = p.box ? p.box[0] : p.ext, ey = p.box ? p.box[1] : p.ext;
+    x0 = Math.min(x0, p.x - ex); x1 = Math.max(x1, p.x + ex);
+    y0 = Math.min(y0, p.y - ey); y1 = Math.max(y1, p.y + ey);
+  }
+  return { w: (x1 - x0) / TILE, h: (y1 - y0) / TILE, top: (y0 - r.e.y) / TILE, bottom: (y1 - r.e.y) / TILE, left: (x0 - r.e.x) / TILE, right: (x1 - r.e.x) / TILE };
 }

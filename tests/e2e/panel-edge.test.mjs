@@ -5,6 +5,7 @@ import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 import { createServer } from '../../scripts/serve.mjs';
+import { tileCenter, build } from './tile.mjs';
 
 const require = createRequire(import.meta.url);
 const { chromium } = require('playwright');
@@ -31,13 +32,10 @@ async function setup(viewport) {
   const click = async (c, r) => {
     await page.evaluate(() => window.scrollTo(0, 0));
     const box = await page.locator('#game').boundingBox();
-    const s = box.width / 800;
-    await page.mouse.click(box.x + (c + 0.5) * 40 * s, box.y + (r + 0.5) * 40 * s);
+    await page.mouse.click(...tileCenter(box, c, r));
   };
-  await page.locator('.tower-btn[data-type="arrow"]').click();
-  await click(0, 0); await click(0, 0);
-  await page.locator('.tower-btn[data-type="frost"]').click();
-  await click(2, 0); await click(2, 0);
+  await build(page, 'arrow', 0, 0);
+  await build(page, 'frost', 2, 0);
   await page.keyboard.press('Escape');
   return { ctx, page, click };
 }
@@ -62,7 +60,7 @@ test('Desktop: Wechsel Turm A zu B, Tastatur T/U/S, Verkaufen schließt das Pane
   await ctx.close();
 });
 
-test('Fenstergröße Desktop -> Handy -> Desktop mit gewähltem Turm: Leiste fest unten, dann wieder unter dem Feld', async () => {
+test('Fenstergröße Desktop -> Handy -> Desktop mit gewähltem Turm: Leiste fest unten, dann wieder Ring am Turm', async () => {
   const { ctx, page, click } = await setup({ width: 1280, height: 800 });
   await click(0, 0);
   await page.waitForSelector('#tower-info:not([hidden])');
@@ -75,7 +73,7 @@ test('Fenstergröße Desktop -> Handy -> Desktop mit gewähltem Turm: Leiste fes
   assert.ok(await page.locator('#ti-close').isVisible());
   await page.setViewportSize({ width: 1280, height: 800 });
   assert.notEqual(await pos(), 'fixed');
-  assert.ok(await page.locator('#ti-close').isHidden(), 'Schließen-Knopf am Desktop aus');
+  assert.ok(await page.locator('#ti-close').isVisible(), 'C4: Schließen-Knopf am Desktop unten im Ring');
   assert.ok((await page.locator('#sell').evaluate((e) => e.getBoundingClientRect().bottom)) < 800);
   await ctx.close();
 });

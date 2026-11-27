@@ -1,20 +1,152 @@
 // Zeichnet den Spielzustand auf ein Canvas. Keine Spiel-Logik hier!
-import { TILE, COLS, ROWS, WIDTH, HEIGHT, TOWER_TYPES, MAPS, ABILITIES, RANGE_STYLE, TREE_FRAME, GROUND_STYLE, LIGHT_STYLE, DECOR_STYLE, themed } from './config.js';
+import { TILE, COLS, ROWS, WIDTH, HEIGHT, FRAME_MARGIN, VIEW_WIDTH, VIEW_HEIGHT, TOWER_TYPES, MAPS, MAX_WAVES, PAINTED_STYLE, ABILITIES, RANGE_STYLE, RING_MENU, TREE_FRAME, GROUND_STYLE, LIGHT_STYLE, DECOR_STYLE, PAINT_STYLE, SELECT_RING, themed } from './config.js';
 import { towerStats, enemyPath } from './game.js';
-import { disc } from './draw-utils.js';
+import { disc, shd } from './draw-utils.js';
+import { buildPaintedSvg, buildPaintedScene, rasterizePainted, canRasterize, extentOf } from './render-painted.js';
 import { drawPathStyled } from './render-path.js';
-import { TOWER_DRAWERS } from './render-towers.js';
+import { drawTowerFigure, drawTowerBadge, towerFootY } from './render-towers.js';
 import { recoilOffset } from './tower-fx.js';
-import { drawEnemy, drawHealAura } from './render-enemies.js';
+import { drawEnemy, drawHealAura, enemyFootY } from './render-enemies.js';
 import { updateFx, shakeX, shakeY, drawProjectileFx, drawParticles, drawBossEntry, drawEffectUnder, drawEffectOver } from './render-fx.js';
 import { drawTreeFrame } from './render-trees.js';
 import * as flat from './render-decor.js';
 import { drawAccents } from './render-accents.js';
 import { drawTreeShadows, drawLight } from './render-light.js';
-import { drawGround as drawGroundFill, drawGroundTufts } from './render-ground.js';
+import { drawGround as drawGroundFill, drawGroundTufts, drawMottle } from './render-ground.js';
 import { waterGeometry, drawWater, drawBridges } from './render-water.js';
-import { lavaGeometry, drawLava, drawLavaBridges } from './render-lava.js';
-import { tileHash, tileRand, decorFor, obstacleKind, treeFrame, groundPatches, accentsFor, coveredByCrown, scatterFor, LARGE_DECOR_RADIUS } from './decor.js';
+import { lavaGeometry, drawLava, drawLavaBridges, lavaGlowSpots, drawLavaGlow } from './render-lava.js';
+import { tileHash, tileRand, decorFor, obstacleKind, treeFrame, groundPatches, accentsFor, coveredByCrown, scatterFor, LARGE_DECOR_RADIUS, mottleField, groupedDecor } from './decor.js';
+
+// Stil 1: ganzer Canvas (Feld + Rand). Zeichnet den Rand und verschiebt das Feld um FRAME_MARGIN;
+// render() selbst rechnet weiter in Feldkoordinaten (Eingabe: main.js zieht den Rand ab).
+export function renderView(ctx, state, ui) {
+  if (!paintedFor(state, ctx)) drawFramePlain(ctx, state);
+  ctx.save();
+  ctx.translate(FRAME_MARGIN, FRAME_MARGIN);
+  render(ctx, state, ui);
+  drawFlagNumbers(ctx, state);
+  ctx.restore();
+}
+
+// G5: Fahnen am Eingang je Karte (Box in Entwurfs-px, Feld ab 0,0); main.js macht sie klickbar (Wellenstart)
+const flagCache = new Map();
+export function flagBoxes(state) {
+  if (!MAPS[state.mapId]?.theme?.painted) return [];
+  if (!flagCache.has(state.mapId)) flagCache.set(state.mapId, buildPaintedScene(state).flags);
+  return flagCache.get(state.mapId);
+}
+// Zahl der kommenden bzw. laufenden Welle auf der Fahne (Entwurf Z.117: x 50, y 45, 30 px, Kontur 5)
+function drawFlagNumbers(ctx, state) {
+  if (!paintedFor(state, ctx)) return;
+  const n = String(Math.min(state.waveActive ? state.wave : state.wave + 1, MAX_WAVES));
+  const k = TILE / PAINTED_STYLE.unit;
+  for (const fl of flagBoxes(state)) {
+    ctx.save();
+    ctx.scale(k, k);
+    ctx.translate(fl.tx, fl.ty);
+    ctx.scale(fl.s, fl.s);
+    ctx.font = `${PAINTED_STYLE.flagNumber}px "Lilita One", sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.lineJoin = 'round';
+    ctx.lineWidth = 5;
+    ctx.strokeStyle = '#2b1a10';
+    ctx.fillStyle = '#fff3d2';
+    ctx.strokeText(n, 50, 45);
+    ctx.fillText(n, 50, 45);
+    ctx.restore();
+  }
+}
+
+// Einfacher dunkler Rahmen in Kartenfarbe (Karten ohne theme.painted und Rückfall, solange das Bild lädt)
+function drawFramePlain(ctx, state) {
+  ctx.fillStyle = shd(themed(state.mapId, 'ground', GROUND_STYLE).base, 0.7);
+  ctx.fillRect(0, 0, VIEW_WIDTH, VIEW_HEIGHT);
+}
+
+// ---------- HiDPI: Maßstab der Hintergrund-Caches ----------
+// Maßstab Canvas-Einheit -> Geräte-px aus der aktuellen Transformation (main.js setzt sie je Frame), auf 1/100 gerundet.
+// Ohne getTransform (Node, Mock) gilt 1. Die Caches werden in genau diesem Maßstab gerastert (scharf bei jeder Pixeldichte).
+export function bgScaleOf(ctx) {
+  const m = typeof ctx.getTransform === 'function' ? ctx.getTransform() : null;
+  const s = m ? Math.hypot(m.a, m.b) : 1;
+  return Number.isFinite(s) && s > 0 ? Math.min(4, Math.max(0.25, Math.round(s * 100) / 100)) : 1;
+}
+// Schlüssel eines Hintergrund-Cache: Karte (bzw. Weg) x Maßstab
+export function bgCacheKey(id, scale) {
+  return `${id}@${scale}`;
+}
+
+// ---------- Gemalter Hintergrund (Stil 1, theme.painted) ----------
+// Je Karte die Szene einmal bauen und im Browser genau in Geräte-px des Canvas rastern (plus Seitenzonen, C-Abnahme 1);
+// bis dahin (und in Node) gilt das alte Zeichnen als Rückfall. Ändert sich die Größe (Fenster, Monitor), wird erst nach
+// PAINTED_STYLE.rasterDelay ms Ruhe neu gerastert; bis das neue Bild fertig ist, bleibt das alte (skaliert) sichtbar.
+// Je Karte wird nur das neueste Bild behalten. Gleiche Größe: Ausschnitt 1:1 ohne Skalierung (schnell, scharf).
+const paintedCache = new Map(); // mapId -> { status, canvas, key, size, loading, wantKey, wantSince, scene }
+export function paintedStatus(mapId) {
+  return paintedCache.get(mapId)?.status ?? (MAPS[mapId]?.theme?.painted ? 'none' : 'off');
+}
+// Seitenzonen in Geräte-px je Seite (main.js meldet sie im Vollbild-Layout, sonst 0)
+let paintedExt = { l: 0, t: 0, r: 0, b: 0 };
+export function setPaintedExtent(ext) {
+  const e = extentOf(ext);
+  paintedExt = { l: Math.round(e.l), t: Math.round(e.t), r: Math.round(e.r), b: Math.round(e.b) };
+}
+// Fertiges Bild einer Karte samt Lage des Canvas darin (Geräte-px), für #backdrop in main.js; null solange keins da ist
+export function paintedImage(mapId) {
+  const e = paintedCache.get(mapId);
+  return e?.status === 'ready' ? { canvas: e.canvas, key: e.key, ...e.size } : null;
+}
+// Größe des Canvas in Geräte-px aus der aktuellen Transformation (1 je Canvas-Einheit ohne getTransform)
+export function deviceSizeOf(ctx) {
+  const s = bgScaleOf(ctx);
+  const m = typeof ctx.getTransform === 'function' ? ctx.getTransform() : null;
+  const sy = m ? Math.hypot(m.c, m.d) : s;
+  return { w: Math.round(VIEW_WIDTH * (m ? Math.hypot(m.a, m.b) : s)), h: Math.round(VIEW_HEIGHT * (Number.isFinite(sy) && sy > 0 ? sy : s)) };
+}
+const now = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
+function paintedFor(state, ctx) {
+  const id = state.mapId;
+  if (!MAPS[id]?.theme?.painted) return null;
+  let e = paintedCache.get(id);
+  if (!e) {
+    if (!canRasterize()) return null;
+    e = { status: 'loading', canvas: null, key: null, size: null, loading: null, wantKey: null, wantSince: 0, scene: buildPaintedScene(state) };
+    paintedCache.set(id, e);
+  }
+  const { w, h } = deviceSizeOf(ctx);
+  const x = paintedExt;
+  const key = `${bgCacheKey(id, `${w}x${h}`)}+${x.l},${x.t},${x.r},${x.b}`;
+  if (e.status !== 'failed' && e.key !== key && e.loading !== key) {
+    // Entprellen: erst rastern, wenn der Wunsch PAINTED_STYLE.rasterDelay ms besteht (ohne Bild sofort)
+    if (e.wantKey !== key) { e.wantKey = key; e.wantSince = now(); }
+    if (!e.canvas || now() - e.wantSince >= PAINTED_STYLE.rasterDelay) {
+      e.loading = key;
+      const size = { w, h, l: x.l, t: x.t, r: x.r, b: x.b };
+      const kx = VIEW_WIDTH / w, ky = VIEW_HEIGHT / h; // Geräte-px -> Spiel-px
+      const svg = buildPaintedSvg(state, { scene: e.scene, ext: { l: x.l * kx, t: x.t * ky, r: x.r * kx, b: x.b * ky } });
+      rasterizePainted(svg, { width: w + x.l + x.r, height: h + x.t + x.b })
+        .then((cv) => {
+          if (e.loading !== key) return; // inzwischen andere Größe angefordert
+          e.loading = null;
+          if (cv) { e.canvas = cv; e.key = key; e.size = size; e.status = 'ready'; } else if (!e.canvas) e.status = 'failed';
+        })
+        .catch(() => { if (e.loading === key) e.loading = null; if (!e.canvas) e.status = 'failed'; });
+    }
+  }
+  return e.status === 'ready' ? e : null;
+}
+// Bild zeichnen: passt die Größe, Ausschnitt 1:1 auf ganze Geräte-px (ohne Skalierung), sonst skaliert (Übergang)
+function drawPainted(ctx, e) {
+  const { w, h, l, t } = e.size;
+  const m = typeof ctx.getTransform === 'function' ? ctx.getTransform() : null;
+  const cur = deviceSizeOf(ctx);
+  if (m && m.b === 0 && m.c === 0 && cur.w === w && cur.h === h && typeof ctx.setTransform === 'function') {
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.drawImage(e.canvas, l, t, w, h, Math.round(m.e - FRAME_MARGIN * m.a), Math.round(m.f - FRAME_MARGIN * m.d), w, h);
+    ctx.restore();
+  } else ctx.drawImage(e.canvas, l, t, w, h, -FRAME_MARGIN, -FRAME_MARGIN, VIEW_WIDTH, VIEW_HEIGHT);
+}
 
 export function render(ctx, state, ui) {
   const reduced = !!(ui && ui.reducedMotion);
@@ -23,23 +155,24 @@ export function render(ctx, state, ui) {
   const sx = shakeX();
   const sy = shakeY();
   const shaking = sx !== 0 || sy !== 0;
-  drawGround(ctx, state); // unverschoben, damit am Rand nichts durchscheint
+  drawGround(ctx, state, reduced); // unverschoben, damit am Rand nichts durchscheint
   if (shaking) {
     ctx.save();
     // Screen-Shake: verschiebt nur die Zeichnung der Welt (Hover-Rahmen und Reichweite werden
     // mitverschoben, bleiben relativ zu den Tuermen also korrekt). Mausziel/Eingabe in main.js
     // rechnet mit Canvas-Koordinaten und ist davon unabhaengig.
     ctx.translate(sx, sy);
-    drawGround(ctx, state);
+    drawGround(ctx, state, reduced);
   }
   drawHover(ctx, state, ui);
-  for (const t of state.towers) drawTower(ctx, t, ui.selectedTowerId === t.id);
   for (const e of state.enemies) drawHealAura(ctx, e, state.time);
   drawBossEntry(ctx);
-  // Explosionen und Rauch unter den Gegnern, damit sie keine Figur verdecken (B-068)
+  // Explosionen und Rauch unter den Figuren, damit sie keine Figur verdecken (B-068)
   for (const fx of state.effects) drawEffectUnder(ctx, fx);
   drawParticles(ctx, true);
-  for (const e of state.enemies) drawEnemy(ctx, e, state.time, enemyPath(state, e));
+  // Stil 1: Türme und Gegner nach Fußpunkt sortiert (weiter unten = davor), Stufenmarken danach
+  drawFigures(ctx, state, ui);
+  for (const t of state.towers) drawTowerBadge(ctx, t);
   for (const p of state.projectiles) drawProjectile(ctx, p);
   drawParticles(ctx);
   for (const fx of state.effects) drawEffectOver(ctx, fx, reduced);
@@ -59,27 +192,59 @@ const EXIT_DARK = '#1c1a20';
 // Cache: ein Offscreen-Canvas, wird nur bei geaendertem Weg neu gezeichnet.
 let bgCanvas = null;
 let bgKey = null;
+let bgScale = 1;
 
-function makeCanvas() {
+// B-142: Rausch-Felder des gemalten Bodens, je Karte genau einmal berechnet (neues Spiel auf derselben Karte nutzt sie weiter)
+const mottleCache = new Map();
+export const paintStats = { builds: 0 }; // Zähler für Tests
+
+function mottleFor(mapId, P) {
+  if (!mottleCache.has(mapId)) {
+    mottleCache.set(mapId, mottleField(mapId, P));
+    paintStats.builds++;
+  }
+  return mottleCache.get(mapId);
+}
+
+function makeCanvas(w, h) {
   if (typeof document !== 'undefined') {
     const c = document.createElement('canvas');
-    c.width = WIDTH;
-    c.height = HEIGHT;
+    c.width = w;
+    c.height = h;
     return c;
   }
-  if (typeof OffscreenCanvas !== 'undefined') return new OffscreenCanvas(WIDTH, HEIGHT);
+  if (typeof OffscreenCanvas !== 'undefined') return new OffscreenCanvas(w, h);
   return null;
 }
 
-function drawGround(ctx, state) {
-  // Schluessel = Referenz auf den Weg (neuer Weg -> neue Punkte-Liste)
-  if (!bgCanvas || bgKey !== state.path.points) {
-    bgCanvas = bgCanvas || makeCanvas();
-    if (!bgCanvas) return paintBackground(ctx, state);
-    paintBackground(bgCanvas.getContext('2d'), state);
-    bgKey = state.path.points;
+// Glühen der Lava über dem gemalten Bild: Flecken je Karte einmal berechnet
+const glowCache = new Map();
+function glowSpotsFor(state) {
+  if (!glowCache.has(state.mapId)) glowCache.set(state.mapId, lavaGlowSpots(lavaGeometry(state.mapId, state.blocked)));
+  return glowCache.get(state.mapId);
+}
+
+function drawGround(ctx, state, reduced = false) {
+  const scale = bgScaleOf(ctx);
+  const painted = paintedFor(state, ctx);
+  if (painted) {
+    drawPainted(ctx, painted); // Bild enthält Feld und Rand (HiDPI: in Geräte-px gerastert)
+    if (!reduced && state.lava?.size) drawLavaGlow(ctx, glowSpotsFor(state), (typeof performance !== 'undefined' ? performance.now() : 0) / 1000);
+    return;
   }
-  ctx.drawImage(bgCanvas, 0, 0);
+  // Schluessel = Referenz auf den Weg (neuer Weg -> neue Punkte-Liste) und Maßstab (HiDPI)
+  if (!bgCanvas || bgKey !== state.path.points || bgScale !== scale) {
+    const w = Math.round(WIDTH * scale), h = Math.round(HEIGHT * scale);
+    if (bgCanvas && (bgCanvas.width !== w || bgCanvas.height !== h)) { bgCanvas.width = w; bgCanvas.height = h; }
+    bgCanvas = bgCanvas || makeCanvas(w, h);
+    if (!bgCanvas) return paintBackground(ctx, state);
+    const c = bgCanvas.getContext('2d');
+    if (typeof c.setTransform === 'function') c.setTransform(scale, 0, 0, scale, 0, 0);
+    paintBackground(c, state);
+    bgKey = state.path.points;
+    bgScale = scale;
+  }
+  ctx.drawImage(bgCanvas, 0, 0, WIDTH, HEIGHT);
 }
 
 function paintBackground(ctx, state) {
@@ -93,6 +258,9 @@ function paintBackground(ctx, state) {
   flat.useDecorStyle(themed(id, 'decor', DECOR_STYLE));
   if (ground) drawGroundFill(ctx, ground, groundStyle);
   else drawGrass(ctx, MAPS[id]?.theme);
+  // B-142: gemalte Flecken unter Wasser und Weg, damit der Weg lesbar bleibt
+  const paint = MAPS[id]?.theme?.paint ? themed(id, 'paint', PAINT_STYLE) : null;
+  if (paint) drawMottle(ctx, mottleFor(id, paint), paint);
   const water = waterGeometry(id, state.blocked); // B-104: Ebenen Boden, Wasser, Weg, Brücke
   drawWater(ctx, water);
   const lava = lavaGeometry(id, state.blocked); // B-030: Lava wie Wasser zwischen Boden und Weg, Steinbrücke darüber
@@ -107,7 +275,8 @@ function paintBackground(ctx, state) {
   if (crowns && light) drawTreeShadows(ctx, crowns, lightStyle); // vor den Kronen
   if (crowns) drawTreeFrame(ctx, crowns, themed(id, 'treeFrame', TREE_FRAME));
   if (MAPS[state.mapId]?.theme?.accents) drawAccents(ctx, accentsFor(state.mapId));
-  if (light) drawLight(ctx, lightStyle); // Licht und Vignette vor den Toren, damit Start/Ziel lesbar bleiben
+  // Licht und Vignette vor den Toren, damit Start/Ziel lesbar bleiben; B-142: mit theme.paint kräftiger (Licht oben links, Schatten rechts unten)
+  if (light) drawLight(ctx, lightStyle, paint);
   for (const path of state.paths || [state.path]) {
     const pts = path.points;
     drawGate(ctx, pts[0], pts[1]);
@@ -154,6 +323,8 @@ function drawDecor(ctx, state, crowns) {
   const flatTrees = flatpop && style.flatTrees; // B-072: Bäume und Hindernisse im neuen Stil
   const firShare = style.firShare;
   const terrain = new Set([...(state.water || []), ...(state.lava || [])]); // B-030: nie Deko auf Wasser oder Lava
+  // B-142 Nacharbeit (theme.paint): Büschel und Kiesel nur an Weg/Wasser/Hindernis, Blumen nur in kleinen Inseln
+  const grouped = flatpop ? groupedDecor(state.mapId, state.blocked, state.obstacles) : null;
   for (let r = 0; r < ROWS; r++) {
     for (let c = 0; c < COLS; c++) {
       if (state.obstacles && state.obstacles.has(`${c},${r}`)) {
@@ -164,9 +335,11 @@ function drawDecor(ctx, state, crowns) {
       const d = decorFor(c, r, state.blocked, state.obstacles, terrain);
       if (!d) {
         const sc = flatpop && scatterFor(c, r, state.blocked, state.obstacles, state.mapId);
-        if (sc) flat.drawScatter(ctx, sc, c * TILE + sc.ox * TILE, r * TILE + sc.oy * TILE);
+        if (sc && !(grouped && sc.kind === 'pebbles' && !grouped.near(c, r))) flat.drawScatter(ctx, sc, c * TILE + sc.ox * TILE, r * TILE + sc.oy * TILE);
         continue;
       }
+      if (grouped && d.kind === 'flower' && !grouped.flowers.has(`${c},${r}`)) continue;
+      if (grouped && (d.kind === 'tuft' || d.kind === 'pebble') && !grouped.small.has(`${c},${r}`)) continue;
       const x = c * TILE + d.ox * TILE;
       const y = r * TILE + d.oy * TILE;
       if (crowns && d.kind === 'tree' && coveredByCrown(crowns, x, y)) continue;
@@ -190,6 +363,7 @@ function drawDecor(ctx, state, crowns) {
       else drawPebble(ctx, x, y);
     }
   }
+  if (grouped) for (const b of grouped.blossoms) flat.drawBlossom(ctx, b.x, b.y, b.v); // Zusatzblüten der Wiesen-Inseln
 }
 
 const OBSTACLE_SHADE = 'rgba(10,40,15,0.35)';
@@ -312,14 +486,39 @@ function drawHover(ctx, state, ui) {
   const selected = state.towers.find((t) => t.id === ui.selectedTowerId);
   if (selected) rangeCircle(ctx, selected.x, selected.y, towerStats(selected, state.modifiers).range * TILE, `rgba(255,255,255,${RANGE_STYLE.fillAlpha})`);
 
+  // C4: Reichweite der nächsten Stufe (Maus/Fokus auf Verbessern im Turm-Ring), gestrichelt
+  if (selected && ui.upgradePreview > 0) {
+    const P = RING_MENU.upgradePreview;
+    ctx.save();
+    ctx.setLineDash(P.dash);
+    ctx.strokeStyle = P.color;
+    ctx.lineWidth = P.width;
+    ctx.beginPath();
+    ctx.arc(selected.x, selected.y, ui.upgradePreview * TILE, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  }
+
   if (ui.aiming && ui.hoverPx) rangeCircle(ctx, ui.hoverPx.x, ui.hoverPx.y, ABILITIES.meteor.radius * TILE, 'rgba(255,90,40,0.25)');
-  if (!ui.hover || !ui.buildType) return;
-  const { col, row, ok } = ui.hover;
+  // C4 Bau-Ring: Ringkachel markiert; Maus/Fokus auf einem Knopf zeigt Reichweite und Geistturm dieses Typs
+  const ring = ui.ring;
+  const ringType = ring && Object.hasOwn(TOWER_TYPES, ui.ringPreview) ? ui.ringPreview : null;
+  const type = ringType || ui.buildType;
+  const tile = ring ? { col: ring.col, row: ring.row, ok: true } : ui.hover;
+  if (!tile || !(type || ring)) return;
+  const { col, row, ok } = tile;
   const x = (col + 0.5) * TILE;
   const y = (row + 0.5) * TILE;
   ctx.fillStyle = ok ? 'rgba(255,255,255,0.25)' : 'rgba(255,60,60,0.35)';
   ctx.fillRect(col * TILE, row * TILE, TILE, TILE);
-  if (ok) rangeCircle(ctx, x, y, TOWER_TYPES[ui.buildType].range * TILE, `rgba(255,255,255,${RANGE_STYLE.fillAlpha})`);
+  if (!ok || !Object.hasOwn(TOWER_TYPES, type)) return;
+  rangeCircle(ctx, x, y, TOWER_TYPES[type].range * TILE, `rgba(255,255,255,${RANGE_STYLE.fillAlpha})`);
+  if (ringType) {
+    ctx.save();
+    ctx.globalAlpha *= RING_MENU.ghostAlpha;
+    drawTowerFigure(ctx, { type: ringType, x, y, level: 1, angle: -Math.PI / 4 }, 0);
+    ctx.restore();
+  }
 }
 
 function rangeCircle(ctx, x, y, r, fill) {
@@ -333,20 +532,43 @@ function rangeCircle(ctx, x, y, r, fill) {
 }
 
 // ---------- Türme ----------
-// Zeichenfunktionen je Typ: src/render-towers.js (Maße in TOWER_STYLE, config.js).
-const RECOIL_PX = { arrow: 3, cannon: 4, frost: 3, sniper: 3, lightning: 2 }; // maximaler Rückstoß in Pixeln
+// Zeichnung je Typ: src/render-towers.js (Formen in src/figures.js, Maße in FIGURE_STYLE, config.js).
 
-// Exportiert, damit Tests einen einzelnen Turm gegen einen Mock-Kontext zeichnen koennen.
+// Tiefen-Sortierung ohne Allokation pro Frame: eine Liste wird wiederverwendet
+const figures = [];
+const footOf = (o) => (o.hp === undefined ? towerFootY(o) : enemyFootY(o));
+const byFoot = (a, b) => footOf(a) - footOf(b);
+function drawFigures(ctx, state, ui) {
+  figures.length = 0;
+  for (const t of state.towers) figures.push(t);
+  for (const e of state.enemies) figures.push(e);
+  figures.sort(byFoot);
+  for (const o of figures) {
+    if (o.hp === undefined) drawTower(ctx, o, ui.selectedTowerId === o.id);
+    else drawEnemy(ctx, o, state.time, enemyPath(state, o));
+  }
+  figures.length = 0;
+}
+
+// Exportiert, damit Tests einen einzelnen Turm gegen einen Mock-Kontext zeichnen koennen (ohne Stufenmarke).
 export function drawTower(ctx, t, selected) {
   const def = TOWER_TYPES[t.type];
   // Rückstoß aus der Abklingzeit (game.js setzt cooldown beim Schuss auf das Intervall)
-  const rec = recoilOffset(t.cooldown / def.rate) * RECOIL_PX[t.type];
-  TOWER_DRAWERS[t.type](ctx, t.x, t.y, t.level, t.angle, rec, def.color);
-  if (selected) {
-    ctx.strokeStyle = '#fff';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(t.x - 18, t.y - 18, 36, 36);
-  }
+  if (selected) drawSelectRing(ctx, t);
+  drawTowerFigure(ctx, t, def ? recoilOffset(t.cooldown / def.rate) : 0);
+}
+
+// C-Abnahme 8: Auswahl als Bodenellipse unter dem Turm (Maße und Farben in SELECT_RING, config.js)
+export function drawSelectRing(ctx, t) {
+  const R = SELECT_RING;
+  ctx.beginPath();
+  ctx.ellipse(t.x, towerFootY(t), (R.width * TILE) / 2, (R.height * TILE) / 2, 0, 0, Math.PI * 2);
+  ctx.lineWidth = R.line + 2 * R.outline;
+  ctx.strokeStyle = R.outlineColor;
+  ctx.stroke();
+  ctx.lineWidth = R.line;
+  ctx.strokeStyle = R.color;
+  ctx.stroke();
 }
 
 const PROJECTILE_COLORS = { arrow: '#f5e6c8', cannon: '#222', frost: '#bdf0ff', sniper: '#e6d1ff', lightning: '#fff7a8' };

@@ -74,3 +74,13 @@ export function startButtonView(state) {
   }
   return { disabled: !canStart, label, showKey: canStart };
 }
+
+// C-Abnahme 5: Fortschritt der laufenden Welle für die Füllung im Wellenknopf (nur Anzeige).
+// Offen = noch zu spawnende plus lebende Gegner; peak = größter bisher gesehener Wert dieser Welle (main.js merkt ihn sich).
+// Liefert den neuen peak und fill 0..1 (Anteil besiegter bzw. durchgelaufener Gegner); ohne laufende Welle 0.
+export function waveProgress(state, peak = 0) {
+  if (!state.waveActive) return { peak: 0, fill: 0 };
+  const open = (state.spawnQueue?.length || 0) + (state.enemies?.length || 0);
+  const top = Math.max(Number.isFinite(peak) ? peak : 0, open);
+  return { peak: top, fill: top > 0 ? Math.min(1, Math.max(0, 1 - open / top)) : 0 };
+}

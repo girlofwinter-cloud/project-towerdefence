@@ -72,3 +72,35 @@ export function drawGround(ctx, ground, G = GROUND_STYLE) {
 export function drawGroundTufts(ctx, ground, G = GROUND_STYLE) {
   for (const t of ground.tufts) drawTuft(ctx, t, G);
 }
+
+// Gemalte Flecken (B-142): mischt die Deckkraft-Felder aus mottleField (decor.js) pixelweise in den Cache.
+// Liest den bisher gezeichneten Boden (getImageData), interpoliert das grobe Raster bilinear und schreibt zurück.
+// Nur beim Bau des Hintergrund-Cache; ohne Pixelzugriff (Mock, alte Browser) bleibt der Boden ungefleckt.
+export function drawMottle(ctx, field, P) {
+  // HiDPI: Cache kann größer als WIDTH x HEIGHT sein (Maßstab ps), das Raster wird dann mitgestreckt
+  const cw = ctx.canvas && ctx.canvas.width > 0 ? ctx.canvas.width : WIDTH;
+  const ch = ctx.canvas && ctx.canvas.height > 0 ? ctx.canvas.height : HEIGHT;
+  const img = typeof ctx.getImageData === 'function' ? ctx.getImageData(0, 0, cw, ch) : null;
+  if (!img || !img.data) return false;
+  const d = img.data, w = img.width || cw, h = img.height || ch;
+  const { cols, dark, light } = field;
+  const cell = field.cell * (w / WIDTH);
+  const [dr, dg, db] = P.dark, [lr, lg, lb] = P.light;
+  for (let y = 0; y < h; y++) {
+    const gy = y / cell, j = Math.floor(gy), fy = gy - j;
+    const r0 = j * cols, r1 = r0 + cols;
+    for (let x = 0; x < w; x++) {
+      const gx = x / cell, i = Math.floor(gx), fx = gx - i;
+      const k00 = r0 + i, k10 = k00 + 1, k01 = r1 + i, k11 = k01 + 1;
+      const ad = (dark[k00] * (1 - fx) + dark[k10] * fx) * (1 - fy) + (dark[k01] * (1 - fx) + dark[k11] * fx) * fy;
+      const al = (light[k00] * (1 - fx) + light[k10] * fx) * (1 - fy) + (light[k01] * (1 - fx) + light[k11] * fx) * fy;
+      if (ad === 0 && al === 0) continue;
+      const p = (y * w + x) * 4;
+      let r = d[p], g = d[p + 1], b = d[p + 2];
+      r += (dr - r) * ad; g += (dg - g) * ad; b += (db - b) * ad;
+      d[p] = r + (lr - r) * al; d[p + 1] = g + (lg - g) * al; d[p + 2] = b + (lb - b) * al;
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+  return true;
+}

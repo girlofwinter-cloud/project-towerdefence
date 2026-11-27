@@ -2,6 +2,14 @@
 
 Gewählt vom Menschen am 2026-11-21 (Stil B des Referenzbogens). Eigene Formen, keine Kopien von Kingdom-Rush-Grafiken. Alles aus Canvas-Formen (Polygon, Ellipse, abgerundetes Rechteck, Bézier), keine Bilddateien, keine Schriftdateien. Zeichnen bleibt in `src/render*.js` und `src/decor.js`; Farben und Maße gehören nach `src/config.js` bzw. in Konstanten von `src/draw-utils.js`. Alle Maße gelten bei 1x (`TILE` = 40 px).
 
+## 0. Richtung "Gemalt und warm" (gewählt 2026-11-26)
+Der Mensch hat aus der Stil-Exploration (Claude Design, https://claude.ai/artifact/DDKsUvgQVD4SJu2VnSqE3W, Stil 1) die Richtung **"Gemalt und warm"** gewählt. Sie baut auf Flat-Pop auf und geht an folgenden Stellen darüber hinaus; bei Widerspruch gilt dieser Abschnitt:
+- **Boden gemalt:** große, weiche Hell-Dunkel-Flecken statt gleichmäßig gestreuter Kleinteile, warmes Licht von oben links, dunkle Vignette am Rand. Verläufe (`createLinearGradient`/`createRadialGradient`) und eigene Rauschfunktionen sind **im Hintergrund-Cache erlaubt** (einmal je Karte gezeichnet), nicht pro Frame.
+- **Weg eingesunken:** dunkle Grasfuge am Rand, Kontur, Erde, heller Mittelstreifen leicht nach oben versetzt, Kiesel-Strichel.
+- **Figuren kräftig:** Türme und Gegner tragen eine **dunkle Kontur von 2,5 bis 3 px** (Braunschwarz, z. B. `#2a1a12`), klare Silhouetten; Boden- und Deko-Teile behalten die feine farbige Kontur aus 3.
+- **Rahmen und Landmarken:** Bäume dicht am Kartenrand, im Inneren wenige große Objekte statt Streudeko. Rein optisch, das Bauraster ändert sich nicht.
+- **Zahlen:** fette Systemschrift mit dunklem Umriss. Eine Webschrift (Vorschlag Lilita One, SIL OFL) nur, wenn der Mensch die Datei liefert; dann selbst gehostet mit `OFL.txt`, nie von einem fremden Server.
+
 ## 1. Grundidee
 Freundlich, kräftig, saubere Flächen. Große Köpfe und Hände, klare Silhouetten. Drei Flächentöne statt Verläufen: das ist leicht nachzubauen und billig zu zeichnen.
 
@@ -23,8 +31,8 @@ Welten (Boden A / Boden B / Halm / Weg / Wegrand / Akzente):
 Regel: Weg und Boden unterscheiden sich im Helligkeitswert deutlich, nicht nur im Farbton.
 
 ## 3. Kontur, Flächen, Licht
-- **Flächen:** Drei Töne je Teil: Licht (oben, `lit(farbe, 0.28)`), Basis, Schatten (rechts/unten, `shd(farbe, 0.4)`, zum Violett `#2b1b3d` gemischt). Keine Verläufe.
-- **Kontur:** 1,3 px bei 1x, außen an jedem Teil, `lineJoin 'round'`. Farbe = Eigenfarbe um ca. 55 % abgedunkelt. Innendetails 0,8 px.
+- **Flächen:** Drei Töne je Teil: Licht (oben, `lit(farbe, 0.28)`), Basis, Schatten (rechts/unten, `shd(farbe, 0.4)`, zum Violett `#2b1b3d` gemischt). Keine Verläufe an Figuren; im Boden-Cache erlaubt (siehe 0).
+- **Kontur:** Boden und Deko 1,3 px bei 1x (Türme und Gegner: siehe 0), außen an jedem Teil, `lineJoin 'round'`. Farbe = Eigenfarbe um ca. 55 % abgedunkelt. Innendetails 0,8 px.
 - **Kontrastregel (Schwäche von Stil B):** Die farbige Kontur verschwindet auf hellem Boden (Eis, Wüste). Darum: Kontur nie heller als 35 % Helligkeit, auf Eis und Wüste zusätzlich Bodenschatten kräftiger (`rgba(43,27,61,0.5)`). Gegner brauchen auf jedem Boden mindestens 25 % Helligkeitsabstand zum Weg.
 - **Lichtrichtung:** oben links. **Bodenschatten:** Ellipse `rgba(43,27,61,0.38)`, 1,0 bis 1,3 Radien breit, 30 bis 35 % hoch, leicht nach rechts unten versetzt.
 - **Glanzpunkte:** maximal 1 pro Teil (Auge, Herz, Münze).
@@ -53,7 +61,7 @@ Regel: Weg und Boden unterscheiden sich im Helligkeitswert deutlich, nicht nur i
 
 ## 8. Performance
 - Statisches (Boden, Deko, Wege) einmal in ein Hintergrund-Canvas (`bgCanvas` in `render.js`). Türme je Typ/Stufe und Gegner-Laufphasen (8) in Sprite-Canvases vorrendern.
-- Keine Gradient-Objekte pro Frame, kein `shadowBlur` im Spielloop.
+- Keine Gradient-Objekte pro Frame, kein `shadowBlur` im Spielloop. Verläufe nur beim Aufbau des Hintergrund-Caches.
 
 ## Referenz
 Entwurfsbogen und Zeichenskript (Helfer `part`, `poly`, `rr`, `ell`, `mix`, `lit`, `shd`) liegen im Scratchpad der Design-Sitzung 2026-11-21 unter `stil/` (`sheet.png`, `sheet.html`), nicht im Repo.

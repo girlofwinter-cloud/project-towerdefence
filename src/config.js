@@ -5,6 +5,14 @@ export const COLS = 20;
 export const ROWS = 14;
 export const WIDTH = COLS * TILE;
 export const HEIGHT = ROWS * TILE;
+// Stil 1: Rand um das Spielfeld (Wald, Burg, Fahne, Klippen). Nur Optik: Spiel-Logik rechnet weiter im Feld (WIDTH x HEIGHT).
+export const FRAME_MARGIN = 50; // px bei 1x je Seite (1,25 Kacheln)
+export const VIEW_WIDTH = WIDTH + 2 * FRAME_MARGIN;   // Canvas = Feld + 2 * Rand
+export const VIEW_HEIGHT = HEIGHT + 2 * FRAME_MARGIN;
+// HiDPI (nur Optik): Backing-Store des Canvas = Anzeigegröße (style.css, Vollbild) x Pixeldichte, diese höchstens maxDpr
+export const VIEW_FIT = { maxDpr: 2, maxSide: 4096 }; // maxSide: Obergrenze des Backing-Store je Seite in Geräte-px (Handy-Nahansicht)
+// C6 Handy: Wischen über das Feld (viewport.js). tapSlop: ab so vielen CSS-px Bewegung (oder Feld-Verschiebung) ist es Wischen, kein Tipp.
+export const VIEWPORT = { tapSlop: 10 };
 
 export const START_GOLD = 140;
 export const START_LIVES = 10;
@@ -33,8 +41,17 @@ export function themed(mapId, key, base) {
 
 // B-104: Fluss und See der Wiese (Kacheln [spalte, zeile]). Der Fluss ist eine Kette von oben (unter dem Baumrahmen)
 // bis zum See, inklusive Brückenkachel; Wasser = Fluss + See ohne Brücken (Brücken liegen auf dem Weg).
-const MEADOW_RIVER = [[1, 0], [1, 1], [1, 2], [1, 3], [1, 4], [1, 5], [1, 6], [1, 7], [1, 8]];
-const MEADOW_LAKE = [[1, 9], [2, 9], [1, 10], [2, 10], [2, 11]];
+// Stil 1: Kacheln folgen der gemalten Form aus dem Entwurf (MEADOW_PAINTED_WATER): Wasser, wo die Kachelmitte im gemalten
+// Wasser liegt. Gleich viele Wasserkacheln wie vorher (13 ohne Brücke), also gleich viele Bauplätze.
+const MEADOW_RIVER = [[1, 0], [1, 1], [1, 2], [1, 3], [0, 3], [0, 4]];
+const MEADOW_LAKE = [[0, 11], [1, 11], [2, 11], [3, 11], [0, 12], [1, 12], [2, 12], [3, 12]];
+// Gemalte Form (Entwurf Z.66–77) in Entwurfs-px, Feld ab (0,0), Kachel 57: Fluss als kubische Bézier-Kette
+// [Start, dann je 3 Punkte; Breite PAINTED_STYLE.river], See als Ellipse des Wassers [cx, cy, rx, ry] (Sandufer im Zeichnen +22/+18 wie im Entwurf).
+const MEADOW_PAINTED_WATER = {
+  // Karten-Feinschliff: Fluss eng über den Flusskacheln geführt, See etwas kleiner (Bauplätze höchstens 15 % unter Wasser)
+  river: [[80, -98], [82, -40], [90, 40], [86, 130], [84, 185], [70, 198], [40, 200], [18, 201], [28, 225], [28, 250], [28, 264], [-30, 262], [-81, 266]],
+  lake: [114, 688, 118, 60],
+};
 const MEADOW_BRIDGES = [[1, 2]];
 // Kacheln einer Liste ohne die Brücken-Kacheln (Brücken liegen auf dem Weg, sind also weder Wasser noch Lava)
 const withoutBridges = (list, bridges) => list.filter(([c, r]) => !bridges.some(([bc, br]) => bc === c && br === r));
@@ -69,9 +86,11 @@ export const MAPS = {
     lake: MEADOW_LAKE,
     bridges: MEADOW_BRIDGES,
     water: [...withoutBridges(MEADOW_RIVER, MEADOW_BRIDGES), ...MEADOW_LAKE],
+    paintedWater: MEADOW_PAINTED_WATER,
     // B-071: Wegpalette der Wiese (STIL.md); Eiswelt und Zangenangriff haben eigene Wegfarben (B-072, B-073).
     // B-103: decor.flatTrees, damit die Hindernisse im Flat-Pop-Stil erscheinen (Laubbaum, Fels mit Kontur)
-    theme: { treeFrame: true, ground: true, accents: true, light: true, decorStyle: 'flatpop', decor: { flatTrees: true }, path: { main: '#e2c88f', edge: '#8f6a3b', outline: '#4a3418', mid: '#ecd5a0', fringe: '#6fbf4e' } },
+    // Stil 1: painted = Hintergrund aus dem SVG des Entwurfs (render-painted.js); die alten Schichten bleiben Rückfall, solange das Bild lädt
+    theme: { painted: true, treeFrame: true, ground: true, accents: true, light: true, paint: true, decorStyle: 'flatpop', decor: { flatTrees: true }, path: { main: '#e2c88f', edge: '#8f6a3b', outline: '#4a3418', mid: '#ecd5a0', fringe: '#94d266', fringeAccent: '#46893a', groove: '#3a6a2c' } },
   },
   // Eiswelt (B-029, Glatteis): Gegner rutschen schneller, Kanone und Frost sind schwächer. Modifikatoren (enemySpeed, towerDamage je Typ, slowStrength) und kühles Farbschema (theme).
   ice: {
@@ -133,12 +152,25 @@ export const MAPS = {
         scatterChance: 0.1,
         scatterKinds: [['crystal', 0.28], ['snowpile', 0.3], ['rockgroup', 0.16], ['pebbles', 0.12], ['stakes', 0.08], ['sign', 0.06]],
       },
-      path: { main: '#9db3c9', edge: '#4f6682', outline: '#2f4560', mid: '#b4c7d9', fringe: '#ffffff' },
+      // Stil 1 (G9): Schnee #eef6fb -> #a9c6dc, Flecken #5d7e9c, Tannen und Felsen mit Schneekappe, Eiskristalle als Tupfen
+      painted: {
+        ground: ['#eef6fb', '#cfe1ee', '#a9c6dc'], mottle: [0.36, 0.49, 0.61], mottleOpacity: 0.75, lit: [1, 1, 1], litOpacity: 0.6,
+        sun: ['#ffffff', '#e4f3ff'], vignette: '#1c2c44', grainOpacity: 0.1,
+        path: ['#8fb0c8', '#2f4560', '#4f6682', '#9db3c9', '#b4c7d9'], pathDots: ['#ffffff', '#4f6682'],
+        dotKind: 'crystal', dots: ['#ffffff', '#bff0ff', '#7fe0ff'], dotChance: 0.16,
+        pineShare: 1, pine: ['#285f52', '#2f6f5f', '#3d8270', '#9fd0c0'], snow: '#ffffff',
+        rock: ['#8aa6bd', '#c9d8e6'], cliff: ['#f6fbff', '#f2f8fc', '#a9c6dc', '#6f8ea8', '#4f6682'],
+        stone: ['#eef2f6', '#c4cfd9', '#8d9cab'],
+      },
+      path: { main: '#9db3c9', edge: '#4f6682', outline: '#2f4560', mid: '#b4c7d9', fringe: '#ffffff', fringeAccent: '#c6dcec', groove: '#62809a' },
+      // B-142 Nacharbeit: gemalter Boden hell (Schnee), Flecken in Halm-Blau und Weiß, Licht kühl
+      paint: { dark: [120, 166, 196], darkAlpha: 0.38, light: [255, 255, 255], lightAlpha: 0.55, tint: '214,236,255', shadow: '38,64,108', sunAlpha: 0.3 },
       // Glatter Eisweg: wenige Steine, weißer Glanz statt brauner Spurrillen, kühle Flecken
       pathStyle: {
         stoneChance: 0.14, rutColor: 'rgba(255,255,255,0.5)', rutWidth: 2.2,
         stoneColors: ['#7f94ab', '#c9d8e6'], pebbleColors: ['#8aa0b8', '#c9d8e6'], stoneShadow: 'rgba(38,64,108,0.4)',
         patchDark: 'rgba(79,102,130,0.16)', patchLight: 'rgba(255,255,255,0.3)',
+        fringeKind: 'snow', // B-143 Nacharbeit: Schneeklumpen am Wegrand
       },
     },
   },
@@ -203,7 +235,20 @@ export const MAPS = {
         scatterChance: 0.09,
         scatterKinds: [['leafpile', 0.3], ['rockgroup', 0.2], ['log', 0.14], ['stump', 0.14], ['sign', 0.1], ['mushroom', 0.12]],
       },
-      path: { main: '#d6ab70', edge: '#7d5632', outline: '#4a3018', mid: '#e8c88e', fringe: '#e0803a' },
+      // Stil 1 (G9): Herbst warm: Goldocker #d9a94e -> Rostbraun #8a5a2b, Flecken Rost #b0482a und Orange #e0803a,
+      // grüne Reste in der Mitte des Verlaufs und im Wegschatten; Laub #e0803a/#c9562f an Bäumen und als Tupfen
+      painted: {
+        ground: ['#d9a94e', '#c08a3c', '#8a5a2b'], mottle: [0.69, 0.28, 0.16], mottleOpacity: 0.42, lit: [0.92, 0.55, 0.24], litOpacity: 0.5,
+        sun: ['#ffe2a8', '#ffc870'], vignette: '#2a1c0c',
+        path: ['#666529', '#2b1a10', '#7d5632', '#d6ab70', '#e8c88e'], pathDots: ['#fff2c8', '#7d5632'],
+        dotKind: 'leaf', dots: ['#e0803a', '#c9562f', '#e8a93a'], dotChance: 0.22,
+        pineShare: 0.2, pine: ['#4e6a30', '#5f7a3a', '#71904a', '#b5c97a'], round: ['#c9562f', '#e0803a', '#f6c27a'], fruit: '#f2c14e',
+        cliff: ['#cf9f4a', '#d3a34e', '#b98c5c', '#7a5a45', '#5e4331'],
+      },
+      path: { main: '#d6ab70', edge: '#7d5632', outline: '#4a3018', mid: '#e8c88e', fringe: '#e0803a', fringeAccent: '#c9562f', groove: '#666529' },
+      pathStyle: { fringeKind: 'leaves' }, // B-143 Nacharbeit: Herbstlaub am Wegrand
+      // B-142 Nacharbeit: gemalter Boden in Hochland-Oliv, helle Flecken goldgelb
+      paint: { dark: [104, 106, 40], darkAlpha: 0.42, light: [236, 214, 128], lightAlpha: 0.3, tint: '255,214,150' },
     },
     extraPaths: [
       [
@@ -291,7 +336,17 @@ export const MAPS = {
         scatterChance: 0.1,
         scatterKinds: [['mushroom', 0.18], ['stump', 0.18], ['log', 0.16], ['rockgroup', 0.18], ['sign', 0.12], ['pebbles', 0.18]],
       },
-      path: { main: '#dcc08a', edge: '#86603a', outline: '#3e2a14', mid: '#e8d2a0', fringe: '#a6cf5a' },
+      // Stil 1 (G9): Spätsommer #a6cf5a -> #4a6e2c, Blumen in Gelb, Pink, Weiß
+      painted: {
+        ground: ['#a6cf5a', '#78a043', '#4a6e2c'], mottle: [0.16, 0.27, 0.08], mottleOpacity: 0.65, lit: [1, 0.95, 0.55], litOpacity: 0.5,
+        path: ['#4a6e2c', '#2b1a10', '#86603a', '#dcc08a', '#e8d2a0'], pathDots: ['#fff2c8', '#86603a'],
+        dots: ['#f6d64a', '#c94a8a', '#f4f1e6'], pineShare: 0.35,
+        pine: ['#2c6236', '#336f3c', '#4f9a3e', '#a6cf5a'], round: ['#448a38', '#5aa845', '#c4e278'], fruit: '#f6d64a',
+        cliff: ['#9cc653', '#a0ca56', '#b98c5c', '#7a5a45', '#5e4331'],
+      },
+      path: { main: '#dcc08a', edge: '#86603a', outline: '#3e2a14', mid: '#e8d2a0', fringe: '#bcdf6e', fringeAccent: '#5a8f36', groove: '#4a6e2c' },
+      // B-142 Nacharbeit: gemalter Boden Spätsommer (dunkel Halm-Grün, hell Gelbgrün)
+      paint: { dark: [62, 104, 36], darkAlpha: 0.4, light: [222, 238, 140], lightAlpha: 0.26, tint: '255,232,170' },
     },
   },
   // Vulkan (B-030): schwerste Karte nach Zwei Fronten. Ein Lavafluss quert die Karte (eine Brücke), dazu Lavatümpel neben
@@ -356,10 +411,24 @@ export const MAPS = {
         scatterChance: 0.11,
         scatterKinds: [['ember', 0.26], ['ash', 0.22], ['rockgroup', 0.24], ['stump', 0.12], ['pebbles', 0.16]],
       },
-      path: { main: '#8b7468', edge: '#2d1f20', outline: '#1f1415', mid: '#9c857a', fringe: '#2e2325' },
+      // Stil 1 (G9): Kruste #6b5a55 -> #2d1f20, schwache Glutflecken #ffb04a, kahle Bäume, Lava statt Wasser, Steinbrücke
+      painted: {
+        ground: ['#6b5a55', '#4a3a38', '#2d1f20'], mottle: [0.07, 0.04, 0.04], mottleOpacity: 0.6, lit: [1, 0.69, 0.29], litOpacity: 0.16,
+        sun: ['#ffb070', '#ff8a40'], vignette: '#140808', grainOpacity: 0.14,
+        path: ['#211718', '#1f1415', '#4a3836', '#8b7468', '#9c857a'], pathDots: ['#c8b0a0', '#2d1f20'],
+        dotKind: 'ember', dots: ['#ffb04a', '#ff7a1f', '#8a7c78'], dotChance: 0.2,
+        pineShare: 0.3, leafy: 'bare', pine: ['#2e2422', '#3a2d2a', '#4a3b38', '#6a5450'], trunk: ['#241a18', '#3a2a26'], fruit: null,
+        rock: ['#5a4a48', '#7a6a66'], cliff: ['#4f3f3c', '#54433f', '#5a4644', '#2a1c1c', '#1a1010'],
+        stone: ['#a89890', '#7d6e68', '#54463f'], bridge: ['#9a8a80', '#6a5a52', '#3a2c28', '#54463f'],
+        lava: { glow: '#ff7a1f', crust: '#2a1a17', body: '#ff7a1f', core: '#ffc23a', hot: '#ffe58a', plate: '#4a2a22' },
+      },
+      path: { main: '#8b7468', edge: '#2d1f20', outline: '#1f1415', mid: '#9c857a', fringe: '#8a7c78', fringeAccent: '#ffc23a', groove: '#211718' },
+      // B-142 Nacharbeit: gemalter Boden dunkel (Kruste), helle Flecken Asche, Licht glutwarm und schwach
+      paint: { dark: [26, 16, 18], darkAlpha: 0.5, light: [120, 96, 90], lightAlpha: 0.34, tint: '255,170,110', shadow: '24,10,12', sunAlpha: 0.2, sunMidAlpha: 0.08 },
       pathStyle: {
         rutColor: 'rgba(45,31,32,0.35)', stoneColors: ['#5a4a48', '#7a6a66'], pebbleColors: ['#6a5650', '#a08a80'],
         stoneShadow: 'rgba(20,10,12,0.45)', patchDark: 'rgba(45,31,32,0.16)', patchLight: 'rgba(255,190,140,0.12)',
+        fringeKind: 'ash', // B-143 Nacharbeit: Asche mit Glut am Wegrand
       },
     },
   },
@@ -666,76 +735,67 @@ export const SHOP_CARD = {
   minContrast: 4.5,
 };
 
-// Pfeilturm im Flat-Pop-Stil (B-063). Alle Maße in px, Ursprung = Bodenmitte des Turms, y nach oben negativ.
-export const ARROW_TOWER = {
-  scale: 0.85,              // Gesamtskalierung (Turm ca. 30 px breit, ca. 58 px hoch)
-  groundDy: 13,             // Boden liegt so weit unter der Turmmitte (x, y)
-  shadowR: 15,              // Radius des Bodenschattens
-  headY: -34,               // Drehpunkt des Bogens (Brust des Schützen)
-  roofBaseY: -41,           // Unterkante des Dachs
-  roofHeight: [17, 19, 22], // Dachhöhe je Stufe
-  roofHalf: [17, 17.5, 19], // halbe Dachbreite je Stufe
-  poleHeight: [0, 6, 5],    // Wimpelstange über dem Dach je Stufe (0 = kein Wimpel)
-  bowRadius: 8,             // Bogenradius
-  bowSpan: 1.1,             // halber Öffnungswinkel des Bogens (rad)
-  bowWidth: 1.6,            // Bogenbreite
-  iconScale: 0.75,          // Skalierung in der Shop-Vorschau (40x40-Platz, Turm ist höher)
-  iconDy: 9,                // Verschiebung der Shop-Vorschau nach unten in px
-  arrowLength: 11,          // Länge des aufgelegten Pfeils
-};
-
-// Kanone, Frostturm, Scharfschütze und Blitzturm im Flat-Pop-Stil (B-064). Maße in px, Ursprung = Bodenmitte,
-// y nach oben negativ. Arrays haben je einen Wert für Stufe 1 bis 3. iconScale/iconDy: Shop-Vorschau (48x48).
-export const TOWER_STYLE = {
-  cannon: {
-    scale: 0.9, groundDy: 13, shadowR: 15, iconScale: 1.1, iconDy: 4,
-    halfWidth: [15, 16.5, 18],    // halbe Breite des Steinbunkers
-    height: [12, 14, 16],         // Höhe des Bunkers bis zur Zinne
-    merlons: [3, 4, 5],           // Anzahl der Zinnen
-    barrelLength: [16, 17.5, 19], // Rohrlänge ab Drehpunkt
-    barrelThick: [1, 1.1, 1.2],   // Rohrdicke (Faktor)
-  },
-  frost: {
-    scale: 0.9, groundDy: 13, shadowR: 14, iconScale: 0.9, iconDy: 7,
-    pivotY: -35,                  // Drehpunkt des Eissplitters
-    shardLength: [11, 13, 15],    // Länge des Eissplitters
-    icicleLength: [5, 7, 9],      // Länge der Eiszapfen am Kragen
-    crystals: [0, 1, 2],          // Paare seitlicher Eiskristalle am Schaft
-  },
-  sniper: {
-    scale: 0.8, groundDy: 13, shadowR: 13, iconScale: 0.85, iconDy: 8,
-    shaftHeight: [30, 33, 36],    // Höhe des Schafts
-    barrelLength: [17, 19, 21],   // Länge des Zielrohrs
-  },
-  lightning: {
-    scale: 0.9, groundDy: 13, shadowR: 14, iconScale: 0.9, iconDy: 7,
-    pivotY: -37,                 // Drehpunkt des Kristalls
-    rings: [2, 3, 4],             // Metallringe an der Spule
-    crystalSize: [1, 1.15, 1.3],  // Größe des Kristalls (Faktor)
-    arms: [0, 1, 2],              // Paare von Fangarmen mit Leuchtkugel
-  },
+// Stil 1 (G6, G7): Türme und Gegner nach docs/design/stil1-entwurf.dc.html. Maße in Entwurfs-px (Kachel = unit),
+// gezeichnet mit TILE / unit. Formen stehen in src/figures.js, hier nur Lage, Größe und Farben.
+export const FIGURE_STYLE = {
+  unit: 57,
+  towerFoot: 22,  // Fußpunkt des Turms unter der Kachelmitte (0,39 Kachel, Entwurf Z.197)
+  enemyFoot: 14,  // Fußpunkt des Gegners unter der Wegmitte (Z.199)
+  towerScale: { arrow: 1.15, cannon: 1.2, frost: 1.15, sniper: 1.08, lightning: 1.15 }, // Scharfschütze 1,2 x 0,9 (Plan)
+  // Stufenmarke (.bd1, Z.15): Kreis rechts unten am Turm, Mitte bei (W + dx, H + dy) der Turm-Box
+  badge: { colors: ['#d7dde0', '#f2c14e', '#ff8a3d'], r: 11, line: 2.5, dx: -9, dy: -15, ink: '#2b1a10', font: '14px "Lilita One", "Trebuchet MS", sans-serif', textDy: 0.5 },
+  trim: { color: '#f2c14e', ink: '#2b1a10', width: 3, edge: 5 }, // Goldband ab Stufe 2 (Stufe 3: zwei Bänder)
+  cannonTilt: 1.25, // größte Neigung des Kanonenrohrs aus der Senkrechten (rad)
+  muzzle: 0.55,     // Mündungsfeuer, solange der Rückstoß-Anteil darüber liegt
+  squash: 0.05,     // Stauchung feststehender Türme direkt nach dem Schuss (Anteil der Höhe)
+  recoil: { arrow: 0, cannon: 4, frost: 0, sniper: 3, lightning: 0 }, // Rückstoß drehender Teile in Entwurfs-px
+  shotGlow: { frost: 'rgba(216,247,255,0.85)', lightning: 'rgba(255,246,168,0.9)', edge: 'rgba(255,255,255,0)', r: 26 }, // Aufleuchten beim Schuss
+  // Shop-Vorschau (48x48): Skalierung und Verschiebung nach unten in px
+  icon: { arrow: { scale: 0.58, dy: 10 }, cannon: { scale: 0.59, dy: 10 }, frost: { scale: 0.57, dy: 10 }, sniper: { scale: 0.53, dy: 11 }, lightning: { scale: 0.54, dy: 11 } },
+  // Gegner
+  bob: 1.6,          // Wippen beim Laufen (Entwurfs-px)
+  sway: 0.05,        // Schwanken beim Laufen (rad)
+  tilt: 0.35,        // Anteil der Neigung auf senkrechten Wegstücken (aufrechte Figuren kippen nur leicht)
+  bossScale: 1.3,    // Oger-König = Troll x 1,3 mit Krone
+  necroScale: 1.5,   // Nekromantin auf Goblin-Basis
+  // Lebensbalken (Z.113), nur bei Schaden: Breite = share x Figurbreite (mind. minW), über der Figur
+  hp: { back: '#2b1a10', good: '#74d048', mid: '#f2c14e', low: '#e5481f', h: 12, inner: 6, pad: 3, gap: 4, minW: 34, share: 0.71, r: 6 },
+  outline: '#2b1a10',
 };
 
 // Weg im Flat-Pop-Stil (B-071). Maße in px bei 1x. Gesamtbreite in Kachelmitte = TILE, der wellige
 // Rand ragt höchstens `overhangMax` darüber hinaus (Test in tests/render.test.js).
 export const PATH_STYLE = {
   overhangMax: 4,          // so weit darf der Rand über die halbe Kachel hinausragen
-  edgeOffset: 15.5,        // Abstand der Randkreise von der Wegachse (Mittelwert)
-  edgeRadius: 5.2,         // Radius der Kontur-Kreise (außen)
-  edgeInner: 3.6,          // Radius des helleren Randbands
-  waveAmp: 2,              // Amplitude der Welle in px
+  edgeOffset: 13,          // Abstand der Randkreise von der Wegachse (Mittelwert); B-143: schmaler, damit die Fuge sichtbar bleibt
+  edgeRadius: 4.4,         // Radius der Kontur-Kreise (außen)
+  edgeInner: 2.8,          // Radius des helleren Randbands
+  waveAmp: 1.4,            // Amplitude der Welle in px
   waveHarmonic: 0.4,       // Anteil der zweiten, schnelleren Welle
   waveLength: 0.11,        // Wellenzahl der Grundwelle (rad pro px)
   circleStep: 4.5,         // Abstand der Randkreise entlang des Wegs
+  // B-143: eingesunkener Weg (Stil "Gemalt und warm"): dunkle Grasfuge, Kontur, Erde, helle Mitte nach oben versetzt
+  grooveWidth: 48,         // Breite der dunklen Grasfuge (außen um die Kontur); B-143 Nacharbeit: 48, damit unter dem Saum Fuge bleibt
+  contourWidth: 36,        // Breite der durchgehenden Kontur (die Randkreise ragen etwas darüber)
   sandWidth: 32,           // Breite der Sandfläche (liegt über den Randkreisen)
+  sandShift: [0, -1.5],    // Versatz der oberen Erdschicht (Weg wirkt eingesunken)
   midWidth: 20,            // Breite der helleren Wegmitte
+  midShift: [-1, -2],      // Versatz des hellen Mittelstreifens nach oben links (Licht)
+  gravelWidth: 1.5,        // Kiesel-Strichel: Strichbreite
+  gravelLight: { offset: -4, dash: [1, 11], mix: 0.6 }, // helle Strichel: Abstand zur Achse, Muster, Aufhellung der Wegmitte
+  gravelDark: { offset: 5, dash: [1, 15] },             // dunkle Strichel in der Randfarbe (col.edge)
   shadowWidth: 44,         // Breite des Schlagschattens auf dem Gras
   shadowOffset: [2, 4],    // Versatz des Schlagschattens
   shadowColor: 'rgba(43,27,61,0.3)',
   bandShade: 0.12,         // Randband = Wegfarbe um diesen Anteil zum Schattenton gemischt
-  fringeStep: 6,           // Abstand der Gras-Säume entlang des Wegs (0 = kein Saum)
-  fringeRadius: 3.4,       // Radius eines Saumpunkts
-  fringeOffset: [21, 24],  // Abstand der Saumpunkte von der Achse (von, bis)
+  // B-143 Nacharbeit: Saum als unterbrochene Büschel über dem äußeren Rand der Fuge (Halme, Laub, Schnee, Asche je Karte)
+  fringeStep: 3.2,         // Abstand der Saum-Teile innerhalb eines Büschels (0 = kein Saum)
+  fringeClump: [8, 16],    // Länge eines Büschels entlang des Wegs in px (von, bis)
+  fringeGap: [12, 22],     // Lücke zwischen zwei Büscheln in px (von, bis); Anteil Saum etwa 30 bis 50 %
+  fringeInner: 22.6,       // innerer Rand der Büschel (Abstand zur Achse); innen bleibt die Fuge mindestens 3 px frei
+  fringeHeight: [5, 9],    // Länge eines Halms oder Blatts nach außen (in der Büschelmitte; zu den Enden kürzer)
+  fringeRadius: 3.6,       // größter Radius eines Schnee- oder Ascheklumpens
+  fringeKind: 'blades',    // 'blades' (Halme), 'leaves' (Laub), 'snow' (Schneeklumpen), 'ash' (Asche mit Glut)
   rutOffset: 7.5,          // Abstand der Spurrillen von der Achse
   rutWidth: 1.6,           // Breite der Rillen
   rutDash: [16, 7, 5, 10], // Strichmuster der Rillen
@@ -753,7 +813,7 @@ export const PATH_STYLE = {
   patchDark: 'rgba(143,106,59,0.14)',  // dunkle Bodenflecken auf dem Weg
   patchLight: 'rgba(255,248,214,0.22)', // helle Bodenflecken auf dem Weg
   // Standardfarben (heutiger Look), solange eine Karte kein theme.path liefert.
-  colors: { main: '#dcc189', edge: '#8f7140', outline: '#8f7140', mid: '#dcc189', fringe: null },
+  colors: { main: '#dcc189', edge: '#8f7140', outline: '#8f7140', mid: '#dcc189', fringe: null, groove: '#3a6a2c' },
 };
 
 // Baumrahmen der Wiese (B-077): runde Kronen im Randring, rein Hintergrundoptik. Maße in px bei 1x.
@@ -881,6 +941,105 @@ export const LIGHT_STYLE = {
   maxDarken: 0.15,         // Obergrenze je dunkelnder Schicht (Vignette, Baumschatten), Test
 };
 
+// Gemalter Boden (B-142, STIL.md 0): große Hell-Dunkel-Flecken aus eigenem Rauschen, warmes Licht oben links,
+// Abschattung nach rechts unten und Vignette. Nur Optik im Hintergrund-Cache, aktiv nur mit MAPS.<id>.theme.paint
+// (true = diese Werte; Objekt überschreibt einzelne Werte, z. B. Farben einer anderen Welt). Seit der Nacharbeit alle Karten.
+export const PAINT_STYLE = {
+  seed: 142,               // feste Saat (je Karte kommt ein Hash der Karten-ID dazu)
+  cell: 8,                 // Rasterweite des Rausch-Feldes in px (dazwischen weich interpoliert)
+  scale: 150,              // Fleckengröße: Grundwellenlänge des Rauschens in px
+  octaves: 3,              // Rausch-Oktaven (mehr = unruhigere Ränder)
+  stretch: 0.75,           // Verhältnis Wellenlänge x zu y (< 1: Flecken eher breit)
+  dark: [26, 72, 22],      // dunkle Flecken (Moos-Grün, RGB)
+  darkGain: 2.4,           // Deckkraft = clamp(darkGain * n + darkOffset) * darkAlpha
+  darkOffset: -1.05,
+  darkAlpha: 0.4,          // B-142 Nacharbeit: kräftiger (vorher 0,32)
+  light: [255, 236, 150],  // helle Flecken (warmes Gelb, RGB)
+  lightGain: 2.4,
+  lightOffset: -1.1,
+  lightAlpha: 0.26,        // B-142 Nacharbeit: kräftiger (vorher 0,2)
+  // Licht (ersetzt mit theme.light den Diagonalverlauf von LIGHT_STYLE): Stopps als Anteil der Diagonale oben links -> unten rechts
+  tint: '255,240,176',     // Sonnenlicht (rgba-Anteil)
+  sunAlpha: 0.38,          // Deckkraft in der Ecke oben links
+  sunMid: 0.3,             // Stopp mit sunMidAlpha
+  sunMidAlpha: 0.14,
+  sunEnd: 0.45,            // ab hier kein Licht mehr, danach Abschattung
+  shadow: '20,30,24',      // Schattenton für Abschattung und Vignette
+  shadeAlpha: 0.13,        // Abschattung diagonal nach rechts unten (höchstens LIGHT_STYLE.maxDarken); B-142 Nacharbeit: 0,13 für helle Tore
+  vignetteAlpha: 0.15,     // Vignette (höchstens LIGHT_STYLE.maxDarken)
+  vignetteInner: 0.45,     // Radius ohne Abdunklung, Anteil der halben Felddiagonale
+  vignetteX: 0.56,         // Mitte der Vignette leicht nach rechts unten (Licht kommt von oben links)
+  vignetteY: 0.56,
+  gateDarkMax: 0.2,        // B-142 Nacharbeit: Abschattung + Vignette an Weg-Ein-/Ausgang und Burgtor höchstens 20 % (Test)
+  // B-142 Nacharbeit: Streudeko gruppiert statt gleichmäßig (Gras-Büschel, Kiesel nur an Wegrand, Wasser, Bäumen)
+  tuftBand: 16,            // Bodenbüschel: höchstens so weit außerhalb ihres Mindestabstands zu Weg/Wasser bzw. Kronenrand
+  smallNear: 1,            // Kachel-Büschel/Kiesel nur so nah (Kacheln, Manhattan) an Weg, Wasser, Lava oder Hindernis
+  flowerGroups: [3, 5],    // Blumen nur in 3 bis 5 kleinen Wiesen-Inseln
+  flowerGroupRadius: 1,    // Radius einer Insel in Kacheln (Chebyshev)
+  flowerGroupGap: 4,       // Mindestabstand der Inseln in Kacheln
+  blossoms: 7,             // Zusatzblüten je Insel (flach, ohne arc)
+  blossomSpread: 26,       // Streuradius der Zusatzblüten um die Inselmitte in px
+  blossomPathMargin: 28,   // Mindestabstand der Zusatzblüten zur Wegachse
+};
+
+// Stil 1 (docs/design/stil1-entwurf.dc.html): gemalter Hintergrund als SVG, einmal in den Hintergrund-Cache gerastert.
+// Formen und Farben stehen in render-painted.js (portiert aus dem Entwurf), hier nur Maße und Regeln. Nur Optik.
+// C-Abnahme 8: Auswahl eines Turms als Bodenellipse (Breite/Höhe in Kacheln, Strich und Außenkontur in px)
+export const SELECT_RING = { width: 0.9, height: 0.35, line: 3, outline: 2, color: '#ffe266', outlineColor: '#2b1a10' };
+
+export const PAINTED_STYLE = {
+  unit: 57,                // Kachelgröße des Entwurfs in px; Formen werden mit TILE / unit skaliert
+  seed: 42,                // feste Saat (je Karte kommt ein Hash der Karten-ID dazu)
+  fieldVignette: 0.15,     // Vignette im Feld höchstens so dunkel (Test)
+  frameVignette: 0.72,     // starke Vignette nur im Rand (Entwurf Z.39)
+  maxOverhang: 0.3,        // Randbäume dürfen höchstens so viele Kacheln ins Feld ragen (Stamm immer im Rand)
+  treeChance: 0.85,        // Rahmenwald: Anteil besetzter Plätze
+  treeScale: [0.8, 1.15],  // Größe der Randbäume
+  river: [92, 76, 66],     // Fluss: Sand, Kontur, Wasser (Strichbreiten in Entwurfs-px, Z.66–68; schmaler als im Entwurf, Bauplätze frei)
+  lakeRadius: [34, 28, 25], // See ohne gemalte Form: Hüllradius je Seekachel für Sand, Kontur, Wasser (px bei 1x)
+  castleScale: 0.8,        // Burgtor am Ausgang (im Rand)
+  flagScale: 0.73,         // Wellenfahne am Eingang (im Rand); größer geht nicht: Tuch reicht sonst ins Feld (höchstens (Rand - 2) / 94)
+  flagNumber: 35,          // C-Abnahme 10: Zahl auf der Wellenfahne (Entwurfs-px vor Fahnen-Maßstab; ca. 22 CSS-px bei 1280x800)
+  flagTopGap: 64,          // Fahne: Mindestabstand der Spitze zur Canvas-Oberkante (Entwurfs-px); sonst kleiner (Zwei Fronten, Zeile 1)
+  obstacleTree: 0.62,      // Baum auf Hindernis-Kachel
+  obstacleRock: 1.2,       // Fels auf Hindernis-Kachel
+  keepOut: 46,             // halbe Breite der freien Bahn für den Weg im Rand (Entwurfs-px)
+  lava: [96, 60, 50, 26],  // Lavafluss: Glühen, Kruste, Fläche, Kern (Strichbreiten in Entwurfs-px; Kachel 57, Kruste ragt kaum über)
+  lavaPool: [28, 18, 15, 8], // Lavatümpel: Radius je Lage wie oben (Spiel-px, Umriss aus render-lava.js poolOutline; Kruste ragt höchstens 15 % in Bauplätze)
+  // C-Abnahme 1: Seitenzonen neben dem Canvas = gleiche Malerei mit dichtem Wald (Raster und Versatz in Entwurfs-px;
+  // 48 Entwurfs-px sind bei 1280x800 rund 41 CSS-px), nach außen leicht dunkler (darken = Deckkraft am Fensterrand)
+  sideZone: { step: [48, 38], chance: 0.85, jitter: [16, 12], darken: 0.35, quantum: 32 },
+  rasterDelay: 150,        // ms: nach einer Größenänderung erst so lange warten, dann neu rastern (bis dahin altes Bild skaliert)
+};
+
+// Stil 1, Plan G9: Palette und Elemente des gemalten Hintergrunds. Basis = Wiese (Farben aus dem Entwurf);
+// andere Karten überschreiben einzelne Schlüssel über MAPS.<id>.theme.painted (themed(), flacher Merge). Nur Optik.
+export const PAINTED_PALETTE = {
+  ground: ['#9bd25a', '#6aa83f', '#3f7a35'],   // Bodenverlauf oben links -> unten rechts (Z.52)
+  mottle: [0.10, 0.27, 0.08], mottleOpacity: 0.75, // dunkle Flecken (RGB 0..1, Z.36)
+  lit: [1, 0.93, 0.45], litOpacity: 0.55,      // helle Flecken
+  grainOpacity: 0.18,
+  sun: ['#fff0b0', '#ffd980'],                 // Licht oben links (innen, außen)
+  vignette: '#0c1a1c',
+  // Weg von außen nach innen: Grasschatten 86, Kontur 72, Kante 64, Fläche 54, Mitte 30; dann helle und dunkle Punkte
+  path: ['#3a6a2c', '#2b1a10', '#8f5f34', '#d5a566', '#e8c185'], pathDots: ['#fff2c8', '#8f5f34'],
+  dotKind: 'flower',                           // Tupfen im Feld: flower, crystal, leaf, ember
+  dots: ['#fff3d2', '#ffd36a', '#f58aa5'],
+  dotChance: 0.19,                             // Tupfen je freier Feldkachel
+  pineShare: 0.45,                             // Anteil Tannen im Rahmenwald
+  leafy: 'round',                              // zweite Baumart: round (Laubbaum) oder bare (kahl)
+  pine: ['#2f7a3d', '#3d9447', '#59b254', '#a6dc6a'], // Stufen unten, Mitte, oben, Glanz
+  round: ['#3a8c3c', '#52a849', '#b6e276'],    // Krone dunkel, hell, Glanz
+  fruit: '#d6483a',                            // Früchte am Laubbaum (null = keine)
+  trunk: ['#6b4524', '#7a4d27'],               // Tanne, Laubbaum
+  snow: null,                                  // Schneekappen auf Bäumen und Felsen (null = keine)
+  rock: ['#a9a08d', '#d6cdb8'],
+  cliff: ['#8fc84f', '#92cc52', '#b98c5c', '#7a5a45', '#5e4331'], // Plateau oben, unten, Wand hell, dunkel, Rillen
+  stone: ['#e3d2b0', '#b9a283', '#8a7560'],    // Burg
+  bridge: ['#c88a4c', '#8a5326', '#3b2210', '#6d3f1b'], // Holz hell, dunkel, Fugen, obere Brüstung
+  lava: null,                                  // Lava (nur Karten mit Lavakacheln): siehe Vulkan
+};
+
 // Akzente der Wiese (B-080): Burgmauer oben, Teich und Brunnen unten. Nur Optik, Maße in px bei 1x.
 // Aktiv nur mit MAPS.<id>.theme.accents. Rechtecke liegen im Randring (Überhang höchstens TREE_FRAME.maxOverhang).
 export const ACCENT_STYLE = {
@@ -998,6 +1157,9 @@ export const LAVA_STYLE = {
     shadow: 'rgba(30,10,8,0.4)', shadowOffset: [2, 4],
     lavaReach: 0.75,       // Lava wird unter der Brücke bis zu diesem Anteil einer Kachel quer zum Weg neu gemalt
   },
+  // Karten-Feinschliff: Glühen über dem gemalten Hintergrund (je Frame wenige weiche Flecken auf den Lavakacheln,
+  // Lage einmal je Karte berechnet). Aus bei prefers-reduced-motion. Puls läuft den Fluss hinab (phaseStep je Flecken).
+  pulse: { color: '255,205,110', radius: 15, alpha: [0.03, 0.24], speed: 1.7, phaseStep: 0.8, bridgeGap: 30 },
 };
 
 // Reichweitenkreis (B-082): kräftiger Ring, sehr dezente Fläche (ca. 8 %), damit er über Deko und Plateaus ruhig wirkt.
@@ -1008,73 +1170,27 @@ export const RANGE_STYLE = {
   maxFillAlpha: 0.1,      // Obergrenze (Test)
 };
 
-// B-065: Gegner im Flat-Pop-Stil (Goblin, Flitzer, Troll). Maße in Design-Pixeln bei Radius `ref`
-// (die Figur wird mit radius/ref skaliert). `main` = Flächenanteil der Hauptfarben (Summe 1) für den Kontrasttest.
+// C4 Ringmenü (docs/design/elemente/Menue-Ring-Bauen.md, Menue-Ring-Turm.md). Maße in CSS-px, Winkel in Grad.
+// Radius = max(minRadius, radiusTiles Kacheln), kompakt (Handy) fest compactRadius. edge = Abstand über den Radius
+// hinaus bis zur Außenkante (halber Knopf + Preisschild); so bleibt der Ring ganz im sichtbaren Bereich.
+export const RING_MENU = {
+  radiusTiles: 1.55,
+  minRadius: 68,
+  compactRadius: 62,
+  edge: 42,
+  gap: 6,                                  // Abstand zur HUD-Leiste und zu den runden Knöpfen oben
+  buildAngles: [-90, -18, 54, 126, 198],   // Reihenfolge = TOWER_TYPES = Tasten 1–5
+  towerAngles: { upgrade: -90, target: 0, sell: 180, close: 90 },
+  silhouetteInset: 0.15,                   // Treffer-Box der Turmfigur: seitlich je 15 % schmaler (Nachbarkacheln)
+  upgradePreview: { color: '#ffe266', width: 2, dash: [6, 6] }, // Reichweite der nächsten Stufe (gestrichelt)
+  ghostAlpha: 0.55,                        // Geistturm der Bau-Vorschau
+};
+
+// Gegner-Zusätze (die Figuren selbst: FIGURE_STYLE und src/figures.js)
 export const ENEMY_STYLE = {
-  legSwing: 2.6,     // Beinschwung vor/zurück in px
-  bob: 1.1,          // Wippen in px
-  legLift: 1.2,      // Fuß hebt sich im Vorschwung
-  outlineWidth: 1.8, // kräftigere Kontur als STYLE.outlineWidth (Lesbarkeit auf hellem Weg, B-085)
-  eyeRim: '#ffffff',
-  eyeDark: '#1a1a1a',
-  browColor: '#2a1d1a',
-  grunt: {
-    ref: 12,
-    skin: '#6fbf4a', tunic: '#764324', belt: '#4a2a18',
-    main: { skin: 0.4, tunic: 0.6 },
-  },
-  runner: {
-    ref: 10.5,
-    skin: '#f2c14e', suit: '#a8500f', cap: '#7a3a14', streak: 'rgba(122,58,20,0.55)',
-    main: { skin: 0.35, suit: 0.5, cap: 0.15 },
-  },
-  tank: {
-    ref: 14,
-    skin: '#b5523b', plate: '#9aa3a8', plateDark: '#6d767b', tusk: '#f1e8d2',
-    main: { skin: 0.5, plate: 0.2, plateDark: 0.3 },
-  },
-  healer: {
-    ref: 11,
-    skin: '#3fbf8f', robe: '#1f6e50', robeDark: '#154c37', face: '#bfe8cf', staff: '#6b4a2b', orb: '#b8ffd8', cross: '#1f6e50',
-    orbRadius: 2.6, orbPulse: 0.3, orbSpeed: 4, // Leuchtkugel: Grundradius, Pulsausschlag (px), Tempo (rad/s)
-    main: { skin: 0.3, robe: 0.7 },
-  },
-  shielded: {
-    ref: 13,
-    skin: '#6f86a8', body: '#4f607c', helm: '#9aa7ba', shield: '#7a5530', rim: '#c9ccd2', emblem: '#e8d27a',
-    main: { skin: 0.3, body: 0.3, shield: 0.4 },
-  },
-  // B-126: Magier mit Schildzauber; wardFill/wardRing = Schild-Blase um geschützte Gegner (Stärke ~ ward/Höchstschild)
+  // B-126: Schild-Blase um geschützte Gegner (Stärke ~ ward/Höchstschild)
   mage: {
-    ref: 11,
-    skin: '#d9c3a0', robe: '#4b3fa8', robeDark: '#31287a', hat: '#3a2f8c', hatBand: '#f2c14e', staff: '#6b4a2b', orb: '#9fe8ff',
-    orbRadius: 2.6, orbPulse: 0.3, orbSpeed: 4,
     wardFill: 'rgba(120,200,255,0.28)', wardRing: 'rgba(190,235,255,0.9)', wardRingWidth: 1.6, wardPad: 4, wardPulse: 0.6, wardSpeed: 3,
-    main: { skin: 0.2, robe: 0.5, hat: 0.3 },
-  },
-  // Boss Oger-König (B-067): ref wird aus sizeFactor berechnet (render-enemies-flat.js), damit ein Design-Pixel
-  // beim Boss sizeFactor-mal so groß ist wie beim Goblin.
-  boss: {
-    sizeFactor: 1.6,
-    skin: '#7a2e8e', belly: '#b77fc4', fur: '#8a5a34', club: '#c58f55', stud: '#b3adaa',
-    gold: '#f4c542', jewel: '#d4503f', tusk: '#f1e8d2',
-    aura: 'rgba(190,110,235,0.2)', auraRing: 'rgba(225,170,255,0.65)', auraWidth: 1.1,
-    auraRadius: 12.6, auraPulse: 0.7, auraSpeed: 3, // Aura: Grundradius, Pulsausschlag (Design-px), Tempo (rad/s)
-    main: { skin: 0.55, belly: 0.15, fur: 0.15, gold: 0.15 },
-  },
-  // Boss Nekromantin (B-127): so groß wie der Oger-König (sizeFactor), Kapuze, Robe, Stab mit grünem Licht.
-  necro: {
-    sizeFactor: 1.6,
-    skin: '#3d4a5c', robe: '#2a2f45', robeDark: '#1d2033', face: '#151622', hand: '#b9c4b0', staff: '#6b4a2b',
-    glow: '#7dff9a', orb: '#b8ffc8', halo: 'rgba(125,255,154,0.3)',
-    orbRadius: 2.2, orbPulse: 0.35, orbSpeed: 3.5, haloScale: 1.6, // Leuchtkugel: Grundradius, Pulsausschlag (Design-px), Tempo (rad/s), Lichthof
-    main: { skin: 0.35, robe: 0.65 },
-  },
-  // Skelett (B-127): knochig, klein, zerlumpter dunkler Umhang (Kontrast zum hellen Weg)
-  skeleton: {
-    ref: 10,
-    skin: '#e6e0cf', rag: '#3b3550', socket: '#1a1a1a', bone: '#c9c0a6',
-    main: { skin: 0.4, rag: 0.6 },
   },
 };
 
@@ -1103,13 +1219,20 @@ export const BOSS_ENTRY = {
 // Projektile und Effekte im Flat-Pop-Stil (B-068, nur Darstellung). Maße in px bei 1x, Zeiten in Sekunden Spielzeit.
 // Konturen werden aus der Eigenfarbe abgeleitet (outlineOf). Bei prefers-reduced-motion: kein Hopsen, kein Drehen.
 export const FX_STYLE = {
-  arrow: { shaft: '#c58f55', head: '#b3adaa', fletch: '#d4503f', length: 12, headLen: 4.5, headHalf: 2.6, fletchLen: 3.5, fletchHalf: 2.2, shaftWidth: 1.6, fletchBack: 1, fletchNotch: 0.5 }, // fletchBack/-Notch: Federende und Kerbe in px
-  trail: { color: '#fff3c9', points: 4, spacing: 4, size: 1.6, alpha: 0.6, minSize: 0.5 }, // Schweif aus 3 bis 5 Punkten, minSize: Anteil am Ende
-  cannon: { color: '#4a3f55', radius: 4.5, shine: '#fff3c9', shineR: 1.4, shineOffset: 0.35 }, // Glanzpunkt-Versatz in Radien
-  frost: { color: '#7fd8f4', light: '#bff0ff', len: 5.5, half: 2.8, glowColor: '#bff0ff', glowR: 5.5, glowAlpha: 0.25, back: 0.6 }, // back: Heck der Raute in Längen
-  sniper: { beam: '#efe2ff', core: '#ffffff', bullet: '#e6d1ff', beamLen: 38, beamAlpha: 0.4, bulletR: 2.2, beamWidth: 3, coreWidth: 1, inner: 0.7 }, // inner: Anteil des hellen Kerns am Strahl
-  bolt: { outer: '#4f7fc8', outerWidth: 4.5, outerAlpha: 0.55, mid: '#f4c542', midWidth: 2.4, core: '#fff3c9', coreWidth: 1 },
-  explosion: { fill: '#ff9a3c', fillAlpha: 0.3, ring: '#f4c542', ringWidth: 3, grow: 0.5, endScale: 1.2 }, // unter den Gegnern; endScale: Endradius in Splash-Radien
+  // Stil 1 (G8): Formen und Farben aus dem Entwurf (Pfeil Z.123, Scharfschuss Z.125, Kugel Z.130, Explosion Z.131–135,
+  // Frost Z.137–141, Blitz Z.143–145). Maße in Entwurfs-px (Kachel 57), gezeichnet mit TILE / 57.
+  arrow: { shaft: '#e8c185', head: '#d9dde2', fletch: '#d6483a', ink: '#2b1a10', back: 14, front: 12, tip: 14, headLen: 8, headHalf: 5, fletchLen: 5, shaftWidth: 2.4, inkWidth: 5, fletchWidth: 3, headLine: 2 },
+  cannon: { color: '#33283a', ink: '#2b1a10', radius: 6, line: 2, trail: 'rgba(43,26,16,0.6)', trailWidth: 3, trailLen: 70, dash: [2, 10] },
+  frost: { color: '#bfeeff', light: '#ffffff', ink: '#2b1a10', beam: 'rgba(143,216,242,0.5)', beamWidth: 7, core: '#f4fcff', coreWidth: 3, dash: [10, 6], beamLen: 60, r1: 13, r2: 5, points: 6, spin: 6, line: 2 },
+  sniper: { beam: 'rgba(255,246,168,0.85)', bullet: '#fff6a8', ink: '#2b1a10', beamLen: 90, beamWidth: 2, dash: [14, 5], bulletR: 3.5, line: 1.5 },
+  bolt: { outer: 'rgba(127,208,255,0.35)', outerWidth: 12, mid: '#2b1a10', midWidth: 6, core: '#fffbd0', coreWidth: 3, step: 30, amp: 8, flicker: 20 },
+  // Explosion: Lichthof und Rauch unter den Figuren, drei Sterne darüber (Größe 1,4 Kacheln = Außenradius 40)
+  explosion: {
+    fill: 'rgba(255,246,168,0.35)', glowR: 58, glowCore: 0.55,
+    smoke: [['#6b625b', -14, -18, 15], ['#80776e', 16, -10, 12], ['#80776e', -30, 2, 10]], smokeInk: 'rgba(43,26,16,0.85)', smokeLine: 3,
+    stars: [[40, 22, 9, 0.2, '#e5481f', 4], [26, 13, 8, 0.5, '#ffc93c', 3], [12, 6, 7, 0.1, '#fffbd0', 0]], ink: '#2b1a10',
+    grow: 0.25, shrink: 0.4, // Anteil der Dauer bis zur vollen Größe; Schrumpfen bis zum Ende
+  },
   // Treffer: Blitz (Vierzack-Stern) 0,08 s laut STIL.md; Funken als kurze Striche, Eis als kleine Rauten.
   hit: {
     flash: '#fff3c9', flashSize: 4, flashAlpha: 0.8, flashLife: 0.08, flashStart: 0.6, flashGrow: 0.6, flashWaist: 0.3,

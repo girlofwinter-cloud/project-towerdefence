@@ -4,6 +4,7 @@ import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 import { createServer } from '../../scripts/serve.mjs';
+import { enterGame, openRing } from './tile.mjs';
 
 const require = createRequire(import.meta.url);
 const { chromium } = require('playwright');
@@ -27,6 +28,7 @@ async function openPage(viewport, mobile) {
   const ctx = await browser.newContext({ viewport, hasTouch: mobile, isMobile: mobile });
   const page = await ctx.newPage();
   await page.goto(url);
+  await enterGame(page);
   await page.waitForSelector('#abilities .ability-btn');
   return { ctx, page };
 }
@@ -46,12 +48,13 @@ test('Handy 390x844: Fähigkeits-, Zoom-, Pause- und Tempo-Knopf >= 44 px, keine
   await ctx.close();
 });
 
-test('Desktop 1280x800: Fähigkeitsknöpfe kompakt (44-60 px), Tastenkürzel sichtbar', async () => {
+// C-Abnahme 2 (Freigabe Mensch): Fähigkeiten waagerecht im unteren Band, daher 48–60 statt 56–72 px (48 bleibt Touch-tauglich)
+test('Desktop 1280x800: runde Fähigkeitsknöpfe (48-60 px), Tastenkürzel sichtbar', async () => {
   const { ctx, page } = await openPage({ width: 1280, height: 800 }, false);
   const hs = await heights(page, '.abilities button');
   assert.equal(hs.length, 3);
-  for (const h of hs) assert.ok(h >= MIN_TOUCH && h <= 60, `Knopfhöhe ${h} zwischen ${MIN_TOUCH} und 60`);
-  assert.ok(await page.locator('.ability-btn[data-ability="meteor"] .key').isVisible(), 'Kürzel Q sichtbar');
+  for (const h of hs) assert.ok(h >= 48 && h <= 60, `Knopfhöhe ${h} zwischen 48 und 60`);
+  assert.ok(await page.locator('.ability-btn[data-ability="meteor"] .key-badge').isVisible(), 'Kürzel Q sichtbar');
   // Nach dem Auslösen: Ladezustand im zugänglichen Namen und am Knopf
   await page.keyboard.press('q');
   const box = await page.locator('#game').boundingBox();
@@ -62,10 +65,11 @@ test('Desktop 1280x800: Fähigkeitsknöpfe kompakt (44-60 px), Tastenkürzel sic
   await ctx.close();
 });
 
-// B-096: Pause-Banner und Turmkarten-Kürzel je nach Gerät
+// B-096: Pause-Banner und Turmkarten-Kürzel je nach Gerät (C4: Kürzel stehen im Bau-Ring, daher Ring an (0,0) öffnen)
 async function pauseBannerTexts(page) {
   await page.locator('#pause').click();
   await page.waitForSelector('#pause-banner:not([hidden])');
+  await openRing(page, 0, 0);
   return {
     text: await page.locator('#pause-banner').innerText(),
     kbdVisible: await page.$$eval('.tower-btn kbd', (els) => els.filter((e) => e.offsetParent !== null).length),
@@ -95,8 +99,8 @@ test('B-096 Desktop 1280x800: Turmkarten-Kürzel und "P drücken" sichtbar, kein
   assert.equal(kbdVisible, await page.locator('.tower-btn').count());
   assert.match(text, /P drücken/);
   assert.doesNotMatch(text, /Tippe/);
-  // Sichtbare Spiel-UI ohne Emoji (Fußzeile ausgenommen); Kartenliste inkl. gesperrter Karten
-  const ui = await page.evaluate(() => document.querySelector('header').innerText + document.querySelector('main').innerText
+  // Sichtbare Spiel-UI ohne Emoji; Kartenliste inkl. gesperrter Karten
+  const ui = await page.evaluate(() => document.querySelector('#app').innerText
     + [...document.querySelectorAll('#map-select option')].map((o) => o.textContent).join(' '));
   assert.doesNotMatch(ui, /\p{Extended_Pictographic}/u);
   assert.match(ui, /\(gesperrt\)/);

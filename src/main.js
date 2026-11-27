@@ -1,24 +1,113 @@
 // Verbindet Spiel-Logik, Rendering und Bedienung (DOM, Maus, Tastatur).
-import { TILE, WIDTH, HEIGHT, ARROW_TOWER, TOWER_STYLE, SHOP_CARD, TOWER_TYPES, ENEMY_TYPES, MAX_WAVES, MAPS, SPEED_STEPS, TARGET_MODES, TARGET_MODE_NAMES, MAX_SUBSTEP, LOW_LIVES, ABILITIES, ICON, COIN_BURST, waveSummary, meteorText } from './config.js';
+import { TILE, FRAME_MARGIN, VIEW_WIDTH, VIEW_HEIGHT, PAINTED_STYLE, FIGURE_STYLE, SHOP_CARD, TOWER_TYPES, ENEMY_TYPES, MAX_WAVES, MAPS, SPEED_STEPS, TARGET_MODES, MAX_SUBSTEP, LOW_LIVES, ABILITIES, ICON, VIEW_FIT, COIN_BURST, waveSummary, meteorText } from './config.js';
 import {
   createGame, stepGame, togglePause, buildTower, upgradeTower, sellTower, setTargetMode, startWave,
-  useAbility, abilityCooldownLeft, canBuild, towerAt, towerStats, upgradeCost, sellValue,
+  useAbility, abilityCooldownLeft, canBuild, towerAt, towerStats,
 } from './game.js';
-import { render, drawTower } from './render.js';
-import { heartStates, abilityView, overheatNote, startButtonView } from './hud.js';
+import { renderView, drawTower, paintedStatus, paintedImage, setPaintedExtent, flagBoxes } from './render.js';
+import { abilityView, overheatNote, startButtonView, waveProgress } from './hud.js';
 import { drawIcon } from './render-icons.js';
-import { buildTapStep, aimStep } from './input.js';
+import { buildTapStep, aimStep, fieldPoint, canvasSize, moveFocusTile } from './input.js';
 import { createSoundTracker, collectSounds, loadSoundOn, saveSoundOn } from './sound-events.js';
 import { unlockAudio, setSoundOn, playSound, updateMusic } from './audio.js';
-import { loadProgress, saveProgress, recordResult, isUnlocked, mapProgress, starText, resultLines, startMap, mapAfterResult, MAP_ORDER } from './progress.js';
+import { loadProgress, saveProgress, recordResult, isUnlocked, mapProgress, starText, resultLines, startMap, mapAfterResult, starsFor, MAP_ORDER } from './progress.js';
+import { mountStartScreen, endView, starsHtml, STAR_COUNT } from './screens.js';
+import { ringRadius, tileCenterPx, ringCenter, infoOnLeft, pickTower, buildRingView, towerRingView } from './ring-menu.js';
+import { mountViewport } from './viewport.js';
 
 const canvas = document.getElementById('game');
-canvas.width = WIDTH;
-canvas.height = HEIGHT;
+canvas.width = VIEW_WIDTH; // Stil 1: Feld + Rand (Wald, Burg, Fahne); HiDPI-Größe setzt fitCanvas()
+canvas.height = VIEW_HEIGHT;
 const ctx = canvas.getContext('2d');
 
+// C1: Vollbild. Die Lage rechnet style.css (--u) aus diesen Maßen; hier nur die Zahlen aus config.js setzen.
+for (const [k, v] of Object.entries({ 'view-w': VIEW_WIDTH, 'view-h': VIEW_HEIGHT, 'field-w': VIEW_WIDTH - 2 * FRAME_MARGIN, 'field-h': VIEW_HEIGHT - 2 * FRAME_MARGIN, frame: FRAME_MARGIN })) {
+  document.documentElement.style.setProperty(`--${k}`, String(v));
+}
+
+// ---------- HiDPI ----------
+// Die Anzeigegröße des Canvas legt allein style.css fest (Vollbild: --cw x --ch, Handy: Nah/Übersicht, siehe viewport.js).
+// Hier nur der Backing-Store = Anzeigegröße x Pixeldichte (höchstens VIEW_FIT.maxDpr und maxSide je Seite, canvasSize in input.js);
+// frame() zeichnet mit setTransform(view.sx, ...) weiter in Canvas-Einheiten (VIEW_WIDTH x VIEW_HEIGHT).
+const view = { sx: 1, sy: 1 };
+const compactQuery = window.matchMedia('(max-width: 759.98px), (max-height: 519.98px)'); // = Kompakt-Schwelle in style.css
+function fitCanvas() {
+  const s = canvasSize(canvas.clientWidth, Infinity, window.devicePixelRatio || 1, compactQuery.matches ? VIEW_FIT.maxSide : Infinity);
+  if (canvas.width !== s.width || canvas.height !== s.height) { canvas.width = s.width; canvas.height = s.height; }
+  view.sx = s.sx;
+  view.sy = s.sy;
+  afterFit();
+}
+let afterFit = () => {}; // misst die Seitenzonen (unten gesetzt, sobald #backdrop bereit ist)
+// Wechsel der Pixeldichte (Fenster auf anderen Monitor, Browser-Zoom): Abfrage gilt nur für den aktuellen Wert, daher neu anmelden
+function watchDpr() {
+  const q = window.matchMedia(`(resolution: ${window.devicePixelRatio || 1}dppx)`);
+  q.addEventListener('change', () => { fitCanvas(); watchDpr(); }, { once: true });
+}
+window.addEventListener('resize', fitCanvas);
+if (typeof ResizeObserver === 'function') new ResizeObserver(fitCanvas).observe(canvas);
+fitCanvas();
+watchDpr();
+// Stil 1: Schrift der Stufenmarken früh laden (Canvas-Text löst das Laden selbst nicht aus)
+if (document.fonts && document.fonts.load) document.fonts.load('14px "Lilita One"').catch(() => {});
+// C-Abnahme 1: Seitenzonen. Im Vollbild ist #backdrop dieselbe gemalte Fläche wie der Canvas (render.js rastert Canvas plus
+// Seitenzonen in einem Bild, der Canvas zeigt davon den Ausschnitt 1:1), daher keine Naht an der Canvas-Kante.
+// Kompakt (Handy) scrollt der Canvas: dort bleibt das unscharfe, verkleinerte Bild dahinter.
+const backdrop = document.getElementById('backdrop');
+let backdropFor = null;
+// Seitenzonen in Geräte-px messen und an render.js melden (auf PAINTED_STYLE.sideZone.quantum aufgerundet: seltener neu rastern)
+function measureExtent() {
+  if (compactQuery.matches) { setPaintedExtent(null); return; }
+  const r = canvas.getBoundingClientRect();
+  if (!(r.width > 0)) return;
+  const k = canvas.width / r.width, q = PAINTED_STYLE.sideZone.quantum;
+  const up = (css) => Math.max(0, Math.ceil((css * k) / q) * q);
+  setPaintedExtent({ l: up(r.left), t: up(r.top), r: up(window.innerWidth - r.right), b: up(window.innerHeight - r.bottom) });
+}
+function drawBackdrop() {
+  const img = paintedImage(state.mapId);
+  if (!img) return;
+  const compact = compactQuery.matches;
+  const key = `${img.key}|${compact}|${window.innerWidth}x${window.innerHeight}`;
+  if (backdropFor === key) return;
+  backdropFor = key;
+  const b = backdrop.getContext('2d');
+  if (compact) {
+    const w = 320, h = Math.round(w * window.innerHeight / window.innerWidth);
+    backdrop.removeAttribute('style');
+    backdrop.width = w; backdrop.height = h;
+    const sc = Math.max(w / canvas.width, h / canvas.height);
+    b.drawImage(canvas, (w - canvas.width * sc) / 2, (h - canvas.height * sc) / 2, canvas.width * sc, canvas.height * sc);
+    return;
+  }
+  const W = img.canvas.width, H = img.canvas.height;
+  backdrop.width = W; backdrop.height = H;
+  b.drawImage(img.canvas, 0, 0);
+  // Nach außen leicht dunkler: ab der Canvas-Kante von 0 bis sideZone.darken am Bildrand
+  const dark = PAINTED_STYLE.sideZone.darken;
+  const side = (x0, y0, x1, y1, rx, ry, rw, rh) => {
+    if (rw <= 0 || rh <= 0) return;
+    const g = b.createLinearGradient(x0, y0, x1, y1);
+    g.addColorStop(0, 'rgba(20,30,10,0)');
+    g.addColorStop(1, `rgba(20,30,10,${dark})`);
+    b.fillStyle = g;
+    b.fillRect(rx, ry, rw, rh);
+  };
+  const { l, t, r, w, h } = img;
+  side(l, 0, 0, 0, 0, 0, l, H);
+  side(l + w, 0, W, 0, l + w, 0, W - l - w, H);
+  side(0, t, 0, 0, l, 0, w, t);
+  side(0, t + h, 0, H, l, t + h, w, H - t - h);
+  // Lage: Canvas-Ausschnitt genau über dem Canvas (CSS-px je Geräte-px wie beim Canvas)
+  const cr = canvas.getBoundingClientRect(), k = cr.width / w;
+  Object.assign(backdrop.style, { left: `${cr.left - l * k}px`, top: `${cr.top - t * (cr.height / h)}px`, width: `${W * k}px`, height: `${H * (cr.height / h)}px` });
+}
+afterFit = measureExtent;
+measureExtent();
+compactQuery.addEventListener('change', measureExtent);
+
 const $ = (id) => document.getElementById(id);
-const ui = { buildType: null, selectedTowerId: null, hover: null, pending: null, aiming: false, hoverPx: null, speed: SPEED_STEPS[0], message: '', messageKind: 'error', messageTtl: 0 };
+const ui = { hudDim: false, buildType: null, selectedTowerId: null, ring: null, ringPreview: null, upgradeHover: false, upgradePreview: null, hover: null, pending: null, aiming: false, hoverPx: null, speed: SPEED_STEPS[0], message: '', messageKind: 'error', messageTtl: 0 };
 let mapId;
 let state = createGame();
 
@@ -61,6 +150,7 @@ let resultText = []; // Zeilen fürs Overlay (resultLines)
 // Für Tests und Neugierige: im Browser-Konsole `__game` eintippen.
 window.__game = () => state;
 window.__ui = ui;
+window.__painted = () => paintedStatus(state.mapId); // Stil 1: 'ready', sobald der gemalte Hintergrund gerastert ist
 
 // ---------- Icons (B-069) ----------
 // Icons werden einmal je Name und Größe auf ein Canvas gezeichnet und als Bild-URL wiederverwendet.
@@ -102,19 +192,23 @@ function setHtml(el, html) {
   el.innerHTML = html;
 }
 const COIN = () => iconHtml('gold', 'inline', 'Gold');
-// Knopf im Turm-Panel: "Verbessern (38 Gold) (U)" am Desktop, auf dem Handy zweizeilig ohne Klammern und Kürzel
-const actionHtml = (label, cost, key) => `<span class="act-label">${label}</span> `
-  + `<span class="act-cost"><span class="paren">(</span>${cost}<span class="paren">)</span></span> <span class="key">(${key})</span>`;
+// C4 Turm-Ring: Symbole der Knöpfe (40 x 40, Menue-Ring-Turm.md)
+const RING_SVG = {
+  upgrade: '<svg width="40" height="40" viewBox="0 0 40 40" aria-hidden="true"><path d="M10 22 L20 11 L30 22 M10 31 L20 20 L30 31" fill="none" stroke="#2b1a10" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/><path d="M10 22 L20 11 L30 22 M10 31 L20 20 L30 31" fill="none" stroke="#fff3d2" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  max: '<svg width="40" height="40" viewBox="0 0 40 40" aria-hidden="true"><path d="M20 5 L24.5 15 L35 16 L27 23 L29.5 34 L20 28.5 L10.5 34 L13 23 L5 16 L15.5 15 Z" fill="#f2c14e" stroke="#2b1a10" stroke-width="3" stroke-linejoin="round"/></svg>',
+  sell: '<svg width="40" height="40" viewBox="0 0 40 40" aria-hidden="true"><circle cx="18" cy="22" r="12" fill="#f2c14e" stroke="#2b1a10" stroke-width="3"/><circle cx="18" cy="22" r="6.5" fill="none" stroke="#b9851d" stroke-width="2.5"/><path d="M26 9 H36" stroke="#2b1a10" stroke-width="7" stroke-linecap="round"/><path d="M26 9 H36" stroke="#fff3d2" stroke-width="3" stroke-linecap="round"/></svg>',
+  target: '<svg width="40" height="40" viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="11" fill="none" stroke="#2b1a10" stroke-width="7"/><circle cx="20" cy="20" r="11" fill="none" stroke="#fff3d2" stroke-width="3"/><path d="M20 4 V12 M20 28 V36 M4 20 H12 M28 20 H36" stroke="#2b1a10" stroke-width="7" stroke-linecap="round"/><path d="M20 4 V12 M20 28 V36 M4 20 H12 M28 20 H36" stroke="#fff3d2" stroke-width="3" stroke-linecap="round"/><circle cx="20" cy="20" r="3" fill="#d6483a"/></svg>',
+};
 
-// ---------- Turm-Leiste ----------
-// Mini-Turm als Kartenbild: nutzt dieselbe Zeichenfunktion wie das Spielfeld (kein extra Grafik-Aufwand).
+// ---------- C4 Bau-Ring (Knöpfe je Turmtyp) ----------
+// Mini-Turm als Knopfbild: nutzt dieselbe Zeichenfunktion wie das Spielfeld (kein extra Grafik-Aufwand).
 const ICON_SIZE = 48;
 function drawTowerIcon(cv, type) {
   const c = cv.getContext('2d');
   // Die Türme sind unterschiedlich hoch: jeder Typ hat eigene Skalierung und Verschiebung nach unten
-  const st = type === 'arrow' ? ARROW_TOWER : TOWER_STYLE[type];
-  const k = st.iconScale;
-  c.translate(ICON_SIZE / 2, ICON_SIZE / 2 + 2 + st.iconDy);
+  const st = FIGURE_STYLE.icon[type];
+  const k = st.scale;
+  c.translate(ICON_SIZE / 2, ICON_SIZE / 2 + 2 + st.dy);
   c.scale(k, k);
   c.translate(-TILE / 2, -TILE / 2);
   drawTower(c, { type, x: TILE / 2, y: TILE / 2, level: 1, cooldown: 0, angle: -Math.PI / 4 }, false);
@@ -124,31 +218,47 @@ const shop = $('shop');
 for (const [k, v] of Object.entries(SHOP_CARD)) {
   if (typeof v === 'string') shop.style.setProperty(`--card-${k.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`)}`, v);
 }
-for (const [type, def] of Object.entries(TOWER_TYPES)) {
+for (const v of buildRingView(0)) {
+  const { type } = v;
+  const def = TOWER_TYPES[type];
   const btn = document.createElement('button');
-  btn.className = 'tower-btn';
+  btn.className = 'tower-btn ring-btn';
   btn.dataset.type = type;
+  btn.setAttribute('role', 'menuitem');
+  btn.style.setProperty('--a', `${v.angle}deg`);
   btn.innerHTML = `<canvas class="t-icon" width="${ICON_SIZE}" height="${ICON_SIZE}"></canvas>
-    <span class="t-name">${def.name} <kbd class="key">${def.key}</kbd></span>
-    <span class="t-cost">${def.cost} ${COIN()}</span>
+    <span class="t-name">${def.name}</span>
+    <span class="t-cost">${def.cost} ${COIN()}</span><kbd class="key">${def.key}</kbd>
     <span class="t-desc">${def.description}</span>`;
-  // Fähigkeiten-Text: als Tooltip der Karte (und im Turm-Info-Panel des gewählten Turms)
-  if (def.special) btn.title = def.special.text;
+  // Tooltip mit Name, Preis und Fähigkeit (die runden Knöpfe zeigen nur Bild und Preis)
+  btn.title = `${def.name} (${def.cost} Gold): ${def.description}${def.special ? ` ${def.special.text}` : ''}`;
   drawTowerIcon(btn.querySelector('.t-icon'), type);
-  btn.addEventListener('click', () => selectBuild(type));
+  btn.addEventListener('click', () => buildFromRing(type));
+  // Vorschau: Reichweite und Geistturm dieses Typs auf der Ringkachel (render.js liest ui.ringPreview)
+  const preview = (on) => { ui.ringPreview = on ? type : (ui.ringPreview === type ? null : ui.ringPreview); };
+  btn.addEventListener('pointerenter', () => preview(true));
+  btn.addEventListener('pointerleave', () => preview(false));
+  btn.addEventListener('focus', () => preview(true));
+  btn.addEventListener('blur', () => preview(false));
   shop.appendChild(btn);
 }
 
 // ---------- Fähigkeiten ----------
+// Symbole aus dem Entwurf Z.165–167 (46 x 46)
+const ABILITY_SVG = {
+  meteor: '<svg width="46" height="46" viewBox="0 0 46 46" aria-hidden="true"><path d="M8 38 L26 20" stroke="#ffe266" stroke-width="8" stroke-linecap="round" opacity=".6"/><circle cx="29" cy="17" r="11" fill="#7a5a45" stroke="#2b1a10" stroke-width="3"/><path d="M24 12 L30 11" stroke="#d6bfa5" stroke-width="3" stroke-linecap="round"/><path d="M36 22 L42 28 M30 28 L34 36" stroke="#ffe266" stroke-width="3" stroke-linecap="round"/></svg>',
+  freeze: '<svg width="46" height="46" viewBox="0 0 46 46" aria-hidden="true"><path d="M23 6 V40 M8 14 L38 32 M38 14 L8 32" stroke="#2b1a10" stroke-width="7" stroke-linecap="round"/><path d="M23 6 V40 M8 14 L38 32 M38 14 L8 32" stroke="#f4fcff" stroke-width="3.5" stroke-linecap="round"/></svg>',
+  repair: '<svg width="46" height="46" viewBox="0 0 46 46" aria-hidden="true"><path d="M10 36 L28 18" stroke="#2b1a10" stroke-width="9" stroke-linecap="round"/><path d="M10 36 L28 18" stroke="#e8c185" stroke-width="4.5" stroke-linecap="round"/><path d="M26 8 Q38 6 38 16 L32 14 L28 20 L22 14 Z" fill="#d9dde2" stroke="#2b1a10" stroke-width="2.5" stroke-linejoin="round"/></svg>',
+};
 const abilityBtns = {};
 for (const [id, def] of Object.entries(ABILITIES)) {
   const btn = document.createElement('button');
-  btn.className = 'ability-btn';
+  btn.className = 'ability-btn ab';
   btn.dataset.ability = id;
   btn.title = def.text;
-  // Großes Symbol, Kurzname mit Tastenkürzel, Ladungs-Abzeichen, Abklingbalken (B-058)
-  btn.innerHTML = `${iconHtml(id, 'ability')}<span class="ab-label">${def.short} <span class="key">${def.key.toUpperCase()}</span></span>`
-    + '<span class="ab-badge"></span><span class="ab-bar"><span class="ab-fill"></span></span>';
+  // C3: Symbol (SVG aus dem Entwurf), Abklingkuchen, Restsekunden, Ladungs-Abzeichen, Beschriftung darunter
+  btn.innerHTML = `${ABILITY_SVG[id]}<span class="ab-cd" aria-hidden="true"></span><span class="ab-num" aria-hidden="true"></span>`
+    + `<span class="ab-badge"></span><span class="cap">${def.short}</span><span class="key key-badge">${def.key.toUpperCase()}</span>`;
   btn.addEventListener('click', () => doAbility(id));
   $('abilities').appendChild(btn);
   abilityBtns[id] = btn;
@@ -172,7 +282,54 @@ function selectBuild(type) {
   ui.buildType = ui.buildType === type ? null : type;
   ui.selectedTowerId = null;
   ui.pending = null;
+  ui.ring = null;
   refreshUI();
+}
+
+// ---------- C4 Ringmenü ----------
+const stage = canvas.parentElement;
+function closeRings() {
+  Object.assign(ui, { ring: null, ringPreview: null, selectedTowerId: null, upgradeHover: false, upgradePreview: null, pending: null });
+}
+function openBuildRing(col, row) {
+  Object.assign(ui, { ring: { col, row }, ringPreview: null, selectedTowerId: null, buildType: null, pending: null });
+}
+// Bau-Ring: Turm des Typs auf der Ringkachel bauen. Zu teuer: Meldung, Ring bleibt offen.
+function buildFromRing(type) {
+  if (!ui.ring) return;
+  const res = buildTower(state, type, ui.ring.col, ui.ring.row);
+  if (!res.ok) flash(res.reason);
+  else {
+    if (res.tower.overheated) flash(`${overheatNote(res.tower)} (neben Lava)`, 'info'); // B-030
+    ui.ring = null;
+    ui.ringPreview = null;
+    if (lastPointerType !== 'mouse') ui.hover = null;
+  }
+  refreshUI();
+  keepFocus();
+}
+// Ring an die Kachel (col,row) legen: ganz im sichtbaren Teil des Canvas, nicht über HUD-Leiste und runden Knöpfen.
+function placeRing(el, col, row) {
+  const cr = canvas.getBoundingClientRect();
+  if (!(cr.width > 0)) return;
+  const sr = stage.getBoundingClientRect();
+  const clips = getComputedStyle(stage).overflow !== 'visible';
+  const bounds = {
+    left: Math.max(cr.left, clips ? sr.left : -Infinity, 0), top: Math.max(cr.top, clips ? sr.top : -Infinity, 0),
+    right: Math.min(cr.right, clips ? sr.right : Infinity, window.innerWidth), bottom: Math.min(cr.bottom, clips ? sr.bottom : Infinity, window.innerHeight),
+  };
+  const R = ringRadius((cr.width / VIEW_WIDTH) * TILE, compactQuery.matches);
+  const t = tileCenterPx(col, row, cr.width);
+  const p = { x: cr.left + t.x, y: cr.top + t.y };
+  const avoid = [$('hud-bar'), document.querySelector('.top-buttons')].map((e) => e?.getBoundingClientRect()).filter((r) => r && r.width > 0);
+  const c = ringCenter(p, R, bounds, avoid);
+  const px = (v) => `${Math.round(v * 10) / 10}px`;
+  el.style.setProperty('--rx', px(c.x - sr.left + stage.scrollLeft - stage.clientLeft));
+  el.style.setProperty('--ry', px(c.y - sr.top + stage.scrollTop - stage.clientTop));
+  el.style.setProperty('--R', px(R));
+  el.style.setProperty('--dx', px(p.x - c.x));
+  el.style.setProperty('--dy', px(p.y - c.y));
+  el.classList.toggle('info-left', infoOnLeft(c.x, bounds.left, bounds.right));
 }
 
 function flash(msg, kind = 'error') {
@@ -182,29 +339,40 @@ function flash(msg, kind = 'error') {
 }
 
 // ---------- Maus ----------
+// Stil 1: Feldkoordinaten ohne den Rand (fieldPoint in input.js)
 function tileFromEvent(ev) {
-  const rect = canvas.getBoundingClientRect();
-  const x = ((ev.clientX - rect.left) / rect.width) * WIDTH;
-  const y = ((ev.clientY - rect.top) / rect.height) * HEIGHT;
-  return { col: Math.floor(x / TILE), row: Math.floor(y / TILE) };
+  const p = fieldPoint(ev.clientX, ev.clientY, canvas.getBoundingClientRect());
+  return { col: p.col, row: p.row, inField: p.inField };
 }
 
 function pointFromEvent(ev) {
-  const rect = canvas.getBoundingClientRect();
-  return { x: ((ev.clientX - rect.left) / rect.width) * WIDTH, y: ((ev.clientY - rect.top) / rect.height) * HEIGHT };
+  const p = fieldPoint(ev.clientX, ev.clientY, canvas.getBoundingClientRect());
+  return { x: p.x, y: p.y };
 }
 
 // Pointer-Events statt nur Maus: so gibt es auch auf Touch eine Vorschau der Kachel.
 let lastPointerType = 'mouse';
 canvas.addEventListener('pointerdown', (ev) => { lastPointerType = ev.pointerType; });
 canvas.addEventListener('pointermove', (ev) => {
-  const { col, row } = tileFromEvent(ev);
+  const { col, row, inField } = tileFromEvent(ev);
+  // C2: Holzleiste blasst aus, wenn die Maus darunter steht; Fahne zeigt Hand-Zeiger
+  const hr = $('hud-bar').getBoundingClientRect();
+  ui.hudDim = ev.clientX >= hr.left - 8 && ev.clientX <= hr.right + 8 && ev.clientY >= hr.top - 8 && ev.clientY <= hr.bottom + 8;
+  canvas.classList.toggle('over-flag', overFlag(ev));
   ui.hoverPx = pointFromEvent(ev);
-  ui.hover = { col, row, ok: canBuild(state, col, row).ok };
+  ui.hover = inField ? { col, row, ok: canBuild(state, col, row).ok } : null;
 });
 // Bei Touch feuert pointerleave direkt nach dem Loslassen: dort die Vorschau behalten.
-canvas.addEventListener('pointerleave', (ev) => { if (ev.pointerType === 'mouse') ui.hover = null; });
+canvas.addEventListener('pointerleave', (ev) => { if (ev.pointerType === 'mouse') { ui.hover = null; ui.hudDim = false; } });
+// G5/C3: Klick auf die Wellenfahne im Rand startet die Welle (Box in Entwurfs-px, ±8 Spiel-px Spielraum)
+function overFlag(ev) {
+  const p = pointFromEvent(ev);
+  const K = TILE / PAINTED_STYLE.unit;
+  return !tileFromEvent(ev).inField && flagBoxes(state).some((f) => p.x >= f.box[0] * K - 8 && p.x <= f.box[2] * K + 8 && p.y >= f.box[1] * K - 8 && p.y <= f.box[3] * K + 8);
+}
 canvas.addEventListener('click', (ev) => {
+  if (!ui.aiming && !ui.buildType && overFlag(ev)) { doStartWave(); return; }
+  if (ui.aiming && !tileFromEvent(ev).inField) return; // Meteor nur aufs Feld, im Rand bleibt der Zielmodus
   const aim = aimStep(ui.aiming, 'click');
   if (aim.fire) {
     ui.aiming = false;
@@ -214,14 +382,23 @@ canvas.addEventListener('click', (ev) => {
     refreshUI();
     return;
   }
-  const { col, row } = tileFromEvent(ev);
-  const existing = towerAt(state, col, row);
+  const { col, row, inField } = tileFromEvent(ev);
+  if (!inField) { // Klick in den Rand: nichts bauen, nur Auswahl und Ring schließen
+    closeRings();
+    refreshUI();
+    return;
+  }
+  const touch = lastPointerType !== 'mouse';
+  // C4: ohne Baumodus trifft der Klick auch die Turmfigur (ragt über die Kachel nach oben)
+  const pt = pointFromEvent(ev);
+  const existing = ui.buildType ? towerAt(state, col, row) : pickTower(state.towers, pt.x, pt.y);
   if (existing) {
     ui.selectedTowerId = existing.id;
     ui.buildType = null;
     ui.pending = null;
+    ui.ring = null;
+    ui.ringPreview = null;
   } else if (ui.buildType) {
-    const touch = lastPointerType !== 'mouse';
     const step = buildTapStep(ui.pending, col, row, touch);
     ui.pending = step.pending;
     if (step.action === 'preview') {
@@ -235,8 +412,17 @@ canvas.addEventListener('click', (ev) => {
       else if (res.tower.overheated) flash(`${overheatNote(res.tower)} (neben Lava)`, 'info'); // B-030
       if (touch) ui.hover = null;
     }
+  } else if (ui.selectedTowerId !== null) {
+    closeRings(); // Turm-Ring offen: Klick daneben schließt
+  } else if (ui.ring && (touch || (ui.ring.col === col && ui.ring.row === row))) {
+    closeRings(); // Touch: Tipp daneben schließt; Maus: Klick auf dieselbe Kachel schließt
   } else {
-    ui.selectedTowerId = null;
+    const check = state.status === 'playing' ? canBuild(state, col, row) : { ok: false, reason: '' };
+    if (check.ok) openBuildRing(col, row); // Maus: anderer freier Platz -> Ring springt dorthin
+    else {
+      closeRings();
+      if (check.reason) flash(check.reason);
+    }
   }
   refreshUI();
 });
@@ -244,8 +430,17 @@ canvas.addEventListener('contextmenu', (ev) => {
   ev.preventDefault();
   ui.aiming = false;
   ui.buildType = null;
-  ui.selectedTowerId = null;
-  ui.pending = null;
+  closeRings();
+  refreshUI();
+});
+// Rechtsklick auf einen Ring schließt ihn ebenfalls; Tipp/Klick außerhalb von Ring und Spielfeld schließt
+for (const el of [shop, $('tower-info')]) {
+  el.addEventListener('contextmenu', (ev) => { ev.preventDefault(); closeRings(); refreshUI(); });
+}
+document.addEventListener('pointerdown', (ev) => {
+  if (!ui.ring && ui.selectedTowerId === null) return;
+  if (ev.target === canvas || ev.target.closest?.('.ring, #test-panel')) return;
+  closeRings();
   refreshUI();
 });
 
@@ -284,15 +479,14 @@ $('pause').addEventListener('click', doTogglePause);
 $('upgrade').addEventListener('click', doUpgrade);
 $('sell').addEventListener('click', doSell);
 $('target-mode').addEventListener('click', doCycleTarget);
-// Nach dem Schließen geht der Fokus auf die Shop-Karte des eben gezeigten Turmtyps: der ×-Knopf verschwindet,
-// sonst fiele der Fokus auf <body> und Tab begänne wieder oben. Die Karte gehört zum Turm und liegt in der
-// Tab-Reihenfolge. Das Spielfeld (Canvas) wäre nur mit tabindex fokussierbar und zeigte dann bei jedem
-// Tastendruck einen Fokusrahmen.
+// C4: Maus über bzw. Fokus auf Verbessern -> Canvas zeigt die Reichweite der nächsten Stufe (refreshUI setzt ui.upgradePreview)
+for (const [evName, on] of [['pointerenter', true], ['pointerleave', false], ['focus', true], ['blur', false]]) {
+  $('upgrade').addEventListener(evName, () => { ui.upgradeHover = on; refreshUI(); });
+}
 $('ti-close').addEventListener('click', () => {
-  const type = state.towers.find((t) => t.id === ui.selectedTowerId)?.type;
-  ui.selectedTowerId = null;
+  closeRings();
   refreshUI();
-  shop.querySelector(`.tower-btn[data-type="${type}"]`)?.focus({ preventScroll: true });
+  keepFocus(); // Fokus aufs Spielfeld, nicht verloren auf body
 });
 // Handy-Leiste (fest unten): echte Höhe als --tower-info-h, damit main genug Platz darunter lässt (auch bei großer Schrift)
 const towerInfo = $('tower-info');
@@ -302,7 +496,23 @@ if (typeof ResizeObserver === 'function') {
   }).observe(towerInfo);
 }
 $('restart').addEventListener('click', restart);
-$('zoom').addEventListener('click', toggleZoom);
+// ---------- C5: Startbildschirm (screens.js) ----------
+// Bei jedem Laden (außer Testseite) und über "Karten" am Spielende. Wahl = Karte merken und neu starten.
+const startScreen = mountStartScreen($('start-screen'), {
+  getProgress: () => progress,
+  allOpen: TEST_MODE,
+  currentMap: () => (TEST_MODE ? state.mapId : startMap(progress)),
+  onPick: (id) => {
+    mapId = id;
+    progress.lastMap = id;
+    saveProgress(getStorage(), progress);
+    restart();
+  },
+});
+$('to-maps').addEventListener('click', () => startScreen.show(true));
+if (!TEST_MODE) startScreen.show();
+// C6 Handy: Feld wischen, Zoom-Knopf Nah/Übersicht (viewport.js)
+mountViewport({ board: $('app'), stage: document.querySelector('.stage'), canvas, zoomBtn: $('zoom'), zoomLabel: $('zoom-label') });
 $('sound').addEventListener('click', toggleSound);
 
 function toggleSound() {
@@ -311,13 +521,6 @@ function toggleSound() {
   if (ui.soundOn) unlockAudio(); // Klick bzw. Taste ist die Nutzeraktion
   saveSoundOn(soundStorage(), ui.soundOn);
   refreshUI();
-}
-
-// Zoom (mobil): Spielfeld auf doppelte Breite, im Rahmen verschiebbar. Größere Kacheln = treffsicheres Tippen.
-function toggleZoom() {
-  const on = document.querySelector('.board').classList.toggle('zoomed');
-  $('zoom').setAttribute('aria-pressed', String(on));
-  $('zoom-label').textContent = on ? 'Normal' : 'Zoom';
 }
 
 function doStartWave() {
@@ -388,6 +591,7 @@ function doSell() {
   sellTower(state, ui.selectedTowerId);
   ui.selectedTowerId = null;
   refreshUI();
+  keepFocus();
 }
 function restart() {
   // Gesperrte Karte: auf die erste Karte zurückfallen.
@@ -395,18 +599,60 @@ function restart() {
   state = createGame({ mapId });
   resultSaved = false;
   resultText = [];
-  Object.assign(ui, { buildType: null, selectedTowerId: null, pending: null, aiming: false, hoverPx: null, speed: SPEED_STEPS[0] });
+  Object.assign(ui, { buildType: null, selectedTowerId: null, pending: null, aiming: false, hoverPx: null, speed: SPEED_STEPS[0], ring: null, ringPreview: null, upgradeHover: false, upgradePreview: null });
   refreshUI();
 }
 
+// C4 Tastatur auf dem Spielfeld (Canvas hat tabindex): Pfeiltasten bewegen die Fokus-Kachel, Enter öffnet dort den Ring.
+// Leertaste bleibt Wellenstart. Liefert true, wenn die Taste verbraucht ist.
+function fieldKey(ev) {
+  if (ev.target !== canvas || state.status !== 'playing') return false;
+  const base = ui.hover ?? ui.ring ?? (ui.selectedTowerId !== null ? state.towers.find((x) => x.id === ui.selectedTowerId) : null);
+  const next = moveFocusTile(base ? { col: base.col, row: base.row } : null, ev.key);
+  if (next) {
+    ev.preventDefault();
+    closeRings();
+    ui.hover = { ...next, ok: canBuild(state, next.col, next.row).ok };
+    refreshUI();
+    return true;
+  }
+  if (ev.key !== 'Enter' || !ui.hover) return false;
+  ev.preventDefault();
+  const { col, row } = ui.hover;
+  const existing = towerAt(state, col, row);
+  const check = existing ? { ok: true } : canBuild(state, col, row);
+  if (existing) Object.assign(ui, { selectedTowerId: existing.id, buildType: null, pending: null, ring: null, ringPreview: null });
+  else if (check.ok) openBuildRing(col, row);
+  else flash(check.reason);
+  refreshUI();
+  // Fokus auf den ersten Ring-Knopf
+  const first = existing ? [...document.querySelectorAll('#tower-info .ring-acts .rbtn, #ti-close')].find((b) => !b.disabled) : shop.querySelector('.tower-btn');
+  if (check.ok) first?.focus({ preventScroll: true });
+  return true;
+}
+// Ring zu, Fokus lag darin (×, Esc, Bauen, Verkaufen): Fokus zurück aufs Spielfeld statt verloren auf body
+function keepFocus() {
+  const a = document.activeElement;
+  if (!a || a === document.body || a.closest?.('.ring[hidden]')) canvas.focus({ preventScroll: true });
+}
+
 window.addEventListener('keydown', (ev) => {
+  if (startScreen.handleKey(ev)) return; // C5: Startbildschirm offen
+  if (fieldKey(ev)) return;
   const key = ev.key.toLowerCase();
+  // Enter/Leertaste auf einem Ringknopf löst den Knopf aus (nicht den Wellenstart)
+  if ((key === ' ' || key === 'enter') && ev.target.closest?.('.ring')) return;
   const type = Object.keys(TOWER_TYPES).find((t) => TOWER_TYPES[t].key === key);
   const ability = Object.keys(ABILITIES).find((a) => ABILITIES[a].key === key);
-  if (type) selectBuild(type);
+  if (type && ui.ring) buildFromRing(type); // C4: Bau-Ring offen -> diesen Typ auf der Ringkachel bauen
+  else if (type) selectBuild(type);
   else if (ability) doAbility(ability);
   else if (key === ' ') { ev.preventDefault(); if (!ev.repeat) doStartWave(); } // B-005: gehaltene Taste startet nicht mehrfach
-  else if (key === 'escape') { ui.aiming = false; ui.buildType = null; ui.selectedTowerId = null; ui.pending = null; refreshUI(); }
+  else if (key === 'escape') {
+    const inRing = document.activeElement?.closest?.('.ring');
+    ui.aiming = false; ui.buildType = null; closeRings(); refreshUI();
+    if (inRing) keepFocus();
+  }
   else if (key === 'u') doUpgrade();
   else if (key === 's') doSell();
   else if (key === 't') doCycleTarget();
@@ -418,20 +664,19 @@ window.addEventListener('keydown', (ev) => {
 // ---------- HUD ----------
 function refreshUI() {
   if (state.status !== 'playing' || state.paused) ui.aiming = false; // Zielmodus nur im laufenden Spiel
-  $('gold').textContent = state.gold;
+  $('gold').textContent = state.gold.toLocaleString('de-DE');
   $('lives').textContent = state.lives;
-  renderHearts($('hearts'), state.lives);
   $('lives-box').classList.toggle('low', state.status === 'playing' && state.lives <= LOW_LIVES);
-  $('wave').textContent = `${state.wave} / ${MAX_WAVES}`;
-  $('speed-label').textContent = `Tempo ×${ui.speed}`;
-  $('pause-hint').hidden = !state.paused;
+  setHtml($('wave'), `${state.wave}<small> / ${MAX_WAVES}</small>`);
+  $('speed-label').textContent = `×${ui.speed}`;
+  $('speed').setAttribute('aria-label', `Tempo ×${ui.speed}`);
+  $('pause').dataset.paused = String(state.paused);
+  $('hud-bar').classList.toggle('dim', ui.hudDim);
   // Deutliches Banner über dem Spielfeld (nur Anzeige, Bauen bleibt möglich)
   $('pause-banner').hidden = !state.paused;
   $('pause-label').textContent = state.paused ? 'Weiter' : 'Pause';
   $('sound-label').textContent = ui.soundOn ? 'Ton an' : 'Ton aus';
   $('sound').setAttribute('aria-pressed', String(ui.soundOn));
-  if ($('sound-icon').dataset.icon !== (ui.soundOn ? 'sound' : 'soundOff')) setIcon($('sound-icon'), ui.soundOn ? 'sound' : 'soundOff');
-  if ($('pause-icon').dataset.icon !== (state.paused ? 'play' : 'pause')) setIcon($('pause-icon'), state.paused ? 'play' : 'pause');
   mapSelect.disabled = state.wave !== 0 || state.waveActive;
   mapSelect.value = state.mapId;
   // B-005: Während einer Welle bleibt der Knopf bedienbar (vorzeitiger Start mit Bonus), bis zur letzten Welle
@@ -439,6 +684,12 @@ function refreshUI() {
   $('start-wave').disabled = sb.disabled;
   $('start-label').textContent = sb.label;
   $('start-key').hidden = !sb.showKey;
+  $('start-wave').classList.toggle('ready', sb.showKey && !state.waveActive);
+  // C-Abnahme 5: schmale Füllung unten im Knopf = Anteil besiegter Gegner der laufenden Welle
+  const wp = waveProgress(state, ui.wavePeak);
+  ui.wavePeak = wp.peak;
+  $('start-wave').classList.toggle('running', state.waveActive);
+  $('start-wave').style.setProperty('--wave-fill', wp.fill.toFixed(3));
 
   // Vorschau der nächsten Welle (nur solange keine Welle läuft)
   const showPreview = !state.waveActive && state.status === 'playing' && state.wave < MAX_WAVES;
@@ -453,9 +704,11 @@ function refreshUI() {
     const btn = abilityBtns[id];
     const v = abilityView(def, state.abilities[id].uses, abilityCooldownLeft(state, id));
     btn.setAttribute('aria-label', v.aria);
+    if (btn.dataset.state === 'charging' && v.state === 'ready') { btn.classList.remove('pop'); void btn.offsetWidth; btn.classList.add('pop'); }
     btn.dataset.state = v.state;
     btn.style.setProperty('--fill', v.fill.toFixed(3));
     btn.querySelector('.ab-badge').textContent = v.badge;
+    btn.querySelector('.ab-num').textContent = v.state === 'charging' ? String(Math.ceil(abilityCooldownLeft(state, id))) : '';
     btn.disabled = v.state !== 'ready' || state.status !== 'playing';
     btn.classList.toggle('aiming', id === 'meteor' && ui.aiming);
     // B-112: Meteor-Schaden wächst mit der Welle, der Tooltip zeigt den aktuellen Wert
@@ -465,32 +718,39 @@ function refreshUI() {
     }
   }
 
-  for (const btn of shop.children) {
-    const def = TOWER_TYPES[btn.dataset.type];
-    btn.classList.toggle('active', ui.buildType === btn.dataset.type);
-    btn.classList.toggle('poor', state.gold < def.cost);
+  // C4 Bau-Ring: nur im laufenden Spiel und solange die Kachel frei ist (z. B. nach Neustart zu)
+  if (ui.ring && (state.status !== 'playing' || !canBuild(state, ui.ring.col, ui.ring.row).ok)) { ui.ring = null; ui.ringPreview = null; }
+  shop.hidden = !ui.ring;
+  for (const v of buildRingView(state.gold)) {
+    const btn = shop.querySelector(`.tower-btn[data-type="${v.type}"]`);
+    btn.classList.toggle('active', ui.buildType === v.type);
+    btn.classList.toggle('poor', v.poor);
+    btn.setAttribute('aria-disabled', String(v.poor));
+    btn.setAttribute('aria-label', v.label);
   }
+  if (ui.ring) placeRing(shop, ui.ring.col, ui.ring.row);
 
+  // C4 Turm-Ring (Handy: feste Leiste unten)
   const t = state.towers.find((x) => x.id === ui.selectedTowerId);
   $('tower-info').hidden = !t;
+  ui.upgradePreview = null;
   if (t) {
     const s = towerStats(t, state.modifiers);
-    const up = upgradeCost(t);
-    $('ti-name').textContent = `${s.name} (Stufe ${t.level})`;
+    const v = towerRingView(t, state.gold, state.modifiers);
+    $('ti-name').textContent = v.name;
     const heat = overheatNote(t); // B-030: steht in der Werte-Zeile, damit es auch auf dem Handy sichtbar bleibt
     $('ti-stats').textContent = `Schaden ${Math.round(s.damage)} · Reichweite ${s.range.toFixed(1)} · ${(1 / s.rate).toFixed(1)} Schuss/s${heat ? ` · ${heat}` : ''}`;
     $('ti-special').textContent = s.special?.text ?? '';
-    // Knöpfe (B-056): Beschriftung und Preis als eigene Zeilen-Teile, Klammern und Kürzel
-    // fallen auf dem Handy weg (CSS); der zugängliche Name bleibt vollständig (aria-label).
-    const sell = sellValue(t);
-    const mode = TARGET_MODE_NAMES[t.targetMode];
-    setHtml($('upgrade'), up === null ? 'Max. Stufe' : actionHtml('Verbessern', `${up} ${COIN()}`, 'U'));
-    $('upgrade').setAttribute('aria-label', up === null ? 'Max. Stufe' : `Verbessern für ${up} Gold (U)`);
-    $('upgrade').disabled = up === null || state.gold < up;
-    setHtml($('target-mode'), `<span class="act-label">Ziel: ${mode}</span> <span class="key">(T)</span>`);
-    $('target-mode').setAttribute('aria-label', `Ziel: ${mode} (T)`);
-    setHtml($('sell'), actionHtml('Verkaufen', `+${sell} ${COIN()}`, 'S'));
-    $('sell').setAttribute('aria-label', `Verkaufen für ${sell} Gold (S)`);
+    // Knöpfe: Symbol und Preis bzw. Regel; der zugängliche Name bleibt vollständig (aria-label mit Kürzel)
+    setHtml($('upgrade'), v.upgrade.max ? `${RING_SVG.max}<span class="cap">Max.</span>` : `${RING_SVG.upgrade}<span class="cap act-cost">${v.upgrade.cost} ${COIN()}</span>`);
+    $('upgrade').setAttribute('aria-label', v.upgrade.label);
+    $('upgrade').disabled = v.upgrade.disabled;
+    setHtml($('target-mode'), `${RING_SVG.target}<span class="cap">${v.target.mode}</span>`);
+    $('target-mode').setAttribute('aria-label', v.target.label);
+    setHtml($('sell'), `${RING_SVG.sell}<span class="cap act-cost">+${v.sell.value} ${COIN()}</span>`);
+    $('sell').setAttribute('aria-label', v.sell.label);
+    if (ui.upgradeHover) ui.upgradePreview = v.upgradeRange;
+    placeRing($('tower-info'), t.col, t.row);
   }
 
   $('message').textContent = ui.messageTtl > 0 ? ui.message : '';
@@ -498,20 +758,17 @@ function refreshUI() {
 
   const over = $('overlay');
   over.hidden = state.status === 'playing';
-  // B-096: Trophäe bzw. Totenkopf vor dem Text (nur Schmuck, alt leer)
-  if (state.status === 'won') setHtml($('overlay-title'), `${iconHtml('trophy', 'result')} Gewonnen!`);
-  if (state.status === 'lost') setHtml($('overlay-title'), `${iconHtml('skull', 'result')} Verloren`);
+  // C5: Plakette mit Band (Titel) und erreichten Sternen dieses Spiels
+  if (state.status !== 'playing') {
+    const end = endView(state.status, starsFor(state.status, state.lives));
+    $('overlay-title').textContent = end.title;
+    $('end-ribbon-band').setAttribute('fill', end.ribbon);
+    setHtml($('end-stars'), end.showStars ? starsHtml(end.stars, 52) : '');
+    $('end-stars').setAttribute('aria-label', end.showStars ? `${end.stars} von ${STAR_COUNT} Sternen` : '');
+  }
   $('overlay-stats').textContent = `Welle ${state.wave} · ${state.kills} Gegner besiegt`;
   if (state.status !== 'playing' && !resultSaved) saveResult();
   renderResultLines($('overlay-progress'), resultText);
-}
-
-// Herzreihe als Icons (gefüllt/leer); nur neu bauen, wenn sich die Lebenszahl ändert.
-function renderHearts(el, lives) {
-  const key = String(lives);
-  if (el.dataset.key === key) return;
-  el.dataset.key = key;
-  setHtml(el, heartStates(lives).map((full) => iconHtml(full ? 'heart' : 'heartEmpty', 'heart')).join(''));
 }
 
 // Erste Zeile normal, weitere als hervorgehobene Meldungen (nur neu bauen, wenn sich etwas ändert).
@@ -554,7 +811,9 @@ function frame(now) {
   // B-116/B-118: Musik der Karte laden/starten und je nach Spielstatus ein- oder ausblenden
   updateMusic({ status: state.status, paused: state.paused, mapId: state.mapId });
   ui.messageTtl -= dt;
-  render(ctx, state, ui);
+  ctx.setTransform(view.sx, 0, 0, view.sy, 0, 0); // HiDPI: Canvas-Einheiten (VIEW_WIDTH x VIEW_HEIGHT) -> Geräte-px
+  renderView(ctx, state, ui);
+  drawBackdrop();
   hudTimer -= dt;
   if (hudTimer <= 0) { refreshUI(); hudTimer = 0.1; }
   requestAnimationFrame(frame);

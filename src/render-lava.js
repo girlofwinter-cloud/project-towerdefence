@@ -1,4 +1,5 @@
-// Lavafluss, Lavatümpel und Steinbrücke des Vulkans (B-030). Nur Zeichnen, nur im Hintergrund-Cache (bgCanvas), statisch.
+// Lavafluss, Lavatümpel und Steinbrücke des Vulkans (B-030). Nur Zeichnen, im Hintergrund-Cache (bgCanvas), statisch;
+// dazu das leichte Glühen über dem gemalten Hintergrund (lavaGlowSpots/drawLavaGlow, je Frame).
 // Kacheln kommen aus MAPS.<id> (lavaRiver, lavaPools, bridges), Farben und Maße aus LAVA_STYLE (config.js).
 // Geometrie-Helfer (Flusslinie, Kurven, Umriss) teilt sich die Lava mit dem Wasser (render-water.js).
 // Deterministisch (tileRand), keine Verläufe, kein shadowBlur, keine arc/ellipse (wie das Wasser).
@@ -197,4 +198,58 @@ function drawStoneDeck(ctx, B) {
       ctx.strokeRect(a, y, b - a, B.rail);
     }
   }
+}
+
+// ---------- Glühen über dem gemalten Hintergrund (je Frame) ----------
+// Flecken einmal je Karte: Mitten zwischen benachbarten Flusspunkten (liegen auf der geglätteten Linie) im Feld,
+// nicht auf der Brücke, dazu die Tümpelkacheln. phase wächst den Fluss hinab (Puls läuft mit der Strömung).
+export function lavaGlowSpots(g) {
+  if (!g) return [];
+  const P = L.pulse;
+  const spots = [];
+  for (let i = 0; i + 1 < g.river.length; i++) {
+    const [a, b] = [g.river[i], g.river[i + 1]];
+    const x = (a[0] + b[0]) / 2, y = (a[1] + b[1]) / 2;
+    if (y < 0 || y > HEIGHT) continue;
+    if (g.bridges.some((br) => Math.hypot(br.x - x, br.y - y) < P.bridgeGap)) continue;
+    spots.push({ x, y, r: P.radius, phase: i * P.phaseStep });
+  }
+  g.pools.forEach((p, j) => p.discs.forEach(([x, y], k) => spots.push({ x, y, r: P.radius * 0.8, phase: (j * 3 + k) * 1.3 })));
+  return spots;
+}
+
+// Deckkraft je Flecken zur Zeit t (s): pulsiert zwischen alpha[0] und alpha[1]
+export function lavaGlowAlpha(spot, t) {
+  const [lo, hi] = L.pulse.alpha;
+  return lo + (hi - lo) * (0.5 + 0.5 * Math.sin(t * L.pulse.speed - spot.phase));
+}
+
+// Weicher Lichtfleck als Bild (einmal), danach je Flecken nur drawImage
+let glowSprite = null;
+function sprite() {
+  if (glowSprite || typeof document === 'undefined') return glowSprite;
+  const R = 32;
+  const c = document.createElement('canvas');
+  c.width = c.height = 2 * R;
+  const x = c.getContext('2d');
+  const gr = x.createRadialGradient(R, R, 0, R, R, R);
+  gr.addColorStop(0, `rgba(${L.pulse.color},1)`);
+  gr.addColorStop(0.5, `rgba(${L.pulse.color},0.45)`);
+  gr.addColorStop(1, `rgba(${L.pulse.color},0)`);
+  x.fillStyle = gr;
+  x.fillRect(0, 0, 2 * R, 2 * R);
+  return (glowSprite = c);
+}
+
+// Zeichnet das Glühen (additiv). Ohne DOM (Node) nichts.
+export function drawLavaGlow(ctx, spots, t) {
+  const img = sprite();
+  if (!img || !spots.length) return;
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
+  for (const s of spots) {
+    ctx.globalAlpha = lavaGlowAlpha(s, t);
+    ctx.drawImage(img, s.x - s.r, s.y - s.r, 2 * s.r, 2 * s.r);
+  }
+  ctx.restore();
 }

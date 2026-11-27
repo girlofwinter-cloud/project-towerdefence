@@ -193,3 +193,28 @@ export function snowCap(ctx, x, apexY, w, H, color, shade) {
   ctx.closePath();
   ctx.fill();
 }
+
+// Stil 1 (G8): Stern und Zickzack aus dem Entwurf (star()/zig(), Z.237f), als Pfad ohne beginPath/Allokation.
+// Stern: n Zacken, Außenradius r1, Innenradius r2, Drehung rot (rad); schließt den Pfad.
+export function starPath(ctx, x, y, r1, r2, n, rot = 0) {
+  for (let i = 0; i < n * 2; i++) {
+    const r = i % 2 ? r2 : r1;
+    const a = rot + (Math.PI * i) / n;
+    if (i === 0) ctx.moveTo(x + Math.cos(a) * r, y + Math.sin(a) * r);
+    else ctx.lineTo(x + Math.cos(a) * r, y + Math.sin(a) * r);
+  }
+  ctx.closePath();
+}
+
+// Zickzack von (ax, ay) nach (bx, by) mit n Abschnitten und Ausschlag amp; sign kehrt die Zacken um.
+// move: true beginnt mit moveTo (sonst lineTo, zum Verketten mehrerer Abschnitte).
+export function zigPath(ctx, ax, ay, bx, by, n, amp, move = true, sign = 1) {
+  const dx = bx - ax, dy = by - ay, L = Math.hypot(dx, dy) || 1, nx = -dy / L, ny = dx / L;
+  for (let i = 0; i <= n; i++) {
+    const t = i / n;
+    const w = i === 0 || i === n ? 0 : sign * (i % 2 ? 1 : -1) * amp * (0.6 + (0.4 * ((i * 7) % 3)) / 2);
+    const x = ax + dx * t + nx * w, y = ay + dy * t + ny * w;
+    if (i === 0 && move) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  }
+}

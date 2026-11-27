@@ -2,80 +2,120 @@
 <html lang="de">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>Project TowerDefence</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <header>
-    <h1><img class="ico ico-title" data-icon="castle" alt="" aria-hidden="true"> Project TowerDefence</h1>
-  </header>
-
-  <main>
-    <div class="board">
-      <div class="hud" id="hud-bar">
-        <span class="hud-item" title="Gold"><img class="ico ico-hud" data-icon="gold" alt="Gold"><b id="gold">0</b></span>
-        <span class="hud-item" title="Welle"><img class="ico ico-hud" data-icon="wave" alt="Welle"><b id="wave">0</b></span>
-        <span class="hud-item" id="lives-box" title="Leben"><span id="hearts"></span><b id="lives">0</b></span>
-        <span id="pause-hint" hidden><img class="ico ico-hud" data-icon="pause" alt="Pause"></span>
-      </div>
-      <div class="stage">
-        <div class="scroller">
-          <canvas id="game" aria-label="Spielfeld"></canvas>
-        </div>
-        <div id="overlay" hidden>
-          <h2 id="overlay-title"></h2>
+  <!-- Stil 1 Vollbild (C1): ein Bildschirm, kein Scrollen. Lage rechnet style.css (--u). -->
+  <div class="board" id="app">
+    <canvas id="backdrop" aria-hidden="true"></canvas>
+    <div class="stage">
+      <canvas id="game" tabindex="0" aria-label="Spielfeld (Pfeiltasten wählen eine Kachel, Enter öffnet das Ringmenü)"></canvas>
+      <!-- C5: Spielende-Plakette (Band mit Titel, Sterne, Werte, Neustart und Kartenwahl) -->
+      <div id="overlay" hidden>
+        <div class="end-card plq">
+          <svg class="end-ribbon" width="560" height="70" viewBox="0 0 560 70" role="heading" aria-level="2" aria-labelledby="overlay-title">
+            <path id="end-ribbon-band" d="M20 10 H540 L524 35 L540 60 H20 L36 35 Z" fill="#c4452f" stroke="#2b1a10" stroke-width="4" stroke-linejoin="round"/>
+            <text id="overlay-title" x="280" y="37" text-anchor="middle" dominant-baseline="middle" fill="#fff3d2" stroke="#2b1a10" stroke-width="6" stroke-linejoin="round" paint-order="stroke"></text>
+          </svg>
+          <div class="end-stars" id="end-stars" role="img"></div>
           <p id="overlay-stats"></p>
           <p id="overlay-progress"></p>
-          <button id="restart">Neues Spiel</button>
-        </div>
-        <p id="message" role="status"></p>
-        <div id="pause-banner" hidden><img class="ico ico-button" data-icon="pause" alt=""> PAUSE<span class="key"> – P drücken zum Fortsetzen</span><span class="touch-hint">Tippe auf Weiter</span></div>
-      </div>
-      <!-- Turm-Panel unter dem Spielfeld (B-057), auf dem Handy feste Leiste am unteren Rand (B-056) -->
-      <div id="tower-info" hidden>
-        <h3 id="ti-name"></h3>
-        <button id="ti-close" aria-label="Turm-Panel schließen">×</button>
-        <p id="ti-stats"></p>
-        <p id="ti-special"></p>
-        <div class="ti-actions">
-          <button id="target-mode"></button>
-          <button id="upgrade"></button>
-          <button id="sell"></button>
+          <div class="end-actions">
+            <button id="restart" class="wbtn wbtn-gold">Neues Spiel</button>
+            <button id="to-maps" class="wbtn">Karten</button>
+          </div>
         </div>
       </div>
+      <!-- C4 Ringmenü: Bau-Ring auf freier Kachel (Knöpfe baut main.js), Turm-Ring auf einem Turm. Lage setzt main.js (--rx/--ry/--R). -->
+      <div id="shop" class="ring ring-build" role="menu" aria-label="Turm bauen" hidden>
+        <span class="ring-yard" aria-hidden="true"></span><span class="ring-dot" aria-hidden="true"></span>
+      </div>
+      <div id="tower-info" class="ring ring-tower" role="dialog" aria-labelledby="ti-name" hidden>
+        <span class="ring-yard" aria-hidden="true"></span>
+        <div class="ring-acts">
+          <button id="upgrade" class="rbtn rbtn-gold" style="--a:-90deg"></button>
+          <button id="target-mode" class="rbtn" style="--a:0deg"></button>
+          <button id="sell" class="rbtn rbtn-red" style="--a:180deg"></button>
+        </div>
+        <button id="ti-close" class="rbtn rbtn-small" style="--a:90deg" aria-label="Turm-Panel schließen">×</button>
+        <div class="ring-info plq"><h3 id="ti-name"></h3><p id="ti-stats"></p><p id="ti-special"></p></div>
+      </div>
+      <p id="message" role="status"></p>
+      <div id="pause-banner" hidden>PAUSE<span class="key"> – P drücken zum Fortsetzen</span><span class="touch-hint">Tippe auf Weiter</span></div>
     </div>
 
-    <aside>
-      <div class="controls">
-        <button id="start-wave" class="primary"><span id="start-label">Welle 1 starten</span> <span class="key" id="start-key">(Leertaste)</span></button>
-        <button id="pause"><img class="ico ico-button" id="pause-icon" data-icon="pause" alt=""><span id="pause-label">Pause</span> <span class="key">(P)</span></button>
-        <button id="speed"><span id="speed-label">Tempo ×1</span> <span class="key">(F)</span></button>
-        <button id="sound" aria-pressed="true" title="Ton an/aus (M)"><img class="ico ico-button" id="sound-icon" data-icon="sound" alt=""><span id="sound-label">Ton an</span> <span class="key">(M)</span></button>
-        <label class="map-pick"><img class="ico ico-button" data-icon="map" alt=""> Karte <select id="map-select"></select></label>
-        <button id="zoom" aria-pressed="false"><img class="ico ico-button" data-icon="zoom" alt=""><span id="zoom-label">Zoom</span></button>
-      </div>
-      <div class="abilities" id="abilities"></div>
-      <p id="wave-preview"></p>
-      <h3>Türme</h3>
-      <div id="shop"></div>
-      <details class="help" open>
-        <summary>Steuerung</summary>
-        <ul>
-          <li><kbd>1</kbd>–<kbd>5</kbd> Turm wählen, dann aufs Feld klicken</li>
-          <li><kbd>Leertaste</kbd> nächste Welle starten</li>
-          <li><kbd>P</kbd> Pause / Weiter</li>
-          <li><kbd>F</kbd> Spieltempo wechseln</li>
-          <li><kbd>M</kbd> Ton an / aus</li>
-          <li>Turm anklicken: <kbd>U</kbd> verbessern, <kbd>S</kbd> verkaufen, <kbd>T</kbd> Zielregel</li>
-          <li><kbd>Q</kbd> Meteor (danach aufs Feld klicken), <kbd>W</kbd> Kälteschock, <kbd>E</kbd> Notfall-Reparatur</li>
-          <li><kbd>Esc</kbd> / Rechtsklick: abbrechen</li>
-        </ul>
-      </details>
-    </aside>
-  </main>
+    <!-- C2: Holzleiste Gold | Welle | Leben (nur Anzeige, Klicks gehen durch) -->
+    <div class="hud plq" id="hud-bar">
+      <span class="hud-item" id="gold-box" title="Gold">
+        <svg class="hud-ico" width="40" height="40" viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="15" fill="#f2c14e" stroke="#2b1a10" stroke-width="3.5"/><circle cx="20" cy="20" r="9" fill="none" stroke="#b9851d" stroke-width="3"/><path d="M13 12 Q18 8 24 10" stroke="#fff3d2" stroke-width="3" fill="none" stroke-linecap="round"/></svg>
+        <span class="sr">Gold</span><b id="gold" class="num">0</b>
+      </span>
+      <i class="sep" aria-hidden="true"></i>
+      <span class="hud-item" id="wave-box" title="Welle">
+        <svg class="hud-ico" width="36" height="36" viewBox="0 0 36 36" aria-hidden="true"><path d="M8 4 V32" stroke="#2b1a10" stroke-width="6" stroke-linecap="round"/><path d="M8 4 V32" stroke="#e8c185" stroke-width="2.5" stroke-linecap="round"/><path d="M10 6 H30 L25 12 L30 18 H10 Z" fill="#d6483a" stroke="#2b1a10" stroke-width="3" stroke-linejoin="round"/></svg>
+        <span class="sr">Welle</span><b id="wave" class="num">0</b>
+      </span>
+      <i class="sep" aria-hidden="true"></i>
+      <span class="hud-item" id="lives-box" title="Leben">
+        <svg class="hud-ico" width="38" height="36" viewBox="0 0 38 36" aria-hidden="true"><path d="M19 32 C4 21 2 12 8 7 C13 3 18 6 19 11 C20 6 25 3 30 7 C36 12 34 21 19 32 Z" fill="#e0393e" stroke="#2b1a10" stroke-width="3.5" stroke-linejoin="round"/><path d="M9 11 Q12 8 15 9" stroke="#ffb4b0" stroke-width="3" fill="none" stroke-linecap="round"/></svg>
+        <span class="sr">Leben</span><b id="lives" class="num">0</b>
+      </span>
+    </div>
 
-  <footer>Entwickelt mit einer Claude-Code-Agenten-Pipeline 🤖</footer>
+    <!-- C2: runde Knöpfe oben rechts (Hilfe, Ton, Tempo, Pause) -->
+    <div class="top-buttons">
+      <details class="help">
+        <summary class="rb" aria-label="Steuerung"><span class="rb-q" aria-hidden="true">?</span></summary>
+        <div class="help-pop plq">
+          <ul>
+            <li>Freies Feld anklicken: Turm im Ring wählen · <kbd>1</kbd>–<kbd>5</kbd> Turm wählen, dann aufs Feld klicken</li>
+            <li><kbd>Leertaste</kbd> nächste Welle starten</li>
+            <li><kbd>P</kbd> Pause / Weiter · <kbd>F</kbd> Tempo · <kbd>M</kbd> Ton</li>
+            <li>Turm anklicken: <kbd>U</kbd> verbessern, <kbd>S</kbd> verkaufen, <kbd>T</kbd> Zielregel</li>
+            <li><kbd>Q</kbd> Meteor (danach aufs Feld klicken), <kbd>W</kbd> Kälteschock, <kbd>E</kbd> Notfall-Reparatur</li>
+            <li><kbd>Esc</kbd> / Rechtsklick: abbrechen</li>
+          </ul>
+        </div>
+      </details>
+      <button id="sound" class="rb" aria-pressed="true" title="Ton an/aus (M)">
+        <svg class="ic-on" width="40" height="40" viewBox="0 0 40 40" aria-hidden="true"><path d="M8 16 H14 L22 9 V31 L14 24 H8 Z" fill="#fff3d2" stroke="#2b1a10" stroke-width="2.5" stroke-linejoin="round"/><path d="M27 14 Q32 20 27 26 M31 10 Q38 20 31 30" fill="none" stroke="#2b1a10" stroke-width="2.5" stroke-linecap="round"/></svg>
+        <svg class="ic-off" width="40" height="40" viewBox="0 0 40 40" aria-hidden="true"><path d="M8 16 H14 L22 9 V31 L14 24 H8 Z" fill="#fff3d2" stroke="#2b1a10" stroke-width="2.5" stroke-linejoin="round"/><path d="M27 15 L35 25 M35 15 L27 25" stroke="#2b1a10" stroke-width="3.5" stroke-linecap="round"/></svg>
+        <span class="sr" id="sound-label">Ton an</span><span class="key sr">(M)</span>
+      </button>
+      <button id="speed" class="rb" title="Tempo (F)">
+        <svg width="40" height="40" viewBox="0 0 40 40" aria-hidden="true"><path d="M8 11 L20 20 L8 29 Z M20 11 L32 20 L20 29 Z" fill="#fff3d2" stroke="#2b1a10" stroke-width="2.5" stroke-linejoin="round"/></svg>
+        <span class="rb-badge" id="speed-label">×1</span><span class="key sr">(F)</span>
+      </button>
+      <button id="pause" class="rb" title="Pause (P)">
+        <svg class="ic-pause" width="40" height="40" viewBox="0 0 40 40" aria-hidden="true"><rect x="10" y="9" width="7" height="22" rx="2" fill="#fff3d2" stroke="#2b1a10" stroke-width="2.5"/><rect x="23" y="9" width="7" height="22" rx="2" fill="#fff3d2" stroke="#2b1a10" stroke-width="2.5"/></svg>
+        <svg class="ic-play" width="40" height="40" viewBox="0 0 40 40" aria-hidden="true"><path d="M13 9 L31 20 L13 31 Z" fill="#fff3d2" stroke="#2b1a10" stroke-width="2.5" stroke-linejoin="round"/></svg>
+        <span class="sr" id="pause-label">Pause</span><span class="key sr">(P)</span>
+      </button>
+      <button id="zoom" class="rb" aria-pressed="false"><svg class="ic-out" width="40" height="40" viewBox="0 0 40 40" aria-hidden="true"><circle cx="17" cy="17" r="9" fill="#fff3d2" stroke="#2b1a10" stroke-width="2.5"/><path d="M24 24 L31 31" stroke="#2b1a10" stroke-width="4" stroke-linecap="round"/><path d="M13 17 H21" stroke="#2b1a10" stroke-width="2.5" stroke-linecap="round"/></svg><svg class="ic-in" width="40" height="40" viewBox="0 0 40 40" aria-hidden="true"><circle cx="17" cy="17" r="9" fill="#fff3d2" stroke="#2b1a10" stroke-width="2.5"/><path d="M24 24 L31 31" stroke="#2b1a10" stroke-width="4" stroke-linecap="round"/><path d="M13 17 H21 M17 13 V21" stroke="#2b1a10" stroke-width="2.5" stroke-linecap="round"/></svg><span class="sr" id="zoom-label">Übersicht</span></button>
+    </div>
+
+    <!-- C3: Fähigkeiten (Knöpfe baut main.js), Wellenstart, Vorschau -->
+    <div class="abilities plq" id="abilities"></div>
+    <!-- C-Abnahme 3: Kartenwahl (nur vor Welle 1) im oberen Band -->
+    <label class="map-pick plq"><span>Karte</span> <select id="map-select"></select></label>
+    <div class="wave-row">
+      <button id="start-wave" class="wave-btn" title="Nächste Welle starten (Leertaste)"><span id="start-label">Welle 1 starten</span> <span class="key" id="start-key">(Leertaste)</span></button>
+      <p id="wave-preview" class="plq"></p>
+    </div>
+
+    <!-- C5: Startbildschirm mit Kartenkarten (screens.js baut die Karten) -->
+    <section id="start-screen" aria-labelledby="start-title" hidden>
+      <h1 id="start-title" class="start-title plq">
+        <svg class="start-castle" width="64" height="72" viewBox="0 -20 108 146" aria-hidden="true"><path d="M10 122 V50 H30 V36 H40 V50 H58 V122 Z" fill="#b9b2a6" stroke="#2b1a10" stroke-width="5" stroke-linejoin="round"/><path d="M22 122 V90 a14 16 0 0 1 28 0 V122" fill="#33211a" stroke="#2b1a10" stroke-width="3"/><path d="M56 122 V30 H72 V20 H80 V30 H96 V122 Z" fill="#cfc8bb" stroke="#2b1a10" stroke-width="5" stroke-linejoin="round"/><path d="M70 30 L84 -4 L98 30 Z" fill="#c4452f" stroke="#2b1a10" stroke-width="4" stroke-linejoin="round"/><rect x="76" y="48" width="8" height="18" rx="4" fill="#33211a"/><path d="M84 -4 V-18" stroke="#2b1a10" stroke-width="3"/><path d="M84 -18 L104 -12 L84 -6 Z" fill="#3a7bd5" stroke="#2b1a10" stroke-width="2.5" stroke-linejoin="round"/></svg>
+        <span>Project TowerDefence</span>
+      </h1>
+      <div class="map-cards" role="list"></div>
+      <p class="start-hint"><span class="no-touch">Klicke eine Karte zum Starten</span><span class="touch-hint">Tippe eine Karte zum Starten</span></p>
+      <p class="start-keys key"><kbd>←</kbd> <kbd>→</kbd> Karte wählen · <kbd>Enter</kbd> starten · Im Spiel: <kbd>1</kbd>–<kbd>5</kbd> Türme, <kbd>Leertaste</kbd> Welle, <kbd>P</kbd> Pause · alle Tasten unter ? oben rechts</p>
+    </section>
+  </div>
   <script type="module" src="src/main.js"></script>
 </body>
 </html>

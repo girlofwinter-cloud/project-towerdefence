@@ -17,11 +17,24 @@ export function drawTreeShadows(ctx, crowns, L = LIGHT_STYLE) {
 }
 
 // Lichtstreifen, Helligkeitsverlauf und Vignette als letzte Hintergrund-Schicht.
-export function drawLight(ctx, L = LIGHT_STYLE) {
+// P (B-142, gemalter Boden, optional): derselbe Verlauf wird kräftiger und läuft über die ganze Diagonale
+// von warmem Licht oben links in Abschattung rechts unten; die Vignette rückt nach rechts unten.
+export function drawLight(ctx, L = LIGHT_STYLE, P = null) {
   const diag = Math.hypot(WIDTH, HEIGHT);
-  const g = ctx.createLinearGradient(0, 0, diag * L.gradientReach * 0.8, diag * L.gradientReach * 0.6);
-  g.addColorStop(0, `rgba(${L.tint},${L.gradientAlpha})`);
-  g.addColorStop(1, `rgba(${L.tint},0)`);
+  const g = P
+    ? ctx.createLinearGradient(0, 0, WIDTH, HEIGHT)
+    : ctx.createLinearGradient(0, 0, diag * L.gradientReach * 0.8, diag * L.gradientReach * 0.6);
+  if (P) {
+    g.addColorStop(0, `rgba(${P.tint},${P.sunAlpha})`);
+    g.addColorStop(P.sunMid, `rgba(${P.tint},${P.sunMidAlpha})`);
+    // zwei durchsichtige Stopps, damit sich Licht- und Schattenton nicht mischen
+    g.addColorStop(P.sunEnd, `rgba(${P.tint},0)`);
+    g.addColorStop(P.sunEnd, `rgba(${P.shadow},0)`);
+    g.addColorStop(1, `rgba(${P.shadow},${P.shadeAlpha})`);
+  } else {
+    g.addColorStop(0, `rgba(${L.tint},${L.gradientAlpha})`);
+    g.addColorStop(1, `rgba(${L.tint},0)`);
+  }
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, WIDTH, HEIGHT);
   // Streifen: schräge Bänder von der Oberkante nach rechts unten
@@ -39,9 +52,22 @@ export function drawLight(ctx, L = LIGHT_STYLE) {
   }
   // Vignette: Mitte unberührt, Ecken dunkler
   const r = diag / 2;
-  const v = ctx.createRadialGradient(WIDTH / 2, HEIGHT / 2, r * L.vignetteInner, WIDTH / 2, HEIGHT / 2, r);
-  v.addColorStop(0, `rgba(${L.shadow},0)`);
-  v.addColorStop(1, `rgba(${L.shadow},${L.vignetteAlpha})`);
+  const V = P || L;
+  const vx = P ? P.vignetteX * WIDTH : WIDTH / 2, vy = P ? P.vignetteY * HEIGHT : HEIGHT / 2;
+  const v = ctx.createRadialGradient(vx, vy, r * V.vignetteInner, vx, vy, r);
+  v.addColorStop(0, `rgba(${V.shadow},0)`);
+  v.addColorStop(1, `rgba(${V.shadow},${V.vignetteAlpha})`);
   ctx.fillStyle = v;
   ctx.fillRect(0, 0, WIDTH, HEIGHT);
+}
+
+// Abdunklung eines Punkts durch Abschattung und Vignette des gemalten Bodens (B-142 Nacharbeit), Anteil 0..1.
+// Rechnet dieselben Verläufe nach, die drawLight mit P zeichnet (für Tests: Weg-Ein-/Ausgang und Burgtor hell genug).
+export function paintDarkness(x, y, P) {
+  const t = (x * WIDTH + y * HEIGHT) / (WIDTH * WIDTH + HEIGHT * HEIGHT);
+  const shade = t <= P.sunEnd ? 0 : P.shadeAlpha * Math.min(1, (t - P.sunEnd) / (1 - P.sunEnd));
+  const r = Math.hypot(WIDTH, HEIGHT) / 2, r0 = r * P.vignetteInner;
+  const d = Math.hypot(x - P.vignetteX * WIDTH, y - P.vignetteY * HEIGHT);
+  const vig = P.vignetteAlpha * Math.max(0, Math.min(1, (d - r0) / (r - r0)));
+  return 1 - (1 - shade) * (1 - vig);
 }

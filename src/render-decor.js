@@ -114,6 +114,21 @@ export function drawPebble(ctx, x, y) {
   ell(ctx, x + 0.5, y + 2.5, 1.7, 1.3, shd(D.pebble, 0.15));
 }
 
+// Einzelblüte einer Wiesen-Insel (B-142 Nacharbeit): flach aus roundRect, ohne arc/ellipse (wie die Streu-Deko)
+export function drawBlossom(ctx, x, y, v) {
+  const col = D.flowers[v % D.flowers.length];
+  stroke(ctx, [[x, y + 3.5], [x, y]], D.stem, D.detailWidth);
+  const blob = (bx, by, r, color) => {
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    if (typeof ctx.roundRect === 'function') ctx.roundRect(bx - r, by - r, 2 * r, 2 * r, r);
+    else ctx.rect(bx - r, by - r, 2 * r, 2 * r);
+    ctx.fill();
+  };
+  for (let k = 0; k < 5; k++) { const a = (k / 5) * TWO_PI; blob(x + Math.cos(a) * 1.7, y + Math.sin(a) * 1.7, 1.3, col); }
+  blob(x, y, 1.1, D.flowerCore);
+}
+
 // ---- Streu-Deko (flach, ohne arc/ellipse) ----
 function mushroom(ctx, x, y, k = 1) {
   flatShadow(ctx, x, y, 6 * k, 2 * k);
