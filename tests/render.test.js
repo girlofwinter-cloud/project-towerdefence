@@ -349,6 +349,10 @@ async function outlineExtent(type, level, cooldown, angle) {
 const TOWER_PLAN = { arrow: [1.05, 1.75], cannon: [1.26, 1.45], frost: [1.05, 1.6], sniper: [1.17, 1.9], lightning: [1.05, 1.8] };
 const POSE = { cannon: -Math.PI / 2 + 0.56, sniper: 0 };
 const SIDE = { arrow: 0.15, cannon: 0.5, frost: 0.15, sniper: 0.5, lightning: 0.15 }; // Überhang je Seite (drehende Teile samt Mündungsfeuer mehr)
+// B-173/B-174: Stufe 3 ist ein eigenes Gebäude (Box 80 x 140 Entwurfs-px, docs/design/elemente/Tuerme-*.md);
+// Schatten, Flügelspitzen und Lichthof reichen bis 80 Entwurfs-px (0,2 Kachel je Seite); der Mörser ist länger als das Rohr
+const TOWER_PLAN3 = { arrow: [1.4, 2.5], cannon: [1.4, 2.1], frost: [1.15, 2.3], sniper: [1.4, 2.5], lightning: [1.4, 2.5] };
+const SIDE3 = { arrow: 0.25, cannon: 0.7, frost: 0.25, sniper: 0.5, lightning: 0.25 };
 
 test('Stil 1 Türme: Größe wie im Plan, Fußpunkt 0,39 Kachel unter der Mitte, seitlich begrenzt, alle Stufen/Winkel/Rückstoß', async () => {
   const { FIGURE_STYLE } = await import('../src/config.js');
@@ -358,7 +362,8 @@ test('Stil 1 Türme: Größe wie im Plan, Fußpunkt 0,39 Kachel unter der Mitte,
     for (let level = 1; level <= 3; level++) {
       const { B, t } = await outlineExtent(type, level, 0, POSE[type] ?? 0);
       const w = (B.maxX - B.minX) / TILE, h = (B.maxY - B.minY) / TILE;
-      const [pw, ph] = TOWER_PLAN[type];
+      const [pw, ph] = (level >= 3 ? TOWER_PLAN3 : TOWER_PLAN)[type];
+      const side = (level >= 3 ? SIDE3 : SIDE)[type];
       assert.ok(Math.abs(w - pw) <= 0.2, `${type} L${level}: Breite ${w.toFixed(2)} statt ${pw}`);
       assert.ok(Math.abs(h - ph) <= 0.2, `${type} L${level}: Höhe ${h.toFixed(2)} statt ${ph}`);
       for (const angle of [0, Math.PI / 4, Math.PI / 2, Math.PI, -Math.PI / 2, 5.5]) {
@@ -366,7 +371,7 @@ test('Stil 1 Türme: Größe wie im Plan, Fußpunkt 0,39 Kachel unter der Mitte,
           const r = await outlineExtent(type, level, frac * TOWER_TYPES[type].rate, angle);
           const tag = `${type} L${level} a=${angle.toFixed(2)} f=${frac}`;
           assert.ok(r.B.maxY <= t.y + foot + 0.02 * TILE && r.B.maxY >= t.y + foot - 0.2 * TILE, `${tag}: Fuß ${(r.B.maxY - t.y).toFixed(1)}`);
-          assert.ok(r.B.minX >= r.x0 - SIDE[type] * TILE && r.B.maxX <= r.x0 + TILE + SIDE[type] * TILE, `${tag}: x ${(r.B.minX - r.x0).toFixed(1)}..${(r.B.maxX - r.x0).toFixed(1)}`);
+          assert.ok(r.B.minX >= r.x0 - side * TILE && r.B.maxX <= r.x0 + TILE + side * TILE, `${tag}: x ${(r.B.minX - r.x0).toFixed(1)}..${(r.B.maxX - r.x0).toFixed(1)}`);
         }
       }
     }
@@ -612,7 +617,7 @@ test('Stil-Helfer: rr mit winzigem w/h und grossem Radius bleibt endlich und aus
   }
 });
 
-test('Stil 1: Türme Stufe 1-3 unterscheiden sich (Goldband ab Stufe 2, Stufe 3 zwei Bänder), alle Typen', async () => {
+test('Stil 1: Türme Stufe 1-3 unterscheiden sich (Goldband auf Stufe 2, Stufe 3 eigenes Gebäude), alle Typen', async () => {
   const { drawTower } = await import('../src/render.js');
   const { FIGURE_STYLE } = await import('../src/config.js');
   const draw = (type, level) => {
@@ -630,7 +635,12 @@ test('Stil 1: Türme Stufe 1-3 unterscheiden sich (Goldband ab Stufe 2, Stufe 3 
   for (const type of Object.keys(TOWER_TYPES)) {
     const [l1, l2, l3] = [1, 2, 3].map((level) => draw(type, level));
     assert.ok(l2.total > l1.total && l3.total > l2.total, `${type}: mehr Zeichenoperationen je Stufe`);
-    assert.deepEqual([l1.gold, l2.gold, l3.gold], [0, 1, 2], `${type}: Goldbänder je Stufe`);
+    assert.deepEqual([l1.gold, l2.gold], [0, 1], `${type}: Goldbänder je Stufe`);
+    // B-173/B-174: Stufe 3 hat keine Goldbänder, sondern eine eigene Figur (Box 80 x 140 statt Stufe 2 mit Band)
+    const { towerFigure } = await import('../src/figures.js');
+    const f2 = towerFigure(type, 2, FIGURE_STYLE.trim), f3 = towerFigure(type, 3, FIGURE_STYLE.trim);
+    assert.deepEqual([f3.w, f3.h], [80, 140], `${type}: Box Stufe 3`);
+    assert.ok(f3.h > f2.h, `${type}: Stufe 3 höher als Stufe 2`);
   }
 });
 
@@ -2006,4 +2016,61 @@ test('B-180 render: reicht ui.bossBarShown an die Gegner weiter und zeichnet die
   assert.ok(run({}).includes(S.hp.low), 'ohne Leiste: kleiner Balken');
   assert.ok(!run({ bossBarShown: true }).includes(S.hp.low), 'mit Leiste: kein kleiner Balken');
   assert.ok(ENEMY_STYLE.necro.glow === '#7dff9a');
+});
+
+// ---------- B-173/B-174: Stufe 3 als eigenes Gebäude ----------
+test('Stufe 3: eigene Figur je Turm (Box 80 x 140, s3-Verläufe, Teil mit Ruhe-Animation), Stufe 1/2 unverändert', async () => {
+  const { towerFigure } = await import('../src/figures.js');
+  const { FIGURE_STYLE } = await import('../src/config.js');
+  const { GRADIENTS } = await import('../src/svg-figure.js');
+  const GRAD = { arrow: ['s3-marble', 's3-gold'], cannon: ['s3-basalt', 's3-lava'], frost: ['s3-ice'], sniper: ['s3-brick', 's3-darkwood', 's3-brass'], lightning: ['s3-copper'] };
+  for (const type of Object.keys(TOWER_TYPES)) {
+    const f2 = towerFigure(type, 2, FIGURE_STYLE.trim), f3 = towerFigure(type, 3, FIGURE_STYLE.trim);
+    assert.deepEqual([f3.w, f3.h], [80, 140], type);
+    assert.notEqual(f2.h, f3.h);
+    const grads = new Set(f3.layers.flatMap((l) => l.els.map((e) => e.grad)).filter(Boolean));
+    for (const g of GRAD[type]) { assert.ok(grads.has(g), `${type}: ${g}`); assert.ok(GRADIENTS[g], g); }
+    assert.ok(f3.layers.some((l) => l.name === FIGURE_STYLE.idle[type].part), `${type}: Teil ${FIGURE_STYLE.idle[type].part}`);
+    assert.ok(f2.layers.every((l) => l.name === 'main' || l.name === 'turn'), `${type}: Stufe 2 ohne Ruhe-Teil`);
+    assert.equal(!!f3.turn.length, type === 'cannon' || type === 'sniper', `${type}: drehender Teil`);
+  }
+});
+
+test('Stufe 3: Ruhe-Animation bewegt sich mit der Zeit, bei reduced motion steht sie; Zeichnen ausgewogen', async () => {
+  const { drawTower } = await import('../src/render.js');
+  const run = (type, time, reduced) => {
+    const m = mockCtx();
+    const log = [];
+    const ctx = new Proxy(m.ctx, {
+      get: (t, k) => (typeof t[k] === 'function' ? (...a) => { log.push(k + ':' + a.map((v) => (typeof v === 'number' ? v.toFixed(3) : v)).join(',')); return t[k](...a); } : t[k]),
+      set: (t, k, v) => { t[k] = v; return true; },
+    });
+    drawTower(ctx, { type, x: 100, y: 100, level: 3, cooldown: 0, angle: 0.7 }, false, time, reduced);
+    assert.equal(m.depth, 0, `${type}: save/restore ausgewogen`);
+    return log.join('|');
+  };
+  for (const type of Object.keys(TOWER_TYPES)) {
+    assert.equal(run(type, 0.35, true), run(type, 1.15, true), `${type}: reduziert ohne Ruhe-Versatz`);
+    assert.notEqual(run(type, 0.35, false), run(type, 1.15, false), `${type}: Ruhe-Animation`);
+    for (const time of [NaN, undefined, -3, 1e9]) run(type, time, false);
+  }
+});
+
+test('Stufe 3: beim Aufstieg zeigt der Turm bis swapAt noch Stufe 2, danach das neue Gebäude', async () => {
+  const { render } = await import('../src/render.js');
+  const { MASTER_FX } = await import('../src/config.js');
+  const { displayLevel } = await import('../src/render-master.js');
+  const s = createGame();
+  const t = { id: 77, type: 'cannon', x: 100, y: 100, col: 2, row: 2, level: 3, cooldown: 0, angle: 0.3 };
+  s.towers.push(t);
+  const fx = { kind: 'ascend', towerId: t.id, x: t.x, y: t.y, ttl: MASTER_FX.ascend.life - 0.1, max: MASTER_FX.ascend.life };
+  s.effects.push(fx);
+  assert.equal(displayLevel(s, t), 2);
+  const m = mockCtx();
+  render(m.ctx, s, {});
+  assert.equal(m.depth, 0);
+  fx.ttl = MASTER_FX.ascend.life - MASTER_FX.ascend.swapAt - 0.01;
+  assert.equal(displayLevel(s, t), 3);
+  s.effects.length = 0;
+  assert.equal(displayLevel(s, t), 3);
 });

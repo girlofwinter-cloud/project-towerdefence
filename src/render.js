@@ -10,6 +10,7 @@ import { drawEnemy, drawHealAura, enemyFootY } from './render-enemies.js';
 import { drawNecroAura } from './render-necro.js';
 import { updateFx, shakeX, shakeY, drawProjectileFx, drawParticles, drawBossEntry, drawEffectUnder, drawEffectOver } from './render-fx.js';
 import { drawTreeFrame } from './render-trees.js';
+import { beginMasterFx, drawMasterUnder, drawMasterOver, drawMasterTrails, displayLevel } from './render-master.js';
 import * as flat from './render-decor.js';
 import { drawAccents } from './render-accents.js';
 import { drawTreeShadows, drawLight } from './render-light.js';
@@ -186,14 +187,18 @@ export function render(ctx, state, ui) {
   for (const e of state.enemies) drawNecroAura(ctx, e, state.time, reduced); // B-180: Boden-Aura unter allen Figuren
   drawBossEntry(ctx);
   // Explosionen und Rauch unter den Figuren, damit sie keine Figur verdecken (B-068)
+  beginMasterFx(state);
+  drawMasterUnder(ctx, state, reduced); // B-173/B-174: Eis- und Brandflächen, Gewitter-Ankündigung, Reif
   for (const fx of state.effects) drawEffectUnder(ctx, fx);
   drawParticles(ctx, true);
   // Stil 1: Türme und Gegner nach Fußpunkt sortiert (weiter unten = davor), Stufenmarken danach
   drawFigures(ctx, state, ui);
-  for (const t of state.towers) drawTowerBadge(ctx, t);
+  for (const t of state.towers) drawTowerBadge(ctx, t, displayLevel(state, t));
+  drawMasterTrails(ctx, state, reduced);
   for (const p of state.projectiles) drawProjectile(ctx, p);
   drawParticles(ctx);
   for (const fx of state.effects) drawEffectOver(ctx, fx, reduced);
+  drawMasterOver(ctx, state, reduced); // Gewitter, Aufstieg, Treffer-Sterne, Zielstrahl, Marken
   if (shaking) ctx.restore();
 }
 
@@ -563,18 +568,19 @@ function drawFigures(ctx, state, ui) {
   for (const e of state.enemies) figures.push(e);
   figures.sort(byFoot);
   for (const o of figures) {
-    if (o.hp === undefined) drawTower(ctx, o, ui.selectedTowerId === o.id);
+    if (o.hp === undefined) drawTower(ctx, o, ui.selectedTowerId === o.id, state.time, !!ui.reducedMotion, displayLevel(state, o));
     else drawEnemy(ctx, o, state.time, enemyPath(state, o), !!ui.reducedMotion, !!ui.bossBarShown); // B-180: Leiste im HUD
   }
   figures.length = 0;
 }
 
 // Exportiert, damit Tests einen einzelnen Turm gegen einen Mock-Kontext zeichnen koennen (ohne Stufenmarke).
-export function drawTower(ctx, t, selected) {
+// time/reduced: Ruhe-Animation der Stufe 3; level: angezeigte Stufe (Aufstieg), sonst t.level.
+export function drawTower(ctx, t, selected, time, reduced = false, level = t.level) {
   const def = TOWER_TYPES[t.type];
   // Rückstoß aus der Abklingzeit (game.js setzt cooldown beim Schuss auf das Intervall)
   if (selected) drawSelectRing(ctx, t);
-  drawTowerFigure(ctx, t, def ? recoilOffset(t.cooldown / def.rate) : 0);
+  drawTowerFigure(ctx, t, def ? recoilOffset(t.cooldown / def.rate) : 0, time, reduced, level);
 }
 
 // C-Abnahme 8: Auswahl als Bodenellipse unter dem Turm (Maße und Farben in SELECT_RING, config.js)

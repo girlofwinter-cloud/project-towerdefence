@@ -370,10 +370,11 @@ test('Stil 1 Sprites: je Typ x Stufe x Pixeldichte genau einmal gebaut, danach n
     const before = spriteStats.builds;
     const first = frame(1);
     const built = spriteStats.builds - before;
-    // Türme: 5 Typen x 3 Stufen, Kanone und Scharfschütze mit Teil vor dem drehenden Rohr (+2 x 3);
+    // Türme Stufe 1/2: 5 Typen x 2, Kanone und Scharfschütze mit Teil vor dem drehenden Rohr (+2 x 2);
+    // Stufe 3 (B-173/B-174): feste Teile vor und hinter dem bewegten Teil je ein Sprite (Pfeil, Kanone, Scharfschütze 2; Frost, Blitz 1);
     // Gegner: 13 Typen x 2, Glutling ohne Eis-Fassung nur 1 (B-167 bis B-170)
-    assert.equal(built, 15 + 6 + 25, 'jede Figur genau ein Sprite');
-    assert.ok(first.drawImage >= 15 + 6 + 25);
+    assert.equal(built, 10 + 4 + 8 + 25, 'jede Figur genau ein Sprite');
+    assert.ok(first.drawImage >= 10 + 4 + 8 + 25);
     frame(1);
     frame(1);
     assert.equal(spriteStats.builds - before, built, 'zweiter Frame baut nichts neu');
@@ -1671,4 +1672,178 @@ test('B-179 Elite: Abzeichen mindestens minPx, über der Figur, reduced motion u
     for (const time of [0, 0.2, 0.45]) moving.add((await recordEnemy({ type: 'grunt', elite: trait }, time)).calls.filter((c) => c.includes(E.cream) || c.includes(E.healA)).join('\n'));
     assert.ok(moving.size > 1, `${trait}: Zeichen bewegen sich`);
   }
+});
+
+// ---------- B-173/B-174: Stufe 3 (Ruhe-Animation, Spuren, Teilchen-Obergrenze, Effekte) ----------
+
+test('Stufe 3 Hilfen: idlePose ruht bei reduced motion, bewegt sich sonst; shownLevel; trailTail; Budget', async () => {
+  const { idlePose, shownLevel, trailTail, createBudget, takeBudget, resetBudget } = await import('../src/tower-fx.js');
+  const { FIGURE_STYLE } = await import('../src/config.js');
+  for (const [type, cfg] of Object.entries(FIGURE_STYLE.idle)) {
+    const rest = { ...idlePose(cfg, 0.7, true) };
+    assert.deepEqual([rest.dx, rest.dy, rest.sx, rest.sy, rest.skew, rest.alpha, rest.spark], [0, 0, 1, 1, 0, 1, true], `${type}: Grundstellung`);
+    assert.deepEqual({ ...idlePose(cfg, NaN, false) }, rest, `${type}: ungültige Zeit`);
+    const moved = [0.3, 0.7, 1.1].some((t) => { const p = idlePose(cfg, t, false); return p.dx || p.dy || p.sx !== 1 || p.skew || p.alpha !== 1; });
+    assert.ok(moved, `${type}: bewegt sich`);
+    for (let t = 0; t < 6; t += 0.13) {
+      const p = idlePose(cfg, t, false);
+      assert.ok(p.alpha >= 0 && p.alpha <= 1 && p.sx > 0 && Math.abs(p.dy) <= 8 + 1e-9 && Math.abs(p.skew) <= 0.06, `${type} t=${t}`);
+    }
+  }
+  const sparks = new Set([0.1, 0.3, 0.5, 0.8].map((t) => idlePose(FIGURE_STYLE.idle.lightning, t, false).spark));
+  assert.equal(sparks.size, 2, 'Funke blinkt');
+  assert.equal(shownLevel(3, 0.1, 0.42), 2);
+  assert.equal(shownLevel(3, 0.5, 0.42), 3);
+  assert.equal(shownLevel(3, undefined, 0.42), 3);
+  assert.equal(shownLevel(2, 0.1, 0.42), 2);
+  // Spur: 14 % der Strecke, mindestens 18 px, nie hinter den Start
+  const [x] = trailTail(0, 0, 100, 0, 300, 0, 0.14, 18);
+  assert.ok(Math.abs(x - (100 - 42)) < 1e-9);
+  assert.deepEqual(trailTail(0, 0, 10, 0, 20, 0, 0.14, 18), [0, 0]);
+  assert.equal(trailTail(5, 5, 5, 5, 9, 9, 0.14, 18), null);
+  const b = createBudget(10);
+  assert.equal(takeBudget(b, 6), 6);
+  assert.equal(takeBudget(b, 6), 4);
+  assert.equal(takeBudget(b, 1), 0);
+  resetBudget(b);
+  assert.equal(takeBudget(b, NaN), 0);
+  assert.equal(b.left, 10);
+});
+
+// Szene mit allen Stufe-3-Effekten; time = Spielzeit
+function masterScene(time = 10) {
+  const s = createGame();
+  s.time = time;
+  const tower = (id, type, x, y) => ({ id, type, x, y, level: 3, cooldown: 0.3, angle: 0.4, col: 0, row: 0 });
+  s.towers = [tower(1, 'arrow', 100, 300), tower(2, 'sniper', 200, 300), tower(3, 'lightning', 300, 300)];
+  s.towers[1].aimId = 11;
+  s.enemies = [
+    { id: 11, type: 'grunt', x: 150, y: 200, dist: 0, hp: 5, maxHp: 10, slowUntil: 0, markedUntil: time + 2, markedAt: time - 0.05, markBonus: 0.25 },
+    { id: 12, type: 'tank', x: 250, y: 200, dist: 0, hp: 5, maxHp: 10, slowUntil: 0, markedUntil: time + 0.1, markedAt: time - 0.1, markBonus: 0.25 },
+    { id: 13, type: 'bat', x: 400, y: 200, dist: 0, hp: 5, maxHp: 10, slowUntil: 0 },
+    { id: 14, type: 'ember', x: 410, y: 200, dist: 0, hp: 5, maxHp: 10, slowUntil: 0 },
+    { id: 15, type: 'grunt', x: 420, y: 200, dist: 0, hp: 5, maxHp: 10, slowUntil: 0 },
+  ];
+  s.grounds = [
+    { kind: 'fire', x: 150, y: 200, r: 30, born: time - 0.2, until: time + 1.8 },
+    { kind: 'ice', x: 410, y: 200, r: 32, born: time - 0.1, until: time + 2.9, towerId: 9 },
+  ];
+  s.projectiles = [
+    { x: 130, y: 250, tx: 150, ty: 200, towerId: 1, towerType: 'arrow', master: TOWER_TYPES.arrow.master, side: false },
+    { x: 140, y: 250, tx: 250, ty: 200, towerId: 1, towerType: 'arrow', master: TOWER_TYPES.arrow.master, side: true },
+    { x: 180, y: 240, tx: 150, ty: 200, towerId: 2, towerType: 'sniper', master: TOWER_TYPES.sniper.master },
+  ];
+  s.effects = [
+    { kind: 'ascend', towerId: 1, x: 100, y: 300, ttl: 1.5, max: 1.8 },
+    { kind: 'storm', towerId: 3, x: 300, y: 200, r: 48, ttl: 1.75, max: 1.8 },
+    { kind: 'stormWarn', x: 300, y: 200, r: 48, ttl: 0.2, max: 0.35 },
+    { kind: 'multiHit', x: 150, y: 200, main: true, ttl: 0.1, max: 0.25 },
+  ];
+  return s;
+}
+
+test('Stufe 3 Effekte: Unter/Über/Spuren zeichnen ausgewogen, auch reduziert und im ganzen render()', async () => {
+  const { beginMasterFx, drawMasterUnder, drawMasterOver, drawMasterTrails, masterBudgetLeft } = await import('../src/render-master.js');
+  const { render } = await import('../src/render.js');
+  const { MASTER_FX } = await import('../src/config.js');
+  for (const reduced of [false, true]) {
+    const s = masterScene();
+    const counts = {};
+    const m = mockCtx(counts);
+    beginMasterFx(s);
+    drawMasterUnder(m.ctx, s, reduced);
+    drawMasterTrails(m.ctx, s, reduced);
+    drawMasterOver(m.ctx, s, reduced);
+    assert.equal(m.depth, 0, 'save/restore ausgewogen');
+    assert.ok(counts.ellipse > 4 && counts.stroke > 10, 'zeichnet etwas');
+    assert.ok(masterBudgetLeft() >= 0 && masterBudgetLeft() < MASTER_FX.maxParticles);
+    const r = mockCtx();
+    render(r.ctx, s, { reducedMotion: reduced });
+    assert.equal(r.depth, 0);
+  }
+});
+
+test('Stufe 3 Effekte: kaputte Werte (NaN-Radius, fehlender Turm) werfen nicht', async () => {
+  const { beginMasterFx, drawMasterUnder, drawMasterOver, drawMasterTrails } = await import('../src/render-master.js');
+  const s = masterScene();
+  s.effects.push({ kind: 'storm', x: NaN, y: 1, r: NaN, ttl: NaN, max: 1 }, { kind: 'stormWarn', x: 1, y: 1, r: -3, ttl: 0.1, max: 0.35 },
+    { kind: 'ascend', towerId: 999, ttl: 1, max: 1.8 }, { kind: 'multiHit', x: undefined, y: 3, ttl: 0.1, max: 0.25 });
+  s.grounds.push({ kind: 'fire', x: 1, y: 1, r: NaN }, { kind: 'ice', x: 5, y: 5, r: 20 }, null);
+  s.projectiles.push({ x: 1, y: 1, towerId: 999, master: TOWER_TYPES.arrow.master }, { x: NaN, y: 1, towerId: 1, master: TOWER_TYPES.arrow.master });
+  s.enemies.push({ id: 99, type: 'unbekannt', x: 5, y: 5, hp: 1, maxHp: 2, markedUntil: s.time + 1 });
+  const m = mockCtx();
+  beginMasterFx(s);
+  drawMasterUnder(m.ctx, s, false);
+  drawMasterTrails(m.ctx, s, false);
+  drawMasterOver(m.ctx, s, false);
+  assert.equal(m.depth, 0);
+});
+
+// Zeichnet nur einen Durchgang der Szene und liefert die Aufrufe mit aktueller Füll- und Strichfarbe
+async function colorCalls(s, reduced, pass) {
+  const mod = await import('../src/render-master.js');
+  const calls = [];
+  const m = mockCtx();
+  const ctx = new Proxy(m.ctx, {
+    get: (t, k) => (typeof t[k] === 'function' ? (...a) => { calls.push([k, m.props.fillStyle, m.props.strokeStyle, ...a]); return t[k](...a); } : t[k]),
+    set: (t, k, v) => { t[k] = v; return true; },
+  });
+  mod.beginMasterFx(s);
+  mod[pass](ctx, s, reduced);
+  assert.equal(m.depth, 0);
+  return calls;
+}
+
+test('Stufe 3 Effekte: Teilchen-Obergrenze hält auch bei vielen Aufstiegen', async () => {
+  const { MASTER_FX } = await import('../src/config.js');
+  const { masterBudgetLeft } = await import('../src/render-master.js');
+  const s = masterScene();
+  s.towers = [];
+  s.effects = [];
+  for (let i = 0; i < 40; i++) {
+    s.towers.push({ id: 100 + i, type: 'arrow', x: 20 + (i % 20) * 40, y: 100 + Math.floor(i / 20) * 200, level: 3, cooldown: 0 });
+    s.effects.push({ kind: 'ascend', towerId: 100 + i, x: 0, y: 0, ttl: 1.4, max: 1.8 }); // Alter 0,4: alle Funken sichtbar
+  }
+  const calls = await colorCalls(s, false, 'drawMasterOver');
+  const sparks = calls.filter(([k, fill]) => k === 'fill' && fill === MASTER_FX.ascend.ringColor).length;
+  assert.ok(sparks > 0 && sparks <= MASTER_FX.maxParticles, `Funken ${sparks}`);
+  assert.equal(masterBudgetLeft(), 0, 'Obergrenze ausgeschöpft, nicht überschritten');
+});
+
+test('Stufe 3 Effekte: reduced motion ohne Säule, ohne Stern, ohne Funken; Brandfläche höchstens maxPatches', async () => {
+  const { MASTER_FX } = await import('../src/config.js');
+  const s = masterScene();
+  const full = await colorCalls(s, false, 'drawMasterOver');
+  const calm = await colorCalls(s, true, 'drawMasterOver');
+  const rects = (c) => c.filter(([k]) => k === 'fillRect').length;
+  assert.ok(rects(full) >= 2, 'Säule und Kern');
+  assert.equal(rects(calm), 0, 'reduziert: keine Säule');
+  assert.ok(calm.some(([k, , , t]) => k === 'fillText' && t === MASTER_FX.ascend.text), 'Text bleibt');
+  const star = (c) => c.filter(([k, fill]) => k === 'fill' && fill === MASTER_FX.multishot.main).length;
+  assert.ok(star(full) >= 1);
+  assert.equal(star(calm), 0);
+  const embers = (c) => c.filter(([k, fill]) => k === 'fill' && fill === MASTER_FX.burn.ember).length;
+  assert.ok(embers(await colorCalls(s, false, 'drawMasterUnder')) > 0);
+  assert.equal(embers(await colorCalls(s, true, 'drawMasterUnder')), 0);
+  const many = masterScene();
+  many.effects = []; // Rußfleck des Gewitters hat dieselbe Farbe
+  for (let i = 0; i < 8; i++) many.grounds.push({ kind: 'fire', x: 50 + i * 60, y: 400, r: 30, born: many.time - 0.5, until: many.time + 1 });
+  const soot = (await colorCalls(many, true, 'drawMasterUnder')).filter(([k, fill]) => k === 'fill' && fill === MASTER_FX.burn.soot).length;
+  assert.equal(soot, MASTER_FX.burn.maxPatches);
+});
+
+test('Stufe 3 Effekte: Reif nur an Bodengegnern (nicht Fledermaus, Glutling, eingefroren); Marke nur solange markiert', async () => {
+  const { MASTER_FX } = await import('../src/config.js');
+  const rimeAt = (calls) => calls.filter(([k, fill]) => k === 'fill' && fill === MASTER_FX.iceFloor.rime).length;
+  const s = masterScene();
+  assert.equal(rimeAt(await colorCalls(s, false, 'drawMasterUnder')), 1, 'nur der Goblin auf dem Eis');
+  s.enemies[4].frozenUntil = s.time + 1;
+  assert.equal(rimeAt(await colorCalls(s, false, 'drawMasterUnder')), 0, 'eingefroren: Eisblock statt Reif');
+  const marks = (calls) => calls.filter(([k, , stroke]) => k === 'stroke' && stroke === MASTER_FX.mark.color).length;
+  const s2 = masterScene();
+  assert.ok(marks(await colorCalls(s2, false, 'drawMasterOver')) >= 3, 'zwei Marken und der Zielstrahl');
+  for (const e of s2.enemies) e.markedUntil = 0;
+  assert.equal(marks(await colorCalls(s2, false, 'drawMasterOver')), 1, 'nur noch der Zielstrahl');
+  s2.towers[1].level = 2;
+  assert.equal(marks(await colorCalls(s2, false, 'drawMasterOver')), 0, 'Zielstrahl nur auf Stufe 3');
 });

@@ -5,6 +5,7 @@ import {
 } from './config.js';
 import { buildPath, pointAt, pathTiles } from './path.js';
 import { ELITE, UPGRADE_COST_FACTOR } from './config.js'; // B-179: Elite-Gegner, Aufrüstkosten
+import { MASTER_FX } from './config.js'; // B-173/B-174: Lebensdauer reiner Darstellungs-Ereignisse
 
 // Map-Modifikatoren mit Standardwerten (1 = unverändert); unbekannte Karte = Standardkarte.
 export function mapModifiers(mapId) {
@@ -161,6 +162,8 @@ export function upgradeTower(state, id) {
   state.gold -= cost;
   tower.level += 1;
   tower.invested += cost;
+  // B-174: Lichtsäule beim Aufstieg auf Stufe 3 (nur Darstellung)
+  if (tower.level === MAX_LEVEL) state.effects.push({ kind: 'ascend', towerId: tower.id, x: tower.x, y: tower.y, ttl: MASTER_FX.ascend.life, max: MASTER_FX.ascend.life });
   return { ok: true, tower };
 }
 
@@ -619,6 +622,7 @@ function towersStep(state, dt) {
       continue;
     }
     tower.angle = Math.atan2(target.y - tower.y, target.x - tower.x);
+    tower.aimId = target.id; // B-174: Zielstrahl des Falkenauges (nur Darstellung)
     tower.cooldown = stats.rate;
     if (sp.warmupStep) {
       if (tower.focusId === target.id) tower.focusStacks = (tower.focusStacks || 0) + 1;
@@ -668,23 +672,38 @@ function shoot(state, tower, stats, target, factor) {
     slow: stats.slow || 0,
     slowDuration: stats.slowDuration || 0,
     master: masterOf(tower), // B-176: Stufe-3-Fähigkeit beim Treffer (Brandfläche, Eisboden, Markieren)
+    side: factor !== 1, // B-173: Nebenziel des Mehrfachschusses (nur Darstellung)
   });
 }
 
 // B-175 Gewitter: Takt je Turm (tower.stormAt); ohne Gegner in Reichweite wartet der Einschlag.
 // Flächenschaden wie Splash (ohne Rüstung), trifft auch Flieger. Effekt 'storm' für die Optik.
 function stormStep(state, tower, master) {
-  if (state.time < (tower.stormAt ?? 0)) return;
+  if (state.time < (tower.stormAt ?? 0)) {
+    // B-174: Ankündigung kurz vor dem Einschlag am dann dichtesten Pulk (nur Darstellung, ändert nichts am Takt)
+    const tele = MASTER_FX.storm.tele;
+    if (!tower.stormWarned && state.time >= tower.stormAt - tele) {
+      const s = towerStats(tower, state.modifiers);
+      const c = densestCluster(state.enemies, tower, s.range * TILE, master.stormRadius * TILE);
+      if (c) {
+        tower.stormWarned = true;
+        state.effects.push({ kind: 'stormWarn', x: c.x, y: c.y, r: master.stormRadius * TILE, ttl: tele, max: tele });
+      }
+    }
+    return;
+  }
   const stats = towerStats(tower, state.modifiers);
   const radius = master.stormRadius * TILE;
   const center = densestCluster(state.enemies, tower, stats.range * TILE, radius);
   if (!center) return;
   tower.stormAt = state.time + master.stormEvery;
+  tower.stormWarned = false;
   const dmg = stats.damage * master.stormDamage;
   for (const e of state.enemies) {
     if (e.hp > 0 && Math.hypot(e.x - center.x, e.y - center.y) <= radius) damage(state, e, { damage: dmg });
   }
-  state.effects.push({ kind: 'storm', x: center.x, y: center.y, r: radius, ttl: stats.boltDuration, max: stats.boltDuration });
+  const life = MASTER_FX.storm.life; // Wolke, Druckring und Rußfleck bleiben länger als der Blitz
+  state.effects.push({ kind: 'storm', x: center.x, y: center.y, r: radius, towerId: tower.id, fromX: tower.x, fromY: tower.y, ttl: life, max: life });
 }
 
 // Blitzturm: trifft sofort; Schaden sinkt je Sprung um chainFalloff, Rüstung wie bei Direkttreffern.
@@ -695,7 +714,7 @@ function lightningStrike(state, tower, stats, target) {
     points.push({ x: e.x, y: e.y });
     damage(state, e, { damage: stats.damage * Math.pow(stats.chainFalloff, i) }, true);
   });
-  state.effects.push({ kind: 'bolt', points, ttl: stats.boltDuration, max: stats.boltDuration });
+  state.effects.push({ kind: 'bolt', points, master: !!masterOf(tower), ttl: stats.boltDuration, max: stats.boltDuration });
 }
 
 function projectilesStep(state, dt) {
@@ -753,6 +772,11 @@ function hit(state, p, target) {
     if (m?.burnDuration) addGround(state, { kind: 'fire', x: p.tx, y: p.ty, r: p.splash, until: state.time + m.burnDuration, dps: p.damage * m.burnShare });
   } else if (target && !dodged) {
     damage(state, target, p, true);
+    if (p.master?.multiTargets) {
+      // B-173: Treffer-Stern des Mehrfachschusses (nur Darstellung)
+      const life = MASTER_FX.multishot.starLife;
+      state.effects.push({ kind: 'multiHit', x: target.x, y: target.y, main: !p.side, ttl: life, max: life });
+    }
     const tower = p.freezeEvery ? state.towers.find((t) => t.id === p.towerId) : null;
     if (tower) {
       tower.hitCount = (tower.hitCount || 0) + 1;
@@ -760,12 +784,17 @@ function hit(state, p, target) {
       if (tower.hitCount % p.freezeEvery === 0 && !isBoss(target) && !isSlowImmune(target)) target.frozenUntil = state.time + p.freezeDuration;
     }
     const m = p.master;
-    if (m?.iceDuration) addGround(state, { kind: 'ice', x: p.tx, y: p.ty, r: m.iceRadius * TILE, until: state.time + m.iceDuration, slow: p.slow, linger: m.iceLinger });
-    if (m?.markDuration) { target.markedUntil = state.time + m.markDuration; target.markBonus = m.markBonus; }
+    if (m?.iceDuration) addGround(state, { kind: 'ice', x: p.tx, y: p.ty, r: m.iceRadius * TILE, until: state.time + m.iceDuration, slow: p.slow, linger: m.iceLinger, towerId: p.towerId });
+    if (m?.markDuration) {
+      if (!(state.time < (target.markedUntil || 0))) target.markedAt = state.time; // B-174: erstes Markieren (Aufploppen), nur Darstellung
+      target.markedUntil = state.time + m.markDuration;
+      target.markBonus = m.markBonus;
+    }
   }
 }
 
 function addGround(state, g) {
+  g.born = state.time; // B-173: Beginn für Ein- und Ausblenden (nur Darstellung)
   (state.grounds ||= []).push(g);
 }
 
