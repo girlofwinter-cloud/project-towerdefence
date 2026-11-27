@@ -146,8 +146,9 @@ Beides ist **append-only**: Es wird nur angehängt, nie überschrieben. So kanns
 
 ## 8. Einmalig auf GitHub einrichten (Mensch)
 
-1. **Pages aktivieren:** Repo → Settings → Pages → Source: **GitHub Actions**.
-   Danach steht das Spiel auf `https://<dein-name>.github.io/project-towerdefence/`.
+1. **Live-Umgebung:** Cloudflare Pages ist direkt mit dem Repo verbunden (kein Workflow nötig, kein Build, Ausgabeordner `/`).
+   Jeder Merge auf `main` erscheint auf `https://towerdefence.pages.dev/`. Die Adresse verrät keinen GitHub-Namen.
+   GitHub Pages (`pages.yml`) wird dafür nicht mehr gebraucht.
 2. **Branch Protection** für `main`: Settings → Branches → Add rule → „Require a pull request before merging“ und „Require status checks to pass“ (Check: `test`).
 3. Optional, später: Die offizielle Action `anthropics/claude-code-action` lässt Claude direkt in GitHub auf Issues und Pull Requests reagieren. Dafür braucht es einen API-Schlüssel als Repository-Secret.
 
@@ -179,7 +180,7 @@ Was hinter den Befehlen steckt, die in diesem Leitfaden ständig vorkommen.
 |---|---|---|
 | Wo | Lokal in Claude Code (`/pipeline`) | Auf GitHub-Servern |
 | Datei | `.claude/skills/pipeline/SKILL.md` | `.github/workflows/ci.yml`, `pages.yml` |
-| Was | Agents bauen und prüfen einen Backlog-Eintrag (Abschnitt 3) | `ci.yml` testet jeden Pull Request, `pages.yml` veröffentlicht `main` |
+| Was | Agents bauen und prüfen einen Backlog-Eintrag (Abschnitt 3) | `ci.yml` testet jeden Pull Request, Cloudflare Pages veröffentlicht `main` |
 
 Zusammen ergibt sich der ganze Weg einer Idee:
 
