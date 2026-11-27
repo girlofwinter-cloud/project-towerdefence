@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Design-System Gemalt und warm · Vorschau</title>
+  <!-- Alle Bauteile auf einer Seite. Nur über den lokalen Server öffnen (npm start), weil die Vorschauen per fetch geladen werden. -->
+  <link rel="stylesheet" href="tokens.css" />
+  <link rel="stylesheet" href="komponenten/bauteile.css" />
+  <style>
+    @font-face { font-family: 'Lilita One'; src: url('../../../assets/fonts/LilitaOne-Regular.ttf') format('truetype'); }
+    body { margin: 0; background: var(--frame-bg); color: var(--cream); font-family: var(--font-body); }
+    main { max-width: 1280px; margin: 0 auto; padding: 16px; display: grid; gap: 24px; }
+    h1, h2 { font-family: var(--font-display); font-weight: 400; margin: 0;
+      text-shadow: -2px 0 var(--ink), 2px 0 var(--ink), 0 -2px var(--ink), 0 2px var(--ink); }
+    h1 { font-size: 34px; } h2 { font-size: 24px; }
+    section { display: grid; gap: 8px; }
+    .ds-stage { border: var(--stroke-select) solid var(--ink); border-radius: var(--radius-plaque); }
+    .fehlt { color: var(--bad); }
+  </style>
+</head>
+<body>
+  <main id="seite">
+    <h1>Gemalt und warm</h1>
+  </main>
+  <script type="module">
+    // Reihenfolge wie im Design-System; jede Vorschau bringt ihr eigenes Markup mit (.ds-stage)
+    const NAMES = ['HudBar', 'RoundButton', 'AbilityButton', 'WaveButton', 'PriceTag', 'LevelBadge', 'Plaque'];
+    const page = document.getElementById('seite');
+    for (const name of NAMES) {
+      const sec = document.createElement('section');
+      sec.id = name;
+      try {
+        const html = await (await fetch(`komponenten/${name}/preview.html`)).text();
+        const doc = new DOMParser().parseFromString(html, 'text/html');
+        sec.innerHTML = `<h2>${doc.title}</h2>`;
+        sec.append(...doc.body.children);
+      } catch {
+        sec.innerHTML = `<h2 class="fehlt">${name}: Vorschau fehlt</h2>`;
+      }
+      page.append(sec);
+    }
+  </script>
+</body>
+</html>
