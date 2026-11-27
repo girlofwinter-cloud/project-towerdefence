@@ -549,13 +549,24 @@ Reihenfolge ist Abhängigkeit: B-062 und B-063 zuerst, dann gemeinsame Sichtprü
 ## Vollbild-Layout (Zielbild vom designer, 2026-11-26)
 Zielbilder: `docs/design/vollbild-desktop.png`, `vollbild-ring.png`, `vollbild-start.png`, `vollbild-handy-quer.png`, `vollbild-handy-hoch.png`. Empfehlung des designers: Plaketten und Knöpfe wie Variante A (Holz, ruhig), Ringmenü als Donut wie Variante B, Leuchten der Fähigkeitsknöpfe aus B. Freies Bauraster bleibt (feste Bauplätze abgelehnt). B-129 bis B-132 hängen zusammen und laufen als ein Block, sonst ist das Spiel dazwischen unbedienbar. B-133 bis B-137 einzeln. Keine Spiel-Logik außer B-140.
 
-### B-137: Handy-Layout (Sollte)
+### B-137: Handy-Layout: Querformat über den ganzen Bildschirm (Sollte)
 - Status: offen
-- Stand 2026-11-27: Grundlayout hoch/quer mit Wischen ist auf main (PR #92). Offen: weitere Handy-Anpassungen (Mensch), u. a. Fahnenzipfel im Querformat unter der linken Spalte.
+- Entscheidung Mensch 2026-11-27: Auf dem Handy ganze Karte sichtbar, kein Scrollen, kein Zoom. Querformat ist das Handy-Layout; Bedienung schwebt in den Ecken (keine Spalten, keine Leisten). Im Hochformat nur der Hinweis "Bitte Handy drehen". Ersetzt die frühere Idee (Hochformat mit Wischen/Zoom/Minikarte, Querformat mit Spalten).
+- Skizze (Claude Design): https://claude.ai/artifact/MagK7pf7N7MYZwY8UNWxcj, Fläche "Querformat Vollbild (gewählt)", Tweak `variante` = "Ecken". Die anderen Flächen (Hochformat gedreht/ungedreht, Quer mit Spalten) sind verworfene Vergleiche.
 - Aufwand: L
-- Idee: Querformat als Standard (Feld auf volle Höhe, links HUD und Fähigkeiten, rechts Vorschau und Start). Hochformat mit 2x-Zoom, Verschieben mit einem Finger (ab ca. 8 px Bewegung ist es Ziehen, sonst Tippen) und Minikarte; Fähigkeiten und Start in der Daumenzone unten. Im Querformat sind Kacheln nur ca. 28 px groß: Zoom 1,4x erlauben, Zielfeld mit Auswahlrahmen bestätigen.
+- Idee:
+  - Feld in voller Höhe mittig (bei 844x390: 557x390, Kachel ca. 28 px), keine Drehung, Logik bleibt 20x14.
+  - Links und rechts läuft die gemalte Landschaft (Gras, Baumrand der Karte) bis an den Bildschirmrand; keine Holzspalten. Umsetzung offen: Hintergrund seitlich breiter zeichnen oder Seiten per CSS füllen (developer entscheidet, nur Optik).
+  - Bedienung schwebt über der Landschaft: oben links HUD-Plakette (Gold, Welle, Leben), oben rechts Tempo und Pause (Sound ins Pausemenü), links darunter die drei Fähigkeiten, unten rechts runder Wellenknopf mit Fortschritt. Info-Plakette (Turmwerte, Bauhinweis) nur bei Bedarf rechts.
+  - Safe-Area/Notch beachten (`viewport-fit=cover`, `env(safe-area-inset-*)`), dort keine Bedienung.
+  - Bauen per Tipp auf Kachel: Auswahlrahmen + Bau-Ring (wie heute), Ring wird am Rand ins Feld geschoben.
+  - Hochformat: Vollbild-Hinweis "Bitte Handy drehen" mit Symbol, Spiel pausiert solange.
+  - Das heutige Hochformat mit seitlichem Wischen entfällt; die Browser-Tests dazu (`tests/e2e/handy.test.mjs`) müssen angepasst werden (vor der Umsetzung Freigabe des Menschen einholen; nicht abschwächen, sondern auf das neue Verhalten umschreiben).
+  - Offen für den developer/designer: HUD-Zahlen kompakter (Token `num-compact`, ca. 22 px statt 28); Fähigkeiten ohne Text nur mit `aria-label`, ggf. kurze Beschriftung bei langem Druck.
 - Akzeptanzkriterien:
-  - Playwright bei 390x844 und 844x390: kein Tippziel unter 44 px, Ring bleibt an 4 Ecken im Bild, Antippen eines Turms klappt nach dem Verschieben.
+  - Playwright bei 844x390 und 932x430 (Touch): ganze Karte sichtbar, Seite scrollt nicht, kein Zoom nötig, alle Bedienelemente im Fenster und außerhalb der Safe-Area, kein Tippziel unter 44 px, Bau-Ring an allen 4 Feldecken im Bild, Bauen und Turm antippen klappen.
+  - Bei 390x844: Hinweis "Bitte Handy drehen" sichtbar, Spiel pausiert; nach Drehen läuft es weiter.
+  - Desktop (1280x800) unverändert (Screenshot-Vergleich), `npm test` und `npm run test:e2e` grün.
 
 
 ### B-140: Welle früher rufen während der Welle (Spiel-Logik, nur nach Freigabe)
