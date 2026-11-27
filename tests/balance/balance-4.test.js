@@ -18,7 +18,7 @@ import { meteorLife } from '../../src/game.js';
 import { meteorDamage, meteorText, FX_STYLE } from '../../src/config.js';
 import { AUTO_WAVE_DELAY } from '../../src/config.js';
 import { createSoundTracker, detectStateEvents } from '../../src/sound-events.js';
-import { rankedSpots, playDt, MIX_CANNON, MIX_ARROW, playTracked, strategyCache, strategyRun, MIX_WEAK, LATE_PROGRESS, mapRun, oneSideRun, MIX_LIGHTNING, PERFECT_ORDER, PERFECT_ORDER_VOLCANO, PERFECT_ORDER_TWIN, bestCoolSpot, perfectRun } from './sim.js';
+import { rankedSpots, playDt, MIX_CANNON, MIX_ARROW, playTracked, strategyCache, strategyRun, MIX_WEAK, LATE_PROGRESS, mapRun, oneSideRun, MIX_LIGHTNING, PERFECT_ORDER, PERFECT_ORDER_VOLCANO, PERFECT_ORDER_TWIN, bestCoolSpot, perfectRun, MIX_CANNON_FROST } from './sim.js';
 
 // B-125: Eiswelt bleibt fordernder als die Wiese. Ohne Fähigkeiten scheitern beide robusten Reihenfolgen,
 // aber erst in der Spätphase (ab Welle 15) und mit höchstens 1 verlorenen Leben vor Welle 10.
@@ -68,5 +68,23 @@ test('Feste Seiten: nur oben bauen verliert auf Zangenangriff (vor Welle 18) und
     const s = oneSideRun(mapId, 1 / 30);
     assert.equal(s.status, 'lost', `${mapId}: ${s.status} mit ${s.lives} Leben`);
     assert.ok(s.wave < maxWave, `${mapId}: verloren erst in Welle ${s.wave}`);
+  }
+});
+
+// B-171: Mit Fledermaus, Irrlicht, Panzerkäfer und Glutling reicht „nur Kanone + Frost“ nirgends mehr für ein perfektes
+// Spiel (vorher: Wiese, Eiswelt und Zangenangriff ohne Lebensverlust gewonnen). Pfeil oder Blitz werden gebraucht.
+test('B-171: nur Kanone + Frost schafft Welle 20 auf keiner Karte ohne Lebensverlust (dt 1/30, 1/60)', () => {
+  for (const mapId of Object.keys(MAPS)) {
+    for (const dt of [1 / 30, 1 / 60]) {
+      const { state } = strategyRun(MIX_CANNON_FROST, dt, mapId, mapId === 'volcano');
+      assert.ok(state.status === 'lost' || state.lives < START_LIVES, `${mapId} dt=${dt}: ${state.status} mit ${state.lives} Leben`);
+    }
+  }
+});
+
+// B-171: Die perfekten Reihenfolgen enthalten Pfeil oder Blitz (Luftabwehr gegen Fledermäuse).
+test('B-171: jede perfekte Reihenfolge enthält Pfeil oder Blitz', () => {
+  for (const order of [PERFECT_ORDER, PERFECT_ORDER_VOLCANO, PERFECT_ORDER_TWIN]) {
+    assert.ok(order.includes('arrow') || order.includes('lightning'), order.join(','));
   }
 });

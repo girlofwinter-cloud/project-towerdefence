@@ -160,6 +160,9 @@ export function oneSideRun(mapId, dt) {
 
 // Blitz-Mix (Kanone, Pfeil, Blitz, Frost): gewinnt Welle 20 auf Wiese und Eiswelt mit mindestens 1 Leben, unabhängig vom Zeitschritt.
 export const MIX_LIGHTNING = ['cannon', 'arrow', 'lightning', 'frost'];
+// B-171: nur Kanone und Frost (keine Luftabwehr). Vor den neuen Gegnern gewann sie Wiese, Eiswelt und Zangenangriff
+// ohne Lebensverlust (10 Leben, dt 1/30 und 1/60).
+export const MIX_CANNON_FROST = ['cannon', 'cannon', 'frost', 'cannon'];
 // Perfektes Spiel (Vorgabe: auf jeder Karte muss ein ganzer Durchlauf ohne Lebensverlust möglich sein).
 // Optimierte, aber nachvollziehbare Strategie: Türme nur auf Plätze ohne Überhitzung, jeweils der Platz mit der besten
 // Wegabdeckung für den Turmtyp; erst Kanone und Pfeil, dann früh Scharfschützen gegen Bosse und Trolle, dazu Frost und

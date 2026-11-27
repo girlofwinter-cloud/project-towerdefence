@@ -94,6 +94,9 @@ export const MAPS = {
   // Eiswelt (B-029, Glatteis): Gegner rutschen schneller, Kanone und Frost sind schwächer. Modifikatoren (enemySpeed, towerDamage je Typ, slowStrength) und kühles Farbschema (theme).
   ice: {
     name: 'Eiswelt',
+    // B-171: Eiswelt-Schwerpunkt Fledermäuse (doppelt), halb so viele Irrlichter, keine Panzerkäfer. Gemessen ohne
+    // Fähigkeiten: Pfeil-Mix verliert in Welle 17/18, Kanonen-Mix in Welle 18 (mit allen neuen Gegnern: Pfeil-Mix schon Welle 11).
+    newEnemyScale: { wisp: 0.5, beetle: 0, bat: 2 },
     waypoints: [
       [-1, 12],
       [4, 12],
@@ -181,7 +184,8 @@ export const MAPS = {
   // Schamane), damit man auf beiden Seiten unterschiedlich bauen muss.
   fork: {
     name: 'Zangenangriff',
-    lanes: { runner: 0, tank: 1, shielded: 1, healer: 1, mage: 1 },
+    // B-171: Fledermaus und Glutling laufen mit dem schnellen Schwarm oben, Panzerkäfer mit der schweren Kolonne unten.
+    lanes: { runner: 0, tank: 1, shielded: 1, healer: 1, mage: 1, bat: 0, ember: 0, beetle: 1 },
     waypoints: [
       [-1, 2],
       [5, 2],
@@ -300,7 +304,10 @@ export const MAPS = {
         [20, 7],
       ],
     ],
-    lanes: { runner: 0, tank: 1, shielded: 1, healer: 1, mage: 1 },
+    lanes: { runner: 0, tank: 1, shielded: 1, healer: 1, mage: 1, bat: 0, ember: 0, beetle: 1 },
+    // B-171: keine Panzerkäfer auf Zwei Fronten. Gemessen (Kanonen-Mix ohne Fähigkeiten, dt 1/60): mit Käfern verloren
+    // schon in Welle 13, ohne in Welle 18; das perfekte Spiel bleibt ohne Lebensverlust.
+    newEnemyScale: { beetle: 0 },
     // Gegner etwas langsamer, weil sich die Türme auf zwei Wege verteilen. Gemessen (Strategie-Tests, dt 1/30 und 1/60):
     // Kanonen-Mix über beide Wege gewinnt mit 3 bis 4 Leben, eine Seite allein verliert in Welle 2. Bei 0,85 wird es
     // für gute Platzierung zu leicht (10 Leben), bei 1,0 verliert jede Strategie bis Welle 10.
@@ -664,8 +671,30 @@ const LATE_WAVE = 14;
 // B-127: In dieser Welle kommt die Nekromantin statt des Oger-Königs (gleiche Anzahl)
 export const NECRO_WAVE = 15;
 
-// Erzeugt die Spawn-Liste einer Welle: [{ type, at }] (at = Sekunden nach Wellenstart)
-export function waveFor(wave) {
+// B-171: Die neuen Gegner in den Wellen. from = erste Welle, count = Anzahl in Welle from, perWave = Zuwachs je Welle
+// danach (abgerundet), max = Obergrenze, gap = Sekunden zwischen zwei Gegnern der Gruppe.
+// Fledermäuse kommen als Schwarm nach den Flitzern, Glutlinge danach, Panzerkäfer zwischen den Trollen,
+// Irrlichter mit großen Abständen am Ende (vor den Bossen).
+export const NEW_ENEMY_WAVES = {
+  bat: { from: 6, count: 2, perWave: 0.25, max: 5, gap: 0.3 },
+  ember: { from: 8, count: 2, perWave: 0.25, max: 5, gap: 0.6 },
+  beetle: { from: 11, count: 3, perWave: 0.25, max: 5, gap: 1.0, offset: 0.5 }, // offset: Sekunden nach dem ersten Troll
+  wisp: { from: 10, count: 1, perWave: 0.2, max: 3, gap: 1.5 },
+};
+
+// B-171: Anzahl eines neuen Gegnertyps in Welle `wave` (0 vor seiner ersten Welle). Karten können die Anzahl über
+// MAPS.<id>.newEnemyScale[type] (Faktor, abgerundet, mindestens 1) dämpfen oder verstärken.
+export function newEnemyCount(type, wave, mapId) {
+  const w = NEW_ENEMY_WAVES[type];
+  if (!w || wave < w.from) return 0;
+  const n = Math.min(w.max, w.count + Math.floor((wave - w.from) * w.perWave));
+  const scale = MAPS[mapId]?.newEnemyScale?.[type] ?? 1;
+  return scale === 1 ? n : scale <= 0 ? 0 : Math.max(1, Math.floor(n * scale));
+}
+
+// Erzeugt die Spawn-Liste einer Welle: [{ type, at }] (at = Sekunden nach Wellenstart).
+// mapId (B-171) nur für die kartenabhängige Anzahl der neuen Gegner.
+export function waveFor(wave, mapId) {
   const list = [];
   let t = 0;
   const add = (type, count, gap) => {
@@ -680,8 +709,18 @@ export function waveFor(wave) {
   const lateRunners = 2 * lateTanks;
   add('grunt', 6 + wave * 3, Math.max(0.3, 0.9 - wave * 0.04));
   if (wave >= 3) add('runner', 3 + wave * 2 + lateRunners, 0.35);
+  const extra = (type) => {
+    const n = newEnemyCount(type, wave, mapId);
+    if (n) add(type, n, NEW_ENEMY_WAVES[type].gap);
+  };
+  extra('bat');
+  extra('ember');
   const tankStart = t;
   if (wave >= 5) add('tank', Math.floor(wave / 2) + 1 + lateTanks, 1.0);
+  // B-171: Panzerkäfer laufen zwischen den Trollen mit (verlängern die Welle nicht)
+  const beetles = newEnemyCount('beetle', wave, mapId);
+  for (let i = 0; i < beetles; i++) list.push({ type: 'beetle', at: tankStart + NEW_ENEMY_WAVES.beetle.offset + i * NEW_ENEMY_WAVES.beetle.gap });
+  if (beetles) list.sort((a, b) => a.at - b.at);
   if (wave >= 9) add('shielded', 1 + Math.floor((wave - 9) / 2), 1.0);
   // B-126: Magier laufen kurz nach der Troll-Gruppe
   if (wave >= 8) add('mage', 1 + Math.floor((wave - 8) / 4), 1.5);
@@ -692,15 +731,16 @@ export function waveFor(wave) {
     for (let i = 0; i < healers; i++) list.push({ type: 'healer', at: tankStart + 2 + i * 2 });
     list.sort((a, b) => a.at - b.at);
   }
+  extra('wisp');
   // B-127: Bosse in jeder 5. Welle; in Welle NECRO_WAVE kommt die Nekromantin statt des Oger-Königs
   if (wave % 5 === 0) add(wave === NECRO_WAVE ? 'necro' : 'boss', Math.floor(wave / 10) + 1, 3);
   return list;
 }
 
 // Zusammenfassung einer Welle: Anzahl pro Gegnertyp, z. B. { grunt: 8, runner: 3 }
-export function waveSummary(wave) {
+export function waveSummary(wave, mapId) {
   const summary = {};
-  for (const { type } of waveFor(wave)) summary[type] = (summary[type] || 0) + 1;
+  for (const { type } of waveFor(wave, mapId)) summary[type] = (summary[type] || 0) + 1;
   return summary;
 }
 

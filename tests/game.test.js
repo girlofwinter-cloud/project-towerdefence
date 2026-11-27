@@ -170,10 +170,48 @@ test('Wellen: jede 5. Welle hat einen Boss, Wellen werden größer', () => {
   assert.ok(waveFor(10).length > waveFor(1).length);
 });
 
+test('B-171: waveFor enthält die neuen Gegner erst ab ihrer Startwelle, Wellen 1-5 unverändert', async () => {
+  const { NEW_ENEMY_WAVES, newEnemyCount } = await import('../src/config.js');
+  const starts = { bat: 6, ember: 8, wisp: 10, beetle: 11 };
+  for (const [type, from] of Object.entries(starts)) {
+    assert.equal(NEW_ENEMY_WAVES[type].from, from, type);
+    for (let w = 1; w <= MAX_WAVES; w++) {
+      const n = waveFor(w).filter((e) => e.type === type).length;
+      assert.equal(n > 0, w >= from, `${type} Welle ${w}`);
+      assert.equal(n, newEnemyCount(type, w), `${type} Welle ${w}: Anzahl`);
+    }
+  }
+  for (let w = 1; w <= 5; w++) assert.ok(waveFor(w).every((e) => !(e.type in starts)), `Welle ${w}`);
+  // Panzerkäfer 3 bis 5, mitten in der Troll-Gruppe (nach dem ersten Troll, vor dem letzten)
+  for (let w = 11; w <= MAX_WAVES; w++) {
+    const list = waveFor(w);
+    const beetles = list.filter((e) => e.type === 'beetle');
+    assert.ok(beetles.length >= 3 && beetles.length <= 5, `Welle ${w}: ${beetles.length} Käfer`);
+    const tanks = list.filter((e) => e.type === 'tank').map((e) => e.at);
+    assert.ok(beetles.every((b) => b.at > tanks[0] && b.at < tanks[tanks.length - 1]), `Welle ${w}: Käfer bei den Trollen`);
+    assert.ok(list.every((e, i) => i === 0 || list[i - 1].at <= e.at), `Welle ${w}: sortiert`);
+  }
+  // Irrlichter mit großen Abständen
+  const wisps = waveFor(20).filter((e) => e.type === 'wisp');
+  for (let i = 1; i < wisps.length; i++) assert.ok(wisps[i].at - wisps[i - 1].at >= 1.5 - 1e-9);
+});
+
+test('B-171: Karten-Faktor newEnemyScale: Zwei Fronten ohne Panzerkäfer, Spiel und Vorschau nutzen die Karte', () => {
+  assert.ok(waveSummary(12).beetle >= 3);
+  assert.equal(waveSummary(12, 'twin').beetle, undefined);
+  assert.equal(waveSummary(12, 'twin').bat, waveSummary(12).bat);
+  assert.deepEqual(waveFor(12, 'meadow'), waveFor(12));
+  const s = createGame({ mapId: 'twin' });
+  s.wave = 11;
+  startWave(s);
+  assert.equal(s.spawnQueue.length, waveFor(12, 'twin').length);
+  assert.ok(s.spawnQueue.every((e) => e.type !== 'beetle'));
+});
+
 test('waveSummary: Anzahl pro Gegnertyp für Welle 1, 5 und 10', () => {
   assert.deepEqual(waveSummary(1), { grunt: 9 });
   assert.deepEqual(waveSummary(5), { grunt: 21, runner: 13, tank: 3, boss: 1 });
-  assert.deepEqual(waveSummary(10), { grunt: 36, runner: 23, tank: 6, shielded: 1, mage: 1, healer: 1, boss: 2 });
+  assert.deepEqual(waveSummary(10), { grunt: 36, runner: 23, tank: 6, shielded: 1, mage: 1, healer: 1, boss: 2, bat: 3, ember: 2, wisp: 1 });
   assert.equal(NECRO_WAVE, 15);
   assert.equal(waveSummary(15).necro, 2, 'B-127: Nekromantin in Welle 15 (gleiche Anzahl wie der Oger-König)');
   assert.equal(waveSummary(15).boss, undefined);

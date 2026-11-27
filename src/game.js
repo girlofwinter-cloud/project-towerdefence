@@ -173,15 +173,15 @@ export function sellTower(state, id) {
 export { earlyStartBonus };
 
 // B-123: Gesamt-HP einer Welle beim Spawn (ohne Heilung), Grundlage fürs Frühstart-Risiko.
-export function waveHp(wave) {
-  return waveFor(wave).reduce((sum, e) => sum + Math.round(ENEMY_TYPES[e.type].hp * hpScale(Math.max(1, wave))), 0);
+export function waveHp(wave, mapId) {
+  return waveFor(wave, mapId).reduce((sum, e) => sum + Math.round(ENEMY_TYPES[e.type].hp * hpScale(Math.max(1, wave))), 0);
 }
 
 // B-123: Risiko eines Frühstarts = Gegner-HP auf dem Feld (alle Wellen) im Verhältnis zur HP der laufenden Welle,
 // gekappt auf 0..1. Ohne laufende Welle 0.
 export function earlyStartRisk(state) {
   if (!state.waveActive || state.wave < 1) return 0;
-  const total = waveHp(state.wave);
+  const total = waveHp(state.wave, state.mapId);
   const alive = state.enemies.reduce((sum, e) => sum + Math.max(0, e.hp), 0);
   return total > 0 ? Math.min(1, alive / total) : 0;
 }
@@ -210,11 +210,11 @@ export function startWave(state) {
   if (!early) {
     state.waveActive = true;
     state.waveTime = 0;
-    state.spawnQueue = planLanes(state, waveFor(wave), wave).map((e) => ({ ...e, wave }));
+    state.spawnQueue = planLanes(state, waveFor(wave, state.mapId), wave).map((e) => ({ ...e, wave }));
     return { ok: true, wave, bonus: 0 };
   }
   const offset = state.waveTime;
-  const added = planLanes(state, waveFor(wave), wave).map((e) => ({ ...e, at: e.at + offset, wave }));
+  const added = planLanes(state, waveFor(wave, state.mapId), wave).map((e) => ({ ...e, at: e.at + offset, wave }));
   // Stabil nach Zeit sortieren: spawnStep arbeitet die Liste von vorne ab
   state.spawnQueue = [...state.spawnQueue, ...added].sort((a, b) => a.at - b.at);
   const bonus = earlyStartBonus(wave, risk);
