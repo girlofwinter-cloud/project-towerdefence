@@ -721,7 +721,7 @@ function refreshUI() {
   const showPreview = !state.waveActive && state.status === 'playing' && state.wave < MAX_WAVES;
   $('wave-preview').hidden = !showPreview;
   if (showPreview) {
-    const parts = Object.entries(waveSummary(state.wave + 1))
+    const parts = Object.entries(waveSummary(state.wave + 1, state.mapId))
       .map(([type, n]) => `${n}× ${ENEMY_TYPES[type].name}`);
     $('wave-preview').textContent = `Kommt: ${parts.join(', ')}`;
   }

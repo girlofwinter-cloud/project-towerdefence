@@ -1,5 +1,5 @@
 // Unit-Tests der Spiel-Logik (game.js, path.js, config.js). Ausführen: npm test
-import { test } from 'node:test';
+import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { createGame, mapModifiers, update, buildTower, upgradeTower, sellTower, startWave, planLanes, earlyStartBonus, earlyStartRisk, earlyStartPreview, waveHp, spawnEnemy, canBuild, towerStats, upgradeCost, togglePause, stepGame, setTargetMode, pickTarget, enemyPath, chainTargets, laneFor, nearLava } from '../src/game.js';
 
@@ -170,10 +170,48 @@ test('Wellen: jede 5. Welle hat einen Boss, Wellen werden größer', () => {
   assert.ok(waveFor(10).length > waveFor(1).length);
 });
 
+test('B-171: waveFor enthält die neuen Gegner erst ab ihrer Startwelle, Wellen 1-5 unverändert', async () => {
+  const { NEW_ENEMY_WAVES, newEnemyCount } = await import('../src/config.js');
+  const starts = { bat: 6, ember: 8, wisp: 10, beetle: 11 };
+  for (const [type, from] of Object.entries(starts)) {
+    assert.equal(NEW_ENEMY_WAVES[type].from, from, type);
+    for (let w = 1; w <= MAX_WAVES; w++) {
+      const n = waveFor(w).filter((e) => e.type === type).length;
+      assert.equal(n > 0, w >= from, `${type} Welle ${w}`);
+      assert.equal(n, newEnemyCount(type, w), `${type} Welle ${w}: Anzahl`);
+    }
+  }
+  for (let w = 1; w <= 5; w++) assert.ok(waveFor(w).every((e) => !(e.type in starts)), `Welle ${w}`);
+  // Panzerkäfer 3 bis 5, mitten in der Troll-Gruppe (nach dem ersten Troll, vor dem letzten)
+  for (let w = 11; w <= MAX_WAVES; w++) {
+    const list = waveFor(w);
+    const beetles = list.filter((e) => e.type === 'beetle');
+    assert.ok(beetles.length >= 3 && beetles.length <= 5, `Welle ${w}: ${beetles.length} Käfer`);
+    const tanks = list.filter((e) => e.type === 'tank').map((e) => e.at);
+    assert.ok(beetles.every((b) => b.at > tanks[0] && b.at < tanks[tanks.length - 1]), `Welle ${w}: Käfer bei den Trollen`);
+    assert.ok(list.every((e, i) => i === 0 || list[i - 1].at <= e.at), `Welle ${w}: sortiert`);
+  }
+  // Irrlichter mit großen Abständen
+  const wisps = waveFor(20).filter((e) => e.type === 'wisp');
+  for (let i = 1; i < wisps.length; i++) assert.ok(wisps[i].at - wisps[i - 1].at >= 1.5 - 1e-9);
+});
+
+test('B-171: Karten-Faktor newEnemyScale: Zwei Fronten ohne Panzerkäfer, Spiel und Vorschau nutzen die Karte', () => {
+  assert.ok(waveSummary(12).beetle >= 3);
+  assert.equal(waveSummary(12, 'twin').beetle, undefined);
+  assert.equal(waveSummary(12, 'twin').bat, waveSummary(12).bat);
+  assert.deepEqual(waveFor(12, 'meadow'), waveFor(12));
+  const s = createGame({ mapId: 'twin' });
+  s.wave = 11;
+  startWave(s);
+  assert.equal(s.spawnQueue.length, waveFor(12, 'twin').length);
+  assert.ok(s.spawnQueue.every((e) => e.type !== 'beetle'));
+});
+
 test('waveSummary: Anzahl pro Gegnertyp für Welle 1, 5 und 10', () => {
   assert.deepEqual(waveSummary(1), { grunt: 9 });
   assert.deepEqual(waveSummary(5), { grunt: 21, runner: 13, tank: 3, boss: 1 });
-  assert.deepEqual(waveSummary(10), { grunt: 36, runner: 23, tank: 6, shielded: 1, mage: 1, healer: 1, boss: 2 });
+  assert.deepEqual(waveSummary(10), { grunt: 36, runner: 23, tank: 6, shielded: 1, mage: 1, healer: 1, boss: 2, bat: 3, ember: 2, wisp: 1 });
   assert.equal(NECRO_WAVE, 15);
   assert.equal(waveSummary(15).necro, 2, 'B-127: Nekromantin in Welle 15 (gleiche Anzahl wie der Oger-König)');
   assert.equal(waveSummary(15).boss, undefined);
@@ -2992,4 +3030,347 @@ test('Fahnen-Kacheln: canBuild lehnt ab ("Hier steht die Fahne"), Nachbarkacheln
   assert.equal(createGame({ mapId: 'twin' }).flagTiles.size, 2);
   // Override ohne flagTiles: alles wie früher
   assert.ok(canBuild(createGame({ mapId: 'fork', flagTiles: undefined }), 0, 0).ok);
+});
+
+describe('B-170: Glutling ist immun gegen Verlangsamung und Einfrieren', () => {
+  test('Konfiguration: slowImmune und chillFactor gesetzt, Frost-Text nennt die Immunität', () => {
+    assert.equal(ENEMY_TYPES.ember.slowImmune, true);
+    assert.equal(ENEMY_TYPES.ember.chillFactor, 0.5);
+    assert.match(TOWER_TYPES.frost.special.text, /Glutlinge sind immun/);
+  });
+
+  test('Frost-Treffer verlangsamt nicht, macht aber Schaden', () => {
+    const { s, tower, e } = specialSetup('frost', 'ember');
+    const hp0 = e.hp;
+    fireAndLand(s, tower);
+    assert.ok(e.hp < hp0, 'Frost-Schaden wirkt');
+    assert.ok(!(s.time < (e.slowUntil || 0)) || e.slowFactor === 1, 'kein Slow');
+    // Gegenprobe: Goblin wird verlangsamt
+    const g = specialSetup('frost', 'grunt');
+    fireAndLand(g.s, g.tower);
+    assert.ok(g.s.time < g.e.slowUntil && g.e.slowFactor < 1, 'Goblin verlangsamt');
+  });
+
+  test('kein Einfrieren, auch nicht beim N-ten Treffer; Treffer zählen weiter', () => {
+    const { s, tower, e } = specialSetup('frost', 'ember');
+    const n = cfg('frost').freezeEvery;
+    for (let i = 0; i < n; i++) fireAndLand(s, tower);
+    assert.equal(tower.hitCount, n, 'Treffer zählen im hitCount');
+    assert.equal(e.frozenUntil || 0, 0, 'nicht eingefroren');
+  });
+
+  test('Kälteschock wirkt nur zur Hälfte (chillFactor), auf Goblins voll', () => {
+    const s = createGame();
+    const em = spawnEnemy(s, 'ember', 1);
+    const gr = spawnEnemy(s, 'grunt', 1);
+    assert.equal(useAbility(s, 'freeze').ok, true);
+    const slow = ABILITIES.freeze.slow;
+    assert.ok(Math.abs(em.slowFactor - (1 - slow * ENEMY_TYPES.ember.chillFactor)) < 1e-9);
+    assert.ok(Math.abs(gr.slowFactor - (1 - slow)) < 1e-9);
+    assert.ok(em.slowUntil > s.time);
+  });
+});
+
+describe('B-168: Irrlicht weicht langsamen Geschossen aus', () => {
+  const every = ENEMY_TYPES.wisp.dodgeEvery;
+
+  test('genau jedes dodgeEvery-te Kanonen-Geschoss trifft, nie Rückstoß, Ausweich-Effekt entsteht', () => {
+    const { s, tower, e } = specialSetup('cannon', 'wisp');
+    const dist0 = e.dist;
+    const hits = [];
+    for (let i = 1; i <= every * 2; i++) {
+      const hp = e.hp;
+      fireAndLand(s, tower);
+      hits.push(e.hp < hp);
+      if (i === 1) assert.ok(s.effects.some((f) => f.kind === 'dodge'), 'dodge-Effekt');
+    }
+    assert.deepEqual(hits, hits.map((_, i) => (i + 1) % every === 0));
+    assert.equal(e.dist, dist0, 'kein Rückstoß');
+  });
+
+  test('Frost: verfehlte Treffer machen keinen Schaden, verlangsamen nicht und zählen nicht fürs Einfrieren', () => {
+    const { s, tower, e } = specialSetup('frost', 'wisp');
+    const hp0 = e.hp;
+    for (let i = 1; i < every; i++) fireAndLand(s, tower);
+    assert.equal(e.hp, hp0);
+    assert.ok(!(s.time < (e.slowUntil || 0)), 'kein Slow');
+    assert.equal(tower.hitCount || 0, 0);
+    fireAndLand(s, tower);
+    assert.ok(e.hp < hp0, 'jeder dodgeEvery-te trifft');
+    assert.ok(s.time < e.slowUntil && e.slowFactor < 1, 'Treffer verlangsamt');
+    assert.equal(tower.hitCount, 1);
+  });
+
+  test('fremde Explosion verletzt das Irrlicht nicht, den Goblin daneben schon', () => {
+    const { s, tower, e: g } = specialSetup('cannon', 'grunt');
+    const w = spawnEnemy(s, 'wisp', 1);
+    w.speed = 0; w.hp = w.maxHp = 1e8; // schwächer als der Goblin: Zielregel "strong" wählt den Goblin
+    setTargetMode(s, tower.id, 'strong');
+    w.dist = g.dist - 5; // knapp hinter dem Goblin, steht im Splash
+    const p = pointAt(enemyPath(s, w), w.dist);
+    w.x = p.x; w.y = p.y;
+    for (let i = 0; i < every; i++) {
+      const gh = g.hp;
+      fireAndLand(s, tower);
+      assert.ok(g.hp < gh, 'Goblin getroffen');
+      assert.ok(Math.hypot(w.x - g.x, w.y - g.y) <= TOWER_TYPES.cannon.splash * TILE, 'Irrlicht im Splash');
+    }
+    assert.equal(w.hp, w.maxHp, 'Irrlicht unverletzt');
+    assert.equal(w.dodgeCount || 0, 0, 'kein Ausweichen nötig');
+  });
+
+  test('Pfeil trifft immer', () => {
+    const { s, tower, e } = specialSetup('arrow', 'wisp');
+    for (let i = 0; i < every * 2; i++) {
+      const hp = e.hp;
+      fireAndLand(s, tower);
+      assert.ok(e.hp < hp, `Pfeil ${i + 1} trifft`);
+    }
+    assert.ok(!s.effects.some((f) => f.kind === 'dodge'));
+  });
+});
+
+// ---------- B-167: Fledermaus (Flieger) ----------
+describe('B-167 Fledermaus: Flieger, die Kanone und Frost nicht treffen', () => {
+  // Turm neben einer Fledermaus (und optional einem Goblin an derselben Stelle)
+  function batSetup(towerType, withGrunt = false) {
+    const { s, tower, e: bat } = specialSetup(towerType, 'bat');
+    let grunt = null;
+    if (withGrunt) {
+      grunt = spawnEnemy(s, 'grunt', 1);
+      grunt.dist = bat.dist; grunt.x = bat.x; grunt.y = bat.y; grunt.speed = 0; grunt.hp = grunt.maxHp = 1e9;
+    }
+    return { s, tower, bat, grunt };
+  }
+
+  test('Config: Fledermaus fliegt, hitsAir je Turm, Text in special.text', () => {
+    assert.equal(ENEMY_TYPES.bat.flying, true);
+    assert.equal(ENEMY_TYPES.bat.name, 'Fledermaus');
+    for (const t of ['arrow', 'sniper', 'lightning']) {
+      assert.equal(TOWER_TYPES[t].hitsAir, true, t);
+      assert.ok(TOWER_TYPES[t].special.text.endsWith('Trifft Flieger.'), t);
+    }
+    for (const t of ['cannon', 'frost']) {
+      assert.equal(TOWER_TYPES[t].hitsAir, false, t);
+      assert.ok(TOWER_TYPES[t].special.text.endsWith('Trifft keine Flieger.'), t);
+    }
+  });
+
+  test('pickTarget ist rein und überspringt Flieger nur bei Türmen ohne hitsAir', () => {
+    const bat = { type: 'bat', x: 0, y: 0, hp: 10, dist: 90, len: 100 };
+    const grunt = { type: 'grunt', x: 10, y: 0, hp: 10, dist: 10, len: 100 };
+    const enemies = [bat, grunt];
+    const snap = JSON.stringify(enemies);
+    assert.equal(pickTarget(enemies, { type: 'arrow', x: 0, y: 0 }, 50), bat);
+    assert.equal(pickTarget(enemies, { type: 'cannon', x: 0, y: 0 }, 50), grunt);
+    assert.equal(pickTarget(enemies, { type: 'frost', x: 0, y: 0 }, 50), grunt);
+    assert.equal(pickTarget([bat], { type: 'cannon', x: 0, y: 0 }, 50), null);
+    assert.equal(pickTarget(enemies, { x: 0, y: 0 }, 50), bat, 'ohne Turmtyp wie bisher');
+    assert.equal(JSON.stringify(enemies), snap, 'keine Änderung an den Gegnern');
+  });
+
+  test('Kanone und Frost zielen nicht auf eine Fledermaus', () => {
+    for (const t of ['cannon', 'frost']) {
+      const { s, tower } = batSetup(t);
+      tower.cooldown = 0;
+      update(s, 0.001);
+      assert.equal(s.projectiles.length, 0, t);
+    }
+  });
+
+  test('Kanonen-Splash verletzt Fledermäuse nicht und wirft sie nicht zurück', () => {
+    const { s, tower, bat, grunt } = batSetup('cannon', true);
+    const dist0 = bat.dist;
+    tower.cooldown = 0;
+    update(s, 0.001);
+    assert.equal(s.projectiles.length, 1);
+    assert.equal(s.projectiles[0].targetId, grunt.id);
+    for (let i = 0; i < 60 && s.projectiles.length; i++) { tower.cooldown = 99; update(s, 0.02); }
+    assert.ok(grunt.hp < grunt.maxHp, 'Goblin getroffen');
+    assert.equal(bat.hp, bat.maxHp, 'Fledermaus unverletzt');
+    assert.equal(bat.dist, dist0, 'Fledermaus nicht zurückgeworfen');
+  });
+
+  test('Pfeil und Scharfschütze treffen Fledermäuse', () => {
+    for (const t of ['arrow', 'sniper']) {
+      const { s, tower, bat } = batSetup(t);
+      tower.cooldown = 0;
+      update(s, 0.001);
+      assert.equal(s.projectiles[0]?.targetId, bat.id, t);
+      for (let i = 0; i < 60 && s.projectiles.length; i++) { tower.cooldown = 99; update(s, 0.02); }
+      assert.ok(bat.hp < bat.maxHp, `${t}: Fledermaus getroffen`);
+    }
+  });
+
+  test('Kettenblitz springt auf eine Fledermaus über', () => {
+    const grunt = { type: 'grunt', x: 0, y: 0, hp: 10 };
+    const bat = { type: 'bat', x: 20, y: 0, hp: 10 };
+    assert.deepEqual(chainTargets([grunt, bat], grunt, 3, 50), [grunt, bat]);
+    const { s, tower, bat: b2, grunt: g2 } = batSetup('lightning', true);
+    tower.cooldown = 0;
+    update(s, 0.001);
+    assert.ok(b2.hp < b2.maxHp && g2.hp < g2.maxHp, 'beide getroffen');
+  });
+
+  test('Meteor und Kälteschock treffen Fledermäuse', () => {
+    const { s, bat } = batSetup('arrow');
+    s.towers = [];
+    const hp0 = bat.hp;
+    assert.ok(useAbility(s, 'meteor', bat.x, bat.y).ok);
+    assert.ok(bat.hp < hp0, 'Meteor');
+    assert.ok(useAbility(s, 'freeze').ok);
+    assert.ok(bat.slowUntil > s.time, 'Kälteschock');
+  });
+});
+
+// ---------- B-169: Panzerkäfer (Schale) ----------
+describe('B-169 Panzerkäfer: Schale fängt die ersten Treffer ab', () => {
+  const SHELL = ENEMY_TYPES.beetle.shellHits;
+  // Turm schießt einmal, Geschoss fliegt ins Ziel
+  function shoot(s, tower) {
+    tower.cooldown = 0;
+    update(s, 0.001);
+    for (let i = 0; i < 60 && s.projectiles.length; i++) { tower.cooldown = 99; update(s, 0.02); }
+  }
+
+  test('Spawn: Schale mit shellHits Schichten, andere Gegner ohne Schale', () => {
+    const s = createGame();
+    assert.equal(spawnEnemy(s, 'beetle', 1).shell, SHELL);
+    assert.equal(spawnEnemy(s, 'grunt', 1).shell, undefined);
+  });
+
+  test('Pfeil: shellHits Treffer machen 0 Schaden, der nächste normal', () => {
+    const { s, tower, e } = specialSetup('arrow', 'beetle');
+    for (let i = 0; i < SHELL; i++) {
+      shoot(s, tower);
+      assert.equal(e.hp, e.maxHp, `Treffer ${i + 1} ohne Schaden`);
+      assert.equal(e.shell, SHELL - i - 1);
+    }
+    shoot(s, tower);
+    assert.equal(e.maxHp - e.hp, TOWER_TYPES.arrow.damage, 'Treffer nach der Schale normal');
+  });
+
+  test('Kettenblitz: jeder Sprung zählt als Treffer', () => {
+    const { s, tower, e } = specialSetup('lightning', 'beetle');
+    const b2 = spawnEnemy(s, 'beetle', 1);
+    b2.dist = e.dist; b2.x = e.x + 10; b2.y = e.y; b2.speed = 0; b2.hp = b2.maxHp = 1e9;
+    tower.cooldown = 0;
+    update(s, 0.001);
+    assert.equal(e.shell, SHELL - 1);
+    assert.equal(b2.shell, SHELL - 1);
+    assert.equal(e.hp, e.maxHp);
+    assert.equal(b2.hp, b2.maxHp);
+  });
+
+  test('Kanonen-Splash zählt einmal je Käfer und Explosion', () => {
+    const { s, tower, e } = specialSetup('cannon', 'beetle');
+    shoot(s, tower);
+    assert.equal(e.shell, SHELL - 1);
+    assert.equal(e.hp, e.maxHp);
+  });
+
+  test('Meteor zählt einmal', () => {
+    const { s, e } = specialSetup('arrow', 'beetle');
+    s.towers = [];
+    assert.ok(useAbility(s, 'meteor', e.x, e.y).ok);
+    assert.equal(e.shell, SHELL - 1);
+    assert.equal(e.hp, e.maxHp);
+  });
+
+  test('Scharfschütze ignoriert Rüstung, nicht die Schale', () => {
+    const { s, tower, e } = specialSetup('sniper', 'beetle');
+    e.armor = 0.5;
+    shoot(s, tower);
+    assert.equal(e.hp, e.maxHp);
+    assert.equal(e.shell, SHELL - 1);
+  });
+
+  test('Schale vor Magier-Schild: der Schild bleibt bei intakter Schale unberührt', () => {
+    const { s, tower, e } = specialSetup('arrow', 'beetle');
+    e.ward = 5;
+    shoot(s, tower);
+    assert.equal(e.ward, 5);
+    assert.equal(e.shell, SHELL - 1);
+  });
+
+  test('Lava zählt nicht als Treffer und macht Schaden', () => {
+    const { lost, e } = lavaBurn('beetle', 10, 8, 1, 1 / 60);
+    assert.ok(lost > 0, 'Lava-Schaden');
+    assert.equal(e.shell, SHELL, 'Schale unverändert');
+  });
+
+  test('Frost verlangsamt (und friert ein) trotz intakter Schale', () => {
+    const { s, tower, e } = specialSetup('frost', 'beetle');
+    shoot(s, tower);
+    assert.equal(e.hp, e.maxHp);
+    assert.ok(e.slowUntil > s.time && e.slowFactor < 1, 'verlangsamt');
+    tower.hitCount = TOWER_TYPES.frost.special.freezeEvery - 1;
+    shoot(s, tower);
+    assert.ok(e.frozenUntil > s.time, 'eingefroren');
+  });
+
+  test('shellBreak-Effekt entsteht genau beim Bruch der letzten Schicht', () => {
+    const { s, tower, e } = specialSetup('arrow', 'beetle');
+    const breaks = () => s.effects.filter((fx) => fx.kind === 'shellBreak').length;
+    for (let i = 0; i < SHELL - 1; i++) shoot(s, tower);
+    assert.equal(breaks(), 0);
+    shoot(s, tower);
+    const fx = s.effects.find((f) => f.kind === 'shellBreak');
+    assert.ok(fx, 'Effekt da');
+    assert.equal(fx.max, FX_STYLE.shellBreak.life);
+    assert.ok(Math.abs(fx.x - e.x) < 1e-9 && Math.abs(fx.y - e.y) < 1e-9);
+    shoot(s, tower);
+    assert.equal(breaks(), 1, 'kein zweiter Effekt');
+  });
+});
+
+// ---------- Tester: Randfälle der neuen Gegner (B-167 bis B-171) ----------
+describe('Tester: Randfälle neue Gegner', () => {
+  const still = (s, type) => {
+    const e = spawnEnemy(s, type, 1);
+    e.dist = 300; e.speed = 0; e.hp = e.maxHp = 1e6;
+    return e;
+  };
+
+  test('Meteor trifft das Irrlicht (Fähigkeit ist kein fremder Splash)', () => {
+    const s = createGame();
+    const e = still(s, 'wisp');
+    update(s, 0.001);
+    assert.ok(useAbility(s, 'meteor', e.x, e.y).ok);
+    assert.ok(e.hp < e.maxHp);
+  });
+
+  test('Glutling: nach Ende des Kälteschocks wieder volles Tempo', () => {
+    const s = createGame();
+    const e = still(s, 'ember');
+    e.speed = ENEMY_TYPES.ember.speed;
+    assert.ok(useAbility(s, 'freeze').ok);
+    run(s, ABILITIES.freeze.duration + 0.5);
+    const d0 = e.dist;
+    update(s, 0.1);
+    assert.ok(Math.abs((e.dist - d0) - e.speed * TILE * 0.1) < 1e-6, 'kein Rest-Slow');
+  });
+
+  test('Lava knackt die Schale nicht, macht aber Schaden', () => {
+    const s = createGame({ mapId: 'volcano' });
+    const e = spawnEnemy(s, 'beetle', 1);
+    e.speed = 0; e.hp = e.maxHp = 1e6;
+    const shell = e.shell;
+    let hit = false;
+    for (let d = 0; d < 2000 && !hit; d += 5) {
+      e.dist = d; e.hp = e.maxHp; update(s, 0.05);
+      if (e.hp < e.maxHp) hit = true;
+    }
+    assert.ok(hit, 'Lava-Kachel gefunden');
+    assert.equal(e.shell, shell);
+  });
+
+  test('waveHp mit Karte entspricht der Summe aus waveFor(wave, mapId)', () => {
+    for (const mapId of Object.keys(MAPS)) {
+      for (const w of [1, 8, 15, MAX_WAVES]) {
+        const exp = waveFor(w, mapId).reduce((a, e) => a + Math.round(ENEMY_TYPES[e.type].hp * hpScale(w)), 0);
+        assert.equal(waveHp(w, mapId), exp, `${mapId} Welle ${w}`);
+      }
+    }
+  });
 });

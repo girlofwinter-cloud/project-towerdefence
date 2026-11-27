@@ -42,7 +42,7 @@ export function mockCtx(counts = {}) {
 }
 
 // Zeichnet einen Gegner auf einen Mock mit Matrix-Tracking; liefert Aufrufe, Weltpunkte und Grenzen.
-export async function recordEnemy(over, time = 1, path = buildPath(WAYPOINTS, TILE)) {
+export async function recordEnemy(over, time = 1, path = buildPath(WAYPOINTS, TILE), reduced = false) {
   const { drawEnemy } = await import('../src/render-enemies.js');
   const def = ENEMY_TYPES[over.type];
   const e = { id: 3, x: 200, y: 150, dist: 20, hp: 10, maxHp: 10, slowUntil: 0, slowFactor: 0.5, speed: def ? def.speed : 1, radius: def ? def.radius : 10, ...over };
@@ -77,7 +77,7 @@ export async function recordEnemy(over, time = 1, path = buildPath(WAYPOINTS, TI
     },
     set(_, k, v) { props[k] = v; return true; },
   });
-  drawEnemy(ctx, e, time, path);
+  drawEnemy(ctx, e, time, path, reduced);
   return { e, calls, depth, props, world, print: calls.join('\n'), figure: world.filter((p) => !p.hp) };
 }
 

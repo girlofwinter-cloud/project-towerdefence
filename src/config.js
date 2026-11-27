@@ -94,6 +94,9 @@ export const MAPS = {
   // Eiswelt (B-029, Glatteis): Gegner rutschen schneller, Kanone und Frost sind schwächer. Modifikatoren (enemySpeed, towerDamage je Typ, slowStrength) und kühles Farbschema (theme).
   ice: {
     name: 'Eiswelt',
+    // B-171: Eiswelt-Schwerpunkt Fledermäuse (doppelt), halb so viele Irrlichter, keine Panzerkäfer. Gemessen ohne
+    // Fähigkeiten: Pfeil-Mix verliert in Welle 17/18, Kanonen-Mix in Welle 18 (mit allen neuen Gegnern: Pfeil-Mix schon Welle 11).
+    newEnemyScale: { wisp: 0.5, beetle: 0, bat: 2 },
     waypoints: [
       [-1, 12],
       [4, 12],
@@ -181,7 +184,8 @@ export const MAPS = {
   // Schamane), damit man auf beiden Seiten unterschiedlich bauen muss.
   fork: {
     name: 'Zangenangriff',
-    lanes: { runner: 0, tank: 1, shielded: 1, healer: 1, mage: 1 },
+    // B-171: Fledermaus und Glutling laufen mit dem schnellen Schwarm oben, Panzerkäfer mit der schweren Kolonne unten.
+    lanes: { runner: 0, tank: 1, shielded: 1, healer: 1, mage: 1, bat: 0, ember: 0, beetle: 1 },
     waypoints: [
       [-1, 2],
       [5, 2],
@@ -300,7 +304,10 @@ export const MAPS = {
         [20, 7],
       ],
     ],
-    lanes: { runner: 0, tank: 1, shielded: 1, healer: 1, mage: 1 },
+    lanes: { runner: 0, tank: 1, shielded: 1, healer: 1, mage: 1, bat: 0, ember: 0, beetle: 1 },
+    // B-171: keine Panzerkäfer auf Zwei Fronten. Gemessen (Kanonen-Mix ohne Fähigkeiten, dt 1/60): mit Käfern verloren
+    // schon in Welle 13, ohne in Welle 18; das perfekte Spiel bleibt ohne Lebensverlust.
+    newEnemyScale: { beetle: 0 },
     // Gegner etwas langsamer, weil sich die Türme auf zwei Wege verteilen. Gemessen (Strategie-Tests, dt 1/30 und 1/60):
     // Kanonen-Mix über beide Wege gewinnt mit 3 bis 4 Leben, eine Seite allein verliert in Welle 2. Bei 0,85 wird es
     // für gute Platzierung zu leicht (10 Leben), bei 1,0 verliert jede Strategie bis Welle 10.
@@ -465,6 +472,7 @@ export const TOWER_TYPES = {
     projectileSpeed: 12,
     color: '#c8a165',
     description: 'Günstig und schnell. Guter Allrounder.',
+    hitsAir: true, // B-167: trifft Flieger
     // Aufwärmen: Schussabstand sinkt je Folgeschuss auf dasselbe Ziel um warmupStep (Anteil), höchstens um warmupMax.
     special: { warmupStep: 0.05, warmupMax: 0.25 },
   },
@@ -479,6 +487,7 @@ export const TOWER_TYPES = {
     splash: 1.1,
     color: '#5a5f6b',
     description: 'Flächenschaden gegen Gruppen.',
+    hitsAir: false,
     // Rückstoß: das getroffene Ziel wird knockback Kacheln auf seinem Weg zurückgeworfen (Boss nur Faktor bossKnockbackFactor),
     // danach knockbackCooldown Sekunden Schutzzeit.
     special: { knockback: 0.5, bossKnockbackFactor: 0.5, knockbackCooldown: 6 },
@@ -495,6 +504,7 @@ export const TOWER_TYPES = {
     slowDuration: 1.5,
     color: '#6ec6e8',
     description: 'Verlangsamt Gegner um 50 %.',
+    hitsAir: false,
     // Einfrieren: jeder freezeEvery-te Treffer des Turms stoppt das Ziel für freezeDuration Sekunden (Boss immun).
     special: { freezeEvery: 5, freezeDuration: 0.6 },
   },
@@ -508,6 +518,7 @@ export const TOWER_TYPES = {
     projectileSpeed: 30,
     color: '#8e5bd1',
     description: 'Riesige Reichweite, hoher Einzelschaden.',
+    hitsAir: true,
     // Rüstungsbrecher: gegen Gegner, deren Basis-HP (ENEMY_TYPES[type].hp, ohne Wellen-Skalierung) >= bonusMinHp ist, Faktor bonusDamage auf den Schaden; ignoriert dabei Rüstung.
     special: { bonusMinHp: 300, bonusDamage: 1.5, ignoreArmor: true },
   },
@@ -527,6 +538,7 @@ export const TOWER_TYPES = {
     boltDuration: 0.25, // Sekunden, die die Blitzlinie sichtbar bleibt
     color: '#e8c93a',
     description: 'Kettenblitz trifft sofort und verfehlt nie. Ideal gegen schnelle Flitzer und Schwärme.',
+    hitsAir: true,
     special: {},
   },
 };
@@ -537,11 +549,15 @@ const num = (x) => String(x).replace('.', ',');
 const SPECIAL_TEXTS = {
   arrow: (s) => `Aufwärmen: Schießt er dasselbe Ziel weiter an, feuert er bis zu ${pct(s.warmupMax)} schneller.`,
   cannon: (s) => `Rückstoß: Treffer wirft das Ziel ${num(s.knockback)} Kacheln auf dem Weg zurück (Bosse nur ${pct(s.bossKnockbackFactor)}).`,
-  frost: (s) => `Einfrieren: Jeder ${s.freezeEvery}. Treffer stoppt das Ziel für ${num(s.freezeDuration)} s (Bosse sind immun).`,
+  frost: (s) => `Einfrieren: Jeder ${s.freezeEvery}. Treffer stoppt das Ziel für ${num(s.freezeDuration)} s (Bosse sind immun). Glutlinge sind immun gegen Verlangsamung und Einfrieren.`,
   lightning: (s, d) => `Kettenblitz: Springt auf bis zu ${d.chainCount} weitere Gegner im Umkreis von ${num(d.chainRange)} Kacheln, jeder Sprung mit ${pct(d.chainFalloff)} des vorigen Schadens.`,
   sniper: (s) => `Rüstungsbrecher: Gegen zähe Gegner (ab ${s.bonusMinHp} Basis-HP) ${pct(s.bonusDamage - 1)} mehr Schaden, Rüstung wird ignoriert.`,
 };
-for (const [type, build] of Object.entries(SPECIAL_TEXTS)) TOWER_TYPES[type].special.text = build(TOWER_TYPES[type].special, TOWER_TYPES[type]);
+// B-167: dazu je Turm ein Satz, ob er Flieger trifft (Tooltip und Turm-Info).
+const airText = (d) => (d.hitsAir ? 'Trifft Flieger.' : 'Trifft keine Flieger.');
+for (const [type, build] of Object.entries(SPECIAL_TEXTS)) {
+  TOWER_TYPES[type].special.text = `${build(TOWER_TYPES[type].special, TOWER_TYPES[type])} ${airText(TOWER_TYPES[type])}`;
+}
 
 // Aktive Fähigkeiten (B-038): lange Abklingzeiten, damit das Spiel nicht leichter wird.
 // Zeiten in Sekunden Spielzeit, radius in Kacheln, slow = Anteil der Verlangsamung (0,7 = 70 % langsamer).
@@ -596,6 +612,16 @@ export const ENEMY_TYPES = {
   necro: { name: 'Nekromantin', hp: 1000, speed: 0.6, reward: 75, leak: 6, radius: 18, color: '#3d4a5c', boss: true,
     summonInterval: 8, summonCount: 2, summonType: 'skeleton', summonBehind: 0.6, summonSpacing: 0.3 },
   skeleton: { name: 'Skelett', hp: 18, speed: 0.9, reward: 1, leak: 1, radius: 10, color: '#e6e0cf' },
+  // Glutling (B-170): slowImmune = immun gegen Frost-Slow und Einfrieren (Frost-Schaden wirkt normal);
+  //   chillFactor = Anteil der Kälteschock-Verlangsamung, der trotzdem wirkt (0,5 = halbe Wirkung).
+  ember: { name: 'Glutling', hp: 70, speed: 2.0, reward: 6, leak: 1, radius: 10, color: '#d79a2b', slowImmune: true, chillFactor: 0.5 },
+  // Irrlicht (B-168): weicht Geschossen mit projectileSpeed < dodgeBelow (Kacheln/s) aus, nur jedes dodgeEvery-te trifft
+  //   (fester Zähler je Irrlicht, kein Zufall). Kein Schaden von Explosionen, die anderen galten; nie Rückstoß.
+  wisp: { name: 'Irrlicht', hp: 60, speed: 1.5, reward: 6, leak: 1, radius: 10, color: '#bff0ff', dodgeBelow: 11, dodgeEvery: 3 },
+  // Fledermaus (B-167): flying = Flieger, nur Türme mit hitsAir zielen auf sie; Kanonen-Splash trifft sie nicht.
+  bat: { name: 'Fledermaus', hp: 30, speed: 1.8, reward: 3, leak: 1, radius: 9, color: '#5d4a66', flying: true },
+  // Panzerkäfer (B-169): shellHits = Schichten der Schale; jeder Treffer (nicht Lava) nimmt eine Schicht und macht 0 Schaden.
+  beetle: { name: 'Panzerkäfer', hp: 120, speed: 1.0, reward: 10, leak: 2, radius: 12, color: '#2f7a3d', shellHits: 5 },
 };
 
 // B-127: Boss-Merkmal statt Typname. Nimmt einen Gegner ({ type }) oder einen Typnamen.
@@ -645,8 +671,30 @@ const LATE_WAVE = 14;
 // B-127: In dieser Welle kommt die Nekromantin statt des Oger-Königs (gleiche Anzahl)
 export const NECRO_WAVE = 15;
 
-// Erzeugt die Spawn-Liste einer Welle: [{ type, at }] (at = Sekunden nach Wellenstart)
-export function waveFor(wave) {
+// B-171: Die neuen Gegner in den Wellen. from = erste Welle, count = Anzahl in Welle from, perWave = Zuwachs je Welle
+// danach (abgerundet), max = Obergrenze, gap = Sekunden zwischen zwei Gegnern der Gruppe.
+// Fledermäuse kommen als Schwarm nach den Flitzern, Glutlinge danach, Panzerkäfer zwischen den Trollen,
+// Irrlichter mit großen Abständen am Ende (vor den Bossen).
+export const NEW_ENEMY_WAVES = {
+  bat: { from: 6, count: 2, perWave: 0.25, max: 5, gap: 0.3 },
+  ember: { from: 8, count: 2, perWave: 0.25, max: 5, gap: 0.6 },
+  beetle: { from: 11, count: 3, perWave: 0.25, max: 5, gap: 1.0, offset: 0.5 }, // offset: Sekunden nach dem ersten Troll
+  wisp: { from: 10, count: 1, perWave: 0.2, max: 3, gap: 1.5 },
+};
+
+// B-171: Anzahl eines neuen Gegnertyps in Welle `wave` (0 vor seiner ersten Welle). Karten können die Anzahl über
+// MAPS.<id>.newEnemyScale[type] (Faktor, abgerundet, mindestens 1) dämpfen oder verstärken.
+export function newEnemyCount(type, wave, mapId) {
+  const w = NEW_ENEMY_WAVES[type];
+  if (!w || wave < w.from) return 0;
+  const n = Math.min(w.max, w.count + Math.floor((wave - w.from) * w.perWave));
+  const scale = MAPS[mapId]?.newEnemyScale?.[type] ?? 1;
+  return scale === 1 ? n : scale <= 0 ? 0 : Math.max(1, Math.floor(n * scale));
+}
+
+// Erzeugt die Spawn-Liste einer Welle: [{ type, at }] (at = Sekunden nach Wellenstart).
+// mapId (B-171) nur für die kartenabhängige Anzahl der neuen Gegner.
+export function waveFor(wave, mapId) {
   const list = [];
   let t = 0;
   const add = (type, count, gap) => {
@@ -661,8 +709,18 @@ export function waveFor(wave) {
   const lateRunners = 2 * lateTanks;
   add('grunt', 6 + wave * 3, Math.max(0.3, 0.9 - wave * 0.04));
   if (wave >= 3) add('runner', 3 + wave * 2 + lateRunners, 0.35);
+  const extra = (type) => {
+    const n = newEnemyCount(type, wave, mapId);
+    if (n) add(type, n, NEW_ENEMY_WAVES[type].gap);
+  };
+  extra('bat');
+  extra('ember');
   const tankStart = t;
   if (wave >= 5) add('tank', Math.floor(wave / 2) + 1 + lateTanks, 1.0);
+  // B-171: Panzerkäfer laufen zwischen den Trollen mit (verlängern die Welle nicht)
+  const beetles = newEnemyCount('beetle', wave, mapId);
+  for (let i = 0; i < beetles; i++) list.push({ type: 'beetle', at: tankStart + NEW_ENEMY_WAVES.beetle.offset + i * NEW_ENEMY_WAVES.beetle.gap });
+  if (beetles) list.sort((a, b) => a.at - b.at);
   if (wave >= 9) add('shielded', 1 + Math.floor((wave - 9) / 2), 1.0);
   // B-126: Magier laufen kurz nach der Troll-Gruppe
   if (wave >= 8) add('mage', 1 + Math.floor((wave - 8) / 4), 1.5);
@@ -673,15 +731,16 @@ export function waveFor(wave) {
     for (let i = 0; i < healers; i++) list.push({ type: 'healer', at: tankStart + 2 + i * 2 });
     list.sort((a, b) => a.at - b.at);
   }
+  extra('wisp');
   // B-127: Bosse in jeder 5. Welle; in Welle NECRO_WAVE kommt die Nekromantin statt des Oger-Königs
   if (wave % 5 === 0) add(wave === NECRO_WAVE ? 'necro' : 'boss', Math.floor(wave / 10) + 1, 3);
   return list;
 }
 
 // Zusammenfassung einer Welle: Anzahl pro Gegnertyp, z. B. { grunt: 8, runner: 3 }
-export function waveSummary(wave) {
+export function waveSummary(wave, mapId) {
   const summary = {};
-  for (const { type } of waveFor(wave)) summary[type] = (summary[type] || 0) + 1;
+  for (const { type } of waveFor(wave, mapId)) summary[type] = (summary[type] || 0) + 1;
   return summary;
 }
 
@@ -1204,6 +1263,24 @@ export const ENEMY_STYLE = {
   mage: {
     wardFill: 'rgba(120,200,255,0.28)', wardRing: 'rgba(190,235,255,0.9)', wardRingWidth: 1.6, wardPad: 4, wardPulse: 0.6, wardSpeed: 3,
   },
+  // B-169: Schicht-Anzeige als Segmente (Platzhalter, nicht mehr gezeichnet: die Figur zeigt die Schalen-Stufe), Spiel-px
+  beetle: { segW: 4, segH: 3, segGap: 1.5, lift: 3, fill: '#9aa6b2', ink: '#2b1a10', line: 1 },
+  // B-167 Fledermaus (Bauvorlage Gegner-Fledermaus): Schatten am Boden, Körper wippt, Flügelschlag. Entwurfs-px, Hz
+  bat: {
+    shadow: 'rgba(20,30,40,0.28)', // figure-shadow, heller: weit weg
+    shadowDx: 4, shadowRx: 10, shadowRy: 2.5, shadowShrink: 0.15,
+    hover: 2.5, hoverHz: 2.2, flapHz: 8,
+  },
+  // B-168 Irrlicht: Lichthof flackert (Alpha-Bereich), schwebt. glow = enemy-wisp-glow #9effd9 als RGB
+  wisp: { flicker: [0.72, 1], flickerHz: 9, reducedFlicker: 0.9, glowRgb: '158,255,217', glowAlpha: 0.3, glowR: 18, glowY: 30, hover: 2, hoverHz: 1.6 },
+  // B-170 Glutling: Lodern (scaleY), Funken aus der Spitze (Spiel-px, höchstens sparkMax je Glutling),
+  // Dampf beim Kälteschock (steam #f4f1ea, Versatz in Entwurfs-px zum Fußpunkt)
+  ember: {
+    flameHz: 6, flameStretch: 0.05,
+    sparkRate: 3, sparkMax: 3, sparkColor: '#ffe58a', sparkSize: [1.5, 2.5], sparkRise: 22, sparkDrift: 6, sparkLife: 0.7, sparkTop: 50,
+    steamRgb: '244,241,234', steamAlpha: 0.75, steamPuffs: [[-8, -26], [0, -32], [8, -24]],
+    steamR: [3, 8], steamRise: 16, steamLife: 0.5, steamInk: 'rgba(43,26,16,0.5)', steamLine: 1.5,
+  },
 };
 
 // Auftritt des Bosses (B-067, nur Darstellung): Bodenschlag-Ring plus leichtes Wackeln.
@@ -1254,10 +1331,23 @@ export const FX_STYLE = {
   smoke: { color: '#9a8fa6', alpha: 0.45, grow: 0.6 }, // unter den Gegnern
   // B-127: Beschwörung der Nekromantin: grüne Lichtfunken steigen auf (life = Effektdauer in s Spielzeit, size in px)
   summon: { color: '#7dff9a', count: 6, life: 0.6, size: 2.2, sizeVar: 1.2, speed: 30, spread: 8, alpha: 0.85 },
+  // B-169: Schale des Panzerkäfers bricht (Platzhalter): Splitter fliegen auseinander (life in s Spielzeit, Maße in px)
+  // B-169 Schale bricht (letzte Schicht): Dreieck-Splitter mit Schwerkraft und heller Ring. Größen in Entwurfs-px, Tempo in px/s
+  shellBreak: {
+    life: 0.55, shards: 7, shardColors: ['#b0703a', '#7a4a24', '#e8b27a'], shardSize: [4, 7], // enemy-beetle-shell/-ridge/-shine
+    shardSpeed: [60, 110], shardAngle: [-160, -20], gravity: 260, spin: 8, fadeFrom: 0.6, reducedLife: 0.3,
+    shardInk: '#2b1a10', shardLine: 1.5, originDy: -22, flash: '#fff3c9', flashR: [10, 26], flashLife: 0.2, flashLine: 2,
+  },
   coin: { color: '#f4c542', dark: '#b07a14', shine: '#fff3c9', hop: 12, bounce: 0.3, split: 0.55, end: 0.85, spins: 1.5, minWidth: 0.3, fadeFrom: 0.6, drift: 20,
     edgeWidth: 1, inner: 0.72, shineMin: 0.6, shineOffset: 0.3, shineR: 0.22 }, // Rand, Innenfläche und Glanz relativ zur Größe
   coinText: { color: '#f4c542', outline: '#3b2415', outlineWidth: 3, rise: 10, lift: 20, font: 'bold 13px system-ui, sans-serif' }, // lift: Start über dem Gegner in px
   chill: { rgb: '120,200,255', alpha: 0.25 }, // Frost-Schimmer über dem ganzen Feld
+  // B-168: Irrlicht weicht aus: Nachbild, weißer Blitz, Text "Verfehlt" (life = missLife in s, Maße in Entwurfs-px, Text in px)
+  dodge: {
+    life: 0.6, ghostAlpha: 0.35, ghostLife: 0.25, flash: '#ffffff', flashAlpha: 0.6, flashR: 16, flashLife: 0.1,
+    missText: 'Verfehlt', missFont: '13px "Lilita One", "Trebuchet MS", sans-serif',
+    missColor: '#fff3d2', missOutline: '#2b1a10', missOutlineWidth: 3, missRise: 12, missLift: 18,
+  },
   // Meteor (B-112): Anflug -> Einschlag -> Krater. Zeiten in Sekunden Spielzeit (flight + blast + crater = Effektdauer),
   // Radien als Anteil des Meteor-Radius r, sonst px. Der Schaden fällt sofort (game.js), der Anflug ist darum kurz.
   meteor: {
@@ -1394,7 +1484,7 @@ export const SOUND = {
       'shot:lightning': { files: ['lightning-1', 'lightning-2', 'lightning-3'], gain: 0.18, pitchVar: 0.06 },
       // Tod: kurze Monster-Schreie (OpenGameArt, CC0); enemyRate = Tonhöhe je Gegnertyp (klein/schnell höher)
       death:            { files: ['death-1', 'death-2', 'death-3', 'death-4'], gain: 0.55, pitchVar: 0.08,
-                          enemyRate: { runner: 1.25, grunt: 1.1, healer: 1.05, mage: 1.0, shielded: 0.95, tank: 0.85, skeleton: 1.35 } },
+                          enemyRate: { runner: 1.25, grunt: 1.1, healer: 1.05, mage: 1.0, shielded: 0.95, tank: 0.85, skeleton: 1.35, ember: 1.2, wisp: 1.3, bat: 1.4, beetle: 0.9 } },
       // Boss-Tod: langer, tiefer Schrei, zusätzlich tiefer abgespielt (rate = Grund-Tonhöhe)
       boss:             { files: ['boss-1', 'boss-2'], gain: 0.9, pitchVar: 0.03, rate: 0.85 },
       lifeLost:         { files: ['life-lost-1', 'life-lost-2'], gain: 0.8, pitchVar: 0 },

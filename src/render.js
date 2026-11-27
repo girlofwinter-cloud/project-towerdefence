@@ -562,7 +562,7 @@ function drawFigures(ctx, state, ui) {
   figures.sort(byFoot);
   for (const o of figures) {
     if (o.hp === undefined) drawTower(ctx, o, ui.selectedTowerId === o.id);
-    else drawEnemy(ctx, o, state.time, enemyPath(state, o));
+    else drawEnemy(ctx, o, state.time, enemyPath(state, o), !!ui.reducedMotion);
   }
   figures.length = 0;
 }

@@ -34,3 +34,8 @@ Anhängen ohne die Datei zu lesen: `cat >> docs/LEDGER.md <<'EOF' … EOF`. Übe
 
 ## 2026-11-27 · B-177 · Nummer umbenannt
 - Ergebnis: fertig, Branch agent/nummer-b177. Aufräum-Eintrag "Wisch-Helfer entfernen" von B-167 in B-177 umbenannt (Archiv und Ledger), weil B-167 bis B-176 von der Gegner-Reihe belegt sind. Entscheidung Mensch; PR #106 trägt noch den alten Titel.
+## 2026-11-27 · B-167, B-168, B-169, B-170, B-171 · Neue Gegner für Turm-Vielfalt
+- Ergebnis: fertig, Branch agent/gegner-vielfalt (PR folgt)
+- Tests: npm test 557 grün, test:balance 20 grün, e2e 88 grün; Tester PASS, Reviewer APPROVE
+- Entscheidungen: Fledermaus/Irrlicht/Panzerkäfer/Glutling; Kanone+Frost gewinnt nirgends mehr ohne Lebensverlust; Kartenfaktoren Eiswelt/Zwei Fronten und Teständerungen vom Menschen freigegeben; zwei developer parallel, designer für Figuren
+- Offen: Fledermaus nimmt Lava-Schaden (Frage); Effekte ohne Logik-Ereignis (Dampf bei Frostturm-Treffer, Splitter je Schicht, Irrlicht-Zucken)
