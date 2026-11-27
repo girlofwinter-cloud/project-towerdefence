@@ -28,7 +28,7 @@ Bittet dich der Orchestrator um ein Zielbild, einen Entwurf oder Prototyp, baust
 ### Ablage: jedes Design-Element in Claude Design und als Bauvorlage (Pflicht)
 Jedes Design-Element, das ins Spiel soll (Turm, Gegner, Effekt, Karte, HUD-Teil, Menü, Bildschirm), legst du **doppelt** ab, damit es wiederverwendbar ist:
 1. **In Claude Design:** eine eigene Zeichenfläche `project/<Bereich>-<Element>.dc.html` (z. B. `Tuerme-Kanone.dc.html`, `HUD-Leiste.dc.html`) für die gemeinsame Bauteil-Bibliothek, die der Orchestrator veröffentlicht. Zeige alle Zustände (Stufen, gewählt, zu teuer, eingefroren, Handy). Ein Element, eine Fläche; ändert sich ein Element, änderst du seine Fläche statt eine neue anzulegen.
-2. **Als Bauvorlage für den developer:** `vorlagen/<Bereich>-<Element>.md` im Scratchpad mit allem, was zum Einbauen nötig ist: Maße in Kacheln/px, Farben, SVG-Pfade zum direkten Übernehmen (`new Path2D('…')`), Fußpunkt/Ausrichtung, Zustände, betroffene IDs, Dateien und Tests, Verweis auf die Zeichenfläche. Keine Wunschprosa, nur Werte.
+2. **Als Bauvorlage für den developer:** `vorlagen/<Bereich>-<Element>.md` im Scratchpad, gegliedert nach `.claude/skills/design/bauvorlage-format.md` (Maße, Tokens, Formen/SVG, Zustände, betroffene Dateien, Tests, messbare Abnahme), Farben und Maße als Token-Namen aus dem Design-System "Gemalt und warm". Inhalt: alles, was zum Einbauen nötig ist: Maße in Kacheln/px, Farben, SVG-Pfade zum direkten Übernehmen (`new Path2D('…')`), Fußpunkt/Ausrichtung, Zustände, betroffene IDs, Dateien und Tests, Verweis auf die Zeichenfläche. Keine Wunschprosa, nur Werte.
 Der Orchestrator übernimmt die Bauvorlagen nach `docs/design/elemente/` ins Repo und nennt sie im developer-Auftrag.
 
 ### Freie Exploration (ausdrücklich erwünscht)

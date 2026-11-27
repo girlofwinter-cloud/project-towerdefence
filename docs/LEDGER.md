@@ -852,3 +852,11 @@ Neue Einträge werden unten angehängt. Bestehende Einträge werden nie geänder
 - Ergebnis: Erste freie Exploration in Claude Design: vier Stile für dieselbe Szene (Gemalt und warm, Papier-Diorama, Miniatur-Spielbrett, Mondnacht), Kingdom Rush nur als Niveau-Referenz. Fläche: https://claude.ai/artifact/DDKsUvgQVD4SJu2VnSqE3W. Dazu der klickbare Vollbild-Prototyp: https://claude.ai/artifact/9Z7wufcqkXe4gCsCPen62P. Neu im Backlog: B-142 bis B-146 (`vorschlag`).
 - Entscheidungen: Empfehlung des designers: Stil 1 als Hauptrichtung. Stil 3 (CSS-3D-Neigung) nicht als Ganzes, weil Klick- und Bauraster betroffen wären. Die Flächen sind vom Orchestrator nicht selbst angesehen (Format läuft nur in Claude Design).
 - Tests: keine Codeänderung.
+
+---
+
+## 2026-11-27 · Design-System "Gemalt und warm"
+- Rolle(n): orchestrator (auf Wunsch des Menschen, ohne developer/tester/reviewer: keine Codeänderung). Branch: agent/design-system
+- Ergebnis: Design-System in Claude Design https://claude.ai/artifact/5cJerN82BWQNMcMiZjMBpR mit 100 Farb-Tokens (inkl. 5 Karten-Paletten), 14 Schriftstilen (Lilita One + Trebuchet), Konturen, Rundungen, Schatten, Abständen, Knopfgrößen, 7 Bauteilen und 11 Icons; alle Werte aus agent/gemalt-karten@a3d15b4, nichts neu erfunden. Feste Vorlage `.claude/skills/design/bauvorlage-format.md` (designer.md und design-Skill verweisen darauf). Bauvorlage `docs/design/elemente/Seite-Styleguide.md`, Konzept `docs/design/token-einfuehrung.md`.
+- Backlog: B-160 bis B-164 (vorschlag): Tokens anlegen, Nutzer umstellen, alte Stile entfernen, Kontrast Info-Meldung, Styleguide-Seite. Umsetzung nach dem Merge des Stil-1-Umbaus.
+- Abweichung: Herbst-Palette im Plan (#c9b25a → #7d7a34) weicht vom Code ab (#d9a94e → #8a5a2b); übernommen ist der Code.
