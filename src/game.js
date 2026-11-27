@@ -326,8 +326,9 @@ export function useAbility(state, id, x, y) {
     state.effects.push({ kind: 'explosion', meteor: true, x, y, r, ttl: life, max: life });
     removeDead(state);
   } else if (id === 'freeze') {
-    const factor = 1 - def.slow;
     for (const e of state.enemies) {
+      // B-170: Glutlinge spüren nur den Anteil chillFactor der Verlangsamung
+      const factor = 1 - def.slow * (isSlowImmune(e) ? ENEMY_TYPES[e.type].chillFactor : 1);
       const active = state.time < (e.slowUntil || 0);
       e.slowFactor = active ? Math.min(e.slowFactor, factor) : factor;
       e.slowUntil = Math.max(e.slowUntil || 0, state.time + def.duration);
@@ -624,21 +625,38 @@ function projectilesStep(state, dt) {
   removeDead(state);
 }
 
+// B-168: Irrlicht weicht langsamen Geschossen (projectileSpeed < dodgeBelow) aus. Kein Zufall: Zähler je Irrlicht,
+// nur jedes dodgeEvery-te langsame Geschoss trifft. Gibt true zurück, wenn das Geschoss verfehlt.
+function dodges(state, target, p) {
+  const def = ENEMY_TYPES[target.type];
+  if (!def?.dodgeEvery || p.speed >= def.dodgeBelow * TILE) return false;
+  target.dodgeCount = (target.dodgeCount || 0) + 1;
+  if (target.dodgeCount % def.dodgeEvery === 0) return false;
+  const life = FX_STYLE.dodge.life;
+  state.effects.push({ kind: 'dodge', x: target.x, y: target.y, ttl: life, max: life });
+  return true;
+}
+const isDodger = (e) => !!ENEMY_TYPES[e.type]?.dodgeEvery;
+
 function hit(state, p, target) {
+  const dodged = !!target && dodges(state, target, p);
   if (p.splash) {
     for (const e of state.enemies) {
+      // B-168: Irrlicht nimmt nur Schaden von einer auf es gezielten Kugel, die nicht verfehlt (ohne Rüstung wie Splash)
+      if (isDodger(e) && (e !== target || dodged)) continue;
       if (Math.hypot(e.x - p.tx, e.y - p.ty) <= p.splash) {
         damage(state, e, p);
       }
     }
-    if (p.knockback && target) knockBack(state, target, p);
+    if (p.knockback && target && !isDodger(target)) knockBack(state, target, p); // B-168: Irrlicht nie zurückwerfen
     state.effects.push({ kind: 'explosion', x: p.tx, y: p.ty, r: p.splash, ttl: 0.3, max: 0.3 });
-  } else if (target) {
+  } else if (target && !dodged) {
     damage(state, target, p, true);
     const tower = p.freezeEvery ? state.towers.find((t) => t.id === p.towerId) : null;
     if (tower) {
       tower.hitCount = (tower.hitCount || 0) + 1;
-      if (tower.hitCount % p.freezeEvery === 0 && !isBoss(target)) target.frozenUntil = state.time + p.freezeDuration;
+      // B-170: Treffer zählt auch bei Glutlingen, eingefroren werden sie aber nicht
+      if (tower.hitCount % p.freezeEvery === 0 && !isBoss(target) && !isSlowImmune(target)) target.frozenUntil = state.time + p.freezeDuration;
     }
   }
 }
@@ -666,10 +684,15 @@ function damage(state, enemy, p, direct = false) {
     dmg -= absorbed;
   }
   enemy.hp -= dmg;
-  if (p.slow) {
+  if (p.slow && !isSlowImmune(enemy)) { // B-170: Glutlinge ignorieren den Frost-Slow, der Schaden wirkt
     enemy.slowFactor = 1 - p.slow;
     enemy.slowUntil = state.time + p.slowDuration;
   }
+}
+
+// B-170: immun gegen Frost-Slow und Einfrieren (Merkmal slowImmune des Gegnertyps)
+function isSlowImmune(e) {
+  return ENEMY_TYPES[e.type]?.slowImmune === true;
 }
 
 function removeDead(state) {

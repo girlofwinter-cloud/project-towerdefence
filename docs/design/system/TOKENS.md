@@ -237,6 +237,7 @@ Knopf- und Feldgrößen. Tippziel nie unter 44 px.
 | `size-wave-round` | `104px` | Runder Wellenknopf unten rechts im Handy-Querformat (B-137), Schrift 18 px zweizeilig, Fortschritt 18 px vom Rand; schmaler, wenn die Seite neben dem Feld knapp ist. |
 | `size-round` | `48px` | Runder Knopf (Hilfe, Ton, Tempo, Pause). |
 | `size-hud-h` | `56px` | Holzleiste Höhe. |
+| `size-side-col-mobile` | `104px` | Handy quer: Breite der Bedienspalte je Seite neben dem Feld (Knöpfe 48 + 8 + 48, HUD höchstens so breit); --col in style.css. |
 | `size-ability-mobile` | `56px` | Fähigkeitsknopf auf dem Handy. |
 | `size-tower` | `60px` | Turmknopf (Übergang bis Ringmenü). |
 | `size-ability` | `64px` | Fähigkeitsknopf. |

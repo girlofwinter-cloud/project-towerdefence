@@ -534,10 +534,3 @@ Fläche mit vier Stilen für dieselbe Szene (Wiese, Welle 8): https://claude.ai/
 
 ## Stil 1 komplett übernehmen (Plan des designers, 2026-11-26)
 Der Mensch hat entschieden, das Zielbild `docs/design/stil1-ziel.png` komplett zu übernehmen. Plan mit Zeilenverweisen in den Entwurf: `docs/design/stil1-plan.md`, Entwurfscode `docs/design/stil1-entwurf.dc.html`. B-138, B-144 und B-145 gehen in B-150, B-151 und B-153 auf. Abnahme jeweils per Screenshot neben dem Zielbild. Nur Zeichnen, außer wo vermerkt. Blöcke: A = B-142, B-143, B-148, B-149, B-147; B = B-150, B-151, B-152; C = B-129, B-130, B-133, B-134, B-135, B-139, B-141, B-153; D = B-131, B-132, B-136; E = B-154, B-137.
-
-### B-167: Ungenutzte Wisch-Helfer entfernen (Aufräumen nach B-137)
-- Status: vorschlag
-- Aufwand: S
-- Idee: Seit B-137 nutzt nur noch die Testdatei `clampScroll`, `scrollEdges`, `gestureKind`, `dragScroll` in `src/viewport.js` und `VIEWPORT.tapSlop` in `src/config.js`. Samt ihrer Unit-Tests entfernen (Testlöschung, darum Freigabe Mensch). Dazu Token für die Handy-Bedienspalte (104 px, `--col` in `style.css`) ins Design-System.
-- Akzeptanzkriterien:
-  - Keine Wisch-Funktionen mehr im Code, `npm test` und e2e grün, Spalte als Token in `docs/design/system/`.

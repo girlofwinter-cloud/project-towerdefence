@@ -426,7 +426,7 @@ body.on-start .top-buttons { z-index: 41; } /* Ton und Hilfe bleiben erreichbar 
   /* --col: Breite der Bedienung je Seite (Knöpfe oben rechts 48 + 8 + 48, HUD höchstens so breit). Das Feld wird nur so breit,
      dass neben ihm je Seite Safe-Area plus --col frei bleibt (Bedienung überdeckt das Feld nie), sonst füllt es die Höhe. */
   :root { --safe-l: max(8px, env(safe-area-inset-left, 0px)); --safe-r: max(8px, env(safe-area-inset-right, 0px));
-    --safe-t: max(8px, env(safe-area-inset-top, 0px)); --safe-b: max(8px, env(safe-area-inset-bottom, 0px)); --col: 104px;
+    --safe-t: max(8px, env(safe-area-inset-top, 0px)); --safe-b: max(8px, env(safe-area-inset-bottom, 0px)); --col: 104px; /* size-side-col-mobile */
     --u: min(100vh / var(--field-h), (100vw - 2 * (max(var(--safe-l), var(--safe-r)) + var(--col))) / var(--field-w));
     --side: calc((100vw - var(--fw)) / 2); }
   /* Oben links: HUD-Plakette Gold, Welle, Leben untereinander (Zahlen num-compact 22 px) */

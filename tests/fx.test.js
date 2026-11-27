@@ -1386,3 +1386,14 @@ test('Stil 1 Effekte: Explosion mit Lichthof/Rauch unter und drei Sternen über 
   assert.notDeepEqual(bolt(0.2), bolt(0.15), 'flackert');
   assert.deepEqual(bolt(0.2), b, 'deterministisch');
 });
+
+test('B-168: dodge-Effekt zeichnet einen hellen Ring, ausgeglichen und ohne Fehler bei kaputten Werten', async () => {
+  const { drawEffectOver } = await import('../src/render-fx.js');
+  const m = mockCtx();
+  drawEffectOver(m.ctx, { kind: 'dodge', x: 50, y: 50, ttl: 0.2, max: 0.4 });
+  assert.equal(m.counts.arc, 1);
+  assert.equal(m.counts.stroke, 1);
+  assert.equal(m.counts.save, m.counts.restore);
+  assert.equal(m.props.strokeStyle, FX_STYLE_B127.dodge.color);
+  for (const ttl of [NaN, -1, 5]) drawEffectOver(mockCtx().ctx, { kind: 'dodge', x: 1, y: 1, ttl, max: 0.4 });
+});

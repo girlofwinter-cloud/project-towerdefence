@@ -1,5 +1,5 @@
 // Unit-Tests der Spiel-Logik (game.js, path.js, config.js). Ausführen: npm test
-import { test } from 'node:test';
+import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { createGame, mapModifiers, update, buildTower, upgradeTower, sellTower, startWave, planLanes, earlyStartBonus, earlyStartRisk, earlyStartPreview, waveHp, spawnEnemy, canBuild, towerStats, upgradeCost, togglePause, stepGame, setTargetMode, pickTarget, enemyPath, chainTargets, laneFor, nearLava } from '../src/game.js';
 
@@ -2992,4 +2992,102 @@ test('Fahnen-Kacheln: canBuild lehnt ab ("Hier steht die Fahne"), Nachbarkacheln
   assert.equal(createGame({ mapId: 'twin' }).flagTiles.size, 2);
   // Override ohne flagTiles: alles wie früher
   assert.ok(canBuild(createGame({ mapId: 'fork', flagTiles: undefined }), 0, 0).ok);
+});
+
+describe('B-170: Glutling ist immun gegen Verlangsamung und Einfrieren', () => {
+  test('Konfiguration: slowImmune und chillFactor gesetzt, Frost-Text nennt die Immunität', () => {
+    assert.equal(ENEMY_TYPES.ember.slowImmune, true);
+    assert.equal(ENEMY_TYPES.ember.chillFactor, 0.5);
+    assert.match(TOWER_TYPES.frost.special.text, /Glutlinge sind immun/);
+  });
+
+  test('Frost-Treffer verlangsamt nicht, macht aber Schaden', () => {
+    const { s, tower, e } = specialSetup('frost', 'ember');
+    const hp0 = e.hp;
+    fireAndLand(s, tower);
+    assert.ok(e.hp < hp0, 'Frost-Schaden wirkt');
+    assert.ok(!(s.time < (e.slowUntil || 0)) || e.slowFactor === 1, 'kein Slow');
+    // Gegenprobe: Goblin wird verlangsamt
+    const g = specialSetup('frost', 'grunt');
+    fireAndLand(g.s, g.tower);
+    assert.ok(g.s.time < g.e.slowUntil && g.e.slowFactor < 1, 'Goblin verlangsamt');
+  });
+
+  test('kein Einfrieren, auch nicht beim N-ten Treffer; Treffer zählen weiter', () => {
+    const { s, tower, e } = specialSetup('frost', 'ember');
+    const n = cfg('frost').freezeEvery;
+    for (let i = 0; i < n; i++) fireAndLand(s, tower);
+    assert.equal(tower.hitCount, n, 'Treffer zählen im hitCount');
+    assert.equal(e.frozenUntil || 0, 0, 'nicht eingefroren');
+  });
+
+  test('Kälteschock wirkt nur zur Hälfte (chillFactor), auf Goblins voll', () => {
+    const s = createGame();
+    const em = spawnEnemy(s, 'ember', 1);
+    const gr = spawnEnemy(s, 'grunt', 1);
+    assert.equal(useAbility(s, 'freeze').ok, true);
+    const slow = ABILITIES.freeze.slow;
+    assert.ok(Math.abs(em.slowFactor - (1 - slow * ENEMY_TYPES.ember.chillFactor)) < 1e-9);
+    assert.ok(Math.abs(gr.slowFactor - (1 - slow)) < 1e-9);
+    assert.ok(em.slowUntil > s.time);
+  });
+});
+
+describe('B-168: Irrlicht weicht langsamen Geschossen aus', () => {
+  const every = ENEMY_TYPES.wisp.dodgeEvery;
+
+  test('genau jedes dodgeEvery-te Kanonen-Geschoss trifft, nie Rückstoß, Ausweich-Effekt entsteht', () => {
+    const { s, tower, e } = specialSetup('cannon', 'wisp');
+    const dist0 = e.dist;
+    const hits = [];
+    for (let i = 1; i <= every * 2; i++) {
+      const hp = e.hp;
+      fireAndLand(s, tower);
+      hits.push(e.hp < hp);
+      if (i === 1) assert.ok(s.effects.some((f) => f.kind === 'dodge'), 'dodge-Effekt');
+    }
+    assert.deepEqual(hits, hits.map((_, i) => (i + 1) % every === 0));
+    assert.equal(e.dist, dist0, 'kein Rückstoß');
+  });
+
+  test('Frost: verfehlte Treffer machen keinen Schaden, verlangsamen nicht und zählen nicht fürs Einfrieren', () => {
+    const { s, tower, e } = specialSetup('frost', 'wisp');
+    const hp0 = e.hp;
+    for (let i = 1; i < every; i++) fireAndLand(s, tower);
+    assert.equal(e.hp, hp0);
+    assert.ok(!(s.time < (e.slowUntil || 0)), 'kein Slow');
+    assert.equal(tower.hitCount || 0, 0);
+    fireAndLand(s, tower);
+    assert.ok(e.hp < hp0, 'jeder dodgeEvery-te trifft');
+    assert.ok(s.time < e.slowUntil && e.slowFactor < 1, 'Treffer verlangsamt');
+    assert.equal(tower.hitCount, 1);
+  });
+
+  test('fremde Explosion verletzt das Irrlicht nicht, den Goblin daneben schon', () => {
+    const { s, tower, e: g } = specialSetup('cannon', 'grunt');
+    const w = spawnEnemy(s, 'wisp', 1);
+    w.speed = 0; w.hp = w.maxHp = 1e8; // schwächer als der Goblin: Zielregel "strong" wählt den Goblin
+    setTargetMode(s, tower.id, 'strong');
+    w.dist = g.dist - 5; // knapp hinter dem Goblin, steht im Splash
+    const p = pointAt(enemyPath(s, w), w.dist);
+    w.x = p.x; w.y = p.y;
+    for (let i = 0; i < every; i++) {
+      const gh = g.hp;
+      fireAndLand(s, tower);
+      assert.ok(g.hp < gh, 'Goblin getroffen');
+      assert.ok(Math.hypot(w.x - g.x, w.y - g.y) <= TOWER_TYPES.cannon.splash * TILE, 'Irrlicht im Splash');
+    }
+    assert.equal(w.hp, w.maxHp, 'Irrlicht unverletzt');
+    assert.equal(w.dodgeCount || 0, 0, 'kein Ausweichen nötig');
+  });
+
+  test('Pfeil trifft immer', () => {
+    const { s, tower, e } = specialSetup('arrow', 'wisp');
+    for (let i = 0; i < every * 2; i++) {
+      const hp = e.hp;
+      fireAndLand(s, tower);
+      assert.ok(e.hp < hp, `Pfeil ${i + 1} trifft`);
+    }
+    assert.ok(!s.effects.some((f) => f.kind === 'dodge'));
+  });
 });
