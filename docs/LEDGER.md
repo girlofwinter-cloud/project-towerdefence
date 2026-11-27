@@ -891,3 +891,10 @@ Neue Einträge werden unten angehängt. Bestehende Einträge werden nie geänder
 - Ergebnis: Design-System (Claude Design und `docs/design/system/`) auf main@884e430 gebracht. Neu: Bauteile Ringmenü, Kartenkarte, Spielende-Plakette; 13 Farb-Tokens (Verkaufen, Fortschritt, Abdunklungen, Ring-Hof, Band, Sterne, Schloss, Burg), 6 Schriftstile, 2 Rundungen, 3 Schatten, 8 Größen. Wellenknopf: gesperrt jetzt Holz mit Fortschrittsleiste, dafür entfallen `disabled-a`, `disabled-b`, `disabled-ink` (nirgends mehr im Code).
 - Abweichung: PR #92 hatte die neuen Optik-Werte nicht ins Design-System übernommen (Abgleich-Regel war jünger als der Umbau-Branch); hiermit nachgeholt.
 - Tests: keine neuen (nur Doku); Vorschauseite im Browser geprüft (10 Bauteile, keine Fehler, Lilita One lädt).
+
+---
+
+## 2026-11-27 · Plan für den Token-Umbau überarbeitet
+- Rolle(n): orchestrator (nach Rücksprache mit dem Menschen: weitere Karten, Gegner und Design-Umbauten geplant, voller Umbau lohnt). Branch: agent/design-plan
+- Ergebnis: Richtung umgedreht, `src/theme.js` wird einzige Quelle, Design-System-Dateien und Claude Design werden daraus erzeugt. Backlog neu geordnet: B-160 (theme.js), B-164 (Styleguide), B-161 (Umstellung), neu B-165 (Wächter-Tests: keine Farbliterale, Kontrast) und B-166 (Claude Design per Skript), dann B-162, B-163; alle `vorschlag`.
+- Bauvorlage-Format: Checklisten für neue Karten und neue Gegner. Konzept `docs/design/token-einfuehrung.md` und Styleguide-Vorlage angepasst.
