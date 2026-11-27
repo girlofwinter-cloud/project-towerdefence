@@ -883,3 +883,11 @@ Neue Einträge werden unten angehängt. Bestehende Einträge werden nie geänder
 - Review: Diff selbst geprüft; kein separater Agentenreview.
 - Entscheidungen: Eine freie, bebaubare Kachel hat Vorrang vor überragenden Turmsilhouetten; ein Turm auf seiner eigenen Kachel bleibt auswählbar. Gilt für alle Turmtypen.
 - Offen: Vollständige Browser-Test-Suite nicht erneut ausgeführt.
+
+---
+
+## 2026-11-27 · Design-System nach Stil-1-Merge abgeglichen
+- Rolle(n): orchestrator. Branch: agent/design-system-sync
+- Ergebnis: Design-System (Claude Design und `docs/design/system/`) auf main@884e430 gebracht. Neu: Bauteile Ringmenü, Kartenkarte, Spielende-Plakette; 13 Farb-Tokens (Verkaufen, Fortschritt, Abdunklungen, Ring-Hof, Band, Sterne, Schloss, Burg), 6 Schriftstile, 2 Rundungen, 3 Schatten, 8 Größen. Wellenknopf: gesperrt jetzt Holz mit Fortschrittsleiste, dafür entfallen `disabled-a`, `disabled-b`, `disabled-ink` (nirgends mehr im Code).
+- Abweichung: PR #92 hatte die neuen Optik-Werte nicht ins Design-System übernommen (Abgleich-Regel war jünger als der Umbau-Branch); hiermit nachgeholt.
+- Tests: keine neuen (nur Doku); Vorschauseite im Browser geprüft (10 Bauteile, keine Fehler, Lilita One lädt).

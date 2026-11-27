@@ -65,7 +65,11 @@
   box-shadow: var(--shadow-gold); font: 22px/1 var(--display); color: var(--ink); }
 .wave-btn:hover:not(:disabled) { filter: brightness(1.08); }
 .wave-btn:active:not(:disabled), .wave-btn.is-pressed { transform: translateY(2px); box-shadow: var(--shadow-gold-pressed); }
-.wave-btn:disabled { background: linear-gradient(var(--disabled-a), var(--disabled-b)); color: var(--disabled-ink); cursor: default; box-shadow: var(--shadow-disabled); }
+.wave-btn:disabled { background: linear-gradient(var(--wood-btn), var(--wood-b)); color: var(--cream); text-shadow: 0 2px 0 var(--ink); cursor: default; box-shadow: var(--shadow-disabled); }
+/* Fortschritt der laufenden Welle (main.js setzt --wave-fill 0..1 und .running) */
+.wave-btn::after { content: ''; position: absolute; left: 14px; bottom: 3px; height: 4px; border-radius: 2px; pointer-events: none;
+  width: calc((100% - 28px) * var(--wave-fill, 0)); background: var(--wave-progress); }
+.wave-btn:not(.running)::after { display: none; }
 .wave-btn.ready { animation: wave-ready 1.6s ease-in-out infinite; }
 .wave-btn.is-ready-peak { box-shadow: var(--shadow-gold-ready); }
 @keyframes wave-ready { 50% { box-shadow: var(--shadow-gold-ready); } }
@@ -76,12 +80,12 @@
   background-color: var(--card-bg); background-image: radial-gradient(circle at 35% 30%, rgba(255,255,255,.22), rgba(0,0,0,.18));
   box-shadow: inset 0 3px 0 rgba(255,255,255,.3), 0 4px 0 rgba(30,15,5,.55); display: grid; place-items: center; }
 .tower-btn .t-icon { width: 48px; height: 48px; border-radius: 50%; background: var(--card-icon-bg); display: grid; place-items: center; overflow: hidden; }
-.tower-btn.active { background-color: var(--card-bg-active); box-shadow: 0 0 0 4px var(--hl), 0 0 16px 4px rgba(255,226,102,.6), 0 4px 0 rgba(30,15,5,.55); }
+.tower-btn.active { background-color: var(--card-bg-active); box-shadow: var(--shadow-selected); }
 .tower-btn.poor .t-icon { filter: grayscale(1) brightness(.8); }
 .tower-btn.poor { border-color: var(--message-bad); }
 .t-cost { display: inline-flex; align-items: center; gap: 2px; padding: 0 6px; border-radius: var(--radius-tag); background: var(--ink); color: var(--gold-light); font: 15px/20px var(--display); white-space: nowrap; }
 .tower-btn .t-cost { position: absolute; left: 50%; bottom: -15px; transform: translateX(-50%); }
-.t-cost .ico { width: 14px; height: 14px; }
+.t-cost .ico { width: 16px; height: 16px; }
 .t-cost.poor, .tower-btn.poor .t-cost { color: var(--price-poor); text-decoration: line-through; text-decoration-thickness: 2px; }
 .tower-btn kbd.key { position: absolute; left: -8px; top: -8px; font: 13px/18px var(--display); padding: 0 5px; background: var(--card-key-bg); color: var(--card-key-text); border-radius: var(--radius-tag); border: 0; }
 
@@ -95,3 +99,46 @@
 .help-pop { width: 300px; padding: 10px 14px; font: 15px/1.35 var(--font-body); }
 .help-pop ul { margin: 0; padding-left: 18px; }
 kbd { font: 12px/1.4 ui-monospace, monospace; color: var(--cream); background: rgba(0,0,0,.35); border: 1px solid var(--ink); border-radius: var(--radius-kbd); padding: 0 5px; }
+
+/* Ringmenü (C4): Bau-Ring (Türme) und Turm-Ring (Verbessern, Ziel, Verkaufen, Schließen). In der Vorschau statisch (.ds-ring setzt die Mitte). */
+.ring { position: absolute; z-index: 16; left: calc(var(--rx, 0px) - .5px); top: calc(var(--ry, 0px) - .5px); width: 1px; height: 1px; --R: var(--ring-radius); }
+.ring-yard { position: absolute; left: calc(-1 * (var(--R) + 38px)); top: calc(-1 * (var(--R) + 38px)); width: calc(2 * var(--R) + 76px); height: calc(2 * var(--R) + 76px);
+  border-radius: 50%; background: radial-gradient(circle, var(--ring-yard) 0 45%, rgba(43,26,16,0) 70%); pointer-events: none; }
+.ring-dot { position: absolute; left: calc(var(--dx, 0px) - 5px); top: calc(var(--dy, 0px) - 5px); width: 10px; height: 10px; border-radius: 50%; background: var(--cream); border: var(--stroke-ui) solid var(--ink); pointer-events: none; }
+.ring-btn { position: absolute; left: -30px; top: -30px; transform: rotate(var(--a)) translate(var(--R)) rotate(calc(-1 * var(--a))); }
+.ring-btn:hover, .ring-btn:focus-visible, .ring-btn.is-focus { box-shadow: var(--shadow-selected); z-index: 1; outline: none; }
+.rbtn { position: absolute; left: -30px; top: -30px; width: var(--size-ring-btn); height: var(--size-ring-btn); padding: 0; border-radius: var(--radius-round); border: var(--stroke-ui-bold) solid var(--ink); cursor: pointer;
+  display: grid; place-items: center; background: radial-gradient(circle at 35% 30%, var(--btn-a), var(--btn-b)); box-shadow: var(--shadow-ability);
+  transform: rotate(var(--a)) translate(var(--R)) rotate(calc(-1 * var(--a))); }
+.rbtn-gold { background: radial-gradient(circle at 35% 30%, var(--gold-light), var(--gold-btn-b)); }
+.rbtn-red { background: radial-gradient(circle at 35% 30%, var(--sell-a), var(--sell-b)); }
+.rbtn-small { width: var(--size-ring-close); height: var(--size-ring-close); left: -22px; top: -22px; font: 26px/1 var(--display); color: var(--cream); background: var(--ink); border-color: var(--ink); }
+.rbtn .cap { bottom: -15px; display: inline-flex; align-items: center; gap: 2px; font-size: 15px; line-height: 20px; }
+.rbtn .cap .ico { width: 16px; height: 16px; }
+.rbtn:disabled { filter: grayscale(.85) brightness(.85); cursor: default; }
+.rbtn:disabled .act-cost { color: var(--price-poor); text-decoration: line-through; }
+.rbtn:hover:not(:disabled), .rbtn:focus-visible, .rbtn.is-focus { box-shadow: var(--shadow-ring-focus); outline: none; z-index: 1; }
+.ring-info { position: absolute; left: calc(var(--R) + 44px); top: -46px; width: 240px; padding: 8px 12px; font-family: var(--font-body); }
+.ring-info h3 { margin: 0 0 2px; font: 19px/1.1 var(--display); color: var(--cream); text-shadow: 0 2px 0 var(--ink); }
+.ring-info p { margin: 0; font-size: 13px; line-height: 1.3; color: var(--muted); }
+.ds-ring { position: relative; width: 300px; height: 260px; flex: none; }
+.ds-ring.wide { width: 520px; }
+
+/* Kartenkarte (C5, Startbildschirm) */
+.map-card { position: relative; width: var(--size-map-card); height: 290px; padding: 12px; border-radius: var(--radius-banner); display: flex; flex-direction: column; align-items: center; gap: 6px; cursor: pointer; flex: none; box-sizing: border-box; }
+.map-thumb { width: var(--size-map-thumb); height: 120px; border-radius: var(--radius-thumb); border: var(--stroke-ui) solid var(--ink); box-sizing: border-box; flex: none; display: block; }
+.map-name { font: 24px/1.1 var(--display); color: var(--cream); text-shadow: -2px 0 var(--ink), 2px 0 var(--ink), 0 -2px var(--ink), 0 2px var(--ink); margin-top: 4px; }
+.map-stars { display: flex; gap: 4px; }
+.map-best { font: 14px var(--font-body); color: var(--muted); text-align: center; }
+.map-card:focus-visible, .map-card.current { transform: translateY(-6px); box-shadow: var(--shadow-card-current); outline: none; }
+.map-card:disabled { cursor: default; } .map-card:disabled .map-thumb { filter: grayscale(1) brightness(.45); } .map-card:disabled .map-name { color: var(--map-locked); }
+.map-lock { position: absolute; left: calc(50% - 22px); top: 50px; }
+
+/* Spielende-Plakette (C5) */
+.end-card { position: relative; width: var(--size-end-card); max-width: calc(100vw - 56px); padding: 64px 24px 22px; border-radius: var(--radius-card); text-align: center; box-sizing: border-box; }
+.end-ribbon { position: absolute; left: -20px; top: -34px; width: calc(100% + 40px); height: auto; overflow: visible; }
+.end-ribbon text { font: 44px var(--display); }
+.end-stars { display: flex; justify-content: center; gap: 10px; margin: 0 0 8px; }
+.end-stats { font: 18px var(--font-body); color: var(--cream); margin: 0 0 6px; }
+.end-actions { display: flex; justify-content: center; gap: 12px; margin-top: 14px; }
+.end-actions .wbtn { min-height: var(--size-wave-h); font-size: 22px; padding: 0 22px; border-radius: var(--radius-pill-l); }
