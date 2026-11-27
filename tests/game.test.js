@@ -2993,3 +2993,98 @@ test('Fahnen-Kacheln: canBuild lehnt ab ("Hier steht die Fahne"), Nachbarkacheln
   // Override ohne flagTiles: alles wie früher
   assert.ok(canBuild(createGame({ mapId: 'fork', flagTiles: undefined }), 0, 0).ok);
 });
+
+// ---------- B-167: Fledermaus (Flieger) ----------
+import { describe } from 'node:test';
+
+describe('B-167 Fledermaus: Flieger, die Kanone und Frost nicht treffen', () => {
+  // Turm neben einer Fledermaus (und optional einem Goblin an derselben Stelle)
+  function batSetup(towerType, withGrunt = false) {
+    const { s, tower, e: bat } = specialSetup(towerType, 'bat');
+    let grunt = null;
+    if (withGrunt) {
+      grunt = spawnEnemy(s, 'grunt', 1);
+      grunt.dist = bat.dist; grunt.x = bat.x; grunt.y = bat.y; grunt.speed = 0; grunt.hp = grunt.maxHp = 1e9;
+    }
+    return { s, tower, bat, grunt };
+  }
+
+  test('Config: Fledermaus fliegt, hitsAir je Turm, Text in special.text', () => {
+    assert.equal(ENEMY_TYPES.bat.flying, true);
+    assert.equal(ENEMY_TYPES.bat.name, 'Fledermaus');
+    for (const t of ['arrow', 'sniper', 'lightning']) {
+      assert.equal(TOWER_TYPES[t].hitsAir, true, t);
+      assert.ok(TOWER_TYPES[t].special.text.endsWith('Trifft Flieger.'), t);
+    }
+    for (const t of ['cannon', 'frost']) {
+      assert.equal(TOWER_TYPES[t].hitsAir, false, t);
+      assert.ok(TOWER_TYPES[t].special.text.endsWith('Trifft keine Flieger.'), t);
+    }
+  });
+
+  test('pickTarget ist rein und überspringt Flieger nur bei Türmen ohne hitsAir', () => {
+    const bat = { type: 'bat', x: 0, y: 0, hp: 10, dist: 90, len: 100 };
+    const grunt = { type: 'grunt', x: 10, y: 0, hp: 10, dist: 10, len: 100 };
+    const enemies = [bat, grunt];
+    const snap = JSON.stringify(enemies);
+    assert.equal(pickTarget(enemies, { type: 'arrow', x: 0, y: 0 }, 50), bat);
+    assert.equal(pickTarget(enemies, { type: 'cannon', x: 0, y: 0 }, 50), grunt);
+    assert.equal(pickTarget(enemies, { type: 'frost', x: 0, y: 0 }, 50), grunt);
+    assert.equal(pickTarget([bat], { type: 'cannon', x: 0, y: 0 }, 50), null);
+    assert.equal(pickTarget(enemies, { x: 0, y: 0 }, 50), bat, 'ohne Turmtyp wie bisher');
+    assert.equal(JSON.stringify(enemies), snap, 'keine Änderung an den Gegnern');
+  });
+
+  test('Kanone und Frost zielen nicht auf eine Fledermaus', () => {
+    for (const t of ['cannon', 'frost']) {
+      const { s, tower } = batSetup(t);
+      tower.cooldown = 0;
+      update(s, 0.001);
+      assert.equal(s.projectiles.length, 0, t);
+    }
+  });
+
+  test('Kanonen-Splash verletzt Fledermäuse nicht und wirft sie nicht zurück', () => {
+    const { s, tower, bat, grunt } = batSetup('cannon', true);
+    const dist0 = bat.dist;
+    tower.cooldown = 0;
+    update(s, 0.001);
+    assert.equal(s.projectiles.length, 1);
+    assert.equal(s.projectiles[0].targetId, grunt.id);
+    for (let i = 0; i < 60 && s.projectiles.length; i++) { tower.cooldown = 99; update(s, 0.02); }
+    assert.ok(grunt.hp < grunt.maxHp, 'Goblin getroffen');
+    assert.equal(bat.hp, bat.maxHp, 'Fledermaus unverletzt');
+    assert.equal(bat.dist, dist0, 'Fledermaus nicht zurückgeworfen');
+  });
+
+  test('Pfeil und Scharfschütze treffen Fledermäuse', () => {
+    for (const t of ['arrow', 'sniper']) {
+      const { s, tower, bat } = batSetup(t);
+      tower.cooldown = 0;
+      update(s, 0.001);
+      assert.equal(s.projectiles[0]?.targetId, bat.id, t);
+      for (let i = 0; i < 60 && s.projectiles.length; i++) { tower.cooldown = 99; update(s, 0.02); }
+      assert.ok(bat.hp < bat.maxHp, `${t}: Fledermaus getroffen`);
+    }
+  });
+
+  test('Kettenblitz springt auf eine Fledermaus über', () => {
+    const grunt = { type: 'grunt', x: 0, y: 0, hp: 10 };
+    const bat = { type: 'bat', x: 20, y: 0, hp: 10 };
+    assert.deepEqual(chainTargets([grunt, bat], grunt, 3, 50), [grunt, bat]);
+    const { s, tower, bat: b2, grunt: g2 } = batSetup('lightning', true);
+    tower.cooldown = 0;
+    update(s, 0.001);
+    assert.ok(b2.hp < b2.maxHp && g2.hp < g2.maxHp, 'beide getroffen');
+  });
+
+  test('Meteor und Kälteschock treffen Fledermäuse', () => {
+    const { s, bat } = batSetup('arrow');
+    s.towers = [];
+    const hp0 = bat.hp;
+    assert.ok(useAbility(s, 'meteor', bat.x, bat.y).ok);
+    assert.ok(bat.hp < hp0, 'Meteor');
+    assert.ok(useAbility(s, 'freeze').ok);
+    assert.ok(bat.slowUntil > s.time, 'Kälteschock');
+  });
+});

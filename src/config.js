@@ -465,6 +465,7 @@ export const TOWER_TYPES = {
     projectileSpeed: 12,
     color: '#c8a165',
     description: 'Günstig und schnell. Guter Allrounder.',
+    hitsAir: true, // B-167: trifft Flieger
     // Aufwärmen: Schussabstand sinkt je Folgeschuss auf dasselbe Ziel um warmupStep (Anteil), höchstens um warmupMax.
     special: { warmupStep: 0.05, warmupMax: 0.25 },
   },
@@ -479,6 +480,7 @@ export const TOWER_TYPES = {
     splash: 1.1,
     color: '#5a5f6b',
     description: 'Flächenschaden gegen Gruppen.',
+    hitsAir: false,
     // Rückstoß: das getroffene Ziel wird knockback Kacheln auf seinem Weg zurückgeworfen (Boss nur Faktor bossKnockbackFactor),
     // danach knockbackCooldown Sekunden Schutzzeit.
     special: { knockback: 0.5, bossKnockbackFactor: 0.5, knockbackCooldown: 6 },
@@ -495,6 +497,7 @@ export const TOWER_TYPES = {
     slowDuration: 1.5,
     color: '#6ec6e8',
     description: 'Verlangsamt Gegner um 50 %.',
+    hitsAir: false,
     // Einfrieren: jeder freezeEvery-te Treffer des Turms stoppt das Ziel für freezeDuration Sekunden (Boss immun).
     special: { freezeEvery: 5, freezeDuration: 0.6 },
   },
@@ -508,6 +511,7 @@ export const TOWER_TYPES = {
     projectileSpeed: 30,
     color: '#8e5bd1',
     description: 'Riesige Reichweite, hoher Einzelschaden.',
+    hitsAir: true,
     // Rüstungsbrecher: gegen Gegner, deren Basis-HP (ENEMY_TYPES[type].hp, ohne Wellen-Skalierung) >= bonusMinHp ist, Faktor bonusDamage auf den Schaden; ignoriert dabei Rüstung.
     special: { bonusMinHp: 300, bonusDamage: 1.5, ignoreArmor: true },
   },
@@ -527,6 +531,7 @@ export const TOWER_TYPES = {
     boltDuration: 0.25, // Sekunden, die die Blitzlinie sichtbar bleibt
     color: '#e8c93a',
     description: 'Kettenblitz trifft sofort und verfehlt nie. Ideal gegen schnelle Flitzer und Schwärme.',
+    hitsAir: true,
     special: {},
   },
 };
@@ -541,7 +546,11 @@ const SPECIAL_TEXTS = {
   lightning: (s, d) => `Kettenblitz: Springt auf bis zu ${d.chainCount} weitere Gegner im Umkreis von ${num(d.chainRange)} Kacheln, jeder Sprung mit ${pct(d.chainFalloff)} des vorigen Schadens.`,
   sniper: (s) => `Rüstungsbrecher: Gegen zähe Gegner (ab ${s.bonusMinHp} Basis-HP) ${pct(s.bonusDamage - 1)} mehr Schaden, Rüstung wird ignoriert.`,
 };
-for (const [type, build] of Object.entries(SPECIAL_TEXTS)) TOWER_TYPES[type].special.text = build(TOWER_TYPES[type].special, TOWER_TYPES[type]);
+// B-167: dazu je Turm ein Satz, ob er Flieger trifft (Tooltip und Turm-Info).
+const airText = (d) => (d.hitsAir ? 'Trifft Flieger.' : 'Trifft keine Flieger.');
+for (const [type, build] of Object.entries(SPECIAL_TEXTS)) {
+  TOWER_TYPES[type].special.text = `${build(TOWER_TYPES[type].special, TOWER_TYPES[type])} ${airText(TOWER_TYPES[type])}`;
+}
 
 // Aktive Fähigkeiten (B-038): lange Abklingzeiten, damit das Spiel nicht leichter wird.
 // Zeiten in Sekunden Spielzeit, radius in Kacheln, slow = Anteil der Verlangsamung (0,7 = 70 % langsamer).
@@ -596,6 +605,8 @@ export const ENEMY_TYPES = {
   necro: { name: 'Nekromantin', hp: 1000, speed: 0.6, reward: 75, leak: 6, radius: 18, color: '#3d4a5c', boss: true,
     summonInterval: 8, summonCount: 2, summonType: 'skeleton', summonBehind: 0.6, summonSpacing: 0.3 },
   skeleton: { name: 'Skelett', hp: 18, speed: 0.9, reward: 1, leak: 1, radius: 10, color: '#e6e0cf' },
+  // Fledermaus (B-167): flying = Flieger, nur Türme mit hitsAir zielen auf sie; Kanonen-Splash trifft sie nicht.
+  bat: { name: 'Fledermaus', hp: 30, speed: 1.8, reward: 3, leak: 1, radius: 9, color: '#5d4a66', flying: true },
 };
 
 // B-127: Boss-Merkmal statt Typname. Nimmt einen Gegner ({ type }) oder einen Typnamen.
@@ -1394,7 +1405,7 @@ export const SOUND = {
       'shot:lightning': { files: ['lightning-1', 'lightning-2', 'lightning-3'], gain: 0.18, pitchVar: 0.06 },
       // Tod: kurze Monster-Schreie (OpenGameArt, CC0); enemyRate = Tonhöhe je Gegnertyp (klein/schnell höher)
       death:            { files: ['death-1', 'death-2', 'death-3', 'death-4'], gain: 0.55, pitchVar: 0.08,
-                          enemyRate: { runner: 1.25, grunt: 1.1, healer: 1.05, mage: 1.0, shielded: 0.95, tank: 0.85, skeleton: 1.35 } },
+                          enemyRate: { runner: 1.25, grunt: 1.1, healer: 1.05, mage: 1.0, shielded: 0.95, tank: 0.85, skeleton: 1.35, bat: 1.4 } },
       // Boss-Tod: langer, tiefer Schrei, zusätzlich tiefer abgespielt (rate = Grund-Tonhöhe)
       boss:             { files: ['boss-1', 'boss-2'], gain: 0.9, pitchVar: 0.03, rate: 0.85 },
       lifeLost:         { files: ['life-lost-1', 'life-lost-2'], gain: 0.8, pitchVar: 0 },

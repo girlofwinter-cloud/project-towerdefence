@@ -498,12 +498,24 @@ function wardStep(state) {
   }
 }
 
-// Reine Zielauswahl: wählt aus den Gegnern in Reichweite nach Zielregel (Gleichstand: erster in Listenreihenfolge)
+// B-167: Flieger (ENEMY_TYPES[type].flying) und Türme, die sie treffen (TOWER_TYPES[type].hitsAir).
+// Ein Turm ohne bekannten Typ trifft Flieger (z. B. Testobjekte nur mit x/y).
+function isFlying(e) {
+  return ENEMY_TYPES[e?.type]?.flying === true;
+}
+function hitsAir(tower) {
+  return TOWER_TYPES[tower?.type]?.hitsAir !== false;
+}
+
+// Reine Zielauswahl: wählt aus den Gegnern in Reichweite nach Zielregel (Gleichstand: erster in Listenreihenfolge).
+// Türme ohne hitsAir überspringen Flieger (B-167).
 export function pickTarget(enemies, tower, range, mode = 'first') {
+  const air = hitsAir(tower);
   let best = null;
   let bestScore = -Infinity;
   for (const e of enemies) {
     if (e.hp <= 0) continue;
+    if (!air && isFlying(e)) continue;
     const d = Math.hypot(e.x - tower.x, e.y - tower.y);
     if (d > range) continue;
     let score;
@@ -626,12 +638,14 @@ function projectilesStep(state, dt) {
 
 function hit(state, p, target) {
   if (p.splash) {
+    // B-167: der Splash trifft keine Flieger und wirft sie nicht zurück.
     for (const e of state.enemies) {
+      if (isFlying(e)) continue;
       if (Math.hypot(e.x - p.tx, e.y - p.ty) <= p.splash) {
         damage(state, e, p);
       }
     }
-    if (p.knockback && target) knockBack(state, target, p);
+    if (p.knockback && target && !isFlying(target)) knockBack(state, target, p);
     state.effects.push({ kind: 'explosion', x: p.tx, y: p.ty, r: p.splash, ttl: 0.3, max: 0.3 });
   } else if (target) {
     damage(state, target, p, true);

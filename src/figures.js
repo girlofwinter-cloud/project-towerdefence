@@ -139,6 +139,16 @@ const ENEMY_SVG = {
     svg: goblinSvg({ legs: '#3d2a5c', body: '#5b3d8a', belt: '#7dff9a', ears: null, head: '#a8c8a0', front: hood('#3d2a5c'),
       weapon: staff(`<circle cx="45" cy="5" r="5.5" fill="#f2e9d8" stroke="#2b1a10" stroke-width="2.5"/><circle cx="43" cy="5" r="1.4" fill="#2b1a10"/><circle cx="47" cy="5" r="1.4" fill="#2b1a10"/>`) }),
   },
+  // Fledermaus (B-167, Platzhalter bis zur Figur vom designer): Körper und zwei Flügel hoch über dem Weg,
+  // Bodenschatten deutlich darunter, damit sie als Flieger erkennbar ist
+  bat: {
+    w: 46, h: 50,
+    svg: `<ellipse cx="23" cy="46" rx="10" ry="3" fill="rgba(20,30,40,.3)"/>`
+      + `<path d="M17 16 Q8 6 1 12 Q5 16 4 22 Q10 18 17 22 Z M29 16 Q38 6 45 12 Q41 16 42 22 Q36 18 29 22 Z" fill="#3a2d44" stroke="#2b1a10" stroke-width="2.5" stroke-linejoin="round"/>`
+      + `<ellipse cx="23" cy="19" rx="7" ry="8" fill="#5d4a66" stroke="#2b1a10" stroke-width="3"/>`
+      + `<path d="M18 13 L19 7 L21 12 M28 13 L27 7 L25 12" fill="#5d4a66" stroke="#2b1a10" stroke-width="2" stroke-linejoin="round"/>`
+      + `<circle cx="20.5" cy="17" r="1.6" fill="#ffe266"/><circle cx="25.5" cy="17" r="1.6" fill="#ffe266"/>`,
+  },
 };
 // Eingefrorener Goblin (Z.111) und der Eiskristall daraus als Überzug für alle anderen Typen
 const ICED = { w: 54, h: 56, svg: `<ellipse cx="27" cy="50" rx="17" ry="4" fill="rgba(20,30,40,.4)"/><path d="M14 28 Q14 44 27 44 Q40 44 40 28 Z" fill="#8fd0e8" stroke="#2b1a10" stroke-width="3"/><path d="M8 18 L16 22 L14 28 Z M46 18 L38 22 L40 28 Z" fill="#9fdcf0" stroke="#2b1a10" stroke-width="2.5" stroke-linejoin="round"/><circle cx="27" cy="22" r="13" fill="#a8e2f5" stroke="#2b1a10" stroke-width="3"/><path d="M20 20 H25 M30 20 H35" stroke="#2b1a10" stroke-width="2.5" stroke-linecap="round"/><path d="M5 40 L12 8 L21 36 L28 2 L35 36 L44 10 L50 40 L44 52 H10 Z" fill="#dff7ff" fill-opacity=".55" stroke="#2b1a10" stroke-width="2.5" stroke-linejoin="round"/><path d="M14 12 L18 36" stroke="#fff" stroke-width="3" stroke-linecap="round"/>` };
