@@ -2,8 +2,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createGame, canBuild } from '../src/game.js';
-import { TILE, COLS, ROWS, WIDTH, HEIGHT, MAPS, FRAME_MARGIN, VIEW_WIDTH, VIEW_HEIGHT, PAINTED_STYLE } from '../src/config.js';
-import { buildPaintedScene, buildPaintedSvg, paintedWaterAt, toGame } from '../src/render-painted.js';
+import { TILE, COLS, ROWS, WIDTH, HEIGHT, MAPS, FRAME_MARGIN, VIEW_WIDTH, VIEW_HEIGHT, PAINTED_STYLE, PAINTED_PALETTE } from '../src/config.js';
+import { buildPaintedScene, buildPaintedSvg, paintedWaterAt, toGame, paletteFor } from '../src/render-painted.js';
 import { mockCtx } from './helpers.js';
 
 const meadow = () => createGame({ mapId: 'meadow' });
@@ -15,6 +15,12 @@ function depth([x0, y0, x1, y1], c, r) {
   return ox > 0 && oy > 0 ? Math.min(ox, oy) : 0;
 }
 const inField = (x, y) => x >= 0 && y >= 0 && x < WIDTH && y < HEIGHT;
+const MAP_IDS = Object.keys(MAPS);
+const buildableOf = (s) => {
+  const out = [];
+  for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) if (canBuild(s, c, r).ok) out.push([c, r]);
+  return out;
+};
 
 test('Stil 1: SVG deterministisch, Canvas-Größe mit Rand, enthält Boden-Filter, Weg-Schichten, Wasser, Brücke, Burg, Fahne', () => {
   const a = buildPaintedSvg(meadow());
@@ -32,26 +38,51 @@ test('Stil 1: SVG deterministisch, Canvas-Größe mit Rand, enthält Boden-Filte
   assert.ok(a.includes(`translate(${FRAME_MARGIN} ${FRAME_MARGIN}) scale(${Math.round((TILE / PAINTED_STYLE.unit) * 1e5) / 1e5}`));
 });
 
-test('Stil 1: kein Baum, Fels oder Klippenstück auf einer bebaubaren Kachel (Krone höchstens maxOverhang)', () => {
-  const s = meadow();
+test('Stil 1 (alle Karten): kein Baum, Fels oder Klippenstück auf einer bebaubaren Kachel (Krone höchstens maxOverhang)', () => {
+  for (const id of MAP_IDS) checkNothingOnBuildable(id);
+});
+
+function checkNothingOnBuildable(id) {
+  const s = createGame({ mapId: id });
   const sc = buildPaintedScene(s);
-  assert.ok(sc.trees.length > 30, 'Rahmenwald vorhanden');
-  const buildable = [];
-  for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) if (canBuild(s, c, r).ok) buildable.push([c, r]);
+  assert.ok(sc.trees.length > 30, `${id}: Rahmenwald vorhanden`);
+  const buildable = buildableOf(s);
   for (const t of [...sc.trees, ...sc.rocks]) {
     const box = toGame(t.box);
     const [fx, fy] = [t.x * (TILE / PAINTED_STYLE.unit), t.y * (TILE / PAINTED_STYLE.unit)];
     // Fußpunkt: im Rand oder auf einer Hindernis-Kachel (Fuß sitzt am unteren Kachelrand, darum knapp darüber prüfen)
-    if (inField(fx, fy - 1)) assert.ok(s.obstacles.has(`${Math.floor(fx / TILE)},${Math.floor((fy - 1) / TILE)}`), `${t.kind} steht im Feld bei ${fx},${fy}`);
-    for (const [c, r] of buildable) assert.ok(depth(box, c, r) <= OVER + 1e-9, `${t.kind} ragt ${depth(box, c, r).toFixed(1)} px in ${c},${r}`);
+    if (inField(fx, fy - 1)) assert.ok(s.obstacles.has(`${Math.floor(fx / TILE)},${Math.floor((fy - 1) / TILE)}`), `${id}: ${t.kind} steht im Feld bei ${fx},${fy}`);
+    for (const [c, r] of buildable) assert.ok(depth(box, c, r) <= OVER + 1e-9, `${id}: ${t.kind} ragt ${depth(box, c, r).toFixed(1)} px in ${c},${r}`);
   }
-  assert.ok(sc.cliffs.length >= 1);
-  for (const cl of sc.cliffs) for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) assert.equal(depth(toGame(cl.box), c, r), 0, `Klippe in ${c},${r}`);
+  assert.ok(sc.cliffs.length >= 1, `${id}: Klippe`);
+  for (const cl of sc.cliffs) for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) assert.equal(depth(toGame(cl.box), c, r), 0, `${id}: Klippe in ${c},${r}`);
   // Hindernisse bekommen genau ihre Figur
-  assert.equal(sc.rocks.length + sc.trees.filter((t) => inField(t.x * TILE / PAINTED_STYLE.unit, t.y * TILE / PAINTED_STYLE.unit - 1)).length, s.obstacles.size);
+  assert.equal(sc.rocks.length + sc.trees.filter((t) => inField(t.x * TILE / PAINTED_STYLE.unit, t.y * TILE / PAINTED_STYLE.unit - 1)).length, s.obstacles.size, id);
+}
+
+test('Stil 1 (alle Karten): Burg am Ausgang, Fahne an jedem Eingang, beide und Klippen ganz im Rand', () => {
+  for (const id of MAP_IDS) {
+    const s = createGame({ mapId: id });
+    const sc = buildPaintedScene(s);
+    const paths = s.paths || [s.path];
+    assert.equal(sc.flags.length, paths.length, `${id}: eine Fahne je Eingang`);
+    assert.equal(sc.castles.length, 1, `${id}: eine Burg am gemeinsamen Ausgang`);
+    for (const el of [...sc.castles, ...sc.flags, ...sc.cliffs]) {
+      const [x0, y0, x1, y1] = toGame(el.box);
+      assert.ok(x1 <= 0 || x0 >= WIDTH || y1 <= 0 || y0 >= HEIGHT, `${id}: ${el.kind} ragt ins Feld (${x0},${y0},${x1},${y1})`);
+      assert.ok(x0 >= -FRAME_MARGIN - 1 && x1 <= WIDTH + FRAME_MARGIN + 1, `${id}: ${el.kind} im Canvas`);
+    }
+    // Fahne neben ihrem Eingang (alle Eingänge liegen links)
+    paths.forEach((p, i) => {
+      const y = p.points[0].y, fl = toGame(sc.flags[i].box);
+      assert.ok(fl[2] <= 0 && fl[1] < y && fl[3] > y - TILE, `${id}: Fahne ${i} am Eingang`);
+    });
+    const end = paths[0].points.at(-1), castle = toGame(sc.castles[0].box);
+    assert.ok(castle[0] >= WIDTH && castle[1] < end.y && castle[3] > end.y, `${id}: Burg rechts am Ausgang`);
+  }
 });
 
-test('Stil 1: Burg, Fahne und Klippen liegen ganz im Rand, Randbäume mit Stamm im Rand', () => {
+test('Stil 1: Burg, Fahne und Klippen der Wiese liegen ganz im Rand, Randbäume mit Stamm im Rand', () => {
   const sc = buildPaintedScene(meadow());
   assert.equal(sc.castles.length, 1);
   assert.equal(sc.flags.length, 1);
@@ -68,8 +99,11 @@ test('Stil 1: Burg, Fahne und Klippen liegen ganz im Rand, Randbäume mit Stamm 
   assert.ok(castle[2] <= WIDTH + FRAME_MARGIN && flag[0] >= -FRAME_MARGIN, 'im Canvas');
 });
 
-test('Stil 1: Vignette im Feld höchstens 0,15, starke Vignette nur im Rand (Maske spart das Feld aus)', () => {
-  const a = buildPaintedSvg(meadow());
+test('Stil 1 (alle Karten): Vignette im Feld höchstens 0,15, starke Vignette nur im Rand (Maske spart das Feld aus)', () => {
+  for (const id of MAP_IDS) checkVignette(buildPaintedSvg(createGame({ mapId: id })));
+});
+
+function checkVignette(a) {
   const field = a.match(/<radialGradient id="p-vig-field".*?<\/radialGradient>/)[0];
   const alphas = [...field.matchAll(/stop-opacity="([\d.]+)"/g)].map((m) => Number(m[1]));
   assert.ok(alphas.length >= 2 && Math.max(...alphas) <= 0.15, `Feld-Vignette ${alphas}`);
@@ -81,7 +115,7 @@ test('Stil 1: Vignette im Feld höchstens 0,15, starke Vignette nur im Rand (Mas
   const [x, y, w, h] = black.slice(1).map(Number);
   const U = PAINTED_STYLE.unit;
   assert.ok(x <= 0 && y <= 0 && x + w >= COLS * U && y + h >= ROWS * U, 'Maske deckt das ganze Feld');
-});
+}
 
 test('Stil 1: Wasserkacheln der Wiese folgen der gemalten Form (Kachelmitte im Wasser), Malerei ragt höchstens wenig in Bauplätze', () => {
   const s = meadow();
@@ -101,11 +135,14 @@ test('Stil 1: Wasserkacheln der Wiese folgen der gemalten Form (Kachelmitte im W
   assert.equal(paintedWaterAt('ice', 60, 60), false, 'andere Karten ohne gemalte Form');
 });
 
-test('Stil 1: Blumen-Tupfen nur auf freien Feldkacheln, Szene für andere Karten und fehlende Sets wirft nicht', () => {
-  const s = meadow();
-  const sc = buildPaintedScene(s);
-  assert.ok(sc.flowers.length > 10);
-  for (const f of sc.flowers) assert.ok(canBuild(s, f.c, f.r).ok, `Blume auf ${f.c},${f.r}`);
+test('Stil 1 (alle Karten): Tupfen nur auf freien Feldkacheln, Szene ohne Sets wirft nicht', () => {
+  for (const id of MAP_IDS) {
+    const s = createGame({ mapId: id });
+    const sc = buildPaintedScene(s);
+    assert.ok(sc.flowers.length > 10, id);
+    for (const f of sc.flowers) assert.ok(canBuild(s, f.c, f.r).ok, `${id}: Tupfen auf ${f.c},${f.r}`);
+    assert.ok(sc.flowers.every((f) => f.kind === paletteFor(id).dotKind), id);
+  }
   for (const id of Object.keys(MAPS)) {
     const st = createGame({ mapId: id });
     assert.ok(buildPaintedSvg(st).startsWith('<svg'), id);
@@ -128,8 +165,97 @@ test('Stil 1: renderView zeichnet Rand und verschiebt das Feld; in Node bleibt d
     assert.deepEqual(calls.find((c) => c[0] === 'translate'), ['translate', FRAME_MARGIN, FRAME_MARGIN], `${id}: Feld verschoben`);
     assert.equal(m.depth, 0);
   }
-  assert.equal(paintedStatus('meadow'), 'none', 'ohne Image kein Rastern');
-  assert.equal(paintedStatus('ice'), 'off');
-  assert.equal(MAPS.meadow.theme.painted, true);
-  for (const id of Object.keys(MAPS)) if (id !== 'meadow') assert.ok(!MAPS[id].theme?.painted, `${id} vorerst ohne painted`);
+  // Plan G9: alle Karten gemalt; ohne Image (Node) wird nicht gerastert
+  for (const id of MAP_IDS) {
+    assert.ok(MAPS[id].theme?.painted, `${id} gemalt`);
+    assert.equal(paintedStatus(id), 'none', `${id}: ohne Image kein Rastern`);
+  }
+});
+
+// Plan G9: Palette und Elemente je Karte aus der Konfiguration (theme.painted über themed())
+test('Stil 1 (G9): Bodenfarben, Bäume und Tupfen je Karte, Wiese behält die Basis-Palette', () => {
+  const G9 = { ice: ['#eef6fb', '#a9c6dc'], fork: ['#c9b25a', '#7d7a34'], twin: ['#a6cf5a', '#4a6e2c'], volcano: ['#6b5a55', '#2d1f20'] };
+  assert.deepEqual(paletteFor('meadow'), PAINTED_PALETTE);
+  for (const [id, [top, bottom]] of Object.entries(G9)) {
+    const a = buildPaintedSvg(createGame({ mapId: id }));
+    const gr = a.match(/<linearGradient id="p-gr".*?<\/linearGradient>/)[0];
+    assert.ok(gr.includes(`stop-color="${top}"`) && gr.includes(`stop-color="${bottom}"`), `${id}: Boden ${top} -> ${bottom}`);
+    assert.equal(a, buildPaintedSvg(createGame({ mapId: id })), `${id}: deterministisch`);
+    assert.ok(!/<text/.test(a), id);
+  }
+  const ice = buildPaintedScene(createGame({ mapId: 'ice' }));
+  assert.ok(ice.trees.every((t) => t.kind === 'pine'), 'Eiswelt: nur Tannen');
+  const iceSvg = buildPaintedSvg(createGame({ mapId: 'ice' }));
+  assert.ok(iceSvg.includes('#5d7e9c') || iceSvg.includes('0.36'), 'Eiswelt: Flecken #5d7e9c');
+  assert.ok(iceSvg.includes('class="dot-crystal"') && (iceSvg.match(/fill="#ffffff" stroke="#2b1a10" stroke-width="2"/g) || []).length > 40, 'Eiswelt: Kristalle, Schneekappen');
+  const fork = buildPaintedSvg(createGame({ mapId: 'fork' }));
+  assert.ok(fork.includes('class="dot-leaf"') && fork.includes('fill="#e0803a"') && fork.includes('fill="#c9562f"'), 'Herbst: Laub');
+  const vol = buildPaintedScene(createGame({ mapId: 'volcano' }));
+  assert.ok(vol.trees.some((t) => t.kind === 'bare') && !vol.trees.some((t) => t.kind === 'round'), 'Vulkan: kahle Bäume');
+  const volSvg = buildPaintedSvg(createGame({ mapId: 'volcano' }));
+  assert.ok(volSvg.includes('class="dot-ember"') && volSvg.includes('#ffb04a'), 'Vulkan: Glutflecken');
+  assert.ok(volSvg.includes('id="lava"') && !volSvg.includes('id="river"') && volSvg.includes('class="bridge"'), 'Vulkan: Lava statt Wasser, Brücke');
+  for (const id of ['ice', 'fork', 'twin']) assert.ok(!buildPaintedSvg(createGame({ mapId: id })).includes('id="lava"'), `${id} ohne Lava`);
+});
+
+// Mittellinie wie smoothOpen in render-painted.js (Q-Kurven über die Mittelpunkte), dicht abgetastet
+function smoothSamples(pts) {
+  const out = [pts[0]];
+  let prev = pts[0];
+  for (let i = 1; i < pts.length - 1; i++) {
+    const end = [(pts[i][0] + pts[i + 1][0]) / 2, (pts[i][1] + pts[i + 1][1]) / 2];
+    for (let k = 1; k <= 20; k++) {
+      const t = k / 20, u = 1 - t;
+      out.push([0, 1].map((j) => u * u * prev[j] + 2 * u * t * pts[i][j] + t * t * end[j]));
+    }
+    prev = end;
+  }
+  const last = pts.at(-1);
+  for (let k = 1; k <= 20; k++) out.push([prev[0] + ((last[0] - prev[0]) * k) / 20, prev[1] + ((last[1] - prev[1]) * k) / 20]);
+  return out;
+}
+const inPoly = (poly, x, y) => {
+  let inside = false;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const [xi, yi] = poly[i], [xj, yj] = poly[j];
+    if ((yi > y) !== (yj > y) && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inside = !inside;
+  }
+  return inside;
+};
+
+test('Stil 1 (G9): Lava des Vulkans folgt den Lavakacheln, Kruste ragt höchstens wenig in Bauplätze, Brücke auf der Brückenkachel', () => {
+  const s = createGame({ mapId: 'volcano' });
+  const sc = buildPaintedScene(s);
+  const U = PAINTED_STYLE.unit;
+  const line = smoothSamples(sc.lava.river);
+  const half = PAINTED_STYLE.lava[1] / 2; // Kruste
+  const lavaAt = (gx, gy) => {
+    const x = gx / (TILE / U), y = gy / (TILE / U);
+    return line.some(([px, py]) => Math.hypot(px - x, py - y) <= half) || sc.lava.pools.some((ring) => inPoly(ring[1], x, y));
+  };
+  // Jede Lavakachel (Mitte) liegt in der gemalten Lava
+  for (const k of s.lava) {
+    const [c, r] = k.split(',').map(Number);
+    assert.ok(lavaAt((c + 0.5) * TILE, (r + 0.5) * TILE), `Lavakachel ${k} nicht gemalt`);
+  }
+  // Bauplätze höchstens 35 % unter der Kruste (wie beim Wasser der Wiese)
+  for (const [c, r] of buildableOf(s)) {
+    let n = 0;
+    for (let i = 0; i < 10; i++) for (let j = 0; j < 10; j++) if (lavaAt((c + (i + 0.5) / 10) * TILE, (r + (j + 0.5) / 10) * TILE)) n++;
+    assert.ok(n <= 35, `Bauplatz ${c},${r} zu ${n} % unter Lava`);
+  }
+  // Lavafluss reicht oben und unten bis über den Canvas-Rand, Brücke liegt auf der Brückenkachel
+  assert.ok(sc.lava.river[0][1] * (TILE / U) < -FRAME_MARGIN && sc.lava.river.at(-1)[1] * (TILE / U) > HEIGHT + FRAME_MARGIN);
+  assert.equal(sc.bridges.length, MAPS.volcano.bridges.length);
+  const [bc, br] = MAPS.volcano.bridges[0];
+  const b = sc.bridges[0];
+  assert.deepEqual([Math.floor((b.x * TILE) / U / TILE), Math.floor((b.y * TILE) / U / TILE)], [bc, br]);
+  assert.ok(b.horizontal, 'Weg läuft waagerecht über die Brücke');
+  // Randbäume nicht in der Lava
+  for (const t of sc.trees) for (const [px, py] of line) assert.ok(!(t.x > px - 30 && t.x < px + 30 && Math.abs(t.y - py) < 30), `Baum in der Lava bei ${t.x},${t.y}`);
+});
+
+test('Stil 1 (G9): Bauplatzzahl je Karte unverändert (gemalter Hintergrund ändert keine Kacheln)', () => {
+  const expected = { meadow: 226, ice: 233, fork: 221, twin: 196, volcano: 212 };
+  for (const id of MAP_IDS) assert.equal(buildableOf(createGame({ mapId: id })).length, expected[id], id);
 });

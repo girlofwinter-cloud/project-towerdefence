@@ -147,6 +147,16 @@ export const MAPS = {
         scatterChance: 0.1,
         scatterKinds: [['crystal', 0.28], ['snowpile', 0.3], ['rockgroup', 0.16], ['pebbles', 0.12], ['stakes', 0.08], ['sign', 0.06]],
       },
+      // Stil 1 (G9): Schnee #eef6fb -> #a9c6dc, Flecken #5d7e9c, Tannen und Felsen mit Schneekappe, Eiskristalle als Tupfen
+      painted: {
+        ground: ['#eef6fb', '#cfe1ee', '#a9c6dc'], mottle: [0.36, 0.49, 0.61], mottleOpacity: 0.75, lit: [1, 1, 1], litOpacity: 0.6,
+        sun: ['#ffffff', '#e4f3ff'], vignette: '#1c2c44', grainOpacity: 0.1,
+        path: ['#8fb0c8', '#2f4560', '#4f6682', '#9db3c9', '#b4c7d9'], pathDots: ['#ffffff', '#4f6682'],
+        dotKind: 'crystal', dots: ['#ffffff', '#bff0ff', '#7fe0ff'], dotChance: 0.16,
+        pineShare: 1, pine: ['#285f52', '#2f6f5f', '#3d8270', '#9fd0c0'], snow: '#ffffff',
+        rock: ['#8aa6bd', '#c9d8e6'], cliff: ['#f6fbff', '#f2f8fc', '#a9c6dc', '#6f8ea8', '#4f6682'],
+        stone: ['#eef2f6', '#c4cfd9', '#8d9cab'],
+      },
       path: { main: '#9db3c9', edge: '#4f6682', outline: '#2f4560', mid: '#b4c7d9', fringe: '#ffffff', fringeAccent: '#c6dcec', groove: '#62809a' },
       // B-142 Nacharbeit: gemalter Boden hell (Schnee), Flecken in Halm-Blau und Weiß, Licht kühl
       paint: { dark: [120, 166, 196], darkAlpha: 0.38, light: [255, 255, 255], lightAlpha: 0.55, tint: '214,236,255', shadow: '38,64,108', sunAlpha: 0.3 },
@@ -219,6 +229,15 @@ export const MAPS = {
         pebble: '#a39f98', mushroomCap: '#c0652f', wood: '#a9763f', woodDark: '#6e4d2a',
         scatterChance: 0.09,
         scatterKinds: [['leafpile', 0.3], ['rockgroup', 0.2], ['log', 0.14], ['stump', 0.14], ['sign', 0.1], ['mushroom', 0.12]],
+      },
+      // Stil 1 (G9): Herbst #c9b25a -> #7d7a34, Laub #e0803a/#c9562f an Bäumen und als Tupfen
+      painted: {
+        ground: ['#c9b25a', '#a49846', '#7d7a34'], mottle: [0.32, 0.31, 0.12], mottleOpacity: 0.72, lit: [1, 0.86, 0.5], litOpacity: 0.5,
+        sun: ['#ffe2a8', '#ffc870'], vignette: '#2a1c0c',
+        path: ['#666529', '#2b1a10', '#7d5632', '#d6ab70', '#e8c88e'], pathDots: ['#fff2c8', '#7d5632'],
+        dotKind: 'leaf', dots: ['#e0803a', '#c9562f', '#e8a93a'], dotChance: 0.22,
+        pineShare: 0.2, pine: ['#4e6a30', '#5f7a3a', '#71904a', '#b5c97a'], round: ['#c9562f', '#e0803a', '#f6c27a'], fruit: '#f2c14e',
+        cliff: ['#c2ae58', '#c6b25c', '#b98c5c', '#7a5a45', '#5e4331'],
       },
       path: { main: '#d6ab70', edge: '#7d5632', outline: '#4a3018', mid: '#e8c88e', fringe: '#e0803a', fringeAccent: '#c9562f', groove: '#666529' },
       pathStyle: { fringeKind: 'leaves' }, // B-143 Nacharbeit: Herbstlaub am Wegrand
@@ -311,6 +330,14 @@ export const MAPS = {
         scatterChance: 0.1,
         scatterKinds: [['mushroom', 0.18], ['stump', 0.18], ['log', 0.16], ['rockgroup', 0.18], ['sign', 0.12], ['pebbles', 0.18]],
       },
+      // Stil 1 (G9): Spätsommer #a6cf5a -> #4a6e2c, Blumen in Gelb, Pink, Weiß
+      painted: {
+        ground: ['#a6cf5a', '#78a043', '#4a6e2c'], mottle: [0.16, 0.27, 0.08], mottleOpacity: 0.65, lit: [1, 0.95, 0.55], litOpacity: 0.5,
+        path: ['#4a6e2c', '#2b1a10', '#86603a', '#dcc08a', '#e8d2a0'], pathDots: ['#fff2c8', '#86603a'],
+        dots: ['#f6d64a', '#c94a8a', '#f4f1e6'], pineShare: 0.35,
+        pine: ['#2c6236', '#336f3c', '#4f9a3e', '#a6cf5a'], round: ['#448a38', '#5aa845', '#c4e278'], fruit: '#f6d64a',
+        cliff: ['#9cc653', '#a0ca56', '#b98c5c', '#7a5a45', '#5e4331'],
+      },
       path: { main: '#dcc08a', edge: '#86603a', outline: '#3e2a14', mid: '#e8d2a0', fringe: '#bcdf6e', fringeAccent: '#5a8f36', groove: '#4a6e2c' },
       // B-142 Nacharbeit: gemalter Boden Spätsommer (dunkel Halm-Grün, hell Gelbgrün)
       paint: { dark: [62, 104, 36], darkAlpha: 0.4, light: [222, 238, 140], lightAlpha: 0.26, tint: '255,232,170' },
@@ -377,6 +404,17 @@ export const MAPS = {
         obstacleGround: 'rgba(20,10,10,0.3)',
         scatterChance: 0.11,
         scatterKinds: [['ember', 0.26], ['ash', 0.22], ['rockgroup', 0.24], ['stump', 0.12], ['pebbles', 0.16]],
+      },
+      // Stil 1 (G9): Kruste #6b5a55 -> #2d1f20, schwache Glutflecken #ffb04a, kahle Bäume, Lava statt Wasser, Steinbrücke
+      painted: {
+        ground: ['#6b5a55', '#4a3a38', '#2d1f20'], mottle: [0.07, 0.04, 0.04], mottleOpacity: 0.6, lit: [1, 0.69, 0.29], litOpacity: 0.16,
+        sun: ['#ffb070', '#ff8a40'], vignette: '#140808', grainOpacity: 0.14,
+        path: ['#211718', '#1f1415', '#4a3836', '#8b7468', '#9c857a'], pathDots: ['#c8b0a0', '#2d1f20'],
+        dotKind: 'ember', dots: ['#ffb04a', '#ff7a1f', '#8a7c78'], dotChance: 0.2,
+        pineShare: 0.3, leafy: 'bare', pine: ['#2e2422', '#3a2d2a', '#4a3b38', '#6a5450'], trunk: ['#241a18', '#3a2a26'], fruit: null,
+        rock: ['#5a4a48', '#7a6a66'], cliff: ['#4f3f3c', '#54433f', '#5a4644', '#2a1c1c', '#1a1010'],
+        stone: ['#a89890', '#7d6e68', '#54463f'], bridge: ['#9a8a80', '#6a5a52', '#3a2c28', '#54463f'],
+        lava: { glow: '#ff7a1f', crust: '#2a1a17', body: '#ff7a1f', core: '#ffc23a', hot: '#ffe58a', plate: '#4a2a22' },
       },
       path: { main: '#8b7468', edge: '#2d1f20', outline: '#1f1415', mid: '#9c857a', fringe: '#8a7c78', fringeAccent: '#ffc23a', groove: '#211718' },
       // B-142 Nacharbeit: gemalter Boden dunkel (Kruste), helle Flecken Asche, Licht glutwarm und schwach
@@ -970,9 +1008,6 @@ export const PAINTED_STYLE = {
   maxOverhang: 0.3,        // Randbäume dürfen höchstens so viele Kacheln ins Feld ragen (Stamm immer im Rand)
   treeChance: 0.85,        // Rahmenwald: Anteil besetzter Plätze
   treeScale: [0.8, 1.15],  // Größe der Randbäume
-  pineShare: 0.45,         // Anteil Tannen
-  flowerChance: 0.19,      // Blumen-Tupfen je freier Feldkachel
-  flowers: ['#fff3d2', '#ffd36a', '#f58aa5'],
   river: [100, 84, 74],    // Fluss: Sand, Kontur, Wasser (Strichbreiten in Entwurfs-px, Z.66–68)
   lakeRadius: [34, 28, 25], // See ohne gemalte Form: Hüllradius je Seekachel für Sand, Kontur, Wasser (px bei 1x)
   castleScale: 0.8,        // Burgtor am Ausgang (im Rand)
@@ -980,6 +1015,36 @@ export const PAINTED_STYLE = {
   obstacleTree: 0.62,      // Baum auf Hindernis-Kachel
   obstacleRock: 1.2,       // Fels auf Hindernis-Kachel
   keepOut: 46,             // halbe Breite der freien Bahn für den Weg im Rand (Entwurfs-px)
+  lava: [96, 60, 50, 26],  // Lavafluss: Glühen, Kruste, Fläche, Kern (Strichbreiten in Entwurfs-px; Kachel 57, Kruste ragt kaum über)
+  lavaPool: [30, 21, 17, 9], // Lavatümpel: Radius je Lage wie oben (Spiel-px, Umriss aus render-lava.js poolOutline)
+};
+
+// Stil 1, Plan G9: Palette und Elemente des gemalten Hintergrunds. Basis = Wiese (Farben aus dem Entwurf);
+// andere Karten überschreiben einzelne Schlüssel über MAPS.<id>.theme.painted (themed(), flacher Merge). Nur Optik.
+export const PAINTED_PALETTE = {
+  ground: ['#9bd25a', '#6aa83f', '#3f7a35'],   // Bodenverlauf oben links -> unten rechts (Z.52)
+  mottle: [0.10, 0.27, 0.08], mottleOpacity: 0.75, // dunkle Flecken (RGB 0..1, Z.36)
+  lit: [1, 0.93, 0.45], litOpacity: 0.55,      // helle Flecken
+  grainOpacity: 0.18,
+  sun: ['#fff0b0', '#ffd980'],                 // Licht oben links (innen, außen)
+  vignette: '#0c1a1c',
+  // Weg von außen nach innen: Grasschatten 86, Kontur 72, Kante 64, Fläche 54, Mitte 30; dann helle und dunkle Punkte
+  path: ['#3a6a2c', '#2b1a10', '#8f5f34', '#d5a566', '#e8c185'], pathDots: ['#fff2c8', '#8f5f34'],
+  dotKind: 'flower',                           // Tupfen im Feld: flower, crystal, leaf, ember
+  dots: ['#fff3d2', '#ffd36a', '#f58aa5'],
+  dotChance: 0.19,                             // Tupfen je freier Feldkachel
+  pineShare: 0.45,                             // Anteil Tannen im Rahmenwald
+  leafy: 'round',                              // zweite Baumart: round (Laubbaum) oder bare (kahl)
+  pine: ['#2f7a3d', '#3d9447', '#59b254', '#a6dc6a'], // Stufen unten, Mitte, oben, Glanz
+  round: ['#3a8c3c', '#52a849', '#b6e276'],    // Krone dunkel, hell, Glanz
+  fruit: '#d6483a',                            // Früchte am Laubbaum (null = keine)
+  trunk: ['#6b4524', '#7a4d27'],               // Tanne, Laubbaum
+  snow: null,                                  // Schneekappen auf Bäumen und Felsen (null = keine)
+  rock: ['#a9a08d', '#d6cdb8'],
+  cliff: ['#8fc84f', '#92cc52', '#b98c5c', '#7a5a45', '#5e4331'], // Plateau oben, unten, Wand hell, dunkel, Rillen
+  stone: ['#e3d2b0', '#b9a283', '#8a7560'],    // Burg
+  bridge: ['#c88a4c', '#8a5326', '#3b2210', '#6d3f1b'], // Holz hell, dunkel, Fugen, obere Brüstung
+  lava: null,                                  // Lava (nur Karten mit Lavakacheln): siehe Vulkan
 };
 
 // Akzente der Wiese (B-080): Burgmauer oben, Teich und Brunnen unten. Nur Optik, Maße in px bei 1x.
