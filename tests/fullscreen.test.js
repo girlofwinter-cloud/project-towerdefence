@@ -74,3 +74,14 @@ test('fullscreenControl: Ablehnung durch den Browser und fehlendes orientation.l
   const scr = { orientation: { lock: async () => { throw new Error('nur Handy'); } } };
   assert.equal(await fullscreenControl(ok.doc, scr).toggle(ok.el, true), true);
 });
+
+test('fullscreenControl: enter schaltet nur ein, nie aus (Kartenwahl auf dem Handy)', async () => {
+  const { doc, el } = fakeDoc();
+  const scr = fakeScreen();
+  const fc = fullscreenControl(doc, scr);
+  assert.equal(await fc.enter(el, true), true);
+  assert.equal(await fc.enter(el, true), true);
+  assert.equal(doc.calls.filter((c) => c[0] === 'request').length, 1, 'kein zweites Anfordern');
+  assert.equal(doc.calls.some((c) => c[0] === 'exit'), false);
+  assert.equal(await fullscreenControl(fakeDoc({ reject: true }).doc, {}).enter(el), false);
+});
