@@ -139,3 +139,4 @@ Zwei developer parallel (je eigene Sitzung, eigener Unter-Branch von `agent/stuf
   - Tests: Phasenwechsel genau einmal bei der Schwelle, Beschwörungstakt der zweiten Phase, Schild-Dauer.
   - Gemeinsam mit B-179 messen: perfektes Spiel gewinnt weiter auf jeder Karte.
   - Optik nach Design-System „Gemalt und warm“; Screenshot Desktop und Handy.
+- Entscheidungen des Menschen (27.11.): Boss-Leiste gilt für alle Bosse (auch Oger-König); die 14 neuen Tokens des designers (necro-*, boss-bar, boss-shield, bolt, cloud, soot, mark, elite-ring) sind freigegeben. Stufe 3 der Türme wird eine komplette Verwandlung (neues Gebäude), siehe Überarbeitung B-172.
