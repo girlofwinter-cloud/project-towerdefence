@@ -339,3 +339,75 @@ test('C-Abnahme 1: buildPaintedSvg mit ext malt die Seitenzonen weiter (Wald, We
     checkVignette(a);
   }
 });
+
+// Browser-Attrappe für die Rasterung: decode() löst auf oder scheitert (fail()), Canvas-Größen bleiben prüfbar
+async function withRasterMock(fn) {
+  const saved = { Image: globalThis.Image, document: globalThis.document, create: URL.createObjectURL, revoke: URL.revokeObjectURL };
+  const mock = { fail: false, decodes: 0, canvases: [] };
+  const Img = class { decode() { mock.decodes++; return mock.fail ? Promise.reject(new Error('kaputt')) : Promise.resolve(); } };
+  globalThis.Image = Img;
+  // Nur Raster-Canvas (bekommen ein Image) zählen; andere Offscreen-Canvas (Rückfall-Zeichnen) bekommen den Mock-Kontext
+  globalThis.document = { createElement: () => {
+    const cv = { width: 0, height: 0 };
+    const c = mockCtx().ctx;
+    c.drawImage = (img) => { if (img instanceof Img && !mock.canvases.includes(cv)) mock.canvases.push(cv); };
+    cv.getContext = () => c;
+    return cv;
+  } };
+  URL.createObjectURL = () => 'blob:x';
+  URL.revokeObjectURL = () => {};
+  try {
+    await fn(mock);
+  } finally {
+    if (saved.Image === undefined) delete globalThis.Image; else globalThis.Image = saved.Image;
+    if (saved.document === undefined) delete globalThis.document; else globalThis.document = saved.document;
+    URL.createObjectURL = saved.create;
+    URL.revokeObjectURL = saved.revoke;
+  }
+}
+const settle = () => new Promise((r) => setTimeout(r, 0));
+
+test('Reviewer A1: Cache hält nach Kartenwechsel Wiese -> Eis -> Vulkan nur die aktuelle Karte, alte Raster freigegeben', async () => {
+  const { renderView, paintedCacheIds, paintedStatus } = await import('../src/render.js?cache-release');
+  await withRasterMock(async (mock) => {
+    for (const id of ['meadow', 'ice', 'volcano']) {
+      renderView(mockCtx().ctx, createGame({ mapId: id }), {});
+      await settle();
+      assert.equal(paintedStatus(id), 'ready', `${id} gerastert`);
+      assert.deepEqual(paintedCacheIds(), [id], `${id}: nur die aktuelle Karte im Cache`);
+    }
+    assert.equal(mock.canvases.length, 3);
+    for (const cv of mock.canvases.slice(0, 2)) assert.deepEqual([cv.width, cv.height], [0, 0], 'Raster der alten Karte freigegeben');
+    assert.ok(mock.canvases[2].width > 0, 'aktuelles Raster bleibt');
+  });
+});
+
+test('Reviewer A2: gescheitertes Neu-Rastern bei vorhandenem Bild wird nicht jedes Frame wiederholt', async () => {
+  const { renderView, paintedStatus, setPaintedExtent } = await import('../src/render.js?cache-fail');
+  await withRasterMock(async (mock) => {
+    const s = createGame({ mapId: 'meadow' });
+    setPaintedExtent(null);
+    renderView(mockCtx().ctx, s, {});
+    await settle();
+    assert.equal(paintedStatus('meadow'), 'ready');
+    // Andere Größe (Seitenzonen) und erzwungener Fehler; Entprellzeit abwarten
+    mock.fail = true;
+    setPaintedExtent({ l: 10, t: 0, r: 10, b: 0 });
+    renderView(mockCtx().ctx, s, {});
+    await new Promise((r) => setTimeout(r, PAINTED_STYLE.rasterDelay + 20));
+    renderView(mockCtx().ctx, s, {});
+    await settle();
+    const after = mock.decodes;
+    for (let i = 0; i < 5; i++) { renderView(mockCtx().ctx, s, {}); await settle(); }
+    assert.equal(mock.decodes, after, 'kein neuer Versuch für denselben Schlüssel');
+    assert.equal(paintedStatus('meadow'), 'ready', 'altes Bild bleibt');
+    // Neue Größe: wieder ein Versuch
+    mock.fail = false;
+    setPaintedExtent({ l: 20, t: 0, r: 20, b: 0 });
+    renderView(mockCtx().ctx, s, {});
+    await new Promise((r) => setTimeout(r, PAINTED_STYLE.rasterDelay + 20));
+    renderView(mockCtx().ctx, s, {});
+    await settle();
+    assert.equal(mock.decodes, after + 1, 'neue Größe wird wieder gerastert');
+  });
+});
