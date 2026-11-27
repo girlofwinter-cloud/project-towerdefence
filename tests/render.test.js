@@ -1774,3 +1774,23 @@ test('Vignette und Abschattung dunkeln Weg-Ein-/Ausgang und Burgtor höchstens 2
   assert.ok(paintDarkness(WIDTH, HEIGHT, P) > paintDarkness(WIDTH / 2, HEIGHT / 2, P), 'Ecke rechts unten dunkler als die Mitte');
   assert.equal(paintDarkness(0, 0, P) < 0.2, true);
 });
+
+test('Vulkan: Lava-Glühen über dem gemalten Bild nur auf Lavakacheln, wenige Flecken, Puls in den Grenzen', async () => {
+  const { lavaGeometry, lavaGlowSpots, lavaGlowAlpha, drawLavaGlow } = await import('../src/render-lava.js');
+  const { LAVA_STYLE, TILE: T } = await import('../src/config.js');
+  const s = createGame({ mapId: 'volcano' });
+  const spots = lavaGlowSpots(lavaGeometry('volcano', s.blocked));
+  assert.ok(spots.length >= 10 && spots.length <= 25, `Flecken: ${spots.length}`);
+  const onLava = (x, y) => [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => s.lava.has(`${Math.floor((x + dx) / T)},${Math.floor((y + dy) / T)}`));
+  for (const sp of spots) assert.ok(onLava(sp.x, sp.y), `Flecken ${sp.x},${sp.y} nicht auf Lava`);
+  const [bc, br] = MAPS.volcano.bridges[0];
+  for (const sp of spots) assert.ok(Math.hypot(sp.x - (bc + 0.5) * T, sp.y - (br + 0.5) * T) >= LAVA_STYLE.pulse.bridgeGap, 'nicht auf der Brücke');
+  const [lo, hi] = LAVA_STYLE.pulse.alpha;
+  const as = [0, 0.5, 1, 1.7, 3].map((t) => lavaGlowAlpha(spots[0], t));
+  assert.ok(as.every((a) => a >= lo - 1e-9 && a <= hi + 1e-9) && new Set(as).size > 1, 'pulsiert');
+  assert.deepEqual(lavaGlowSpots(lavaGeometry('meadow', createGame({ mapId: 'meadow' }).blocked)), [], 'ohne Lava keine Flecken');
+  // In Node (kein DOM) zeichnet es nichts und wirft nicht
+  const m = mockCtx();
+  drawLavaGlow(m.ctx, spots, 1);
+  assert.equal(m.depth, 0);
+});

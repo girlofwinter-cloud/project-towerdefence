@@ -14,7 +14,7 @@ import { drawAccents } from './render-accents.js';
 import { drawTreeShadows, drawLight } from './render-light.js';
 import { drawGround as drawGroundFill, drawGroundTufts, drawMottle } from './render-ground.js';
 import { waterGeometry, drawWater, drawBridges } from './render-water.js';
-import { lavaGeometry, drawLava, drawLavaBridges } from './render-lava.js';
+import { lavaGeometry, drawLava, drawLavaBridges, lavaGlowSpots, drawLavaGlow } from './render-lava.js';
 import { tileHash, tileRand, decorFor, obstacleKind, treeFrame, groundPatches, accentsFor, coveredByCrown, scatterFor, LARGE_DECOR_RADIUS, mottleField, groupedDecor } from './decor.js';
 
 // Stil 1: ganzer Canvas (Feld + Rand). Zeichnet den Rand und verschiebt das Feld um FRAME_MARGIN;
@@ -60,14 +60,14 @@ export function render(ctx, state, ui) {
   const sx = shakeX();
   const sy = shakeY();
   const shaking = sx !== 0 || sy !== 0;
-  drawGround(ctx, state); // unverschoben, damit am Rand nichts durchscheint
+  drawGround(ctx, state, reduced); // unverschoben, damit am Rand nichts durchscheint
   if (shaking) {
     ctx.save();
     // Screen-Shake: verschiebt nur die Zeichnung der Welt (Hover-Rahmen und Reichweite werden
     // mitverschoben, bleiben relativ zu den Tuermen also korrekt). Mausziel/Eingabe in main.js
     // rechnet mit Canvas-Koordinaten und ist davon unabhaengig.
     ctx.translate(sx, sy);
-    drawGround(ctx, state);
+    drawGround(ctx, state, reduced);
   }
   drawHover(ctx, state, ui);
   for (const t of state.towers) drawTower(ctx, t, ui.selectedTowerId === t.id);
@@ -120,9 +120,20 @@ function makeCanvas() {
   return null;
 }
 
-function drawGround(ctx, state) {
+// Glühen der Lava über dem gemalten Bild: Flecken je Karte einmal berechnet
+const glowCache = new Map();
+function glowSpotsFor(state) {
+  if (!glowCache.has(state.mapId)) glowCache.set(state.mapId, lavaGlowSpots(lavaGeometry(state.mapId, state.blocked)));
+  return glowCache.get(state.mapId);
+}
+
+function drawGround(ctx, state, reduced = false) {
   const painted = paintedFor(state);
-  if (painted) { ctx.drawImage(painted, -FRAME_MARGIN, -FRAME_MARGIN); return; } // Bild enthält Feld und Rand
+  if (painted) {
+    ctx.drawImage(painted, -FRAME_MARGIN, -FRAME_MARGIN); // Bild enthält Feld und Rand
+    if (!reduced && state.lava?.size) drawLavaGlow(ctx, glowSpotsFor(state), (typeof performance !== 'undefined' ? performance.now() : 0) / 1000);
+    return;
+  }
   // Schluessel = Referenz auf den Weg (neuer Weg -> neue Punkte-Liste)
   if (!bgCanvas || bgKey !== state.path.points) {
     bgCanvas = bgCanvas || makeCanvas();

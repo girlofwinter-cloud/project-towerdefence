@@ -92,14 +92,17 @@ function edgeOf(p) {
 
 // Fahne (Eingang) bzw. Burgtor (Ausgang) ganz im Rand neben dem Kantenpunkt
 function landmark(kind, shape, s, edge) {
+  const side = edge.side === 'left' || edge.side === 'right';
+  let base; // Fußlinie
+  if (kind === 'castle') base = side ? edge.y + 30 : edge.side === 'top' ? -4 : FH + MU;
+  else base = side ? edge.y - 22 : edge.side === 'top' ? -4 : FH + MU;
+  // Fahne an einem Eingang nahe der Oberkante: kleiner, damit oben Abstand zum Canvas-Rand bleibt (flagTopGap)
+  if (kind === 'flag' && side) s = Math.min(s, (base + MU - P.flagTopGap) / (shape.base - shape.top));
   const w = (shape.right - shape.left) * s;
   let x0; // linke Kante der sichtbaren Form
-  let base; // Fußlinie
   if (edge.side === 'left') x0 = -MU + 2;
   else if (edge.side === 'right') x0 = FW + 2;
   else x0 = Math.min(Math.max(edge.x + U * 0.6, -MU), FW + MU - w);
-  if (kind === 'castle') base = edge.side === 'left' || edge.side === 'right' ? edge.y + 30 : edge.side === 'top' ? -4 : FH + MU;
-  else base = edge.side === 'left' || edge.side === 'right' ? edge.y - 22 : edge.side === 'top' ? -4 : FH + MU;
   const tx = x0 - shape.left * s;
   const ty = base - shape.base * s;
   const box = [x0, ty + shape.top * s, x0 + w, base + 6 * s];

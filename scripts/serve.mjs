@@ -14,6 +14,7 @@ export const TYPES = {
   '.png': 'image/png',
   '.svg': 'image/svg+xml',
   '.m4a': 'audio/mp4',
+  '.ttf': 'font/ttf',
 };
 
 export function contentType(file) {

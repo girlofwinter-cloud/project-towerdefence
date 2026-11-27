@@ -127,7 +127,7 @@ test('Stil 1: Wasserkacheln der Wiese folgen der gemalten Form (Kachelmitte im W
     if (!canBuild(s, c, r).ok) continue;
     let n = 0;
     for (let i = 0; i < 10; i++) for (let j = 0; j < 10; j++) if (paintedWaterAt('meadow', (c + (i + 0.5) / 10) * TILE, (r + (j + 0.5) / 10) * TILE)) n++;
-    assert.ok(n <= 35, `Bauplatz ${k} zu ${n} % unter Wasser`);
+    assert.ok(n <= 15, `Bauplatz ${k} zu ${n} % unter Wasser`);
   }
   // Brücke liegt im Fluss auf dem Weg (Flussmitte kreuzt innerhalb der Brückenkachel)
   const [b] = buildPaintedScene(s).bridges;
@@ -174,7 +174,7 @@ test('Stil 1: renderView zeichnet Rand und verschiebt das Feld; in Node bleibt d
 
 // Plan G9: Palette und Elemente je Karte aus der Konfiguration (theme.painted über themed())
 test('Stil 1 (G9): Bodenfarben, Bäume und Tupfen je Karte, Wiese behält die Basis-Palette', () => {
-  const G9 = { ice: ['#eef6fb', '#a9c6dc'], fork: ['#c9b25a', '#7d7a34'], twin: ['#a6cf5a', '#4a6e2c'], volcano: ['#6b5a55', '#2d1f20'] };
+  const G9 = { ice: ['#eef6fb', '#a9c6dc'], fork: ['#d9a94e', '#8a5a2b'], twin: ['#a6cf5a', '#4a6e2c'], volcano: ['#6b5a55', '#2d1f20'] };
   assert.deepEqual(paletteFor('meadow'), PAINTED_PALETTE);
   for (const [id, [top, bottom]] of Object.entries(G9)) {
     const a = buildPaintedSvg(createGame({ mapId: id }));
@@ -238,11 +238,11 @@ test('Stil 1 (G9): Lava des Vulkans folgt den Lavakacheln, Kruste ragt höchsten
     const [c, r] = k.split(',').map(Number);
     assert.ok(lavaAt((c + 0.5) * TILE, (r + 0.5) * TILE), `Lavakachel ${k} nicht gemalt`);
   }
-  // Bauplätze höchstens 35 % unter der Kruste (wie beim Wasser der Wiese)
+  // Bauplätze höchstens 15 % unter der Kruste (wie beim Wasser der Wiese)
   for (const [c, r] of buildableOf(s)) {
     let n = 0;
     for (let i = 0; i < 10; i++) for (let j = 0; j < 10; j++) if (lavaAt((c + (i + 0.5) / 10) * TILE, (r + (j + 0.5) / 10) * TILE)) n++;
-    assert.ok(n <= 35, `Bauplatz ${c},${r} zu ${n} % unter Lava`);
+    assert.ok(n <= 15, `Bauplatz ${c},${r} zu ${n} % unter Lava`);
   }
   // Lavafluss reicht oben und unten bis über den Canvas-Rand, Brücke liegt auf der Brückenkachel
   assert.ok(sc.lava.river[0][1] * (TILE / U) < -FRAME_MARGIN && sc.lava.river.at(-1)[1] * (TILE / U) > HEIGHT + FRAME_MARGIN);
@@ -258,4 +258,16 @@ test('Stil 1 (G9): Lava des Vulkans folgt den Lavakacheln, Kruste ragt höchsten
 test('Stil 1 (G9): Bauplatzzahl je Karte unverändert (gemalter Hintergrund ändert keine Kacheln)', () => {
   const expected = { meadow: 226, ice: 233, fork: 221, twin: 196, volcano: 212 };
   for (const id of MAP_IDS) assert.equal(buildableOf(createGame({ mapId: id })).length, expected[id], id);
+});
+
+test('Stil 1 (alle Karten): Fahne mit Abstand zur Canvas-Oberkante (Zwei Fronten: Eingang in Zeile 1)', () => {
+  const MU = FRAME_MARGIN / (TILE / PAINTED_STYLE.unit);
+  for (const id of MAP_IDS) {
+    for (const fl of buildPaintedScene(createGame({ mapId: id })).flags) {
+      assert.ok(fl.box[1] >= -MU + PAINTED_STYLE.flagTopGap - 1e-9, `${id}: Fahne oben bei ${fl.box[1].toFixed(1)}`);
+      assert.ok(fl.s >= 0.55, `${id}: Fahne nicht zu klein (${fl.s})`);
+    }
+  }
+  const twin = buildPaintedScene(createGame({ mapId: 'twin' })).flags;
+  assert.ok(twin.some((fl) => fl.s < PAINTED_STYLE.flagScale) && twin.some((fl) => fl.s === PAINTED_STYLE.flagScale), 'nur die obere Fahne verkleinert');
 });

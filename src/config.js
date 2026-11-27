@@ -44,8 +44,9 @@ const MEADOW_LAKE = [[0, 11], [1, 11], [2, 11], [3, 11], [0, 12], [1, 12], [2, 1
 // Gemalte Form (Entwurf Z.66–77) in Entwurfs-px, Feld ab (0,0), Kachel 57: Fluss als kubische Bézier-Kette
 // [Start, dann je 3 Punkte; Breite PAINTED_STYLE.river], See als Ellipse des Wassers [cx, cy, rx, ry] (Sandufer im Zeichnen +22/+18 wie im Entwurf).
 const MEADOW_PAINTED_WATER = {
-  river: [[68, -98], [72, -69], [75, -40], [79, -10], [89, 70], [59, 150], [59, 200], [59, 250], [-11, 290], [-81, 300]],
-  lake: [120, 695, 122, 62],
+  // Karten-Feinschliff: Fluss eng über den Flusskacheln geführt, See etwas kleiner (Bauplätze höchstens 15 % unter Wasser)
+  river: [[80, -98], [82, -40], [90, 40], [86, 130], [84, 185], [70, 198], [40, 200], [18, 201], [28, 225], [28, 250], [28, 264], [-30, 262], [-81, 266]],
+  lake: [114, 688, 118, 60],
 };
 const MEADOW_BRIDGES = [[1, 2]];
 // Kacheln einer Liste ohne die Brücken-Kacheln (Brücken liegen auf dem Weg, sind also weder Wasser noch Lava)
@@ -230,14 +231,15 @@ export const MAPS = {
         scatterChance: 0.09,
         scatterKinds: [['leafpile', 0.3], ['rockgroup', 0.2], ['log', 0.14], ['stump', 0.14], ['sign', 0.1], ['mushroom', 0.12]],
       },
-      // Stil 1 (G9): Herbst #c9b25a -> #7d7a34, Laub #e0803a/#c9562f an Bäumen und als Tupfen
+      // Stil 1 (G9): Herbst warm: Goldocker #d9a94e -> Rostbraun #8a5a2b, Flecken Rost #b0482a und Orange #e0803a,
+      // grüne Reste in der Mitte des Verlaufs und im Wegschatten; Laub #e0803a/#c9562f an Bäumen und als Tupfen
       painted: {
-        ground: ['#c9b25a', '#a49846', '#7d7a34'], mottle: [0.32, 0.31, 0.12], mottleOpacity: 0.72, lit: [1, 0.86, 0.5], litOpacity: 0.5,
+        ground: ['#d9a94e', '#c08a3c', '#8a5a2b'], mottle: [0.69, 0.28, 0.16], mottleOpacity: 0.42, lit: [0.92, 0.55, 0.24], litOpacity: 0.5,
         sun: ['#ffe2a8', '#ffc870'], vignette: '#2a1c0c',
         path: ['#666529', '#2b1a10', '#7d5632', '#d6ab70', '#e8c88e'], pathDots: ['#fff2c8', '#7d5632'],
         dotKind: 'leaf', dots: ['#e0803a', '#c9562f', '#e8a93a'], dotChance: 0.22,
         pineShare: 0.2, pine: ['#4e6a30', '#5f7a3a', '#71904a', '#b5c97a'], round: ['#c9562f', '#e0803a', '#f6c27a'], fruit: '#f2c14e',
-        cliff: ['#c2ae58', '#c6b25c', '#b98c5c', '#7a5a45', '#5e4331'],
+        cliff: ['#cf9f4a', '#d3a34e', '#b98c5c', '#7a5a45', '#5e4331'],
       },
       path: { main: '#d6ab70', edge: '#7d5632', outline: '#4a3018', mid: '#e8c88e', fringe: '#e0803a', fringeAccent: '#c9562f', groove: '#666529' },
       pathStyle: { fringeKind: 'leaves' }, // B-143 Nacharbeit: Herbstlaub am Wegrand
@@ -1008,15 +1010,16 @@ export const PAINTED_STYLE = {
   maxOverhang: 0.3,        // Randbäume dürfen höchstens so viele Kacheln ins Feld ragen (Stamm immer im Rand)
   treeChance: 0.85,        // Rahmenwald: Anteil besetzter Plätze
   treeScale: [0.8, 1.15],  // Größe der Randbäume
-  river: [100, 84, 74],    // Fluss: Sand, Kontur, Wasser (Strichbreiten in Entwurfs-px, Z.66–68)
+  river: [92, 76, 66],     // Fluss: Sand, Kontur, Wasser (Strichbreiten in Entwurfs-px, Z.66–68; schmaler als im Entwurf, Bauplätze frei)
   lakeRadius: [34, 28, 25], // See ohne gemalte Form: Hüllradius je Seekachel für Sand, Kontur, Wasser (px bei 1x)
   castleScale: 0.8,        // Burgtor am Ausgang (im Rand)
   flagScale: 0.72,         // Wellenfahne am Eingang (im Rand)
+  flagTopGap: 64,          // Fahne: Mindestabstand der Spitze zur Canvas-Oberkante (Entwurfs-px); sonst kleiner (Zwei Fronten, Zeile 1)
   obstacleTree: 0.62,      // Baum auf Hindernis-Kachel
   obstacleRock: 1.2,       // Fels auf Hindernis-Kachel
   keepOut: 46,             // halbe Breite der freien Bahn für den Weg im Rand (Entwurfs-px)
   lava: [96, 60, 50, 26],  // Lavafluss: Glühen, Kruste, Fläche, Kern (Strichbreiten in Entwurfs-px; Kachel 57, Kruste ragt kaum über)
-  lavaPool: [30, 21, 17, 9], // Lavatümpel: Radius je Lage wie oben (Spiel-px, Umriss aus render-lava.js poolOutline)
+  lavaPool: [28, 18, 15, 8], // Lavatümpel: Radius je Lage wie oben (Spiel-px, Umriss aus render-lava.js poolOutline; Kruste ragt höchstens 15 % in Bauplätze)
 };
 
 // Stil 1, Plan G9: Palette und Elemente des gemalten Hintergrunds. Basis = Wiese (Farben aus dem Entwurf);
@@ -1164,6 +1167,9 @@ export const LAVA_STYLE = {
     shadow: 'rgba(30,10,8,0.4)', shadowOffset: [2, 4],
     lavaReach: 0.75,       // Lava wird unter der Brücke bis zu diesem Anteil einer Kachel quer zum Weg neu gemalt
   },
+  // Karten-Feinschliff: Glühen über dem gemalten Hintergrund (je Frame wenige weiche Flecken auf den Lavakacheln,
+  // Lage einmal je Karte berechnet). Aus bei prefers-reduced-motion. Puls läuft den Fluss hinab (phaseStep je Flecken).
+  pulse: { color: '255,205,110', radius: 15, alpha: [0.03, 0.24], speed: 1.7, phaseStep: 0.8, bridgeGap: 30 },
 };
 
 // Reichweitenkreis (B-082): kräftiger Ring, sehr dezente Fläche (ca. 8 %), damit er über Deko und Plateaus ruhig wirkt.
