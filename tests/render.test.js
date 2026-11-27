@@ -1935,3 +1935,60 @@ test('C4 Render: Bau-Ring-Vorschau und Verbessern-Vorschau zeichnen zusätzlich,
   assert.ok((up.setLineDash || 0) > (sel.setLineDash || 0), 'gestrichelte Reichweite der nächsten Stufe');
   assert.ok((up.arc || 0) > (sel.arc || 0));
 });
+
+// ---------- B-173/B-174: Stufe 3 als eigenes Gebäude ----------
+test('Stufe 3: eigene Figur je Turm (Box 80 x 140, s3-Verläufe, Teil mit Ruhe-Animation), Stufe 1/2 unverändert', async () => {
+  const { towerFigure } = await import('../src/figures.js');
+  const { FIGURE_STYLE } = await import('../src/config.js');
+  const { GRADIENTS } = await import('../src/svg-figure.js');
+  const GRAD = { arrow: ['s3-marble', 's3-gold'], cannon: ['s3-basalt', 's3-lava'], frost: ['s3-ice'], sniper: ['s3-brick', 's3-darkwood', 's3-brass'], lightning: ['s3-copper'] };
+  for (const type of Object.keys(TOWER_TYPES)) {
+    const f2 = towerFigure(type, 2, FIGURE_STYLE.trim), f3 = towerFigure(type, 3, FIGURE_STYLE.trim);
+    assert.deepEqual([f3.w, f3.h], [80, 140], type);
+    assert.notEqual(f2.h, f3.h);
+    const grads = new Set(f3.layers.flatMap((l) => l.els.map((e) => e.grad)).filter(Boolean));
+    for (const g of GRAD[type]) { assert.ok(grads.has(g), `${type}: ${g}`); assert.ok(GRADIENTS[g], g); }
+    assert.ok(f3.layers.some((l) => l.name === FIGURE_STYLE.idle[type].part), `${type}: Teil ${FIGURE_STYLE.idle[type].part}`);
+    assert.ok(f2.layers.every((l) => l.name === 'main' || l.name === 'turn'), `${type}: Stufe 2 ohne Ruhe-Teil`);
+    assert.equal(!!f3.turn.length, type === 'cannon' || type === 'sniper', `${type}: drehender Teil`);
+  }
+});
+
+test('Stufe 3: Ruhe-Animation bewegt sich mit der Zeit, bei reduced motion steht sie; Zeichnen ausgewogen', async () => {
+  const { drawTower } = await import('../src/render.js');
+  const run = (type, time, reduced) => {
+    const m = mockCtx();
+    const log = [];
+    const ctx = new Proxy(m.ctx, {
+      get: (t, k) => (typeof t[k] === 'function' ? (...a) => { log.push(k + ':' + a.map((v) => (typeof v === 'number' ? v.toFixed(3) : v)).join(',')); return t[k](...a); } : t[k]),
+      set: (t, k, v) => { t[k] = v; return true; },
+    });
+    drawTower(ctx, { type, x: 100, y: 100, level: 3, cooldown: 0, angle: 0.7 }, false, time, reduced);
+    assert.equal(m.depth, 0, `${type}: save/restore ausgewogen`);
+    return log.join('|');
+  };
+  for (const type of Object.keys(TOWER_TYPES)) {
+    assert.equal(run(type, 0.35, true), run(type, 1.15, true), `${type}: reduziert ohne Ruhe-Versatz`);
+    assert.notEqual(run(type, 0.35, false), run(type, 1.15, false), `${type}: Ruhe-Animation`);
+    for (const time of [NaN, undefined, -3, 1e9]) run(type, time, false);
+  }
+});
+
+test('Stufe 3: beim Aufstieg zeigt der Turm bis swapAt noch Stufe 2, danach das neue Gebäude', async () => {
+  const { render } = await import('../src/render.js');
+  const { MASTER_FX } = await import('../src/config.js');
+  const { displayLevel } = await import('../src/render-master.js');
+  const s = createGame();
+  const t = { id: 77, type: 'cannon', x: 100, y: 100, col: 2, row: 2, level: 3, cooldown: 0, angle: 0.3 };
+  s.towers.push(t);
+  const fx = { kind: 'ascend', towerId: t.id, x: t.x, y: t.y, ttl: MASTER_FX.ascend.life - 0.1, max: MASTER_FX.ascend.life };
+  s.effects.push(fx);
+  assert.equal(displayLevel(s, t), 2);
+  const m = mockCtx();
+  render(m.ctx, s, {});
+  assert.equal(m.depth, 0);
+  fx.ttl = MASTER_FX.ascend.life - MASTER_FX.ascend.swapAt - 0.01;
+  assert.equal(displayLevel(s, t), 3);
+  s.effects.length = 0;
+  assert.equal(displayLevel(s, t), 3);
+});

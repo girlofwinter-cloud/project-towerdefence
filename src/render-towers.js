@@ -107,7 +107,7 @@ function drawIdlePart(ctx, layer, cfg, p) {
   }
   if (layer.name !== cfg.part) { drawElements(ctx, layer.els); return; }
   ctx.save();
-  if (p.alpha < 1) ctx.globalAlpha *= Math.max(0, p.alpha);
+  if (p.alpha < 1) ctx.globalAlpha = (typeof ctx.globalAlpha === 'number' ? ctx.globalAlpha : 1) * Math.max(0, p.alpha);
   ctx.translate(p.ax + p.dx, p.ay + p.dy);
   if (p.skew) ctx.transform(1, 0, Math.tan(p.skew), 1, 0, 0);
   if (p.sx !== 1 || p.sy !== 1) ctx.scale(p.sx, p.sy);

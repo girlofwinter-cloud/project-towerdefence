@@ -5,7 +5,7 @@ import {
   K_NONE, K_SMOKE, K_ICE, K_SPARK, K_FLASH, K_COIN, K_DUST, K_ROCK, K_SUMMON, coinHop, coinSpin, meteorPhase,
   T_ARROW, T_CANNON, T_FROST, T_SNIPER,
 } from './fx-system.js';
-import { BOSS_ENTRY, FX_STYLE, STYLE, WIDTH, HEIGHT, TILE, FIGURE_STYLE } from './config.js';
+import { BOSS_ENTRY, FX_STYLE, STYLE, WIDTH, HEIGHT, TILE, FIGURE_STYLE, MASTER_FX } from './config.js';
 import { outlineOf, starPath, zigPath } from './draw-utils.js';
 import { enemyFigure } from './figures.js';
 import { drawElements } from './svg-figure.js';
@@ -510,10 +510,21 @@ function drawBolt(ctx, e, a) {
     const n = Math.max(2, Math.round(Math.hypot(q.x - p.x, q.y - p.y) / (BO.step * U)));
     zigPath(ctx, p.x, p.y, q.x, q.y, n, BO.amp * U, i === 1, sign);
   }
+  // B-174 Sturmspule: dicker und je Segment ein Ast
+  const big = e.master ? MASTER_FX.bolt3.width : 1;
+  if (e.master) {
+    for (let i = 1; i < pts.length; i++) {
+      const p = pts[i - 1], q = pts[i];
+      const mx = (p.x + q.x) / 2, my = (p.y + q.y) / 2, dx = q.x - p.x, dy = q.y - p.y;
+      const s = MASTER_FX.bolt3.branch * sign * (i % 2 ? 1 : -1);
+      ctx.moveTo(mx, my);
+      ctx.lineTo(mx + dx * 0.35 - dy * s, my + dy * 0.35 + dx * s);
+    }
+  }
   ctx.globalAlpha = a > 1 ? 1 : a > 0 ? a : 0;
   for (const [color, w] of BOLT_LAYERS) {
     ctx.strokeStyle = color;
-    ctx.lineWidth = w * U;
+    ctx.lineWidth = w * U * big;
     ctx.stroke();
   }
   ctx.globalAlpha = 1;

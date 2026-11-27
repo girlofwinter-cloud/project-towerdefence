@@ -1,9 +1,9 @@
 // B-175/B-176: Stufe-3-Fähigkeiten der Türme (TOWER_TYPES[typ].master). Eigene Datei neben game.test.js.
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { createGame, update, buildTower, spawnEnemy, enemyPath, towerStats, masterOf, masterInfo, densestCluster } from '../src/game.js';
+import { createGame, update, buildTower, spawnEnemy, enemyPath, towerStats, masterOf, masterInfo, densestCluster, upgradeTower } from '../src/game.js';
 import { buildPath, pointAt } from '../src/path.js';
-import { TOWER_TYPES, ENEMY_TYPES, TILE, MAX_LEVEL } from '../src/config.js';
+import { TOWER_TYPES, ENEMY_TYPES, TILE, MAX_LEVEL, MASTER_FX } from '../src/config.js';
 import { freeTileNearPath } from './helpers.js';
 
 // Gerader Weg in Zeile 5; Turm eine Kachel unter dem Weg bei x = 5 Kacheln vom Weganfang.
@@ -301,5 +301,72 @@ describe('B-176 Scharfschütze: Markieren', () => {
     assert.ok(Math.abs(arrowHit(s, arrow, e) - base * (1 + M.markBonus)) < 1e-9, 'Aufschlag solange markiert');
     wait(s, M.markDuration);
     assert.ok(Math.abs(arrowHit(s, arrow, e) - base) < 1e-9, 'nach Ablauf normal');
+  });
+});
+
+// B-173/B-174: reine Darstellungs-Ereignisse der Stufe 3 (ändern keine Spielwerte)
+describe('B-173/B-174 Optik-Ereignisse', () => {
+  test('Aufstieg: Effekt ascend nur beim Aufwerten auf Stufe 3', () => {
+    const { s, tower } = lineSetup('arrow', 1);
+    upgradeTower(s, tower.id);
+    assert.ok(!s.effects.some((f) => f.kind === 'ascend'), 'nicht auf Stufe 2');
+    upgradeTower(s, tower.id);
+    const fx = s.effects.filter((f) => f.kind === 'ascend');
+    assert.equal(fx.length, 1);
+    assert.equal(fx[0].towerId, tower.id);
+    assert.equal(fx[0].max, MASTER_FX.ascend.life);
+  });
+
+  test('Gewitter: Ankündigung stormWarn kurz vor dem Einschlag, einmal je Takt; Einschlag mit Turm-Bezug', () => {
+    const { s, tower } = lineSetup('lightning');
+    put(s, 'grunt', 4); put(s, 'grunt', 4.3);
+    tower.cooldown = 99;
+    update(s, 0.001); // erster Einschlag sofort
+    const strike = s.effects.find((f) => f.kind === 'storm');
+    assert.equal(strike.towerId, tower.id);
+    assert.equal(strike.max, MASTER_FX.storm.life);
+    const every = TOWER_TYPES.lightning.master.stormEvery;
+    const seen = new Set([strike]);
+    let warns = 0, warnAt = null, strikeAt = null;
+    for (let i = 0; i < 100 && strikeAt === null; i++) {
+      tower.cooldown = 99;
+      update(s, 0.05);
+      for (const f of s.effects) {
+        if (seen.has(f)) continue;
+        seen.add(f);
+        if (f.kind === 'stormWarn') { warns++; warnAt = s.time; }
+        if (f.kind === 'storm') strikeAt = s.time;
+      }
+    }
+    assert.equal(warns, 1, 'eine Ankündigung je Takt');
+    assert.ok(Math.abs(strikeAt - 0.001 - every) < 0.06, 'Takt unverändert');
+    assert.ok(strikeAt - warnAt > 0 && strikeAt - warnAt <= MASTER_FX.storm.tele + 0.05 + 1e-9, 'kurz vor dem Einschlag');
+  });
+
+  test('Mehrfachschuss: Treffer-Sterne für Haupt- und Nebenziele; Markierung merkt sich das erste Markieren', () => {
+    const { s, tower } = lineSetup('arrow');
+    put(s, 'grunt', 4); put(s, 'grunt', 4.5); put(s, 'grunt', 5);
+    shootOnce(s, tower);
+    const hits = s.effects.filter((f) => f.kind === 'multiHit');
+    assert.equal(hits.length, 3);
+    assert.deepEqual(hits.map((h) => h.main).sort(), [false, false, true]);
+
+    const m = lineSetup('sniper');
+    const e = put(m.s, 'grunt', 4.5);
+    shootOnce(m.s, m.tower);
+    const first = e.markedAt;
+    assert.ok(Number.isFinite(first));
+    wait(m.s, 0.5);
+    shootOnce(m.s, m.tower);
+    assert.equal(e.markedAt, first, 'erneut getroffen: kein neues Aufploppen');
+  });
+
+  test('Bodenflächen tragen ihren Beginn (born), Eis den Turm', () => {
+    const { s, tower } = lineSetup('frost');
+    put(s, 'grunt', 4.5);
+    shootOnce(s, tower);
+    const g = s.grounds[0];
+    assert.ok(Number.isFinite(g.born) && g.born <= s.time);
+    assert.equal(g.towerId, tower.id);
   });
 });

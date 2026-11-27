@@ -2,7 +2,7 @@
 
 Erzeugt aus `tokens.json` mit `node scripts/design-tokens.mjs`. Nicht von Hand ändern.
 
-## Farben (127)
+## Farben (144)
 
 | Token | Wert | Verwendung |
 |---|---|---|
@@ -54,6 +54,23 @@ Erzeugt aus `tokens.json` mit `node scripts/design-tokens.mjs`. Nicht von Hand �
 | `level-1` | `#d7dde0` | Stufenmarke Stufe 1 (FIGURE_STYLE.badge.colors[0]). |
 | `level-2` | `{gold} = #f2c14e` | Stufenmarke Stufe 2, Goldband am Turm ab Stufe 2. |
 | `level-3` | `#ff8a3d` | Stufenmarke Stufe 3. |
+| `marble-a` | `#fbf7ef` | Adlerhorst (Pfeil Stufe 3): Marmor hell (B-173). |
+| `marble-b` | `#e2d9c8` | Adlerhorst: Marmor mittel. |
+| `marble-c` | `#b8ab95` | Adlerhorst: Marmor dunkel. |
+| `ice-deep` | `#1f5d96` | Eiszitadelle (Frost Stufe 3): dunkelstes Eis, Tor (B-173). |
+| `brick-a` | `#c0563c` | Falkenauge (Scharfschütze Stufe 3): Ziegel hell (B-174). |
+| `brick-b` | `#8a3424` | Falkenauge: Ziegel dunkel. |
+| `brick-line` | `#5a2016` | Falkenauge: Fugen. |
+| `darkwood-a` | `#6b4a2e` | Falkenauge: dunkles Holz hell (Galerie, Kappe). |
+| `darkwood-b` | `#3a2414` | Falkenauge: dunkles Holz dunkel, Tür. |
+| `mark` | `#ff4f6e` | Markierung und Zielstrahl des Falkenauges, Linse (nur mit ink-Umriss auf dem Feld). |
+| `iron-a` | `#5d5470` | Sturmspule (Blitz Stufe 3): Eisen hell (B-174). |
+| `iron-b` | `#3a3346` | Sturmspule: Eisen dunkel, Füße. |
+| `copper-a` | `#e8a070` | Sturmspule: Kupfer Licht. |
+| `cloud` | `#4a4458` | Gewitterwolke der Sturmspule (Figur und Einschlag). |
+| `bolt` | `#fff6a8` | Blitz, Bodenlicht und Druckring des Gewitters. |
+| `electric` | `#8fb8ff` | Funken und Schein der Sturmspule. |
+| `soot` | `rgba(43,26,16,0.45)` | Ruß: Brandfläche der Mörserfestung, Rußfleck des Gewitters (B-173/B-174). |
 | `ab-meteor-a` | `#ffb04a` | Meteor-Knopf Licht. |
 | `ab-meteor-b` | `#c4381f` | Meteor-Knopf Schatten. |
 | `ab-freeze-a` | `#8fd8f2` | Kälte-Knopf Licht. |
