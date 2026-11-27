@@ -3091,3 +3091,197 @@ describe('B-168: Irrlicht weicht langsamen Geschossen aus', () => {
     assert.ok(!s.effects.some((f) => f.kind === 'dodge'));
   });
 });
+
+// ---------- B-167: Fledermaus (Flieger) ----------
+describe('B-167 Fledermaus: Flieger, die Kanone und Frost nicht treffen', () => {
+  // Turm neben einer Fledermaus (und optional einem Goblin an derselben Stelle)
+  function batSetup(towerType, withGrunt = false) {
+    const { s, tower, e: bat } = specialSetup(towerType, 'bat');
+    let grunt = null;
+    if (withGrunt) {
+      grunt = spawnEnemy(s, 'grunt', 1);
+      grunt.dist = bat.dist; grunt.x = bat.x; grunt.y = bat.y; grunt.speed = 0; grunt.hp = grunt.maxHp = 1e9;
+    }
+    return { s, tower, bat, grunt };
+  }
+
+  test('Config: Fledermaus fliegt, hitsAir je Turm, Text in special.text', () => {
+    assert.equal(ENEMY_TYPES.bat.flying, true);
+    assert.equal(ENEMY_TYPES.bat.name, 'Fledermaus');
+    for (const t of ['arrow', 'sniper', 'lightning']) {
+      assert.equal(TOWER_TYPES[t].hitsAir, true, t);
+      assert.ok(TOWER_TYPES[t].special.text.endsWith('Trifft Flieger.'), t);
+    }
+    for (const t of ['cannon', 'frost']) {
+      assert.equal(TOWER_TYPES[t].hitsAir, false, t);
+      assert.ok(TOWER_TYPES[t].special.text.endsWith('Trifft keine Flieger.'), t);
+    }
+  });
+
+  test('pickTarget ist rein und überspringt Flieger nur bei Türmen ohne hitsAir', () => {
+    const bat = { type: 'bat', x: 0, y: 0, hp: 10, dist: 90, len: 100 };
+    const grunt = { type: 'grunt', x: 10, y: 0, hp: 10, dist: 10, len: 100 };
+    const enemies = [bat, grunt];
+    const snap = JSON.stringify(enemies);
+    assert.equal(pickTarget(enemies, { type: 'arrow', x: 0, y: 0 }, 50), bat);
+    assert.equal(pickTarget(enemies, { type: 'cannon', x: 0, y: 0 }, 50), grunt);
+    assert.equal(pickTarget(enemies, { type: 'frost', x: 0, y: 0 }, 50), grunt);
+    assert.equal(pickTarget([bat], { type: 'cannon', x: 0, y: 0 }, 50), null);
+    assert.equal(pickTarget(enemies, { x: 0, y: 0 }, 50), bat, 'ohne Turmtyp wie bisher');
+    assert.equal(JSON.stringify(enemies), snap, 'keine Änderung an den Gegnern');
+  });
+
+  test('Kanone und Frost zielen nicht auf eine Fledermaus', () => {
+    for (const t of ['cannon', 'frost']) {
+      const { s, tower } = batSetup(t);
+      tower.cooldown = 0;
+      update(s, 0.001);
+      assert.equal(s.projectiles.length, 0, t);
+    }
+  });
+
+  test('Kanonen-Splash verletzt Fledermäuse nicht und wirft sie nicht zurück', () => {
+    const { s, tower, bat, grunt } = batSetup('cannon', true);
+    const dist0 = bat.dist;
+    tower.cooldown = 0;
+    update(s, 0.001);
+    assert.equal(s.projectiles.length, 1);
+    assert.equal(s.projectiles[0].targetId, grunt.id);
+    for (let i = 0; i < 60 && s.projectiles.length; i++) { tower.cooldown = 99; update(s, 0.02); }
+    assert.ok(grunt.hp < grunt.maxHp, 'Goblin getroffen');
+    assert.equal(bat.hp, bat.maxHp, 'Fledermaus unverletzt');
+    assert.equal(bat.dist, dist0, 'Fledermaus nicht zurückgeworfen');
+  });
+
+  test('Pfeil und Scharfschütze treffen Fledermäuse', () => {
+    for (const t of ['arrow', 'sniper']) {
+      const { s, tower, bat } = batSetup(t);
+      tower.cooldown = 0;
+      update(s, 0.001);
+      assert.equal(s.projectiles[0]?.targetId, bat.id, t);
+      for (let i = 0; i < 60 && s.projectiles.length; i++) { tower.cooldown = 99; update(s, 0.02); }
+      assert.ok(bat.hp < bat.maxHp, `${t}: Fledermaus getroffen`);
+    }
+  });
+
+  test('Kettenblitz springt auf eine Fledermaus über', () => {
+    const grunt = { type: 'grunt', x: 0, y: 0, hp: 10 };
+    const bat = { type: 'bat', x: 20, y: 0, hp: 10 };
+    assert.deepEqual(chainTargets([grunt, bat], grunt, 3, 50), [grunt, bat]);
+    const { s, tower, bat: b2, grunt: g2 } = batSetup('lightning', true);
+    tower.cooldown = 0;
+    update(s, 0.001);
+    assert.ok(b2.hp < b2.maxHp && g2.hp < g2.maxHp, 'beide getroffen');
+  });
+
+  test('Meteor und Kälteschock treffen Fledermäuse', () => {
+    const { s, bat } = batSetup('arrow');
+    s.towers = [];
+    const hp0 = bat.hp;
+    assert.ok(useAbility(s, 'meteor', bat.x, bat.y).ok);
+    assert.ok(bat.hp < hp0, 'Meteor');
+    assert.ok(useAbility(s, 'freeze').ok);
+    assert.ok(bat.slowUntil > s.time, 'Kälteschock');
+  });
+});
+
+// ---------- B-169: Panzerkäfer (Schale) ----------
+describe('B-169 Panzerkäfer: Schale fängt die ersten Treffer ab', () => {
+  const SHELL = ENEMY_TYPES.beetle.shellHits;
+  // Turm schießt einmal, Geschoss fliegt ins Ziel
+  function shoot(s, tower) {
+    tower.cooldown = 0;
+    update(s, 0.001);
+    for (let i = 0; i < 60 && s.projectiles.length; i++) { tower.cooldown = 99; update(s, 0.02); }
+  }
+
+  test('Spawn: Schale mit shellHits Schichten, andere Gegner ohne Schale', () => {
+    const s = createGame();
+    assert.equal(spawnEnemy(s, 'beetle', 1).shell, SHELL);
+    assert.equal(spawnEnemy(s, 'grunt', 1).shell, undefined);
+  });
+
+  test('Pfeil: shellHits Treffer machen 0 Schaden, der nächste normal', () => {
+    const { s, tower, e } = specialSetup('arrow', 'beetle');
+    for (let i = 0; i < SHELL; i++) {
+      shoot(s, tower);
+      assert.equal(e.hp, e.maxHp, `Treffer ${i + 1} ohne Schaden`);
+      assert.equal(e.shell, SHELL - i - 1);
+    }
+    shoot(s, tower);
+    assert.equal(e.maxHp - e.hp, TOWER_TYPES.arrow.damage, 'Treffer nach der Schale normal');
+  });
+
+  test('Kettenblitz: jeder Sprung zählt als Treffer', () => {
+    const { s, tower, e } = specialSetup('lightning', 'beetle');
+    const b2 = spawnEnemy(s, 'beetle', 1);
+    b2.dist = e.dist; b2.x = e.x + 10; b2.y = e.y; b2.speed = 0; b2.hp = b2.maxHp = 1e9;
+    tower.cooldown = 0;
+    update(s, 0.001);
+    assert.equal(e.shell, SHELL - 1);
+    assert.equal(b2.shell, SHELL - 1);
+    assert.equal(e.hp, e.maxHp);
+    assert.equal(b2.hp, b2.maxHp);
+  });
+
+  test('Kanonen-Splash zählt einmal je Käfer und Explosion', () => {
+    const { s, tower, e } = specialSetup('cannon', 'beetle');
+    shoot(s, tower);
+    assert.equal(e.shell, SHELL - 1);
+    assert.equal(e.hp, e.maxHp);
+  });
+
+  test('Meteor zählt einmal', () => {
+    const { s, e } = specialSetup('arrow', 'beetle');
+    s.towers = [];
+    assert.ok(useAbility(s, 'meteor', e.x, e.y).ok);
+    assert.equal(e.shell, SHELL - 1);
+    assert.equal(e.hp, e.maxHp);
+  });
+
+  test('Scharfschütze ignoriert Rüstung, nicht die Schale', () => {
+    const { s, tower, e } = specialSetup('sniper', 'beetle');
+    e.armor = 0.5;
+    shoot(s, tower);
+    assert.equal(e.hp, e.maxHp);
+    assert.equal(e.shell, SHELL - 1);
+  });
+
+  test('Schale vor Magier-Schild: der Schild bleibt bei intakter Schale unberührt', () => {
+    const { s, tower, e } = specialSetup('arrow', 'beetle');
+    e.ward = 5;
+    shoot(s, tower);
+    assert.equal(e.ward, 5);
+    assert.equal(e.shell, SHELL - 1);
+  });
+
+  test('Lava zählt nicht als Treffer und macht Schaden', () => {
+    const { lost, e } = lavaBurn('beetle', 10, 8, 1, 1 / 60);
+    assert.ok(lost > 0, 'Lava-Schaden');
+    assert.equal(e.shell, SHELL, 'Schale unverändert');
+  });
+
+  test('Frost verlangsamt (und friert ein) trotz intakter Schale', () => {
+    const { s, tower, e } = specialSetup('frost', 'beetle');
+    shoot(s, tower);
+    assert.equal(e.hp, e.maxHp);
+    assert.ok(e.slowUntil > s.time && e.slowFactor < 1, 'verlangsamt');
+    tower.hitCount = TOWER_TYPES.frost.special.freezeEvery - 1;
+    shoot(s, tower);
+    assert.ok(e.frozenUntil > s.time, 'eingefroren');
+  });
+
+  test('shellBreak-Effekt entsteht genau beim Bruch der letzten Schicht', () => {
+    const { s, tower, e } = specialSetup('arrow', 'beetle');
+    const breaks = () => s.effects.filter((fx) => fx.kind === 'shellBreak').length;
+    for (let i = 0; i < SHELL - 1; i++) shoot(s, tower);
+    assert.equal(breaks(), 0);
+    shoot(s, tower);
+    const fx = s.effects.find((f) => f.kind === 'shellBreak');
+    assert.ok(fx, 'Effekt da');
+    assert.equal(fx.max, FX_STYLE.shellBreak.life);
+    assert.ok(Math.abs(fx.x - e.x) < 1e-9 && Math.abs(fx.y - e.y) < 1e-9);
+    shoot(s, tower);
+    assert.equal(breaks(), 1, 'kein zweiter Effekt');
+  });
+});

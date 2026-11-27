@@ -127,4 +127,26 @@ export function drawEnemy(ctx, e, time, path) {
 
   drawWardBubble(ctx, e, time);
   drawHpBar(ctx, e, f, k);
+  drawShellPips(ctx, e, f, k);
+}
+
+// B-169 (Platzhalter): je verbliebene Schicht der Schale ein kleines Segment über der Figur (über dem Lebensbalken)
+export function drawShellPips(ctx, e, f, k) {
+  if (!(e.shell > 0)) return;
+  const c = ENEMY_STYLE.beetle;
+  const n = Math.floor(e.shell);
+  const total = n * c.segW + (n - 1) * c.segGap;
+  const top = enemyFootY(e) + (f.box[1] - f.h) * k - (HP.gap + HP.h) * U; // Oberkante des Lebensbalkens
+  const y = top - c.lift - c.segH;
+  ctx.save();
+  ctx.fillStyle = c.fill;
+  ctx.strokeStyle = c.ink;
+  ctx.lineWidth = c.line;
+  for (let i = 0; i < n; i++) {
+    ctx.beginPath();
+    ctx.rect(e.x - total / 2 + i * (c.segW + c.segGap), y, c.segW, c.segH);
+    ctx.fill();
+    ctx.stroke();
+  }
+  ctx.restore();
 }

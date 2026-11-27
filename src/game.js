@@ -285,6 +285,7 @@ export function spawnEnemy(state, type, wave = state.wave, lane = null) {
     ward: 0, // B-126: Schild des Magiers (schluckt Schaden vor den HP)
   };
   if (def.summonInterval) enemy.summonAt = state.time + def.summonInterval; // B-127: nächste Beschwörung
+  if (def.shellHits) enemy.shell = def.shellHits; // B-169: Schichten der Schale (Panzerkäfer)
   state.enemies.push(enemy);
   return enemy;
 }
@@ -423,7 +424,7 @@ function lavaStep(state, dt) {
     const row = Math.floor(e.y / TILE);
     if (!state.hotPath.has(`${col},${row}`)) continue;
     // B-120: skaliert mit der Welle des Gegners (Rückfall: aktuelle Welle)
-    damage(state, e, { damage: LAVA.dps * hpScale(Math.max(1, e.wave ?? state.wave)) * dt });
+    damage(state, e, { damage: LAVA.dps * hpScale(Math.max(1, e.wave ?? state.wave)) * dt, lava: true }); // B-169: kein Treffer auf die Schale
     hit = true;
   }
   if (hit) removeDead(state);
@@ -499,12 +500,24 @@ function wardStep(state) {
   }
 }
 
-// Reine Zielauswahl: wählt aus den Gegnern in Reichweite nach Zielregel (Gleichstand: erster in Listenreihenfolge)
+// B-167: Flieger (ENEMY_TYPES[type].flying) und Türme, die sie treffen (TOWER_TYPES[type].hitsAir).
+// Ein Turm ohne bekannten Typ trifft Flieger (z. B. Testobjekte nur mit x/y).
+function isFlying(e) {
+  return ENEMY_TYPES[e?.type]?.flying === true;
+}
+function hitsAir(tower) {
+  return TOWER_TYPES[tower?.type]?.hitsAir !== false;
+}
+
+// Reine Zielauswahl: wählt aus den Gegnern in Reichweite nach Zielregel (Gleichstand: erster in Listenreihenfolge).
+// Türme ohne hitsAir überspringen Flieger (B-167).
 export function pickTarget(enemies, tower, range, mode = 'first') {
+  const air = hitsAir(tower);
   let best = null;
   let bestScore = -Infinity;
   for (const e of enemies) {
     if (e.hp <= 0) continue;
+    if (!air && isFlying(e)) continue;
     const d = Math.hypot(e.x - tower.x, e.y - tower.y);
     if (d > range) continue;
     let score;
@@ -641,14 +654,16 @@ const isDodger = (e) => !!ENEMY_TYPES[e.type]?.dodgeEvery;
 function hit(state, p, target) {
   const dodged = !!target && dodges(state, target, p);
   if (p.splash) {
+    // B-167: der Splash trifft keine Flieger und wirft sie nicht zurück.
     for (const e of state.enemies) {
+      if (isFlying(e)) continue;
       // B-168: Irrlicht nimmt nur Schaden von einer auf es gezielten Kugel, die nicht verfehlt (ohne Rüstung wie Splash)
       if (isDodger(e) && (e !== target || dodged)) continue;
       if (Math.hypot(e.x - p.tx, e.y - p.ty) <= p.splash) {
         damage(state, e, p);
       }
     }
-    if (p.knockback && target && !isDodger(target)) knockBack(state, target, p); // B-168: Irrlicht nie zurückwerfen
+    if (p.knockback && target && !isDodger(target) && !isFlying(target)) knockBack(state, target, p); // B-167/B-168: Flieger und Irrlicht nie zurückwerfen
     state.effects.push({ kind: 'explosion', x: p.tx, y: p.ty, r: p.splash, ttl: 0.3, max: 0.3 });
   } else if (target && !dodged) {
     damage(state, target, p, true);
@@ -676,7 +691,9 @@ function knockBack(state, e, p) {
 // und Scharfschütze. Kanonen-Splash trifft immer mit vollem Schaden. Der Frost-Slow
 // wirkt unabhängig von der Rüstung unverändert.
 function damage(state, enemy, p, direct = false) {
-  let dmg = direct ? p.damage * (p.ignoreArmor ? 1 : 1 - (enemy.armor || 0)) : p.damage;
+  // B-169: Solange die Schale hält, nimmt jeder Treffer (nicht Lava) eine Schicht und macht 0 Schaden (vor Rüstung und Schild).
+  const shelled = enemy.shell > 0 && !p.lava && crackShell(state, enemy);
+  let dmg = shelled ? 0 : direct ? p.damage * (p.ignoreArmor ? 1 : 1 - (enemy.armor || 0)) : p.damage;
   // B-126: Der Schild des Magiers schluckt den Schaden (nach der Rüstung) zuerst, der Rest geht auf die HP.
   if (enemy.ward > 0) {
     const absorbed = Math.min(enemy.ward, dmg);
@@ -693,6 +710,16 @@ function damage(state, enemy, p, direct = false) {
 // B-170: immun gegen Frost-Slow und Einfrieren (Merkmal slowImmune des Gegnertyps)
 function isSlowImmune(e) {
   return ENEMY_TYPES[e.type]?.slowImmune === true;
+}
+
+// B-169: eine Schicht der Schale abziehen; bricht die letzte, entsteht der Effekt 'shellBreak'. Gibt true zurück.
+function crackShell(state, enemy) {
+  enemy.shell -= 1;
+  if (enemy.shell <= 0) {
+    const life = FX_STYLE.shellBreak.life;
+    state.effects.push({ kind: 'shellBreak', x: enemy.x, y: enemy.y, ttl: life, max: life });
+  }
+  return true;
 }
 
 function removeDead(state) {

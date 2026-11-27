@@ -150,6 +150,26 @@ const ENEMY_SVG = {
     w: 46, h: 50,
     svg: `<circle cx="24" cy="20" r="18" fill="url(#s1-iceglow)" opacity=".8"/><path d="M14 26 Q10 40 22 48 Q20 38 26 32 Z" fill="#bff0ff" stroke="#2b1a10" stroke-width="2.5" stroke-linejoin="round"/><circle cx="24" cy="20" r="10" fill="#dff7ff" stroke="#2b1a10" stroke-width="3"/><circle cx="21" cy="17" r="3.5" fill="#fff"/>`,
   },
+  // Fledermaus (B-167, Platzhalter bis zur Figur vom designer): Körper und zwei Flügel hoch über dem Weg,
+  // Bodenschatten deutlich darunter, damit sie als Flieger erkennbar ist
+  bat: {
+    w: 46, h: 50,
+    svg: `<ellipse cx="23" cy="46" rx="10" ry="3" fill="rgba(20,30,40,.3)"/>`
+      + `<path d="M17 16 Q8 6 1 12 Q5 16 4 22 Q10 18 17 22 Z M29 16 Q38 6 45 12 Q41 16 42 22 Q36 18 29 22 Z" fill="#3a2d44" stroke="#2b1a10" stroke-width="2.5" stroke-linejoin="round"/>`
+      + `<ellipse cx="23" cy="19" rx="7" ry="8" fill="#5d4a66" stroke="#2b1a10" stroke-width="3"/>`
+      + `<path d="M18 13 L19 7 L21 12 M28 13 L27 7 L25 12" fill="#5d4a66" stroke="#2b1a10" stroke-width="2" stroke-linejoin="round"/>`
+      + `<circle cx="20.5" cy="17" r="1.6" fill="#ffe266"/><circle cx="25.5" cy="17" r="1.6" fill="#ffe266"/>`,
+  },
+  // Panzerkäfer (B-169, Platzhalter bis zur Figur vom designer): Beine, gewölbte Schale mit Mittelnaht, Kopf mit Fühlern
+  beetle: {
+    w: 46, h: 50,
+    svg: `<ellipse cx="24" cy="46" rx="16" ry="4" fill="rgba(20,30,40,.4)"/>`
+      + `<path d="M12 36 L6 46 M24 40 L24 46 M36 36 L42 46" stroke="#2b1a10" stroke-width="3" stroke-linecap="round"/>`
+      + `<path d="M24 4 L18 -2 M24 4 L30 -2" stroke="#2b1a10" stroke-width="2" stroke-linecap="round"/>`
+      + `<circle cx="24" cy="10" r="7" fill="#3a2d44" stroke="#2b1a10" stroke-width="2.5"/>`
+      + `<path d="M6 30 Q6 12 24 12 Q42 12 42 30 Q42 42 24 42 Q6 42 6 30 Z" fill="#2f7a3d" stroke="#2b1a10" stroke-width="3" stroke-linejoin="round"/>`
+      + `<path d="M24 13 V41" stroke="#2b1a10" stroke-width="2"/><path d="M13 20 Q16 16 20 16" stroke="#9aa6b2" stroke-width="2.5" fill="none" stroke-linecap="round"/>`,
+  },
 };
 // Eingefrorener Goblin (Z.111) und der Eiskristall daraus als Überzug für alle anderen Typen
 const ICED = { w: 54, h: 56, svg: `<ellipse cx="27" cy="50" rx="17" ry="4" fill="rgba(20,30,40,.4)"/><path d="M14 28 Q14 44 27 44 Q40 44 40 28 Z" fill="#8fd0e8" stroke="#2b1a10" stroke-width="3"/><path d="M8 18 L16 22 L14 28 Z M46 18 L38 22 L40 28 Z" fill="#9fdcf0" stroke="#2b1a10" stroke-width="2.5" stroke-linejoin="round"/><circle cx="27" cy="22" r="13" fill="#a8e2f5" stroke="#2b1a10" stroke-width="3"/><path d="M20 20 H25 M30 20 H35" stroke="#2b1a10" stroke-width="2.5" stroke-linecap="round"/><path d="M5 40 L12 8 L21 36 L28 2 L35 36 L44 10 L50 40 L44 52 H10 Z" fill="#dff7ff" fill-opacity=".55" stroke="#2b1a10" stroke-width="2.5" stroke-linejoin="round"/><path d="M14 12 L18 36" stroke="#fff" stroke-width="3" stroke-linecap="round"/>` };
