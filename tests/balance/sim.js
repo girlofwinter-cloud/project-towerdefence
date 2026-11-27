@@ -180,7 +180,7 @@ export function bestCoolSpot(state, rangeTiles) {
 }
 
 // Anzahl Türme, die das perfekte Spiel baut, bevor es aufrüstet
-export const PERFECT_BASE = { default: 7, twin: 10 };
+export const PERFECT_BASE = { default: 7, twin: 12, meadow: 99 }; // 99: erst alle Plätze bebauen, dann aufrüsten
 export function perfectRun(mapId, dt, base = PERFECT_BASE[mapId] ?? PERFECT_BASE.default) {
   const s = createGame({ mapId });
   const order = mapId === 'volcano' ? PERFECT_ORDER_VOLCANO : mapId === 'twin' ? PERFECT_ORDER_TWIN : PERFECT_ORDER;

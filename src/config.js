@@ -18,11 +18,11 @@ export const START_LIVES = 10;
 export const LOW_LIVES = 3;
 export const MAX_WAVES = 20;
 // HP-Zuwachs je Welle: früh (bis 5), Mitte (6-10), spät (ab 11)
-export const HP_GROWTH = { early: 1.15, mid: 1.26, late: 1.16 }; // late 1.11 -> 1.12 -> 1.16 (27.11., Maßstab jetzt Spiel mit Aufrüsten; Entscheidung des Menschen)
+export const HP_GROWTH = { early: 1.15, mid: 1.26, late: 1.14 }; // late 1.11 -> 1.14 (27.11., Maßstab Spiel mit Aufrüsten; mit teurer Endstufe)
 export const SELL_RATIO = 0.7;
 export const MAX_LEVEL = 3;
 // Aufrüstkosten: Anteil der Baukosten je aktueller Stufe (Stufe 1→2, 2→3), mal Stufe
-export const UPGRADE_COST_FACTOR = { 1: 0.75, 2: 1.0 }; // 2 -> 3: doppelter Baupreis (Balancing 27.11., Stufe 3 war zu billig)
+export const UPGRADE_COST_FACTOR = { 1: 0.75, 2: 1.5 }; // 2 -> 3: dreifacher Baupreis (27.11., Wunsch des Menschen: Max muss teuer sein)
 // Schadensfaktor je Stufe (Index = Stufe); Stufe 3 bewusst unter 1,5^2, weil sie zusätzlich eine Fähigkeit hat
 export const LEVEL_DAMAGE = [1, 1, 1.5, 1.9];
 // Zielregeln der Türme (Reihenfolge = Umschalt-Reihenfolge) mit deutschen Anzeigenamen
