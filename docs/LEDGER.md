@@ -852,3 +852,9 @@ Neue Einträge werden unten angehängt. Bestehende Einträge werden nie geänder
 - Ergebnis: Erste freie Exploration in Claude Design: vier Stile für dieselbe Szene (Gemalt und warm, Papier-Diorama, Miniatur-Spielbrett, Mondnacht), Kingdom Rush nur als Niveau-Referenz. Fläche: https://claude.ai/artifact/DDKsUvgQVD4SJu2VnSqE3W. Dazu der klickbare Vollbild-Prototyp: https://claude.ai/artifact/9Z7wufcqkXe4gCsCPen62P. Neu im Backlog: B-142 bis B-146 (`vorschlag`).
 - Entscheidungen: Empfehlung des designers: Stil 1 als Hauptrichtung. Stil 3 (CSS-3D-Neigung) nicht als Ganzes, weil Klick- und Bauraster betroffen wären. Die Flächen sind vom Orchestrator nicht selbst angesehen (Format läuft nur in Claude Design).
 - Tests: keine Codeänderung.
+
+## 2026-11-27 · Stil · Stil 1 „Gemalt und warm“
+- Rolle(n): orchestrator. Branch: agent/gemalt-karten, PR #92
+- Ergebnis: Stil-1-Umbau umgesetzt. Auf ausdrücklichen Wunsch des Menschen gilt einmalig eine Merge-Ausnahme vor unabhängiger Tester-/Reviewer-Freigabe.
+- Entscheidungen: Copilot-Agenten konnten gpt-6-luna nicht starten (`400 model_not_supported`). Der Mensch holt Tester- und Review-Runde in Claude Code nach, sobald es wieder verfügbar ist.
+- Tests: `npm test` 534/534; `npm run test:e2e` 78/78; GitHub-CI für HEAD 3120a5b1 grün.
