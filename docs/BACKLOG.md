@@ -47,6 +47,10 @@ Erledigte Einträge (`fertig`) liegen in `docs/archiv/BACKLOG-fertig.md`. Beim A
 Problem: Kanone (Fläche + Rückstoß) und Frost (Verlangsamung) decken fast alles ab; Pfeil und Blitz haben kaum eine eigene Aufgabe.
 Idee: Jeder neue Gegner bremst gezielt Kanone oder Frost aus und belohnt einen anderen Turm. Bis zur Freigabe steht der Status auf `entwurf`, die Pipeline nimmt nur `offen`.
 Wer gegen wen: Fledermaus → Pfeil, Blitz, Scharfschütze | Irrlicht → Blitz, Pfeil | Panzerkäfer → Pfeil, Blitz | Glutling → Blitz, Pfeil, Scharfschütze.
+Reihenfolge (je Zeile eine eigene Sitzung mit `/pipeline`, dazwischen `/clear`). Spur C kann parallel in einer zweiten Sitzung laufen, weil sie nur `render*`/`*-fx.js` berührt. Spur A und B ändern beide `game.js`/`config.js` und laufen deshalb nacheinander:
+- Spur A, Gegner: 1. B-170 → 2. B-167 → 3. B-168 → 4. B-169 → 5. B-171 (braucht alle vier)
+- Spur B, Stufe-3-Fähigkeiten (nach Spur A, weil sie Schale und Glutling nutzt): 6. B-175 → 7. B-176, danach `npm run test:balance` mit den Messungen aus B-171
+- Spur C, Optik: B-172 (designer, sofort möglich) → B-173 und B-174 (nach B-175/B-176 für die Fähigkeits-Optik)
 
 ### B-167: Fledermäuse: Flieger, die Kanone und Frost nicht treffen (Spiel-Logik)
 - Status: entwurf
