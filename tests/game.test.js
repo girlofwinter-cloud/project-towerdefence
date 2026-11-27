@@ -8,7 +8,7 @@ import { livesText, startButtonView } from '../src/hud.js';
 import { buildPath, pointAt, pathTiles } from '../src/path.js';
 import { TOWER_TYPES, MAX_WAVES, START_GOLD, START_LIVES, LOW_LIVES, WAYPOINTS, MAPS, DEFAULT_MAP_ID, TILE, COLS, ROWS, TARGET_MODES, EARLY_START_MAX, LANE_ASYNC, waveFor, waveBonus, waveSummary, hpScale, ENEMY_TYPES, SPEED_STEPS, MAX_SUBSTEP, isBoss, NECRO_WAVE } from '../src/config.js';
 
-import { run, freeTileNearPath, mockCtx, recordEnemy } from './helpers.js';
+import { run, freeTileNearPath, mockCtx, recordEnemy, enemyExtent } from './helpers.js';
 
 test('Pfad: Länge und Positionen', () => {
   const path = buildPath([[0, 0], [3, 0], [3, 2]], 10);
@@ -680,10 +680,9 @@ test('B-006 Render: Healer/Schildträger zeichnen ausgewogen, innerhalb des Radi
       const r = await recordEnemy({ type, id: 5 }, time);
       assert.equal(r.depth, 0, `${type}: save/restore`);
       assert.equal(r.props.globalAlpha, undefined);
-      for (const p of r.figure) {
-        if (p.depth === 0) continue;
-        assert.ok(Math.hypot(p.x - r.e.x, p.y - r.e.y) + p.ext <= 1.4 * r.e.radius, `${type}: Figur zu gross`);
-      }
+      // Stil 1: Figur in Goblin-Größe (Entwurf 46 x 50 px bei Kachel 57), Schatten-Ellipse großzügig mitgezählt
+      const x = enemyExtent(r);
+      assert.ok(x.w <= 1.1 && x.h <= 1.2, `${type}: Figur zu gross (${x.w.toFixed(2)} x ${x.h.toFixed(2)} Kacheln)`);
     }
   }
   const radiiOf = (type, time) => {

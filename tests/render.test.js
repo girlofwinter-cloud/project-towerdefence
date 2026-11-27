@@ -243,27 +243,6 @@ async function recordTower(type, level, cooldown = 0, angle = 0, selected = fals
   return { t, calls, depth, props, bounds, print: calls.join('\n') };
 }
 
-// Hohe Tuerme duerfen ueber den oberen Kachelrand ragen (typspezifisch, B-063/B-064). Pfeil: Dach ca. 26 px,
-// Scharfschuetze: Zielrohr senkrecht nach oben. Links/rechts/unten bleibt bei allen Typen streng in der Kachel.
-const TOP_ALLOWED = { arrow: 28, cannon: 4, frost: 14, sniper: 20, lightning: 16 };
-
-test('Turm-Zeichnung: alle Typen/Stufen ohne Fehler, ausgewogen, innerhalb der Kachel', async () => {
-  for (const type of Object.keys(TOWER_TYPES)) {
-    const tolUp = TOP_ALLOWED[type]; // hohe Tuerme ragen ueber die Kachel
-    for (let level = 1; level <= 3; level++) {
-      for (const cooldown of [0, 0.5, TOWER_TYPES[type].rate]) {
-        const rec = await recordTower(type, level, cooldown, 0.7);
-        assert.equal(rec.depth, 0, `${type} L${level}: save/restore ausgewogen`);
-        assert.equal(rec.props.globalAlpha, undefined);
-        const x0 = rec.t.col * TILE, y0 = rec.t.row * TILE;
-        const b = rec.bounds;
-        assert.ok(b.minX >= x0 && b.maxX <= x0 + TILE, `${type} L${level}: x ${b.minX}..${b.maxX}`);
-        assert.ok(b.minY >= y0 - tolUp && b.maxY <= y0 + TILE, `${type} L${level}: y ${b.minY}..${b.maxY}`);
-      }
-    }
-  }
-});
-
 test('Turm-Zeichnung: Typen und Stufen unterscheiden sich, Auswahlrahmen bleibt', async () => {
   const seen = new Map();
   for (const type of Object.keys(TOWER_TYPES)) {
@@ -312,9 +291,9 @@ test('Turm: cooldown/def.rate ist auf allen Stufen <= 1 (Rueckstoss nie ueber Ma
   }
 });
 
-// Zeichnet drawTower mit echter Transformationsmatrix (translate/rotate/save/restore) und
-// liefert die Weltkoordinaten-Ausdehnung aller Primitive.
-async function worldExtent(type, level, cooldown, angle) {
+// Stil 1: Zeichnet drawTower mit echter Transformationsmatrix und liefert die Weltkoordinaten-Ausdehnung
+// aller dunkel umrandeten Formen (Kontur #2b1a10; Schatten und Lichthöfe zählen nicht).
+async function outlineExtent(type, level, cooldown, angle) {
   const { drawTower } = await import('../src/render.js');
   const s = createGame();
   s.gold = 1e5;
@@ -322,13 +301,10 @@ async function worldExtent(type, level, cooldown, angle) {
   t.level = level; t.cooldown = cooldown; t.angle = angle;
   let M = [1, 0, 0, 1, 0, 0];
   const stack = [];
+  let pts = [];
   const B = { minX: Infinity, maxX: -Infinity, minY: Infinity, maxY: -Infinity };
   const mul = (m, n) => [m[0] * n[0] + m[2] * n[1], m[1] * n[0] + m[3] * n[1], m[0] * n[2] + m[2] * n[3], m[1] * n[2] + m[3] * n[3], m[0] * n[4] + m[2] * n[5] + m[4], m[1] * n[4] + m[3] * n[5] + m[5]];
-  const P = (x, y) => {
-    const X = M[0] * x + M[2] * y + M[4], Y = M[1] * x + M[3] * y + M[5];
-    B.minX = Math.min(B.minX, X); B.maxX = Math.max(B.maxX, X);
-    B.minY = Math.min(B.minY, Y); B.maxY = Math.max(B.maxY, Y);
-  };
+  const P = (x, y) => pts.push([M[0] * x + M[2] * y + M[4], M[1] * x + M[3] * y + M[5]]);
   const props = {};
   const ctx = new Proxy({}, {
     get(_, k) {
@@ -340,46 +316,61 @@ async function worldExtent(type, level, cooldown, angle) {
         else if (k === 'translate') M = mul(M, [1, 0, 0, 1, a[0], a[1]]);
         else if (k === 'scale') M = mul(M, [a[0], 0, 0, a[1], 0, 0]);
         else if (k === 'rotate') { const c = Math.cos(a[0]), sn = Math.sin(a[0]); M = mul(M, [c, sn, -sn, c, 0, 0]); }
-        else if (k === 'fillRect' || k === 'strokeRect') { P(a[0], a[1]); P(a[0] + a[2], a[1]); P(a[0], a[1] + a[3]); P(a[0] + a[2], a[1] + a[3]); }
-        else if (k === 'arc') { const full = Math.abs(a[4] - a[3]) >= 2 * Math.PI - 1e-9; for (let i = 0; i <= 64; i++) { const q = a[3] + (a[4] - a[3]) * i / 64; P(a[0] + a[2] * Math.cos(q), a[1] + a[2] * Math.sin(q)); } void full; }
-        else if (k === 'ellipse') { for (let i = 0; i < 64; i++) { const q = i / 64 * 2 * Math.PI; P(a[0] + a[2] * Math.cos(q), a[1] + a[3] * Math.sin(q)); } }
+        else if (k === 'beginPath') pts = [];
+        else if (k === 'arc') { for (let i = 0; i <= 32; i++) { const q = a[3] + (a[4] - a[3]) * i / 32; P(a[0] + a[2] * Math.cos(q), a[1] + a[2] * Math.sin(q)); } }
+        else if (k === 'ellipse') { for (let i = 0; i < 32; i++) { const q = i / 32 * 2 * Math.PI; P(a[0] + a[2] * Math.cos(q), a[1] + a[3] * Math.sin(q)); } }
         else if (k === 'moveTo' || k === 'lineTo') P(a[0], a[1]);
-        else if (k === 'quadraticCurveTo') { P(a[0], a[1]); P(a[2], a[3]); }
+        else if (k === 'quadraticCurveTo' || k === 'arcTo') { P(a[0], a[1]); P(a[2], a[3]); }
+        else if (k === 'stroke' && props.strokeStyle === '#2b1a10') {
+          for (const [X, Y] of pts) { B.minX = Math.min(B.minX, X); B.maxX = Math.max(B.maxX, X); B.minY = Math.min(B.minY, Y); B.maxY = Math.max(B.maxY, Y); }
+        }
       };
     },
     set(_, k, v) { props[k] = v; return true; },
   });
   drawTower(ctx, t, false);
   assert.equal(stack.length, 0, 'save/restore ausgewogen');
-  return { B, x0: t.col * TILE, y0: t.row * TILE };
+  assert.equal(props.globalAlpha, undefined, 'kein globalAlpha');
+  return { B, t, x0: t.col * TILE, y0: t.row * TILE };
 }
 
-test('Turm: echte Weltkoordinaten bleiben links/rechts/unten in der Kachel, oben max. TOP_ALLOWED je Typ', async () => {
-  const angles = [0, Math.PI / 4, Math.PI / 2, Math.PI, -Math.PI / 2, 3 * Math.PI / 2, 5.5];
+// Plan (docs/design/stil1-plan.md, Maßstab): Breite x Höhe in Kacheln, gemessen in der Pose des Entwurfs
+// (Kanonenrohr 32 Grad geneigt, Gewehr waagrecht); Scharfschütze auf 0,9 skaliert.
+const TOWER_PLAN = { arrow: [1.05, 1.75], cannon: [1.26, 1.45], frost: [1.05, 1.6], sniper: [1.17, 1.9], lightning: [1.05, 1.8] };
+const POSE = { cannon: -Math.PI / 2 + 0.56, sniper: 0 };
+const SIDE = { arrow: 0.15, cannon: 0.5, frost: 0.15, sniper: 0.5, lightning: 0.15 }; // Überhang je Seite (drehende Teile samt Mündungsfeuer mehr)
+
+test('Stil 1 Türme: Größe wie im Plan, Fußpunkt 0,39 Kachel unter der Mitte, seitlich begrenzt, alle Stufen/Winkel/Rückstoß', async () => {
+  const { FIGURE_STYLE } = await import('../src/config.js');
+  const foot = (FIGURE_STYLE.towerFoot / FIGURE_STYLE.unit) * TILE;
+  assert.ok(Math.abs(foot / TILE - 0.39) < 0.01, 'Fußpunkt 0,39 Kachel');
   for (const type of Object.keys(TOWER_TYPES)) {
-    const maxTop = TOP_ALLOWED[type];
     for (let level = 1; level <= 3; level++) {
-      for (const angle of angles) {
+      const { B, t } = await outlineExtent(type, level, 0, POSE[type] ?? 0);
+      const w = (B.maxX - B.minX) / TILE, h = (B.maxY - B.minY) / TILE;
+      const [pw, ph] = TOWER_PLAN[type];
+      assert.ok(Math.abs(w - pw) <= 0.2, `${type} L${level}: Breite ${w.toFixed(2)} statt ${pw}`);
+      assert.ok(Math.abs(h - ph) <= 0.2, `${type} L${level}: Höhe ${h.toFixed(2)} statt ${ph}`);
+      for (const angle of [0, Math.PI / 4, Math.PI / 2, Math.PI, -Math.PI / 2, 5.5]) {
         for (const frac of [0, 0.5, 1]) {
-          const { B, x0, y0 } = await worldExtent(type, level, frac * TOWER_TYPES[type].rate, angle);
+          const r = await outlineExtent(type, level, frac * TOWER_TYPES[type].rate, angle);
           const tag = `${type} L${level} a=${angle.toFixed(2)} f=${frac}`;
-          assert.ok(B.minX >= x0 - 1e-6 && B.maxX <= x0 + TILE + 1e-6, `${tag}: x ${B.minX - x0}..${B.maxX - x0}`);
-          assert.ok(B.maxY <= y0 + TILE + 1e-6, `${tag}: unten ${B.maxY - y0}`);
-          assert.ok(B.minY >= y0 - maxTop - 1e-6, `${tag}: oben ${B.minY - y0}`);
+          assert.ok(r.B.maxY <= t.y + foot + 0.02 * TILE && r.B.maxY >= t.y + foot - 0.2 * TILE, `${tag}: Fuß ${(r.B.maxY - t.y).toFixed(1)}`);
+          assert.ok(r.B.minX >= r.x0 - SIDE[type] * TILE && r.B.maxX <= r.x0 + TILE + SIDE[type] * TILE, `${tag}: x ${(r.B.minX - r.x0).toFixed(1)}..${(r.B.maxX - r.x0).toFixed(1)}`);
         }
       }
     }
   }
 });
 
-test('Turm: ungueltiger cooldown/angle/Stufe crasht nicht und bleibt in den Grenzen', async () => {
+test('Stil 1 Türme: ungültiger cooldown/angle/Stufe crasht nicht und bleibt in den Grenzen', async () => {
   for (const type of Object.keys(TOWER_TYPES)) {
     for (const cd of [undefined, NaN, -5, 1e9, Infinity, null]) {
-      const { B, x0 } = await worldExtent(type, 2, cd, 0.3);
-      assert.ok(Number.isFinite(B.minX) && B.minX >= x0 && B.maxX <= x0 + TILE, `${type} cd=${cd}`);
+      const { B, x0 } = await outlineExtent(type, 2, cd, 0.3);
+      assert.ok(Number.isFinite(B.minX) && B.minX >= x0 - SIDE[type] * TILE && B.maxX <= x0 + TILE + SIDE[type] * TILE, `${type} cd=${cd}`);
     }
+    for (const level of [NaN, undefined, 0, 7, 1.5, Infinity]) assert.ok(Number.isFinite((await outlineExtent(type, level, 0, NaN)).B.minY), `${type} Stufe ${level}`);
   }
-  await worldExtent('cannon', 1, 0, NaN);
 });
 
 test('Render: Tuerme aller Typen zeichnen, Cache ungestoert, Alpha und save/restore unveraendert', async () => {
@@ -611,32 +602,31 @@ test('Stil-Helfer: rr mit winzigem w/h und grossem Radius bleibt endlich und aus
   }
 });
 
-test('Render: Pfeilturm Stufe 1-3 im neuen Stil, Stufen unterscheiden sich, andere Typen unveraendert', async () => {
+test('Stil 1: Türme Stufe 1-3 unterscheiden sich (Goldband ab Stufe 2, Stufe 3 zwei Bänder), alle Typen', async () => {
   const { drawTower } = await import('../src/render.js');
+  const { FIGURE_STYLE } = await import('../src/config.js');
   const draw = (type, level) => {
     const counts = {};
     const m = mockCtx(counts);
-    const fills = new Set();
+    let gold = 0;
     const ctx = new Proxy(m.ctx, {
-      get: (t, k) => t[k],
-      set: (t, k, v) => { if (k === 'fillStyle') fills.add(v); t[k] = v; return true; },
+      get: (t, k) => (k === 'stroke' ? (...a) => { if (m.props.strokeStyle === FIGURE_STYLE.trim.color) gold++; return t[k](...a); } : t[k]),
+      set: (t, k, v) => { t[k] = v; return true; },
     });
     drawTower(ctx, { type, x: 100, y: 100, level, cooldown: 0.3, angle: 0.7 }, true);
     assert.equal(m.depth, 0, 'save/restore ausgewogen');
-    return { total: Object.values(counts).reduce((a, b) => a + b, 0), fills };
+    return { total: Object.values(counts).reduce((a, b) => a + b, 0), gold };
   };
-  const l1 = draw('arrow', 1);
-  const l2 = draw('arrow', 2);
-  const l3 = draw('arrow', 3);
-  assert.ok(l2.total > l1.total && l3.total > l2.total, 'mehr Zeichenoperationen je Stufe');
-  assert.ok(l3.fills.has('#f4c542') && !l1.fills.has('#f4c542'), 'Gold nur auf Stufe 3');
-  for (const type of ['cannon', 'frost', 'sniper', 'lightning']) {
-    assert.ok(draw(type, 1).total > 0 && draw(type, 3).total > draw(type, 1).total);
+  for (const type of Object.keys(TOWER_TYPES)) {
+    const [l1, l2, l3] = [1, 2, 3].map((level) => draw(type, level));
+    assert.ok(l2.total > l1.total && l3.total > l2.total, `${type}: mehr Zeichenoperationen je Stufe`);
+    assert.deepEqual([l1.gold, l2.gold, l3.gold], [0, 1, 2], `${type}: Goldbänder je Stufe`);
   }
 });
 
-test('Render: Kanone, Frost, Scharfschuetze, Blitz im neuen Stil (Stufen, Typen, ungueltige Werte, Drehung, Rueckstoss)', async () => {
+test('Stil 1: Kanone und Scharfschütze drehen zum Ziel, feste Türme stauchen sich beim Schuss; ungültige Werte', async () => {
   const { drawTower } = await import('../src/render.js');
+  const { cannonTilt } = await import('../src/render-towers.js');
   const run = (type, over = {}) => {
     const counts = {};
     const m = mockCtx(counts);
@@ -650,17 +640,21 @@ test('Render: Kanone, Frost, Scharfschuetze, Blitz im neuen Stil (Stufen, Typen,
     return { total: Object.values(counts).reduce((a, b) => a + b, 0), log };
   };
   const totals = new Set();
-  for (const type of ['cannon', 'frost', 'sniper', 'lightning']) {
-    const t = [1, 2, 3].map((level) => run(type, { level }).total);
-    assert.ok(t[1] > t[0] && t[2] > t[1], `${type}: mehr Zeichenoperationen je Stufe`);
-    totals.add(t[0]);
+  for (const type of Object.keys(TOWER_TYPES)) {
+    totals.add(run(type).total);
     for (const level of [NaN, undefined, 0, 7, 1.5, Infinity]) run(type, { level });
     for (const bad of [{ angle: NaN }, { cooldown: NaN }, { cooldown: -3 }, { cooldown: 1e9 }, { angle: 1e9 }]) run(type, bad);
-    const rot = run(type, { angle: 0.7 }).log.filter((c) => c.startsWith('rotate:'));
-    assert.ok(rot.some((c) => c === 'rotate:0.7'), `${type}: dreht zum Ziel`);
-    assert.notDeepEqual(run(type, { cooldown: 0 }).log, run(type, { cooldown: TOWER_TYPES[type].rate }).log, `${type}: Rueckstoss aktiv`);
+    assert.notDeepEqual(run(type, { cooldown: 0 }).log, run(type, { cooldown: TOWER_TYPES[type].rate }).log, `${type}: Rückstoß sichtbar`);
   }
-  assert.equal(totals.size, 4, 'Typen unterscheiden sich in der Zeichnung');
+  assert.equal(totals.size, Object.keys(TOWER_TYPES).length, 'Typen unterscheiden sich in der Zeichnung');
+  assert.ok(run('cannon').log.includes('rotate:' + cannonTilt(0.7)), 'Kanone neigt das Rohr');
+  assert.ok(run('sniper').log.includes('rotate:0.7'), 'Gewehr zeigt zum Ziel');
+  for (const type of ['arrow', 'frost', 'lightning']) assert.ok(!run(type).log.some((c) => c.startsWith('rotate:')), `${type}: fest`);
+  // Rohr zeigt zur Seite des Ziels, nie nach unten, höchstens cannonTilt aus der Senkrechten
+  assert.equal(cannonTilt(-Math.PI / 2), 0);
+  assert.ok(cannonTilt(0) > 1 && cannonTilt(Math.PI) < -1);
+  assert.ok(Math.abs(cannonTilt(Math.PI / 4) - Math.PI / 4) < 1e-9 && Math.abs(cannonTilt(-Math.PI / 4) - Math.PI / 4) < 1e-9);
+  for (let a = -7; a < 7; a += 0.37) assert.ok(Math.abs(cannonTilt(a)) <= 1.25 + 1e-9);
 });
 
 // ---------- Weg im Flat-Pop-Stil (B-071) ----------
@@ -1003,7 +997,7 @@ test('B-117: keine Karte zeichnet Bauplatz-Inseln; Türme im Frame-Pfad, nicht i
   const offscreen = [];
   globalThis.document = { createElement() { const m = mockCtx(); const c = { width: 0, height: 0, getContext: () => m.ctx, m }; offscreen.push(c); return c; } };
   try {
-    const frame = (s, ui = {}) => { const m = mockCtx(); render(m.ctx, s, ui); return m.counts.ellipse || 0; };
+    const frame = (s, ui = {}) => { const m = mockCtx(); render(m.ctx, s, ui); return (m.counts.ellipse || 0) + (m.counts.drawImage || 0); }; // Stil 1: Türme als Sprite (drawImage)
     const build = (s) => { s.gold = 9999; for (const [c, r] of [[3, 1], [5, 1], [7, 1]]) assert.ok(buildTower(s, 'cannon', c, r).ok, `${s.mapId} ${c},${r}`); };
     const s = createGame({ mapId: 'meadow' });
     const empty = frame(s);
@@ -1773,4 +1767,30 @@ test('Vignette und Abschattung dunkeln Weg-Ein-/Ausgang und Burgtor höchstens 2
   const P = themed('meadow', 'paint', PAINT_STYLE);
   assert.ok(paintDarkness(WIDTH, HEIGHT, P) > paintDarkness(WIDTH / 2, HEIGHT / 2, P), 'Ecke rechts unten dunkler als die Mitte');
   assert.equal(paintDarkness(0, 0, P) < 0.2, true);
+});
+
+// ---------- Stil 1: SVG-Formen aus dem Entwurf (svg-figure.js) ----------
+test('svg-figure: Pfad-Leser (absolut/relativ, H/V/Q, Bogen als Ellipse), Teile, Deckkraft, Box', async () => {
+  const { parsePathD, parseFigure, withAlpha, boxOf, tracePath } = await import('../src/svg-figure.js');
+  assert.deepEqual(parsePathD('M14 38 V26 H22 L29 30 Z'), [['M', 14, 38], ['L', 14, 26], ['L', 22, 26], ['L', 29, 30], ['Z']]);
+  assert.deepEqual(parsePathD('M10 10 l5 0 5 5 q1 1 2 2'), [['M', 10, 10], ['L', 15, 10], ['L', 20, 15], ['Q', 21, 16, 22, 17]]);
+  assert.deepEqual(parsePathD('M0 0 L1 1 M2 2 3 3'), [['M', 0, 0], ['L', 1, 1], ['M', 2, 2], ['L', 3, 3]]);
+  // Tür des Pfeilturms (Z.105): Halbellipse von (26,68) nach (42,68) über oben
+  const arc = parsePathD('M26 84 V68 a8 9 0 0 1 16 0 V84')[2];
+  assert.equal(arc[0], 'A');
+  assert.ok(Math.abs(arc[1] - 34) < 1e-9 && Math.abs(arc[2] - 68) < 1e-9 && arc[3] === 8 && arc[4] === 9, `Mitte ${arc}`);
+  assert.ok(Math.abs(arc[6] - Math.PI) < 1e-9 && Math.abs(arc[7] - 2 * Math.PI) < 1e-9 && arc[8] === false, 'über oben im Uhrzeigersinn');
+  const calls = [];
+  tracePath(new Proxy({}, { get: (_, k) => (...a) => calls.push(k) }), parsePathD('M0 0 Q1 1 2 2 a1 1 0 0 1 2 0 Z'));
+  assert.deepEqual(calls, ['moveTo', 'quadraticCurveTo', 'ellipse', 'closePath']);
+  const f = parseFigure('<circle cx="5" cy="5" r="2" fill="#fff" stroke="#2b1a10" stroke-width="3"/><g data-part="turn"><rect x="0" y="0" width="4" height="8" rx="2" fill="url(#s1-wood)"/></g><path d="M0 0 L10 0" stroke="#fff" opacity=".5"/><path d="M0 0 L5 5 L0 5" />');
+  assert.deepEqual(f.groups.map((g) => g.name), ['main', 'turn', 'main']);
+  assert.equal(f.groups[1].els[0].grad, 's1-wood');
+  assert.equal(f.all[2].fill, null, 'offene Linie ohne Fläche: keine Füllung');
+  assert.equal(f.all[2].stroke, 'rgba(255,255,255,0.5)');
+  assert.equal(f.all[3].fill, '#000', 'SVG-Standard: schwarz gefüllt');
+  assert.deepEqual(boxOf([f.all[0]]), [1.5, 1.5, 8.5, 8.5]);
+  assert.equal(withAlpha('#2b1a10', 0.5), 'rgba(43,26,16,0.5)');
+  assert.equal(withAlpha('rgba(30,20,50,.4)', 0.5), 'rgba(30,20,50,0.2)');
+  assert.equal(withAlpha('#abc', 1), '#abc');
 });

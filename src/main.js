@@ -1,5 +1,5 @@
 // Verbindet Spiel-Logik, Rendering und Bedienung (DOM, Maus, Tastatur).
-import { TILE, VIEW_WIDTH, VIEW_HEIGHT, ARROW_TOWER, TOWER_STYLE, SHOP_CARD, TOWER_TYPES, ENEMY_TYPES, MAX_WAVES, MAPS, SPEED_STEPS, TARGET_MODES, TARGET_MODE_NAMES, MAX_SUBSTEP, LOW_LIVES, ABILITIES, ICON, COIN_BURST, waveSummary, meteorText } from './config.js';
+import { TILE, VIEW_WIDTH, VIEW_HEIGHT, FIGURE_STYLE, SHOP_CARD, TOWER_TYPES, ENEMY_TYPES, MAX_WAVES, MAPS, SPEED_STEPS, TARGET_MODES, TARGET_MODE_NAMES, MAX_SUBSTEP, LOW_LIVES, ABILITIES, ICON, COIN_BURST, waveSummary, meteorText } from './config.js';
 import {
   createGame, stepGame, togglePause, buildTower, upgradeTower, sellTower, setTargetMode, startWave,
   useAbility, abilityCooldownLeft, canBuild, towerAt, towerStats, upgradeCost, sellValue,
@@ -16,6 +16,8 @@ const canvas = document.getElementById('game');
 canvas.width = VIEW_WIDTH; // Stil 1: Feld + Rand (Wald, Burg, Fahne)
 canvas.height = VIEW_HEIGHT;
 const ctx = canvas.getContext('2d');
+// Stil 1: Schrift der Stufenmarken früh laden (Canvas-Text löst das Laden selbst nicht aus)
+if (document.fonts && document.fonts.load) document.fonts.load('14px "Lilita One"').catch(() => {});
 
 const $ = (id) => document.getElementById(id);
 const ui = { buildType: null, selectedTowerId: null, hover: null, pending: null, aiming: false, hoverPx: null, speed: SPEED_STEPS[0], message: '', messageKind: 'error', messageTtl: 0 };
@@ -113,9 +115,9 @@ const ICON_SIZE = 48;
 function drawTowerIcon(cv, type) {
   const c = cv.getContext('2d');
   // Die Türme sind unterschiedlich hoch: jeder Typ hat eigene Skalierung und Verschiebung nach unten
-  const st = type === 'arrow' ? ARROW_TOWER : TOWER_STYLE[type];
-  const k = st.iconScale;
-  c.translate(ICON_SIZE / 2, ICON_SIZE / 2 + 2 + st.iconDy);
+  const st = FIGURE_STYLE.icon[type];
+  const k = st.scale;
+  c.translate(ICON_SIZE / 2, ICON_SIZE / 2 + 2 + st.dy);
   c.scale(k, k);
   c.translate(-TILE / 2, -TILE / 2);
   drawTower(c, { type, x: TILE / 2, y: TILE / 2, level: 1, cooldown: 0, angle: -Math.PI / 4 }, false);

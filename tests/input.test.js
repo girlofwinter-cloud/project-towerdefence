@@ -52,3 +52,14 @@ test('fieldPoint: zieht den Rand ab, auch bei skaliertem Canvas; Klicks im Rand 
   const p = fieldPoint((FRAME_MARGIN + 5.5 * TILE) / 2, (FRAME_MARGIN + 3.5 * TILE) / 2, half);
   assert.deepEqual([p.col, p.row, p.inField], [5, 3, true]);
 });
+
+test('fieldPoint: genau auf der Feldkante gehört der Punkt zum Feld, genau hinter der letzten Kachel zum Rand', () => {
+  const rect = { left: 0, top: 0, width: VIEW_WIDTH, height: VIEW_HEIGHT };
+  const first = fieldPoint(FRAME_MARGIN, FRAME_MARGIN, rect);
+  assert.deepEqual([first.col, first.row, first.inField], [0, 0, true]);
+  assert.equal(fieldPoint(FRAME_MARGIN + COLS * TILE, FRAME_MARGIN + 5, rect).inField, false, 'rechte Kante');
+  assert.equal(fieldPoint(FRAME_MARGIN + 5, FRAME_MARGIN + ROWS * TILE, rect).inField, false, 'untere Kante');
+  assert.equal(fieldPoint(FRAME_MARGIN - 0.01, FRAME_MARGIN + 5, rect).inField, false, 'knapp links davor');
+  // Ecken des Canvas und Punkte außerhalb (Pointer-Capture) liegen nie im Feld
+  for (const [x, y] of [[0, 0], [VIEW_WIDTH, VIEW_HEIGHT], [-20, 300], [VIEW_WIDTH + 20, 300]]) assert.equal(fieldPoint(x, y, rect).inField, false, `${x},${y}`);
+});

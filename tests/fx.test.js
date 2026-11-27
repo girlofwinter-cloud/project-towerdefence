@@ -4,10 +4,10 @@ import assert from 'node:assert/strict';
 import { createGame, update, buildTower, startWave } from '../src/game.js';
 
 import { buildPath } from '../src/path.js';
-import { WAYPOINTS, TILE, ENEMY_TYPES } from '../src/config.js';
+import { WAYPOINTS, TILE, ENEMY_TYPES, TOWER_TYPES } from '../src/config.js';
 import { walkPhase, animSpeedFactor, facingFor, facingFlip, facingTilt, WALK_RATE, TILT_MAX } from '../src/enemy-fx.js';
 import { createFx, syncTime, spawnParticle, updateParticles, liveParticles, syncFx, shakeAmplitude, shakeOffset, triggerShake, bossEntryShake, bossEntryProgress, MAX_PARTICLES, MAX_STEP, SHAKE_COOLDOWN, SHAKE_MAX, SHAKE_DURATION, K_SPARK, K_SMOKE, K_COIN } from '../src/fx-system.js';
-import { freeTileNearPath, recordEnemy, withoutRandom } from './helpers.js';
+import { freeTileNearPath, recordEnemy, withoutRandom, enemyExtent, mockCtx } from './helpers.js';
 
 // ---------- Gegner: Zeichnung und Animation (B-011) ----------
 
@@ -88,29 +88,6 @@ test('Gegner-Zeichnung: alle Typen und ein unbekannter ohne Fehler, ausgewogen, 
   assert.equal(r.depth, 0);
 });
 
-test('Gegner-Zeichnung: Figur bleibt im Radius, Schatten und Frost-Ring im groben Rahmen', async () => {
-  for (const type of ['grunt', 'runner', 'tank', 'boss', 'healer']) {
-    for (const slow of [false, true]) {
-      for (const time of [0, 0.3, 1.7]) {
-        for (const path of [buildPath([[0, 0], [5, 0]], TILE), buildPath([[5, 0], [0, 0]], TILE), buildPath([[0, 0], [0, 5]], TILE), buildPath([[0, 5], [0, 0]], TILE)]) {
-          const r = await recordEnemy({ type, slowUntil: slow ? 99 : 0 }, time, path);
-          const rad = r.e.radius;
-          for (const p of r.world) {
-            if (p.hp) continue;
-            const d = p.box ? Math.hypot(Math.abs(p.x - r.e.x) + p.box[0], Math.abs(p.y - r.e.y) + p.box[1]) : Math.hypot(p.x - r.e.x, p.y - r.e.y) + p.ext;
-            assert.ok(d <= 1.6 * rad, `${type} slow=${slow}: ${d.toFixed(1)} > ${(1.6 * rad).toFixed(1)}`);
-          }
-          // Figur selbst (in der transformierten Ebene) hoechstens ca. 1,4x
-          for (const p of r.figure) {
-            if (p.depth === 0) continue;
-            assert.ok(Math.hypot(p.x - r.e.x, p.y - r.e.y) + p.ext <= 1.4 * rad, `${type}: Figur zu gross`);
-          }
-        }
-      }
-    }
-  }
-});
-
 test('Gegner-Zeichnung: Typen unterscheiden sich, Boss ist am groessten', async () => {
   const prints = {};
   const extent = {};
@@ -164,20 +141,6 @@ test('Gegner-Zeichnung: Blick nach links spiegelt die Figur, senkrecht neigt sie
     const up = await recordEnemy({ type }, 0.8, buildPath([[0, 5], [0, 0]], TILE));
     assert.notEqual(down.print, up.print, `${type}: auf/ab unterscheidbar`);
     assert.notEqual(down.print, r.print);
-  }
-});
-
-test('Gegner-Zeichnung: Frost bleibt sichtbar (Ring plus Tint), HP-Balken vorhanden', async () => {
-  for (const type of ['grunt', 'runner', 'tank', 'boss', 'healer']) {
-    const n = await recordEnemy({ type });
-    const f = await recordEnemy({ type, slowUntil: 99 });
-    assert.ok(f.calls.length > n.calls.length, `${type}: Frost fuegt Zeichenaufrufe hinzu`);
-    assert.ok(f.print.includes('#bdf0ff'), `${type}: Frost-Ring`);
-    assert.ok(f.print.includes('rgba(150,220,255,0.4)'), `${type}: Frost-Tint`);
-    assert.ok(!n.print.includes('#bdf0ff'));
-    assert.ok(f.world.some((p) => p.hp), `${type}: HP-Balken`);
-    const full = f.world.filter((p) => p.hp).map((p) => p.y);
-    assert.ok(Math.max(...full) < f.e.y - f.e.radius, `${type}: HP-Balken ueber der Figur`);
   }
 });
 
@@ -243,34 +206,6 @@ test('walkPhase: bei grossem und negativem time im Bereich und stetig', async ()
   assert.equal(walkPhase(5, 1, 0), walkPhase(50, 1, 0));
 });
 
-test('Gegner-Zeichnung: HP-Balken-Randfaelle (voll, leer, ueber max, negativ) ohne Absturz', async () => {
-  const { drawEnemy } = await import('../src/render-enemies.js');
-  const path = buildPath(WAYPOINTS, TILE);
-  const widthOf = (hp, maxHp) => {
-    const { ctx, st } = plainCtx();
-    drawEnemy(ctx, testEnemy({ hp, maxHp }), 1, path);
-    return st.fills[st.fills.length - 1][2];
-  };
-  assert.equal(widthOf(10, 10), 22);
-  assert.equal(widthOf(0, 10), 0);
-  assert.equal(widthOf(-5, 10), 0);
-  assert.equal(widthOf(5, 10), 11);
-  // maxHp = 0 oder NaN: Breite ist nicht endlich -> Canvas zeichnet nichts, aber es wirft nicht
-  for (const [hp, maxHp] of [[5, 0], [0, 0], [NaN, 10], [5, NaN]]) widthOf(hp, maxHp);
-});
-
-test('Gegner-Zeichnung: Boss-HP-Balken liegt ueber der Krone (Abstand zur Figur > 0)', async () => {
-  const { drawEnemy } = await import('../src/render-enemies.js');
-  for (const type of ['grunt', 'runner', 'tank', 'boss']) {
-    const { ctx, st } = plainCtx();
-    const e = testEnemy({ type, radius: ENEMY_TYPES[type].radius, speed: ENEMY_TYPES[type].speed });
-    drawEnemy(ctx, e, 1, buildPath(WAYPOINTS, TILE));
-    const y = st.fills[st.fills.length - 1][1];
-    // Balken-Unterkante muss mindestens 1,35 r (Krone) + Luft ueber der Mitte liegen
-    assert.ok(e.y - (y + 4) >= e.radius * 1.2, `${type}: Balken-Unterkante ${e.y - (y + 4)}`);
-  }
-});
-
 test('Gegner-Zeichnung: Hintergrund-Cache bleibt bei Gegnern aller Typen ungestoert, globalAlpha unveraendert', async () => {
   const hadOff = 'OffscreenCanvas' in globalThis;
   const { render } = await import('../src/render.js');
@@ -285,6 +220,167 @@ test('Gegner-Zeichnung: Hintergrund-Cache bleibt bei Gegnern aller Typen ungesto
   assert.equal(st.minDepth, 0);
   assert.equal(props.globalAlpha, undefined);
   assert.equal(hadOff, 'OffscreenCanvas' in globalThis);
+});
+
+// ---------- Stil 1 (G7): Gegner nach dem Entwurf ----------
+const ALL_ENEMIES = ['grunt', 'runner', 'tank', 'boss', 'healer', 'shielded', 'mage', 'skeleton', 'necro'];
+
+// Sichtbare Größe einer Figur in Kacheln: umrandete Formen (Kontur #2b1a10) mal Maßstab, ohne Schatten
+async function figureSize(type, frozen = false) {
+  const { enemyFigure } = await import('../src/figures.js');
+  const { boxOf } = await import('../src/svg-figure.js');
+  const { FIGURE_STYLE: S } = await import('../src/config.js');
+  const f = enemyFigure(type, frozen);
+  const b = boxOf(f.els.filter((e) => e.stroke === S.outline));
+  const k = (f.big ? S[f.big] : 1) / S.unit;
+  return { w: (b[2] - b[0]) * k, h: (b[3] - b[1]) * k };
+}
+
+test('Stil 1 Gegner: Größe wie im Plan, Boss = Troll x 1,3, Nekromantin größer als der Goblin, Fußpunkt unter der Wegmitte', async () => {
+  const { FIGURE_STYLE: S } = await import('../src/config.js');
+  const { enemyFootY } = await import('../src/render-enemies.js');
+  // Plan: Goblin 0,7 x 0,9; Flitzer 0,9 x 0,75; Troll 1,45 x 1,9 (Höhe dort samt Lebensbalken Z.113, Breite ohne Fäuste)
+  const bar = (S.hp.h + S.hp.gap) / S.unit;
+  const plan = { grunt: [0.7, 0.9, 0], runner: [0.9, 0.75, 0], tank: [1.45, 1.9, bar] };
+  for (const [type, [pw, ph, extra]] of Object.entries(plan)) {
+    const { w, h } = await figureSize(type);
+    assert.ok(Math.abs(w - pw) <= 0.25, `${type}: Breite ${w.toFixed(2)} statt ${pw}`);
+    assert.ok(Math.abs(h + extra - ph) <= 0.15, `${type}: Höhe ${(h + extra).toFixed(2)} statt ${ph}`);
+  }
+  const tank = await figureSize('tank'), boss = await figureSize('boss'), grunt = await figureSize('grunt');
+  assert.ok(Math.abs(boss.w / tank.w - S.bossScale) < 0.05, 'Boss 1,3 x so breit wie der Troll');
+  assert.ok(boss.h > tank.h * S.bossScale, 'Krone ragt über den Troll hinaus');
+  assert.ok((await figureSize('necro')).h > grunt.h * 1.4, 'Nekromantin deutlich größer als der Goblin');
+  for (const type of ['healer', 'shielded', 'mage', 'skeleton']) {
+    const z = await figureSize(type);
+    assert.ok(z.w <= 0.85 && z.h <= 1, `${type}: Goblin-Größe (${z.w.toFixed(2)} x ${z.h.toFixed(2)})`);
+  }
+  // Fußpunkt 14 Entwurfs-px unter der Wegmitte; Linienpunkte der Figur liegen nie tiefer (Schatten ausgenommen)
+  const e = { x: 200, y: 150 };
+  assert.ok(Math.abs(enemyFootY(e) - 150 - (S.enemyFoot / S.unit) * TILE) < 1e-9);
+  for (const type of ALL_ENEMIES) {
+    const r = await recordEnemy({ type }, 0.4, buildPath([[0, 0], [5, 0]], TILE));
+    const lines = r.figure.filter((p) => p.depth > 0 && p.ext === 0);
+    assert.ok(lines.length > 0 && Math.max(...lines.map((p) => p.y)) <= enemyFootY(r.e) + 0.05 * TILE, `${type}: Figur steht auf dem Fußpunkt`);
+  }
+});
+
+test('Stil 1 Gegner: alle Typen zeichnen ausgewogen in alle Richtungen und gefroren, Laufen wippt und schwankt', async () => {
+  const paths = [buildPath([[0, 0], [5, 0]], TILE), buildPath([[5, 0], [0, 0]], TILE), buildPath([[0, 0], [0, 5]], TILE), buildPath([[0, 5], [0, 0]], TILE)];
+  for (const type of ALL_ENEMIES) {
+    for (const slow of [false, true]) for (const time of [0, 0.45, 1.1]) for (const path of paths) {
+      const r = await recordEnemy({ type, slowUntil: slow ? 99 : 0, hp: 4 }, time, path);
+      assert.equal(r.depth, 0, `${type}: save/restore`);
+      assert.equal(r.props.globalAlpha, undefined, `${type}: globalAlpha`);
+      const x = enemyExtent(r);
+      assert.ok(x.w < 3.5 && x.h < 3.5 && Number.isFinite(x.w), `${type}: Ausdehnung ${x.w.toFixed(2)} x ${x.h.toFixed(2)}`);
+    }
+    const seen = new Set();
+    for (const time of [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6]) seen.add((await recordEnemy({ type }, time)).print);
+    assert.ok(seen.size >= 4, `${type}: Phasen unterscheiden sich`);
+    // gefroren steht die Figur still
+    const still = new Set();
+    for (const time of [0, 0.2, 0.4]) still.add((await recordEnemy({ type, slowUntil: 99 }, time)).print);
+    assert.equal(still.size, 1, `${type}: eingefroren ohne Wippen`);
+  }
+  // Heil-Aura bleibt dem Schamanen vorbehalten
+  const { drawHealAura } = await import('../src/render-enemies.js');
+  const count = (type) => { let n = 0; drawHealAura(new Proxy({}, { get: () => () => { n++; }, set: () => true }), { type, x: 1, y: 1 }, 0); return n; };
+  for (const type of ALL_ENEMIES) assert.equal(count(type) > 0, type === 'healer', `${type}: Aura`);
+});
+
+test('Stil 1 Gegner: dunkle Kontur hebt sich >= 0,25 von jeder Wegfarbe ab, Hauptfarben je Typ werden gezeichnet', async () => {
+  const { MAPS, PATH_STYLE, FIGURE_STYLE: S } = await import('../src/config.js');
+  const { brightness } = await import('../src/draw-utils.js');
+  for (const id of Object.keys(MAPS)) {
+    const road = { ...PATH_STYLE.colors, ...(MAPS[id].theme?.path || {}) }.mid;
+    assert.ok(Math.abs(brightness(S.outline) - brightness(road)) >= 0.25, `${id}: Kontur gegen Weg ${road}`);
+  }
+  const main = { grunt: '#6cc03a', runner: '#f4cf3a', tank: '#b5663e', boss: '#f2c14e', healer: '#f4f1e6', shielded: '#8a5326', mage: '#7a4bb0', skeleton: '#f2e9d8', necro: '#5b3d8a' };
+  for (const type of ALL_ENEMIES) {
+    const r = await recordEnemy({ type });
+    assert.ok(r.print.includes('fill:|' + main[type]), `${type}: Hauptfarbe ${main[type]}`);
+    const strokes = r.calls.filter((c) => c.startsWith('stroke:'));
+    assert.ok(strokes.filter((c) => c.endsWith('|' + S.outline)).length >= strokes.length / 2, `${type}: überwiegend dunkel umrandet`);
+  }
+  const necro = await recordEnemy({ type: 'necro' });
+  assert.ok(necro.print.includes('|#f2e9d8'), 'Nekromantin: Totenkopf am Stab');
+});
+
+test('Stil 1 Gegner: eingefroren mit Eis-Kristall (Z.111), Goblin als eigener Entwurf; unbekannte Typen als Goblin', async () => {
+  for (const type of ALL_ENEMIES) {
+    const n = await recordEnemy({ type });
+    const f = await recordEnemy({ type, slowUntil: 99 });
+    assert.ok(f.print.includes('rgba(223,247,255,'), `${type}: Eis-Kristall`);
+    assert.ok(!n.print.includes('rgba(223,247,255,'), `${type}: ohne Frost kein Eis`);
+  }
+  const iced = await recordEnemy({ type: 'grunt', slowUntil: 99 });
+  assert.ok(iced.print.includes('|#a8e2f5') && !iced.print.includes('|#7fd048'), 'gefrorener Goblin: blauer Kopf statt grünem');
+  for (const type of ['zzz', '__proto__', 'constructor']) {
+    const r = await recordEnemy({ type });
+    assert.equal(r.depth, 0);
+    assert.ok(r.print.includes('|#7fd048'), `${type}: Goblin-Rückfall`);
+  }
+});
+
+test('Stil 1 Lebensbalken: nur bei Schaden, über der Figur (auch über der Krone), Füllung wächst mit den HP, Randfälle', async () => {
+  const { FIGURE_STYLE: S } = await import('../src/config.js');
+  const bars = (r) => r.world.filter((p) => p.hp);
+  for (const type of ALL_ENEMIES) {
+    assert.equal(bars(await recordEnemy({ type, hp: 10, maxHp: 10 })).length, 0, `${type}: voll ohne Balken`);
+    const r = await recordEnemy({ type, hp: 4, maxHp: 10 });
+    assert.ok(bars(r).length > 0, `${type}: Balken bei Schaden`);
+    const top = Math.min(...r.figure.filter((p) => p.depth > 0).map((p) => p.y - (p.box ? p.box[1] : p.ext)));
+    const bottom = Math.max(...bars(r).map((p) => p.y + p.ext));
+    assert.ok(bottom < top, `${type}: Balken ${bottom.toFixed(1)} über der Figur ${top.toFixed(1)}`);
+  }
+  // Füllung: Abstand der Kappen-Mittelpunkte der farbigen Kapsel ~ HP-Anteil
+  const inner = async (hp) => {
+    const r = await recordEnemy({ type: 'tank', hp, maxHp: 100 });
+    const xs = r.calls.filter((c) => c.startsWith('arc:') && [S.hp.good, S.hp.mid, S.hp.low].some((col) => c.includes('|' + col + '|'))).map((c) => parseFloat(c.slice(4)));
+    return xs.length ? Math.max(...xs) - Math.min(...xs) : 0;
+  };
+  const w90 = await inner(90), w45 = await inner(45);
+  assert.ok(w90 > w45 * 1.7 && w45 > 0, `Füllung ${w90} / ${w45}`);
+  assert.ok((await recordEnemy({ type: 'grunt', hp: 2, maxHp: 10 })).print.includes('|' + S.hp.low), 'wenig HP: rot');
+  for (const [hp, maxHp] of [[0, 10], [-5, 10], [15, 10], [5, 0], [NaN, 10], [5, NaN]]) {
+    const r = await recordEnemy({ type: 'grunt', hp, maxHp });
+    assert.equal(r.depth, 0, `hp ${hp}/${maxHp}`);
+  }
+});
+
+test('Stil 1 Sprites: je Typ x Stufe x Pixeldichte genau einmal gebaut, danach nur drawImage', async () => {
+  const { setSpriteFactory, spriteStats } = await import('../src/sprites.js');
+  const { drawTower } = await import('../src/render.js');
+  const { drawEnemy } = await import('../src/render-enemies.js');
+  const made = [];
+  setSpriteFactory((w, h) => { const m = mockCtx(); const c = { width: w, height: h, getContext: () => m.ctx }; made.push(c); return c; });
+  try {
+    const frame = (scale) => {
+      const counts = {};
+      const m = mockCtx(counts);
+      const ctx = new Proxy(m.ctx, { get: (t, k) => (k === 'getTransform' ? () => ({ a: scale, b: 0 }) : t[k]), set: (t, k, v) => { t[k] = v; return true; } });
+      for (const type of Object.keys(TOWER_TYPES)) for (let level = 1; level <= 3; level++) drawTower(ctx, { type, level, x: 100, y: 100, cooldown: 0, angle: 0.5 }, false);
+      for (const type of ALL_ENEMIES) for (const slowUntil of [0, 99]) drawEnemy(ctx, { id: 1, type, x: 50, y: 50, dist: 0, hp: 5, maxHp: 10, slowUntil, speed: 1, radius: 10 }, 1, null);
+      assert.equal(m.depth, 0);
+      return counts;
+    };
+    const before = spriteStats.builds;
+    const first = frame(1);
+    const built = spriteStats.builds - before;
+    // Türme: 5 Typen x 3 Stufen, Kanone und Scharfschütze mit Teil vor dem drehenden Rohr (+2 x 3); Gegner: 9 Typen x 2
+    assert.equal(built, 15 + 6 + 18, 'jede Figur genau ein Sprite');
+    assert.ok(first.drawImage >= 15 + 6 + 18);
+    frame(1);
+    frame(1);
+    assert.equal(spriteStats.builds - before, built, 'zweiter Frame baut nichts neu');
+    frame(2);
+    assert.equal(spriteStats.builds - before, 2 * built, 'neue Pixeldichte: eigener Satz');
+    assert.ok(made.every((c) => c.width >= 1 && c.height >= 1));
+    // Sprite doppelter Dichte ist doppelt so groß
+    const w1 = made[0].width, w2 = made[built].width;
+    assert.ok(Math.abs(w2 / w1 - 2) < 0.1, `Pixeldichte ${w1} -> ${w2}`);
+  } finally { setSpriteFactory(); }
 });
 
 // ---------- Projektile und Effekte (B-012) ----------
@@ -668,153 +764,6 @@ test('B-012 Tester R2: Sperrzeit - neuer Weg leert Sperre; kleine Explosion setz
 });
 
 
-// ---------- Gegner im Flat-Pop-Stil (B-065): Goblin, Flitzer, Troll ----------
-
-const FLAT = ['grunt', 'runner', 'tank'];
-
-test('Flat-Pop-Gegner: zeichnen ausgewogen, Figur (inkl. Licht-/Schattenversatz) bleibt im Kreis radius*1,3', async () => {
-  const paths = [buildPath([[0, 0], [5, 0]], TILE), buildPath([[5, 0], [0, 0]], TILE), buildPath([[0, 0], [0, 5]], TILE), buildPath([[0, 5], [0, 0]], TILE)];
-  for (const type of FLAT) {
-    for (const slow of [false, true]) for (const time of [0, 0.2, 0.45, 0.7, 1.1]) for (const path of paths) {
-      const r = await recordEnemy({ type, slowUntil: slow ? 99 : 0 }, time, path);
-      assert.equal(r.depth, 0, `${type}: save/restore`);
-      // Mock-Extent: Mittelpunkt-Abstand plus groesster Radius, konservativ (Schattenband-Kopien zaehlen mit)
-      for (const p of r.figure.filter((q) => q.depth > 0)) {
-        assert.ok(Math.hypot(p.x - r.e.x, p.y - r.e.y) + p.ext <= 1.3 * r.e.radius + 1e-9, `${type}: ${(Math.hypot(p.x - r.e.x, p.y - r.e.y) + p.ext) / r.e.radius}`);
-      }
-    }
-  }
-});
-
-test('Flat-Pop-Gegner: Beine schwingen mit der Lauf-Phase (andere Phase = andere Beinpositionen), Wippen bis 1,1 px', async () => {
-  for (const type of FLAT) {
-    const seen = new Set();
-    for (const time of [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6]) seen.add((await recordEnemy({ type }, time)).print);
-    assert.ok(seen.size >= 4, `${type}: Phasen unterscheiden sich`);
-  }
-  // Beinversatz: die Fuss-Rechtecke (arcTo-Pfade) liegen bei Phase pi/2 und -pi/2 um 2 * legSwing auseinander
-  const { ENEMY_STYLE } = await import('../src/config.js');
-  const { drawGruntFlat } = await import('../src/render-enemies-flat.js');
-  const xs = [Math.PI / 2, -Math.PI / 2].map((phase) => {
-    const moves = [];
-    const ctx = new Proxy({}, { get: (_, k) => (...a) => { if (k === 'moveTo') moves.push(a); }, set: () => true });
-    drawGruntFlat(ctx, phase);
-    return moves[1][0]; // vorderes Bein (zweiter Beinstummel), Pfadstart x + rad
-  });
-  assert.ok(Math.abs(Math.abs(xs[0] - xs[1]) - 2 * ENEMY_STYLE.legSwing) < 1e-9, `Beinschwung ${xs}`);
-});
-
-test('Flat-Pop-Gegner: Frost-Overlay, Ring und HP-Balken sind unveraendert (gleiche Aufrufe wie vorher)', async () => {
-  for (const type of FLAT) {
-    const r = await recordEnemy({ type, slowUntil: 99, hp: 10, maxHp: 10 });
-    const tail = r.calls.slice(r.calls.findIndex((c) => c.startsWith('arc:0.00,0.00,0.95')));
-    assert.equal(tail[0].split('|')[1], 'rgba(150,220,255,0.4)', `${type}: Frost-Tint`);
-    assert.equal(tail.filter((c) => c.startsWith('moveTo')).length, 3, `${type}: 3 Frost-Kristalle`);
-    assert.equal(tail.filter((c) => c.startsWith('lineTo')).length, 6);
-    const ring = tail.find((c) => c.startsWith('arc:200.00,150.00'));
-    assert.ok(ring && ring.endsWith('#bdf0ff'), `${type}: Frost-Ring`);
-    assert.equal(r.props.lineWidth, 2.5);
-    assert.deepEqual(r.calls.filter((c) => c.startsWith('fillRect')).map((c) => c.split('|')[1]), ['#300', '#4cd964'], `${type}: HP-Balken`);
-  }
-  // Heil-Aura bleibt dem Schamanen vorbehalten
-  const { drawHealAura } = await import('../src/render-enemies.js');
-  for (const type of FLAT) {
-    let n = 0;
-    drawHealAura(new Proxy({}, { get: () => () => { n++; }, set: () => true }), { type, x: 1, y: 1 }, 0);
-    assert.equal(n, 0, `${type}: keine Aura`);
-  }
-});
-
-test('Flat-Pop-Gegner (B-085): Hauptfarbflaechen haben >= 0,25 Helligkeitsabstand zu allen Wegfarben, Kontur >= 0,25', async () => {
-  const { ENEMY_STYLE, MAPS, PATH_STYLE } = await import('../src/config.js');
-  const { brightness, outlineOf } = await import('../src/draw-utils.js');
-  // Wiese und Eis (Zangenangriff: siehe Bericht, dort liegt der Abstand des Goblins bei ca. 0,22)
-  const roads = new Set();
-  for (const id of ['meadow', 'ice']) { const p = { ...PATH_STYLE.colors, ...(MAPS[id].theme.path || {}) }; roads.add(p.mid); } // Wegmitte (der Wegrand `main` ist dunkler)
-  for (const type of FLAT) {
-    const c = ENEMY_STYLE[type];
-    // Gemessen: Flaechenanteil-gewichtete mittlere Helligkeit der Hauptfarben (c.main) gegen jede Wegfarbe
-    let mean = 0, sum = 0;
-    for (const [name, w] of Object.entries(c.main)) { mean += w * brightness(c[name]); sum += w; }
-    assert.ok(Math.abs(sum - 1) < 1e-9, `${type}: Anteile summieren auf 1`);
-    const printed = (await recordEnemy({ type })).print;
-    for (const name of Object.keys(c.main)) assert.ok(printed.includes('fill:|' + c[name]), `${type}: ${name} wird gezeichnet`);
-    for (const road of roads) {
-      assert.ok(Math.abs(mean - brightness(road)) >= 0.25, `${type}: Koerper ${mean.toFixed(2)} gegen Weg ${road}`);
-      assert.ok(Math.abs(brightness(outlineOf(c.skin)) - brightness(road)) >= 0.25, `${type}: Kontur gegen ${road}`);
-    }
-    // Die Hauptfarbe der Config (HP-/Schadensfarbe) bleibt in der Figur sichtbar (Kopf bzw. Haut)
-    assert.equal(c.skin, ENEMY_TYPES[type].color, `${type}: skin == ENEMY_TYPES.color`);
-  }
-});
-
-
-// ---------- Gegner im Flat-Pop-Stil (B-066): Schamane, Schildträger ----------
-
-const FLAT2 = ['healer', 'shielded', 'mage'];
-
-test('Flat-Pop B-066: Schamane/Schildtraeger zeichnen ausgewogen, bleiben im Kreis radius*1,3, auch gefroren', async () => {
-  const paths = [buildPath([[0, 0], [5, 0]], TILE), buildPath([[5, 0], [0, 0]], TILE), buildPath([[0, 0], [0, 5]], TILE)];
-  for (const type of FLAT2) {
-    for (const slow of [false, true]) for (const time of [0, 0.2, 0.45, 0.7, 1.1, 2.1]) for (const path of paths) {
-      const r = await recordEnemy({ type, slowUntil: slow ? 99 : 0 }, time, path);
-      assert.equal(r.depth, 0, `${type}: save/restore`);
-      for (const p of r.figure.filter((q) => q.depth > 0)) {
-        assert.ok(Math.hypot(p.x - r.e.x, p.y - r.e.y) + p.ext <= 1.3 * r.e.radius + 1e-9, `${type}: ${(Math.hypot(p.x - r.e.x, p.y - r.e.y) + p.ext) / r.e.radius}`);
-      }
-    }
-  }
-});
-
-test('Flat-Pop B-066: Phasen unterscheiden sich, Typen sind verschieden, Kugel des Schamanen pulsiert', async () => {
-  for (const type of FLAT2) {
-    const seen = new Set();
-    for (const time of [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6]) seen.add((await recordEnemy({ type }, time)).print);
-    assert.ok(seen.size >= 4, `${type}: Phasen unterscheiden sich`);
-  }
-  assert.notEqual((await recordEnemy({ type: 'healer' })).print, (await recordEnemy({ type: 'shielded' })).print);
-  const { drawHealerFlat } = await import('../src/render-enemies-flat.js');
-  const orb = (time) => {
-    const arcs = [];
-    drawHealerFlat(new Proxy({}, { get: (_, k) => (...a) => { if (k === 'ellipse') arcs.push(a); } }), 0, time);
-    return arcs[arcs.length - 1][2];
-  };
-  assert.notEqual(orb(0), orb(0.4));
-});
-
-test('Flat-Pop B-066: Frost, Ring, HP-Balken unveraendert; Heil-Aura bleibt beim Schamanen', async () => {
-  for (const type of FLAT2) {
-    const r = await recordEnemy({ type, slowUntil: 99, hp: 10, maxHp: 10 });
-    const tail = r.calls.slice(r.calls.findIndex((c) => c.startsWith('arc:0.00,0.00,0.95')));
-    assert.equal(tail.filter((c) => c.startsWith('moveTo')).length, 3, `${type}: 3 Frost-Kristalle`);
-    assert.ok(tail.find((c) => c.startsWith('arc:200.00,150.00')).endsWith('#bdf0ff'), `${type}: Frost-Ring`);
-    assert.deepEqual(r.calls.filter((c) => c.startsWith('fillRect')).map((c) => c.split('|')[1]), ['#300', '#4cd964'], `${type}: HP-Balken`);
-  }
-  const { drawHealAura } = await import('../src/render-enemies.js');
-  const count = (type) => { let n = 0; drawHealAura(new Proxy({}, { get: () => () => { n++; }, set: () => true }), { type, x: 1, y: 1 }, 0); return n; };
-  assert.ok(count('healer') > 0);
-  assert.equal(count('shielded'), 0);
-});
-
-test('Flat-Pop B-066 (B-085): Hauptfarbflaechen >= 0,25 Helligkeitsabstand zum Weg, Kontur ebenso, skin == ENEMY_TYPES.color', async () => {
-  const { ENEMY_STYLE, MAPS, PATH_STYLE } = await import('../src/config.js');
-  const { brightness, outlineOf } = await import('../src/draw-utils.js');
-  const roads = new Set();
-  for (const id of ['meadow', 'ice']) roads.add({ ...PATH_STYLE.colors, ...(MAPS[id].theme.path || {}) }.mid);
-  for (const type of FLAT2) {
-    const c = ENEMY_STYLE[type];
-    let mean = 0, sum = 0;
-    for (const [name, w] of Object.entries(c.main)) { mean += w * brightness(c[name]); sum += w; }
-    assert.ok(Math.abs(sum - 1) < 1e-9, `${type}: Anteile summieren auf 1`);
-    const printed = (await recordEnemy({ type })).print;
-    for (const name of Object.keys(c.main)) assert.ok(printed.includes('fill:|' + c[name]), `${type}: ${name} wird gezeichnet`);
-    for (const road of roads) {
-      assert.ok(Math.abs(mean - brightness(road)) >= 0.25, `${type}: Koerper ${mean.toFixed(2)} gegen Weg ${road}`);
-      assert.ok(Math.abs(brightness(outlineOf(c.skin)) - brightness(road)) >= 0.25, `${type}: Kontur gegen ${road}`);
-    }
-    assert.equal(c.skin, ENEMY_TYPES[type].color, `${type}: skin == ENEMY_TYPES.color`);
-  }
-});
 
 
 // ---------- Magier (B-126): Figur und Schild-Blase ----------
@@ -823,7 +772,7 @@ test('Magier B-126: Hut und Kugel gezeichnet, Schild-Blase nur bei ward > 0, Dec
   const { ENEMY_STYLE } = await import('../src/config.js');
   const c = ENEMY_STYLE.mage;
   const r = await recordEnemy({ type: 'mage' });
-  for (const col of [c.hat, c.hatBand, c.orb, c.staff]) assert.ok(r.print.includes('|' + col), `Farbe ${col} fehlt`);
+  for (const col of ['#7a4bb0', '#6b3fa0', '#9fe8ff', '#8a5326']) assert.ok(r.print.includes('|' + col), `Farbe ${col} fehlt`); // Stil 1: Kapuze, Robe, Kugel, Stab
   assert.ok(!r.print.includes(c.wardFill), 'ohne Schild keine Blase');
   const max = ENEMY_TYPES.mage.wardShare * 100;
   const alphaOf = async (ward) => {
@@ -848,54 +797,6 @@ test('Magier B-126: Hut und Kugel gezeichnet, Schild-Blase nur bei ward > 0, Dec
   assert.ok(alphas(max)[0] <= 1 && alphas(max / 4)[0] > 0);
 });
 
-// ---------- Boss Oger-Koenig im Flat-Pop-Stil (B-067) ----------
-
-test('Boss B-067: Massstab 1,6x des Goblins, Krone/Keule/Aura gezeichnet, Aura pulsiert, Phasen verschieden', async () => {
-  const { ENEMY_STYLE } = await import('../src/config.js');
-  const { BOSS_REF, drawBossFlat } = await import('../src/render-enemies-flat.js');
-  const px = (type, ref) => ENEMY_TYPES[type].radius / ref; // Weltpixel je Design-Pixel
-  assert.ok(Math.abs(px('boss', BOSS_REF) / px('grunt', ENEMY_STYLE.grunt.ref) - ENEMY_STYLE.boss.sizeFactor) < 1e-9);
-  assert.equal(ENEMY_STYLE.boss.sizeFactor, 1.6);
-  const r = await recordEnemy({ type: 'boss' });
-  for (const col of [ENEMY_STYLE.boss.gold, ENEMY_STYLE.boss.club, ENEMY_STYLE.boss.aura]) assert.ok(r.print.includes('|' + col), `Farbe ${col} fehlt`);
-  const aura = (time) => {
-    const arcs = [];
-    drawBossFlat(new Proxy({}, { get: (_, k) => (...a) => { if (k === 'arc') arcs.push(a[2]); }, set: () => true }), 0, time);
-    return arcs[0];
-  };
-  assert.notEqual(aura(0), aura(0.4));
-  const seen = new Set();
-  for (const time of [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6]) seen.add((await recordEnemy({ type: 'boss' }, time)).print);
-  assert.ok(seen.size >= 4, 'Boss: Phasen unterscheiden sich');
-});
-
-test('Boss B-067: Frost-Overlay/Ring unveraendert, HP-Balken ueber der Krone, Kontrast zum Weg, skin == ENEMY_TYPES.color', async () => {
-  const { ENEMY_STYLE, MAPS, PATH_STYLE } = await import('../src/config.js');
-  const { brightness, outlineOf } = await import('../src/draw-utils.js');
-  const r = await recordEnemy({ type: 'boss', slowUntil: 99, hp: 10, maxHp: 10 });
-  const tail = r.calls.slice(r.calls.findIndex((c) => c.startsWith('arc:0.00,0.00,0.95')));
-  assert.equal(tail[0].split('|')[1], 'rgba(150,220,255,0.4)');
-  assert.equal(tail.filter((c) => c.startsWith('moveTo')).length, 3, '3 Frost-Kristalle');
-  assert.ok(tail.find((c) => c.startsWith('arc:200.00,150.00')).endsWith('#bdf0ff'), 'Frost-Ring');
-  assert.deepEqual(r.calls.filter((c) => c.startsWith('fillRect')).map((c) => c.split('|')[1]), ['#300', '#4cd964']);
-  // Balken-Unterkante liegt ueber dem hoechsten Punkt der Figur (Krone)
-  for (const time of [0, 0.3, 0.7]) {
-    const q = await recordEnemy({ type: 'boss' }, time);
-    const top = Math.min(...q.figure.filter((p) => p.depth > 0 && !p.ext).map((p) => p.y));
-    const barBottom = Math.max(...q.world.filter((p) => p.hp).map((p) => p.y));
-    assert.ok(barBottom < top, `Balken ${barBottom} ueberdeckt Krone ${top}`);
-  }
-  const c = ENEMY_STYLE.boss;
-  let mean = 0, sum = 0;
-  for (const [name, w] of Object.entries(c.main)) { mean += w * brightness(c[name]); sum += w; }
-  assert.ok(Math.abs(sum - 1) < 1e-9);
-  for (const id of ['meadow', 'ice']) {
-    const road = { ...PATH_STYLE.colors, ...(MAPS[id].theme.path || {}) }.mid;
-    assert.ok(Math.abs(mean - brightness(road)) >= 0.25, `Boss gegen Weg ${road}: ${mean.toFixed(2)}`);
-    assert.ok(Math.abs(brightness(outlineOf(c.skin)) - brightness(road)) >= 0.25);
-  }
-  assert.equal(c.skin, ENEMY_TYPES.boss.color);
-});
 
 test('Boss-Auftritt B-067: Wackeln unter 3 px, reduced motion schaltet es aus, Ring-Fortschritt', async () => {
   const { BOSS_ENTRY } = await import('../src/config.js');
@@ -1416,53 +1317,6 @@ test('B-112 Tester: Einschlag über syncFx genau einmal, nach resetFx kein Nachh
 
 import { observeEnemy, observeEffect, K_SUMMON } from '../src/fx-system.js';
 
-test('B-127: Nekromantin/Skelett zeichnen ausgewogen, bleiben im Kreis radius*1,3, Phasen verschieden, Licht pulsiert', async () => {
-  const paths = [buildPath([[0, 0], [5, 0]], TILE), buildPath([[5, 0], [0, 0]], TILE)];
-  for (const type of ['necro', 'skeleton']) {
-    for (const slow of [false, true]) for (const time of [0, 0.2, 0.45, 0.7]) for (const path of paths) {
-      const r = await recordEnemy({ type, slowUntil: slow ? 99 : 0 }, time, path);
-      assert.equal(r.depth, 0, `${type}: save/restore`);
-      for (const p of r.figure.filter((q) => q.depth > 0)) {
-        assert.ok(Math.hypot(p.x - r.e.x, p.y - r.e.y) + p.ext <= 1.3 * r.e.radius + 1e-9, `${type}: ${(Math.hypot(p.x - r.e.x, p.y - r.e.y) + p.ext) / r.e.radius}`);
-      }
-    }
-    const seen = new Set();
-    for (const time of [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6]) seen.add((await recordEnemy({ type }, time)).print);
-    assert.ok(seen.size >= 4, `${type}: Phasen unterscheiden sich`);
-  }
-  const { ENEMY_STYLE } = await import('../src/config.js');
-  const r = await recordEnemy({ type: 'necro' });
-  for (const col of [ENEMY_STYLE.necro.orb, ENEMY_STYLE.necro.halo, ENEMY_STYLE.necro.staff]) assert.ok(r.print.includes('|' + col), `Farbe ${col} fehlt`);
-  const { drawNecroFlat, NECRO_REF, BOSS_REF } = await import('../src/render-enemies-flat.js');
-  assert.equal(NECRO_REF, BOSS_REF, 'so groß wie der Oger-König');
-  const orb = (time) => {
-    const arcs = [];
-    drawNecroFlat(new Proxy({}, { get: (_, k) => (...a) => { if (k === 'arc') arcs.push(a[2]); }, set: () => true }), 0, time);
-    return arcs[0];
-  };
-  assert.notEqual(orb(0), orb(0.4));
-});
-
-test('B-127: Nekromantin/Skelett (B-085): Hauptfarben >= 0,25 Helligkeitsabstand zum Weg, skin == ENEMY_TYPES.color', async () => {
-  const { ENEMY_STYLE, MAPS, PATH_STYLE } = await import('../src/config.js');
-  const { brightness, outlineOf } = await import('../src/draw-utils.js');
-  const roads = new Set();
-  for (const id of ['meadow', 'ice']) roads.add({ ...PATH_STYLE.colors, ...(MAPS[id].theme.path || {}) }.mid);
-  for (const type of ['necro', 'skeleton']) {
-    const c = ENEMY_STYLE[type];
-    let mean = 0, sum = 0;
-    for (const [name, w] of Object.entries(c.main)) { mean += w * brightness(c[name]); sum += w; }
-    assert.ok(Math.abs(sum - 1) < 1e-9, `${type}: Anteile summieren auf 1`);
-    const printed = (await recordEnemy({ type })).print;
-    for (const name of Object.keys(c.main)) assert.ok(printed.includes('fill:|' + c[name]), `${type}: ${name} wird gezeichnet`);
-    for (const road of roads) {
-      assert.ok(Math.abs(mean - brightness(road)) >= 0.25, `${type}: Koerper ${mean.toFixed(2)} gegen Weg ${road}`);
-      assert.ok(Math.abs(brightness(outlineOf(c.skin)) - brightness(road)) >= 0.25, `${type}: Kontur gegen ${road}`);
-    }
-    assert.equal(c.skin, ENEMY_TYPES[type].color, `${type}: skin == ENEMY_TYPES.color`);
-  }
-});
-
 test('B-127: Boss-Auftritt auch für die Nekromantin, nicht für Skelette; Beschwörung erzeugt grüne Funken', () => {
   const fx = createFx();
   observeEnemy(fx, { type: 'skeleton', x: 10, y: 10, radius: 10 }, 1, false);
@@ -1479,3 +1333,56 @@ test('B-127: Boss-Auftritt auch für die Nekromantin, nicht für Skelette; Besch
   for (let i = 0; i < MAX_PARTICLES; i++) if (calm.pkind[i] === K_SUMMON) assert.equal(calm.pvy[i], 0, 'reduzierte Bewegung: steigt nicht');
 });
 import { FX_STYLE as FX_STYLE_B127 } from '../src/config.js';
+
+// ---------- Stil 1 (G8): Effekte in der Sternsprache des Entwurfs ----------
+test('Stil 1 Effekte: starPath und zigPath wie star()/zig() im Entwurf (Punkte, Radien, Enden, Ausschlag)', async () => {
+  const { starPath, zigPath } = await import('../src/draw-utils.js');
+  const pts = [];
+  const ctx = { moveTo: (x, y) => pts.push([x, y]), lineTo: (x, y) => pts.push([x, y]), closePath: () => pts.push('Z') };
+  starPath(ctx, 10, 20, 40, 22, 9, 0.2);
+  assert.equal(pts.length, 19);
+  assert.equal(pts[18], 'Z');
+  pts.slice(0, 18).forEach(([x, y], i) => assert.ok(Math.abs(Math.hypot(x - 10, y - 20) - (i % 2 ? 22 : 40)) < 1e-9, `Zacke ${i}`));
+  pts.length = 0;
+  zigPath(ctx, 0, 0, 100, 0, 7, 8);
+  assert.equal(pts.length, 8);
+  assert.deepEqual(pts[0], [0, 0]);
+  assert.ok(Math.abs(pts[7][0] - 100) < 1e-9 && Math.abs(pts[7][1]) < 1e-9);
+  assert.ok(pts.every(([, y]) => Math.abs(y) <= 8 + 1e-9) && pts.some(([, y]) => Math.abs(y) > 4));
+  const flip = [];
+  zigPath({ moveTo: (x, y) => flip.push(y), lineTo: (x, y) => flip.push(y) }, 0, 0, 100, 0, 7, 8, true, -1);
+  flip.forEach((y, i) => assert.ok(Math.abs(y + pts[i][1]) < 1e-9, 'sign kehrt die Zacken um'));
+});
+
+test('Stil 1 Effekte: Explosion mit Lichthof/Rauch unter und drei Sternen über den Figuren, Blitz als Zickzack in drei Lagen', async () => {
+  const { drawEffectUnder, drawEffectOver } = await import('../src/render-fx.js');
+  const { FX_STYLE } = await import('../src/config.js');
+  const EX = FX_STYLE.explosion;
+  const ex = { kind: 'explosion', x: 200, y: 200, r: 44, ttl: 0.2, max: 0.3 };
+  const under = logCtx();
+  drawEffectUnder(under.ctx, ex);
+  const over = logCtx();
+  drawEffectOver(over.ctx, ex);
+  const stars = EX.stars.map((s) => s[4]);
+  assert.ok(under.st.ops.some(([k, c]) => k === 'fill' && c === EX.fill), 'Lichthof unten');
+  assert.ok(!under.st.ops.some(([, c]) => stars.includes(c)), 'keine Sterne unter den Figuren');
+  for (const c of stars) assert.ok(over.st.ops.some(([k, x]) => k === 'fill' && x === c), `Stern ${c} oben`);
+  for (const l of [under, over]) { assert.equal(l.st.depth, 0); assert.equal(l.props.globalAlpha === undefined || l.props.globalAlpha === 1, true); }
+  // Größe: wächst schnell, schrumpft dann; abgelaufen zeichnet nichts
+  const radius = (ttl) => { let r = 0; const c = { moveTo: (x, y) => { r = Math.max(r, Math.hypot(x - 200, y - 200)); }, lineTo: (x, y) => { r = Math.max(r, Math.hypot(x - 200, y - 200)); } }; drawEffectOver(new Proxy({}, { get: (_, k) => c[k] || (() => {}), set: () => true }), { ...ex, ttl }); return r; };
+  assert.ok(radius(0.28) < radius(0.2) && radius(0.02) < radius(0.2) && radius(0) === 0);
+  assert.ok(Math.abs(radius(0.3 * (1 - EX.grow)) - (EX.stars[0][0] * TILE) / 57) < 0.5, 'Außenstern 1,4 Kacheln breit');
+  // Blitz: drei Lagen (Schein, Kontur, Kern), Zickzack mit mehr Punkten als Zielen, flackert über die Restzeit
+  const bolt = (ttl) => {
+    const props = {};
+    const log = [];
+    const ctx = new Proxy({}, { get: (_, k) => (k in props ? props[k] : (...a) => log.push(k === 'stroke' ? 'stroke:' + props.strokeStyle : k + ':' + a.map((v) => (typeof v === 'number' ? v.toFixed(2) : v)).join(','))), set: (_, k, v) => { props[k] = v; return true; } });
+    drawEffectOver(ctx, { kind: 'bolt', points: [{ x: 0, y: 0 }, { x: 120, y: 0 }, { x: 120, y: 90 }], ttl, max: 0.25 });
+    return log;
+  };
+  const b = bolt(0.2);
+  assert.deepEqual(b.filter((c) => c.startsWith('stroke:')), ['stroke:' + FX_STYLE.bolt.outer, 'stroke:' + FX_STYLE.bolt.mid, 'stroke:' + FX_STYLE.bolt.core]);
+  assert.ok(b.filter((c) => c.startsWith('lineTo')).length > 4, 'Zickzack');
+  assert.notDeepEqual(bolt(0.2), bolt(0.15), 'flackert');
+  assert.deepEqual(bolt(0.2), b, 'deterministisch');
+});
