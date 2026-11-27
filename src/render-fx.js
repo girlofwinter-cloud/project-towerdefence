@@ -10,6 +10,7 @@ import { outlineOf, starPath, zigPath } from './draw-utils.js';
 import { enemyFigure } from './figures.js';
 import { drawElements } from './svg-figure.js';
 import { drawNecroPhase, drawSummonSpot, drawSummonSkull } from './render-necro.js';
+import { drawEliteGone } from './render-elite.js';
 
 // Ein gemeinsamer Partikelzustand fuer das Spiel (wird bei Neustart/Zeitsprung von syncFx geleert).
 const fx = createFx();
@@ -390,6 +391,10 @@ export function drawEffectOver(ctx, e, reducedMotion = false) {
     drawExplosionStars(ctx, e, a);
   } else if (e.kind === 'shellBreak') {
     drawShellBreak(ctx, e, reducedMotion);
+  } else if (e.kind === 'eliteBreak') {
+    drawShellBreak(ctx, e, reducedMotion, FX_STYLE.eliteBreak); // B-179: Elite-Schild bricht
+  } else if (e.kind === 'eliteGone') {
+    drawEliteGone(ctx, e, reducedMotion); // B-179: Abzeichen fliegt weg
   } else if (e.kind === 'phase2') {
     drawNecroPhase(ctx, e, reducedMotion); // B-180: Druckwelle und „Zweite Phase!“
   } else if (e.kind === 'summon') {
@@ -458,8 +463,7 @@ function drawDodge(ctx, e, reducedMotion) {
 
 // B-169: letzte Schicht der Schale bricht. Dreieck-Splitter fliegen nach oben weg und fallen (deterministisch je Index),
 // dazu ein heller Ring. reducedMotion: Splitter bleiben am Ort und verblassen in reducedLife, Ring wächst nicht.
-function drawShellBreak(ctx, e, reducedMotion) {
-  const c = FX_STYLE.shellBreak;
+function drawShellBreak(ctx, e, reducedMotion, c = FX_STYLE.shellBreak) {
   const age = ageOf(e);
   const ox = e.x, oy = e.y + (FIGURE_STYLE.enemyFoot + c.originDy) * U;
   const life = reducedMotion ? c.reducedLife : c.life;

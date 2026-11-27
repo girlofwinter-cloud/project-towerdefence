@@ -144,6 +144,16 @@
   --enemy-beetle-soft: #e9a98c;
   --enemy-beetle-soft-line: #b8705a;
   --steam: #f4f1ea;
+  --necro-cloak: #2a1c40;
+  --necro-robe: #5b3d8a;
+  --necro-robe-dark: #3d2a5c;
+  --necro-face: #1a1226;
+  --necro-skin: #a8c8a0;
+  --necro-glow: #7dff9a;
+  --necro-glow-2: #ff5fd0;
+  --boss-shield: #bff6ff;
+  --boss-bar: #d0384a;
+  --elite-ring: rgba(242,193,78,0.9);
   --font-display: 'Lilita One', 'Trebuchet MS', sans-serif;
   --font-body: 'Trebuchet MS', 'Segoe UI', system-ui, sans-serif;
   --space-hairline: 2px;

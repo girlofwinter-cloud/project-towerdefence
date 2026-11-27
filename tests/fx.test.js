@@ -1536,7 +1536,8 @@ test('B-180 Nekromantin: Phase-2-Variante magenta statt grün, Box höher als de
   assert.ok(p2.print.includes(N.glow2) && !p2.print.includes(N.glow), 'Phase 2 magenta, kein Grün');
   assert.ok(!p2.print.includes('rgba(125,255,154,'), 'Phase 2: auch kein halbdurchsichtiges Grün');
   const f = enemyFigure('necro', false), boss = enemyFigure('boss', false);
-  assert.ok(f.h * S.necroScale > boss.h * S.bossScale, 'Nekromantin höher als der Oger-König');
+  assert.ok(f.h * S.necroScale > boss.h * S.bossScale, 'Nekromantin höher als der Oger-König (Box)');
+  assert.ok((await figureSize('necro')).h > (await figureSize('boss')).h, 'Nekromantin höher als der Oger-König (Konturen)');
   assert.ok(f.cloak.length > 0 && f.front.length > 0 && f.back.length > 0, 'Umhang getrennt (weht live)');
   assert.notEqual(enemyFigure('necro', false, NECRO_VARIANT_P2), f, 'Variante eigenes Bild');
   // verlangsamt: Reif am Saum statt Eisblock (kein Lichthof, kein Kristall wie bei anderen Typen)
@@ -1846,4 +1847,55 @@ test('Stufe 3 Effekte: Reif nur an Bodengegnern (nicht Fledermaus, Glutling, ein
   assert.equal(marks(await colorCalls(s2, false, 'drawMasterOver')), 1, 'nur noch der Zielstrahl');
   s2.towers[1].level = 2;
   assert.equal(marks(await colorCalls(s2, false, 'drawMasterOver')), 0, 'Zielstrahl nur auf Stufe 3');
+});
+
+test('B-179 Elite: Schild bricht mit Splittern, Abzeichen fliegt beim Tod weg (Ereignisse genau einmal, Zeichnung ausgewogen)', async () => {
+  const { spawnEnemy, useAbility } = await import('../src/game.js');
+  const { drawEffectOver } = await import('../src/render-fx.js');
+  const { FX_STYLE, ENEMY_STYLE } = await import('../src/config.js');
+  const s = createGame();
+  s.status = 'playing';
+  const e = spawnEnemy(s, 'grunt', 10, null, 'shield');
+  const plain = spawnEnemy(s, 'grunt', 10);
+  e.dist = plain.dist = 3 * TILE;
+  update(s, 1 / 60);
+  assert.ok(e.ward > 0);
+  useAbility(s, 'meteor', e.x, e.y);
+  for (let i = 0; i < 180; i++) update(s, 1 / 60);
+  assert.ok(e.hp <= 0 && plain.hp <= 0, 'Meteor trifft beide');
+  // Effekte laufen nach ttl ab; daher jeden neuen Effekt beim Entstehen zählen
+  const s2 = createGame();
+  s2.status = 'playing';
+  const seen = { eliteBreak: 0, eliteGone: 0 };
+  const known = new Set();
+  const a = spawnEnemy(s2, 'grunt', 10, null, 'shield');
+  const b = spawnEnemy(s2, 'grunt', 10);
+  a.dist = b.dist = 3 * TILE;
+  update(s2, 1 / 60);
+  useAbility(s2, 'meteor', a.x, a.y);
+  for (let i = 0; i < 180; i++) {
+    update(s2, 1 / 60);
+    for (const fx of s2.effects) if (!known.has(fx)) { known.add(fx); if (fx.kind in seen) seen[fx.kind]++; }
+  }
+  assert.deepEqual(seen, { eliteBreak: 1, eliteGone: 1 }, 'je ein Ereignis, nur für den Elite-Gegner');
+  // Zeichnung: Abzeichen (Goldstern) steigt und blendet aus, reduced steigt nicht; Splitter in Schildfarben
+  const draw = (fx, reduced = false) => {
+    const m = mockCtx();
+    const ys = [];
+    const ctx = new Proxy(m.ctx, { get: (t, k) => (k === 'translate' ? (x, y) => ys.push(y) : t[k]), set: (t, k, v) => { t[k] = v; return true; } });
+    drawEffectOver(ctx, fx, reduced);
+    assert.equal(m.depth, 0);
+    return { ys, props: m.props, counts: m.counts };
+  };
+  const L = FX_STYLE.eliteGone.life;
+  const gone = (ttl, reduced) => draw({ kind: 'eliteGone', type: 'grunt', elite: 'shield', x: 100, y: 100, ttl, max: L }, reduced).ys[0];
+  assert.ok(gone(0.1 * L) < gone(0.9 * L), 'Abzeichen steigt');
+  assert.equal(gone(0.1 * L, true), gone(0.9 * L, true), 'reduced: steigt nicht');
+  assert.equal(draw({ kind: 'eliteGone', type: 'unbekannt', x: 1, y: 1, ttl: 0.1, max: L }).counts.fill > 0, true, 'unbekannter Typ crasht nicht');
+  const br = mockCtx();
+  const fills = [];
+  const bctx = new Proxy(br.ctx, { get: (t, k) => (k === 'fill' ? () => fills.push(br.props.fillStyle) : t[k]), set: (t, k, v) => { t[k] = v; return true; } });
+  drawEffectOver(bctx, { kind: 'eliteBreak', x: 100, y: 100, ttl: 0.3, max: FX_STYLE.eliteBreak.life });
+  assert.equal(br.depth, 0);
+  assert.ok(fills.length === FX_STYLE.eliteBreak.shards && fills.includes(ENEMY_STYLE.elite.shield), 'Splitter in Schildfarbe');
 });
