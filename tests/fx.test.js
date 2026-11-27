@@ -223,7 +223,7 @@ test('Gegner-Zeichnung: Hintergrund-Cache bleibt bei Gegnern aller Typen ungesto
 });
 
 // ---------- Stil 1 (G7): Gegner nach dem Entwurf ----------
-const ALL_ENEMIES = ['grunt', 'runner', 'tank', 'boss', 'healer', 'shielded', 'mage', 'skeleton', 'necro', 'beetle'];
+const ALL_ENEMIES = ['grunt', 'runner', 'tank', 'boss', 'healer', 'shielded', 'mage', 'skeleton', 'necro', 'beetle', 'bat', 'wisp', 'ember'];
 
 // Sichtbare Größe einer Figur in Kacheln: umrandete Formen (Kontur #2b1a10) mal Maßstab, ohne Schatten
 async function figureSize(type, frozen = false) {
@@ -251,7 +251,7 @@ test('Stil 1 Gegner: Größe wie im Plan, Boss = Troll x 1,3, Nekromantin größ
   assert.ok(Math.abs(boss.w / tank.w - S.bossScale) < 0.05, 'Boss 1,3 x so breit wie der Troll');
   assert.ok(boss.h > tank.h * S.bossScale, 'Krone ragt über den Troll hinaus');
   assert.ok((await figureSize('necro')).h > grunt.h * 1.4, 'Nekromantin deutlich größer als der Goblin');
-  for (const type of ['healer', 'shielded', 'mage', 'skeleton', 'beetle']) {
+  for (const type of ['healer', 'shielded', 'mage', 'skeleton']) {
     const z = await figureSize(type);
     assert.ok(z.w <= 0.85 && z.h <= 1, `${type}: Goblin-Größe (${z.w.toFixed(2)} x ${z.h.toFixed(2)})`);
   }
@@ -278,7 +278,8 @@ test('Stil 1 Gegner: alle Typen zeichnen ausgewogen in alle Richtungen und gefro
     const seen = new Set();
     for (const time of [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6]) seen.add((await recordEnemy({ type }, time)).print);
     assert.ok(seen.size >= 4, `${type}: Phasen unterscheiden sich`);
-    // gefroren steht die Figur still
+    // gefroren steht die Figur still (Glutling friert nie ein, siehe eigener Test)
+    if (type === 'ember') continue;
     const still = new Set();
     for (const time of [0, 0.2, 0.4]) still.add((await recordEnemy({ type, slowUntil: 99 }, time)).print);
     assert.equal(still.size, 1, `${type}: eingefroren ohne Wippen`);
@@ -296,7 +297,7 @@ test('Stil 1 Gegner: dunkle Kontur hebt sich >= 0,25 von jeder Wegfarbe ab, Haup
     const road = { ...PATH_STYLE.colors, ...(MAPS[id].theme?.path || {}) }.mid;
     assert.ok(Math.abs(brightness(S.outline) - brightness(road)) >= 0.25, `${id}: Kontur gegen Weg ${road}`);
   }
-  const main = { grunt: '#6cc03a', runner: '#f4cf3a', tank: '#b5663e', boss: '#f2c14e', healer: '#f4f1e6', shielded: '#8a5326', mage: '#7a4bb0', skeleton: '#f2e9d8', necro: '#5b3d8a', beetle: '#2f7a3d' };
+  const main = { grunt: '#6cc03a', runner: '#f4cf3a', tank: '#b5663e', boss: '#f2c14e', healer: '#f4f1e6', shielded: '#8a5326', mage: '#7a4bb0', skeleton: '#f2e9d8', necro: '#5b3d8a', beetle: '#b0703a', bat: '#4a3560', wisp: '#c9fff0', ember: '#ff7a1f' };
   for (const type of ALL_ENEMIES) {
     const r = await recordEnemy({ type });
     assert.ok(r.print.includes('fill:|' + main[type]), `${type}: Hauptfarbe ${main[type]}`);
@@ -311,6 +312,7 @@ test('Stil 1 Gegner: eingefroren mit Eis-Kristall (Z.111), Goblin als eigener En
   for (const type of ALL_ENEMIES) {
     const n = await recordEnemy({ type });
     const f = await recordEnemy({ type, slowUntil: 99 });
+    if (type === 'ember') { assert.ok(!f.print.includes('rgba(223,247,255,'), 'Glutling: nie Eis'); continue; }
     assert.ok(f.print.includes('rgba(223,247,255,'), `${type}: Eis-Kristall`);
     assert.ok(!n.print.includes('rgba(223,247,255,'), `${type}: ohne Frost kein Eis`);
   }
@@ -368,9 +370,10 @@ test('Stil 1 Sprites: je Typ x Stufe x Pixeldichte genau einmal gebaut, danach n
     const before = spriteStats.builds;
     const first = frame(1);
     const built = spriteStats.builds - before;
-    // Türme: 5 Typen x 3 Stufen, Kanone und Scharfschütze mit Teil vor dem drehenden Rohr (+2 x 3); Gegner: 10 Typen x 2 (B-169: + Panzerkäfer)
-    assert.equal(built, 15 + 6 + 20, 'jede Figur genau ein Sprite');
-    assert.ok(first.drawImage >= 15 + 6 + 20);
+    // Türme: 5 Typen x 3 Stufen, Kanone und Scharfschütze mit Teil vor dem drehenden Rohr (+2 x 3);
+    // Gegner: 13 Typen x 2, Glutling ohne Eis-Fassung nur 1 (B-167 bis B-170)
+    assert.equal(built, 15 + 6 + 25, 'jede Figur genau ein Sprite');
+    assert.ok(first.drawImage >= 15 + 6 + 25);
     frame(1);
     frame(1);
     assert.equal(spriteStats.builds - before, built, 'zweiter Frame baut nichts neu');
@@ -1387,15 +1390,20 @@ test('Stil 1 Effekte: Explosion mit Lichthof/Rauch unter und drei Sternen über 
   assert.deepEqual(bolt(0.2), b, 'deterministisch');
 });
 
-test('B-168: dodge-Effekt zeichnet einen hellen Ring, ausgeglichen und ohne Fehler bei kaputten Werten', async () => {
+test('B-168: dodge-Effekt zeigt Text "Verfehlt", Blitz und Nachbild; reduziert ohne Nachbild; ausgeglichen bei kaputten Werten', async () => {
   const { drawEffectOver } = await import('../src/render-fx.js');
-  const m = mockCtx();
-  drawEffectOver(m.ctx, { kind: 'dodge', x: 50, y: 50, ttl: 0.2, max: 0.4 });
-  assert.equal(m.counts.arc, 1);
-  assert.equal(m.counts.stroke, 1);
-  assert.equal(m.counts.save, m.counts.restore);
-  assert.equal(m.props.strokeStyle, FX_STYLE_B127.dodge.color);
-  for (const ttl of [NaN, -1, 5]) drawEffectOver(mockCtx().ctx, { kind: 'dodge', x: 1, y: 1, ttl, max: 0.4 });
+  const D = FX_STYLE_B127.dodge;
+  const run = (age, reduced) => { const texts = []; const m = mockCtx(); const ctx = new Proxy(m.ctx, { get: (t, k) => (k === 'fillText' ? (x) => texts.push(x) : t[k]), set: (t, k, v) => { t[k] = v; return true; } });
+    drawEffectOver(ctx, { kind: 'dodge', x: 50, y: 50, ttl: D.life - age, max: D.life }, reduced); assert.equal(m.depth, 0); return { m, texts }; };
+  const early = run(0.05, false);
+  assert.deepEqual(early.texts, ['Verfehlt']);
+  assert.ok(early.m.counts.arc >= 1, 'Blitz');
+  const fills = early.m.counts.fill;
+  const red = run(0.05, true);
+  assert.deepEqual(red.texts, ['Verfehlt']);
+  assert.ok(!red.m.counts.arc && fills > (red.m.counts.fill || 0), 'reduziert: kein Blitz, kein Nachbild');
+  assert.ok(!run(0.3, false).m.counts.arc, 'Blitz nur kurz');
+  for (const ttl of [NaN, -1, 5]) for (const r of [false, true]) drawEffectOver(mockCtx().ctx, { kind: 'dodge', x: 1, y: 1, ttl, max: 0.4 }, r);
 });
 
 // ---------- B-169: Panzerkäfer (Platzhalter-Darstellung) ----------
@@ -1410,8 +1418,107 @@ test('B-169 Schicht-Anzeige: ein Segment je Schicht, ohne Schale nichts; shellBr
   assert.equal(rects(2), 2);
   assert.equal(rects(0), 0);
   assert.equal(rects(undefined), 0);
-  const m = mockCtx();
-  drawEffectOver(m.ctx, { kind: 'shellBreak', x: 50, y: 50, ttl: 0.2, max: 0.4 });
-  assert.equal(m.depth, 0);
-  assert.equal(m.counts.rect, F.shellBreak.count);
+  // B-169 final: Splitter-Dreiecke und Ring, ausgewogen auch reduziert und bei kaputten Werten
+  const sb = (age, reduced) => { const m = mockCtx(); drawEffectOver(m.ctx, { kind: 'shellBreak', x: 50, y: 50, ttl: F.shellBreak.life - age, max: F.shellBreak.life }, reduced); assert.equal(m.depth, 0); return m.counts; };
+  assert.equal(sb(0.05, false).closePath, F.shellBreak.shards);
+  assert.equal(sb(0.05, false).arc, 1, 'Ring');
+  assert.ok(!sb(0.4, false).arc, 'Ring nur kurz');
+  assert.equal(sb(0.05, true).closePath, F.shellBreak.shards);
+  for (const ttl of [NaN, -1, 5]) for (const r of [false, true]) drawEffectOver(mockCtx().ctx, { kind: 'shellBreak', x: 1, y: 1, ttl, max: 0.4 }, r);
+});
+
+// ---------- B-167 bis B-170: finale Figuren der neuen Gegner ----------
+test('B-167 Fledermaus: Spannweite 0,8-0,95 Kachel, fliegt >= 15 Entwurfs-px über dem Fußpunkt, zweites Flügelbild', async () => {
+  const { enemyFigure, ENEMY_KINDS } = await import('../src/figures.js');
+  const { boxOf } = await import('../src/svg-figure.js');
+  const { FIGURE_STYLE: S } = await import('../src/config.js');
+  for (const v of [0, 1]) {
+    const f = enemyFigure('bat', false, v);
+    const b = boxOf(f.els.filter((e) => e.stroke === S.outline));
+    const w = (b[2] - b[0]) / S.unit;
+    assert.ok(w >= 0.8 && w <= 0.95, `Bild ${v}: Breite ${w.toFixed(2)}`);
+    assert.ok(f.h - b[3] >= 15, `Bild ${v}: Luft ${f.h - b[3]}`);
+  }
+  assert.notEqual(enemyFigure('bat', false, 1), enemyFigure('bat', false, 0));
+  assert.ok(!ENEMY_KINDS.some((k) => k.includes('_') || /^\d/.test(k)), 'ENEMY_KINDS nur echte Typen');
+});
+
+test('B-167 Fledermaus: Schatten am Fußpunkt vor der Figur, Flügelschlag; reduziert und gefroren fest', async () => {
+  const { ENEMY_STYLE: ES } = await import('../src/config.js');
+  const { enemyFootY } = await import('../src/render-enemies.js');
+  const r = await recordEnemy({ type: 'bat' }, 0.3);
+  const i = r.calls.findIndex((c) => c.startsWith('ellipse:') && c.includes('|' + ES.bat.shadow + '|'));
+  assert.ok(i >= 0 && i < r.calls.findIndex((c) => c.startsWith('save:')), 'Schatten vor der Figur');
+  assert.ok(Math.abs(parseFloat(r.calls[i].split(':')[1].split(',')[1]) - enemyFootY(r.e)) < 0.01, 'Schatten am Fußpunkt');
+  const frames = new Set();
+  for (const t of [0, 0.07, 0.13, 0.2]) frames.add((await recordEnemy({ type: 'bat' }, t)).print);
+  assert.ok(frames.size >= 3, 'bewegt sich');
+  const red = new Set();
+  for (const t of [0, 0.2, 0.33]) red.add((await recordEnemy({ type: 'bat' }, t, undefined, true)).print);
+  assert.equal(red.size, 1, 'reduziert: kein Bildwechsel, kein Wippen');
+});
+
+test('B-168 Irrlicht: Lichthof flackert im Bereich, reduziert fest; schwebt statt zu gehen', async () => {
+  const { drawWispGlow } = await import('../src/render-enemies.js');
+  const { ENEMY_STYLE: ES } = await import('../src/config.js');
+  const alphas = new Set();
+  for (const t of [0, 0.12, 0.25, 0.37, 0.5, 0.61, 2, 7.3]) {
+    const m = mockCtx();
+    drawWispGlow(m.ctx, { id: 2, x: 10, y: 10 }, t);
+    const a = parseFloat(m.props.fillStyle.split(',')[3]);
+    assert.ok(a >= ES.wisp.glowAlpha * ES.wisp.flicker[0] - 1e-3 && a <= ES.wisp.glowAlpha * ES.wisp.flicker[1] + 1e-3, `Alpha ${a}`);
+    alphas.add(a);
+  }
+  assert.ok(alphas.size >= 3, 'flackert');
+  const fixed = new Set();
+  for (const t of [0, 0.3, NaN]) { const m = mockCtx(); drawWispGlow(m.ctx, { id: 2, x: 10, y: 10 }, t, true); fixed.add(m.props.fillStyle); }
+  assert.equal(fixed.size, 1, 'reduziert fest');
+  for (const t of [NaN, Infinity, -1]) assert.equal((await recordEnemy({ type: 'wisp' }, t)).depth, 0);
+});
+
+test('B-169 Panzerkäfer: Schalen-Stufen nach Schichten, Stufe 0 deutlich schmaler, Figur wechselt mit e.shell', async () => {
+  const { enemyFigure, shellStage } = await import('../src/figures.js');
+  const { boxOf } = await import('../src/svg-figure.js');
+  assert.deepEqual([5, 4, 3, 2, 1, 0, -1, NaN, undefined].map(shellStage), [5, 5, 3, 3, 1, 0, 0, 5, 5]);
+  const dome = (stage) => { const f = enemyFigure('beetle', false, stage); const b = boxOf(f.els.filter((e) => e.fill === '#b0703a' || e.fill === '#e9a98c')); return b[2] - b[0]; };
+  assert.ok(dome(5) - dome(0) >= 10, `Kuppel ${dome(5)} -> ${dome(0)}`);
+  const prints = new Set();
+  for (const shell of [5, 3, 1, 0]) prints.add((await recordEnemy({ type: 'beetle', shell })).print);
+  assert.equal(prints.size, 4, 'vier Stufen sichtbar verschieden');
+  assert.equal((await recordEnemy({ type: 'beetle', shell: 4 })).print, (await recordEnemy({ type: 'beetle', shell: 5 })).print);
+  for (const shell of [NaN, -3, 99, 'x']) assert.equal((await recordEnemy({ type: 'beetle', shell, slowUntil: 99 })).depth, 0);
+});
+
+test('B-170 Glutling: nie Eis, Dampf beim Kälteschock, Funken mit Obergrenze, reduziert ohne Funken', async () => {
+  const { ENEMY_STYLE: ES, ABILITIES } = await import('../src/config.js');
+  const { setSpriteFactory } = await import('../src/sprites.js');
+  const { drawEnemy } = await import('../src/render-enemies.js');
+  const keys = [];
+  setSpriteFactory((w, h) => ({ width: w, height: h, getContext: () => mockCtx().ctx }));
+  try {
+    const sp = await import('../src/sprites.js');
+    const m = mockCtx();
+    const ctx = new Proxy(m.ctx, { get: (t, k) => (k === 'getTransform' ? () => ({ a: 3, b: 0 }) : t[k]), set: (t, k, v) => { t[k] = v; return true; } });
+    const before = sp.spriteStats.builds;
+    drawEnemy(ctx, { id: 1, type: 'ember', x: 5, y: 5, dist: 0, hp: 5, maxHp: 5, slowUntil: 0, speed: 2 }, 1, null);
+    drawEnemy(ctx, { id: 1, type: 'ember', x: 5, y: 5, dist: 0, hp: 5, maxHp: 5, slowUntil: 99, speed: 2 }, 1, null);
+    keys.push(sp.spriteStats.builds - before);
+  } finally { setSpriteFactory(); }
+  assert.deepEqual(keys, [1], 'gefroren und normal: dasselbe Sprite (kein Eis)');
+  const steam = (r) => r.calls.filter((c) => c.startsWith('arc:') && c.includes('|rgba(' + ES.ember.steamRgb)).length;
+  const t = 10, start = t - 0.1;
+  const hit = await recordEnemy({ type: 'ember', slowUntil: start + ABILITIES.freeze.duration }, t);
+  assert.equal(steam(hit), ES.ember.steamPuffs.length, 'Dampfwölkchen');
+  assert.ok(!hit.print.includes('rgba(223,247,255,'), 'kein Eis');
+  assert.equal(steam(await recordEnemy({ type: 'ember', slowUntil: start + ABILITIES.freeze.duration }, t, undefined, true)), ES.ember.steamPuffs.length);
+  assert.equal(steam(await recordEnemy({ type: 'ember', slowUntil: start + ABILITIES.freeze.duration }, t + 1)), 0, 'Dampf nur kurz');
+  const sparks = (r) => r.calls.filter((c) => c.startsWith('arc:') && c.includes('|' + ES.ember.sparkColor + '|')).length;
+  let seen = 0;
+  for (const time of [0, 0.15, 0.4, 0.77, 1.3]) {
+    const n = sparks(await recordEnemy({ type: 'ember' }, time)) - sparks(await recordEnemy({ type: 'ember' }, time, undefined, true));
+    assert.ok(n >= 0 && n <= ES.ember.sparkMax, `Funken ${n}`);
+    seen = Math.max(seen, n);
+  }
+  assert.ok(seen > 0, 'Funken sichtbar');
+  for (const time of [NaN, Infinity, -2]) for (const slowUntil of [NaN, undefined, 99]) assert.equal((await recordEnemy({ type: 'ember', slowUntil }, time)).depth, 0);
 });

@@ -2,8 +2,8 @@
 // Stil 1 (G7): Figuren aus dem Entwurf (Goblin Z.110, Flitzer Z.112, Troll Z.113, eingefroren Z.111), übrige
 // Typen auf Goblin-Basis (src/figures.js). Je Typ x Frost x Pixeldichte ein Sprite, pro Frame nur drawImage
 // mit Wippen, Schwanken und Spiegelung. Fußpunkt FIGURE_STYLE.enemyFoot unter der Wegmitte. Lebensbalken nur bei Schaden.
-import { ENEMY_TYPES, ENEMY_STYLE, FIGURE_STYLE as S, TILE } from './config.js';
-import { enemyFigure } from './figures.js';
+import { ENEMY_TYPES, ENEMY_STYLE, FIGURE_STYLE as S, TILE, ABILITIES } from './config.js';
+import { enemyFigure, shellStage } from './figures.js';
 import { drawElements } from './svg-figure.js';
 import { sprite, drawSprite, dprOf } from './sprites.js';
 import { walkPhase, animSpeedFactor, facingFor, facingFlip, facingTilt } from './enemy-fx.js';
@@ -83,12 +83,12 @@ function capsule(ctx, x, y, w, h) {
   ctx.arc(x + w - r, y + r, r, -Math.PI / 2, Math.PI / 2);
   ctx.closePath();
 }
-function drawHpBar(ctx, e, f, k) {
+function drawHpBar(ctx, e, f, k, rise = 0) {
   if (!(e.hp < e.maxHp)) return; // nur bei Schaden
   const frac = Math.max(0, Math.min(1, e.hp / e.maxHp));
   if (!Number.isFinite(frac)) return;
   const w = Math.max(HP.minW, HP.share * f.w) * k;
-  const top = enemyFootY(e) + (f.box[1] - f.h) * k; // oberster Punkt der Figur
+  const top = enemyFootY(e) + (f.box[1] - f.h) * k - rise; // oberster Punkt der Figur (rise: Wippen, Lodern)
   const y = top - (HP.gap + HP.h) * U;
   const x = e.x - w / 2;
   ctx.fillStyle = HP.back;
@@ -102,35 +102,126 @@ function drawHpBar(ctx, e, f, k) {
   ctx.fill();
 }
 
-// path ist optional (state.path); ohne Weg blickt die Figur nach rechts.
-export function drawEnemy(ctx, e, time, path) {
-  const slowed = time < e.slowUntil;
-  const known = Object.hasOwn(ENEMY_TYPES, e.type) && enemyFigure(e.type, slowed);
+const frac = (v) => v - Math.floor(v);
+// fester Zufallswert in [0, 1) aus zwei Zahlen (Flackern), ohne Math.random
+const hash01 = (a, b) => frac(Math.sin(a * 12.9898 + b * 78.233) * 43758.5453);
+
+// Zusatzbild: Fledermaus Flügel oben/unten (steht bei Frost und reduzierter Bewegung), Panzerkäfer nach Schichten
+function variantOf(e, type, time, still) {
+  if (type === 'beetle') return shellStage(e.shell);
+  if (type === 'bat' && !still && Number.isFinite(time)) return Math.floor(Math.abs(time) * ENEMY_STYLE.bat.flapHz) % 2;
+  return 0;
+}
+
+// path ist optional (state.path); ohne Weg blickt die Figur nach rechts. reduced: prefers-reduced-motion
+// (Fledermaus/Irrlicht wippen nicht, Glutling lodert nicht und sprüht keine Funken, Flügelschlag steht).
+export function drawEnemy(ctx, e, time, path, reduced = false) {
+  const known = Object.hasOwn(ENEMY_TYPES, e.type) && enemyFigure(e.type, false);
   const type = known ? e.type : 'grunt'; // unbekannte Typen: Goblin
-  const f = enemyFigure(type, slowed);
+  const slowed = type !== 'ember' && time < e.slowUntil; // Glutling: nie Eis-Fassung
+  const still = slowed || reduced;
+  const variant = variantOf(e, type, time, still);
+  const f = enemyFigure(type, slowed, variant);
   const k = U * (f.big ? S[f.big] : 1);
   const angle = facingFor(path, e.dist);
+  const flip = facingFlip(angle);
   const phase = walkPhase(time, e.id, animSpeedFactor(e, time));
   const s = Math.sin(phase);
   const dpr = dprOf(ctx);
+  const c = ENEMY_STYLE[type];
+  const floats = type === 'bat' || type === 'wisp' || type === 'ember'; // eigenes Wippen/Lodern statt Gehen
+  const wave = (hz) => (still || !Number.isFinite(time) ? 0 : Math.sin(TWO_PI * hz * time + (e.id || 0)));
+  const lift = type === 'bat' || type === 'wisp' ? c.hover * wave(c.hoverHz) : 0;
+  const stretch = type === 'ember' && !still ? 1 + c.flameStretch * (0.5 + 0.5 * wave(c.flameHz)) : 1;
+  const sway = slowed || floats ? 0 : s * S.sway;
+  const bob = slowed || floats ? 0 : Math.abs(s) * S.bob;
+
+  if (type === 'bat') drawBatShadow(ctx, e, flip, lift);
+  if (type === 'wisp' && !slowed) drawWispGlow(ctx, e, time, reduced, lift);
 
   ctx.save();
   ctx.translate(e.x, enemyFootY(e));
-  ctx.scale(facingFlip(angle), 1);
-  ctx.rotate(facingTilt(angle) * S.tilt + (slowed ? 0 : s * S.sway));
-  ctx.scale(k, k);
-  ctx.translate(-f.w / 2, -f.h - (slowed ? 0 : Math.abs(s) * S.bob));
-  const sp = sprite(`enemy:${type}:${slowed ? 1 : 0}:${dpr}`, f.box, k * dpr, (c) => paintFigure(c, f));
+  ctx.scale(flip, 1);
+  ctx.rotate(facingTilt(angle) * S.tilt + sway);
+  ctx.scale(k, k * stretch);
+  ctx.translate(-f.w / 2, -f.h - bob - lift);
+  const sp = sprite(`enemy:${type}:${variant}:${slowed ? 1 : 0}:${dpr}`, f.box, k * dpr, (cx) => paintFigure(cx, f));
   if (sp) drawSprite(ctx, sp);
   else paintFigure(ctx, f);
   ctx.restore();
 
+  if (type === 'ember') {
+    if (!reduced) drawEmberSparks(ctx, e, time);
+    drawEmberSteam(ctx, e, time, reduced);
+  }
   drawWardBubble(ctx, e, time);
-  drawHpBar(ctx, e, f, k);
-  drawShellPips(ctx, e, f, k);
+  const rise = Math.max(0, lift) * k + (stretch - 1) * (f.h - f.box[1]) * k;
+  drawHpBar(ctx, e, f, k, rise);
 }
 
-// B-169 (Platzhalter): je verbliebene Schicht der Schale ein kleines Segment über der Figur (über dem Lebensbalken)
+// B-167: ruhender Bodenschatten der Fledermaus, versetzt in Blickrichtung; kleiner, wenn der Körper oben ist
+export function drawBatShadow(ctx, e, flip = 1, lift = 0) {
+  const c = ENEMY_STYLE.bat;
+  const h01 = Number.isFinite(lift) && c.hover > 0 ? Math.max(0, Math.min(1, (lift / c.hover + 1) / 2)) : 0.5;
+  const rx = c.shadowRx * U * (1 - c.shadowShrink * h01);
+  ctx.fillStyle = c.shadow;
+  ctx.beginPath();
+  ctx.ellipse(e.x + (flip < 0 ? -1 : 1) * c.shadowDx * U, enemyFootY(e), rx, c.shadowRy * U, 0, 0, TWO_PI);
+  ctx.fill();
+}
+
+// B-168: flackernder Lichthof hinter dem Irrlicht (Alpha springt je Bild im Bereich flicker; reduziert: fest)
+export function drawWispGlow(ctx, e, time, reduced = false, lift = 0) {
+  const c = ENEMY_STYLE.wisp;
+  const step = Number.isFinite(time) ? Math.floor(time * c.flickerHz) : 0;
+  const f = reduced ? c.reducedFlicker : c.flicker[0] + (c.flicker[1] - c.flicker[0]) * hash01(e.id || 0, step);
+  const y = enemyFootY(e) - (c.glowY + (Number.isFinite(lift) ? lift : 0)) * U;
+  ctx.fillStyle = `rgba(${c.glowRgb},${(c.glowAlpha * f).toFixed(3)})`;
+  ctx.beginPath();
+  ctx.arc(e.x, y, c.glowR * U, 0, TWO_PI);
+  ctx.fill();
+}
+
+// B-170: Funken steigen aus der Flammenspitze; höchstens sparkMax je Glutling, je Funke feste Phase (kein Zustand)
+export function drawEmberSparks(ctx, e, time) {
+  const c = ENEMY_STYLE.ember;
+  if (!Number.isFinite(time) || !(c.sparkRate > 0)) return;
+  const n = Math.min(c.sparkMax, Math.ceil(c.sparkRate * c.sparkLife));
+  const period = n / c.sparkRate;
+  const tipY = enemyFootY(e) - c.sparkTop * U;
+  ctx.fillStyle = c.sparkColor;
+  for (let i = 0; i < n; i++) {
+    const age = frac((time + i / c.sparkRate + (e.id || 0) * 0.37) / period) * period;
+    if (age >= c.sparkLife) continue;
+    const u = age / c.sparkLife;
+    const r = c.sparkSize[i % 2] * (1 - 0.5 * u);
+    ctx.beginPath();
+    ctx.arc(e.x + Math.sin(u * Math.PI + i * 2) * c.sparkDrift, tipY - u * c.sparkRise, r, 0, TWO_PI);
+    ctx.fill();
+  }
+}
+
+// B-170: Dampf statt Eis. Aus dem Zustand ablesbar ist nur der Kälteschock (setzt slowUntil = Beginn + Dauer):
+// in den ersten steamLife Sekunden danach steigen Dampfwölkchen auf. reduced: am Ort, ohne Steigen.
+export function drawEmberSteam(ctx, e, time, reduced = false) {
+  const c = ENEMY_STYLE.ember;
+  const age = time - (e.slowUntil - ABILITIES.freeze.duration);
+  if (!(age >= 0 && age < c.steamLife)) return;
+  const u = age / c.steamLife;
+  const foot = enemyFootY(e);
+  ctx.fillStyle = `rgba(${c.steamRgb},${(c.steamAlpha * (1 - u)).toFixed(3)})`;
+  ctx.strokeStyle = c.steamInk;
+  ctx.lineWidth = c.steamLine;
+  for (const [dx, dy] of c.steamPuffs) {
+    const r = (c.steamR[0] + (c.steamR[1] - c.steamR[0]) * u) * U;
+    ctx.beginPath();
+    ctx.arc(e.x + dx * U, foot + (dy - (reduced ? 0 : u * c.steamRise)) * U, r, 0, TWO_PI);
+    ctx.fill();
+    ctx.stroke();
+  }
+}
+
+// B-169 (Platzhalter, wird nicht mehr gezeichnet: die Figur zeigt die Schalen-Stufe): je Schicht ein Segment
 export function drawShellPips(ctx, e, f, k) {
   if (!(e.shell > 0)) return;
   const c = ENEMY_STYLE.beetle;

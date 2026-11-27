@@ -7,6 +7,8 @@ import {
 } from './fx-system.js';
 import { BOSS_ENTRY, FX_STYLE, STYLE, WIDTH, HEIGHT, TILE, FIGURE_STYLE } from './config.js';
 import { outlineOf, starPath, zigPath } from './draw-utils.js';
+import { enemyFigure } from './figures.js';
+import { drawElements } from './svg-figure.js';
 
 // Ein gemeinsamer Partikelzustand fuer das Spiel (wird bei Neustart/Zeitsprung von syncFx geleert).
 const fx = createFx();
@@ -379,22 +381,13 @@ export function drawEffectOver(ctx, e, reducedMotion = false) {
   } else if (e.kind === 'bolt') {
     drawBolt(ctx, e, a);
   } else if (e.kind === 'dodge') {
-    // B-168: Irrlicht weicht aus, Platzhalter: heller Ring wächst und verblasst
-    const k = a > 0 ? (a < 1 ? a : 1) : 0;
-    ctx.save();
-    ctx.globalAlpha = k;
-    ctx.strokeStyle = DG.color;
-    ctx.lineWidth = DG.line;
-    ctx.beginPath();
-    ctx.arc(e.x, e.y, DG.r + (1 - k) * DG.grow, 0, TWO_PI);
-    ctx.stroke();
-    ctx.restore();
+    drawDodge(ctx, e, reducedMotion);
   } else if (e.kind === 'explosion' && e.meteor) {
     drawMeteorOver(ctx, e);
   } else if (e.kind === 'explosion') {
     drawExplosionStars(ctx, e, a);
   } else if (e.kind === 'shellBreak') {
-    drawShellBreak(ctx, e, a);
+    drawShellBreak(ctx, e, reducedMotion);
   } else if (e.kind === 'coin') {
     const ty = e.y - CT.lift + (reducedMotion ? 0 : a * CT.rise);
     ctx.save();
@@ -412,21 +405,90 @@ export function drawEffectOver(ctx, e, reducedMotion = false) {
   }
 }
 
-// B-169 (Platzhalter): Schale des Panzerkäfers bricht, Splitter fliegen im Kreis auseinander und verblassen
-function drawShellBreak(ctx, e, a) {
-  const c = FX_STYLE.shellBreak;
-  const t = 1 - (a > 0 ? (a < 1 ? a : 1) : 0); // 0 -> 1 über die Lebensdauer
+// Alter eines Effekts in Sekunden (0 bei kaputten Werten)
+function ageOf(e) {
+  const t = e.max - e.ttl;
+  return Number.isFinite(t) && t > 0 ? t : 0;
+}
+const clamp01 = (v) => (v > 0 ? (v < 1 ? v : 1) : 0);
+
+// B-168: Irrlicht weicht aus. Nachbild der Figur (verblasst), kurzer weißer Blitz, Text "Verfehlt" steigt auf.
+// reducedMotion: kein Nachbild, kein Blitz, Text bleibt am Ort.
+function drawDodge(ctx, e, reducedMotion) {
+  const age = ageOf(e);
+  const foot = e.y + FIGURE_STYLE.enemyFoot * U;
+  const f = enemyFigure('wisp', false);
   ctx.save();
-  ctx.globalAlpha = 1 - t;
-  ctx.fillStyle = c.color;
-  ctx.strokeStyle = c.ink;
-  ctx.lineWidth = c.line;
-  for (let i = 0; i < c.count; i++) {
-    const ang = (i / c.count) * Math.PI * 2;
-    const x = e.x + Math.cos(ang) * c.reach * t;
-    const y = e.y + Math.sin(ang) * c.reach * t;
+  if (!reducedMotion && age < DG.ghostLife) {
+    ctx.save();
+    ctx.globalAlpha = DG.ghostAlpha * (1 - age / DG.ghostLife);
+    ctx.translate(e.x, foot);
+    ctx.scale(U, U);
+    ctx.translate(-f.w / 2, -f.h);
+    drawElements(ctx, f.els);
+    ctx.restore();
+  }
+  if (!reducedMotion && age < DG.flashLife) {
+    ctx.globalAlpha = DG.flashAlpha * (1 - age / DG.flashLife);
+    ctx.fillStyle = DG.flash;
     ctx.beginPath();
-    ctx.rect(x - c.size / 2, y - c.size / 2, c.size, c.size);
+    ctx.arc(e.x, foot - f.h * U * 0.6, DG.flashR * U, 0, TWO_PI);
+    ctx.fill();
+  }
+  const life = e.max > 0 ? e.max : DG.life;
+  const u = clamp01(age / life);
+  const ty = foot - f.h * U - DG.missLift - (reducedMotion ? 0 : u * DG.missRise);
+  ctx.globalAlpha = 1 - u * u;
+  ctx.font = DG.missFont;
+  ctx.textAlign = 'center';
+  ctx.lineJoin = 'round';
+  ctx.lineWidth = DG.missOutlineWidth;
+  ctx.strokeStyle = DG.missOutline;
+  ctx.strokeText(DG.missText, e.x, ty);
+  ctx.fillStyle = DG.missColor;
+  ctx.fillText(DG.missText, e.x, ty);
+  ctx.restore();
+}
+
+// B-169: letzte Schicht der Schale bricht. Dreieck-Splitter fliegen nach oben weg und fallen (deterministisch je Index),
+// dazu ein heller Ring. reducedMotion: Splitter bleiben am Ort und verblassen in reducedLife, Ring wächst nicht.
+function drawShellBreak(ctx, e, reducedMotion) {
+  const c = FX_STYLE.shellBreak;
+  const age = ageOf(e);
+  const ox = e.x, oy = e.y + (FIGURE_STYLE.enemyFoot + c.originDy) * U;
+  const life = reducedMotion ? c.reducedLife : c.life;
+  const u = clamp01(age / life);
+  ctx.save();
+  if (age < c.flashLife) {
+    const w = reducedMotion ? 1 : age / c.flashLife;
+    ctx.globalAlpha = 1 - age / c.flashLife;
+    ctx.strokeStyle = c.flash;
+    ctx.lineWidth = c.flashLine;
+    ctx.beginPath();
+    ctx.arc(ox, oy, (c.flashR[0] + (c.flashR[1] - c.flashR[0]) * w) * U, 0, TWO_PI);
+    ctx.stroke();
+  }
+  ctx.globalAlpha = u < c.fadeFrom ? 1 : 1 - (u - c.fadeFrom) / (1 - c.fadeFrom);
+  ctx.strokeStyle = c.shardInk;
+  ctx.lineWidth = c.shardLine;
+  ctx.lineJoin = 'round';
+  const t = reducedMotion ? 0 : age;
+  for (let i = 0; i < c.shards; i++) {
+    const q = c.shards > 1 ? i / (c.shards - 1) : 0.5;
+    const ang = (c.shardAngle[0] + (c.shardAngle[1] - c.shardAngle[0]) * q) * Math.PI / 180;
+    const sp = c.shardSpeed[i % 2] ?? c.shardSpeed[0];
+    const x = ox + Math.cos(ang) * sp * t;
+    const y = oy + Math.sin(ang) * sp * t + 0.5 * c.gravity * t * t;
+    const r = c.shardSize[i % 2] * U * 0.6;
+    const rot = i * 2.1 + c.spin * t;
+    ctx.fillStyle = c.shardColors[i % c.shardColors.length];
+    ctx.beginPath();
+    for (let j = 0; j < 3; j++) {
+      const a = rot + j * TWO_PI / 3;
+      if (j === 0) ctx.moveTo(x + Math.cos(a) * r, y + Math.sin(a) * r);
+      else ctx.lineTo(x + Math.cos(a) * r, y + Math.sin(a) * r);
+    }
+    ctx.closePath();
     ctx.fill();
     ctx.stroke();
   }

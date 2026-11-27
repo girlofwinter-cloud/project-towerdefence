@@ -1263,8 +1263,24 @@ export const ENEMY_STYLE = {
   mage: {
     wardFill: 'rgba(120,200,255,0.28)', wardRing: 'rgba(190,235,255,0.9)', wardRingWidth: 1.6, wardPad: 4, wardPulse: 0.6, wardSpeed: 3,
   },
-  // B-169: Schicht-Anzeige der Schale (Platzhalter): kleine Segmente über der Figur, Maße in Spiel-px
+  // B-169: Schicht-Anzeige als Segmente (Platzhalter, nicht mehr gezeichnet: die Figur zeigt die Schalen-Stufe), Spiel-px
   beetle: { segW: 4, segH: 3, segGap: 1.5, lift: 3, fill: '#9aa6b2', ink: '#2b1a10', line: 1 },
+  // B-167 Fledermaus (Bauvorlage Gegner-Fledermaus): Schatten am Boden, Körper wippt, Flügelschlag. Entwurfs-px, Hz
+  bat: {
+    shadow: 'rgba(20,30,40,0.28)', // figure-shadow, heller: weit weg
+    shadowDx: 4, shadowRx: 10, shadowRy: 2.5, shadowShrink: 0.15,
+    hover: 2.5, hoverHz: 2.2, flapHz: 8,
+  },
+  // B-168 Irrlicht: Lichthof flackert (Alpha-Bereich), schwebt. glow = enemy-wisp-glow #9effd9 als RGB
+  wisp: { flicker: [0.72, 1], flickerHz: 9, reducedFlicker: 0.9, glowRgb: '158,255,217', glowAlpha: 0.3, glowR: 18, glowY: 30, hover: 2, hoverHz: 1.6 },
+  // B-170 Glutling: Lodern (scaleY), Funken aus der Spitze (Spiel-px, höchstens sparkMax je Glutling),
+  // Dampf beim Kälteschock (steam #f4f1ea, Versatz in Entwurfs-px zum Fußpunkt)
+  ember: {
+    flameHz: 6, flameStretch: 0.05,
+    sparkRate: 3, sparkMax: 3, sparkColor: '#ffe58a', sparkSize: [1.5, 2.5], sparkRise: 22, sparkDrift: 6, sparkLife: 0.7, sparkTop: 50,
+    steamRgb: '244,241,234', steamAlpha: 0.75, steamPuffs: [[-8, -26], [0, -32], [8, -24]],
+    steamR: [3, 8], steamRise: 16, steamLife: 0.5, steamInk: 'rgba(43,26,16,0.5)', steamLine: 1.5,
+  },
 };
 
 // Auftritt des Bosses (B-067, nur Darstellung): Bodenschlag-Ring plus leichtes Wackeln.
@@ -1316,13 +1332,22 @@ export const FX_STYLE = {
   // B-127: Beschwörung der Nekromantin: grüne Lichtfunken steigen auf (life = Effektdauer in s Spielzeit, size in px)
   summon: { color: '#7dff9a', count: 6, life: 0.6, size: 2.2, sizeVar: 1.2, speed: 30, spread: 8, alpha: 0.85 },
   // B-169: Schale des Panzerkäfers bricht (Platzhalter): Splitter fliegen auseinander (life in s Spielzeit, Maße in px)
-  shellBreak: { life: 0.4, color: '#9aa6b2', ink: '#2b1a10', count: 6, reach: 14, size: 3, line: 1 },
+  // B-169 Schale bricht (letzte Schicht): Dreieck-Splitter mit Schwerkraft und heller Ring. Größen in Entwurfs-px, Tempo in px/s
+  shellBreak: {
+    life: 0.55, shards: 7, shardColors: ['#b0703a', '#7a4a24', '#e8b27a'], shardSize: [4, 7], // enemy-beetle-shell/-ridge/-shine
+    shardSpeed: [60, 110], shardAngle: [-160, -20], gravity: 260, spin: 8, fadeFrom: 0.6, reducedLife: 0.3,
+    shardInk: '#2b1a10', shardLine: 1.5, originDy: -22, flash: '#fff3c9', flashR: [10, 26], flashLife: 0.2, flashLine: 2,
+  },
   coin: { color: '#f4c542', dark: '#b07a14', shine: '#fff3c9', hop: 12, bounce: 0.3, split: 0.55, end: 0.85, spins: 1.5, minWidth: 0.3, fadeFrom: 0.6, drift: 20,
     edgeWidth: 1, inner: 0.72, shineMin: 0.6, shineOffset: 0.3, shineR: 0.22 }, // Rand, Innenfläche und Glanz relativ zur Größe
   coinText: { color: '#f4c542', outline: '#3b2415', outlineWidth: 3, rise: 10, lift: 20, font: 'bold 13px system-ui, sans-serif' }, // lift: Start über dem Gegner in px
   chill: { rgb: '120,200,255', alpha: 0.25 }, // Frost-Schimmer über dem ganzen Feld
-  // B-168: Irrlicht weicht aus, Platzhalter: heller Ring wächst und verblasst (life in s Spielzeit, Radien in px)
-  dodge: { color: '#fff3c9', life: 0.4, r: 10, grow: 10, line: 2 },
+  // B-168: Irrlicht weicht aus: Nachbild, weißer Blitz, Text "Verfehlt" (life = missLife in s, Maße in Entwurfs-px, Text in px)
+  dodge: {
+    life: 0.6, ghostAlpha: 0.35, ghostLife: 0.25, flash: '#ffffff', flashAlpha: 0.6, flashR: 16, flashLife: 0.1,
+    missText: 'Verfehlt', missFont: '13px "Lilita One", "Trebuchet MS", sans-serif',
+    missColor: '#fff3d2', missOutline: '#2b1a10', missOutlineWidth: 3, missRise: 12, missLift: 18,
+  },
   // Meteor (B-112): Anflug -> Einschlag -> Krater. Zeiten in Sekunden Spielzeit (flight + blast + crater = Effektdauer),
   // Radien als Anteil des Meteor-Radius r, sonst px. Der Schaden fällt sofort (game.js), der Anflug ist darum kurz.
   meteor: {

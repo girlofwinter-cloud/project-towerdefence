@@ -95,6 +95,15 @@ const hood = (fill) => `<path d="M9 18 Q9 -2 24 -6 Q39 -2 39 18 Q24 6 9 18 Z" fi
 const TROLL = `<ellipse cx="48" cy="98" rx="34" ry="7" fill="rgba(20,30,40,.45)"/><path d="M26 76 L22 98 H42 L42 78 M56 78 L56 98 H76 L70 76" fill="#8a4a2e" stroke="#2b1a10" stroke-width="3.5" stroke-linejoin="round"/><path d="M14 44 Q10 84 48 86 Q86 84 82 44 Q70 28 48 28 Q26 28 14 44 Z" fill="#b5663e" stroke="#2b1a10" stroke-width="4" stroke-linejoin="round"/><path d="M18 50 Q30 38 48 42 Q66 38 78 50 L74 62 Q48 54 22 62 Z" fill="#7d8896" stroke="#2b1a10" stroke-width="3.5" stroke-linejoin="round"/><path d="M26 52 L30 60 M48 46 V56 M70 52 L66 60" stroke="#c7d0da" stroke-width="3" stroke-linecap="round"/><circle cx="14" cy="60" r="12" fill="#b5663e" stroke="#2b1a10" stroke-width="3.5"/><circle cx="82" cy="60" r="12" fill="#b5663e" stroke="#2b1a10" stroke-width="3.5"/><path d="M84 54 L92 20 L80 24 L76 54" fill="#7a5230" stroke="#2b1a10" stroke-width="3" stroke-linejoin="round"/><path d="M34 26 L28 8 L40 20 M62 26 L68 8 L56 20" fill="#f2e3b8" stroke="#2b1a10" stroke-width="3" stroke-linejoin="round"/><circle cx="48" cy="28" r="17" fill="#c6744a" stroke="#2b1a10" stroke-width="4"/><path d="M36 22 L44 26 M60 22 L52 26" stroke="#2b1a10" stroke-width="3.5" stroke-linecap="round"/><circle cx="41" cy="28" r="3" fill="#ffe266" stroke="#2b1a10" stroke-width="1.5"/><circle cx="55" cy="28" r="3" fill="#ffe266" stroke="#2b1a10" stroke-width="1.5"/><path d="M38 36 Q48 42 58 36 L56 41 H40 Z" fill="#7a2f22" stroke="#2b1a10" stroke-width="2.5" stroke-linejoin="round"/><path d="M41 37 L43 31 M55 37 L53 31" stroke="#f6edd0" stroke-width="3.5" stroke-linecap="round"/>`;
 
 // w, h: SVG-Box (Fußpunkt unten mittig); scale: Zusatzgröße
+// Panzerkäfer (B-169): Teile der Figur. Farben: Schale enemy-beetle-shell #b0703a, Kanten enemy-beetle-ridge #7a4a24,
+// Glanz enemy-beetle-shine #e8b27a, Kopf enemy-beetle-head #3a2a3a, Leib enemy-beetle-soft #e9a98c / -soft-line #b8705a
+const BEETLE_BASE = `<ellipse cx="28" cy="45" rx="22" ry="4" fill="rgba(20,30,40,.4)"/><path d="M14 30 L5 36 L4 42 M16 34 L10 42 M20 36 L17 44 M42 30 L51 36 L52 42 M40 34 L46 42 M36 36 L39 44" fill="none" stroke="#2b1a10" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>`;
+const BEETLE_HEAD = `<path d="M20 36 Q28 30 36 36 Q34 44 28 44 Q22 44 20 36 Z" fill="#3a2a3a" stroke="#2b1a10" stroke-width="2.5" stroke-linejoin="round"/><circle cx="24.5" cy="38" r="1.6" fill="#ffe27a"/><circle cx="31.5" cy="38" r="1.6" fill="#ffe27a"/><path d="M23 43 L20 47 M33 43 L36 47" stroke="#2b1a10" stroke-width="2.5" stroke-linecap="round"/>`;
+const BEETLE_SHELL_SVG = `<path d="M6 34 Q4 10 28 8 Q52 10 50 34 Q28 40 6 34 Z" fill="#b0703a" stroke="#2b1a10" stroke-width="3" stroke-linejoin="round"/><path d="M10 28 Q28 20 46 28 M13 21 Q28 13 43 21 M18 15 Q28 9 38 15" fill="none" stroke="#7a4a24" stroke-width="2.5" stroke-linecap="round"/><path d="M28 9 V37" stroke="#2b1a10" stroke-width="2"/><path d="M13 19 Q18 13 24 11" fill="none" stroke="#e8b27a" stroke-width="3" stroke-linecap="round"/>`;
+const CRACK_1 = `<path d="M20 14 L23 20 L19 25 M38 20 L35 26 L39 31" fill="none" stroke="#2b1a10" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>`;
+const CRACK_2 = `<path d="M28 9 L25 16 L30 22 L26 30 M10 26 L16 27 L14 32 M44 14 L40 17 L45 22" fill="none" stroke="#2b1a10" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M40 11 Q46 13 48 20 L42 19 L41 14 Z" fill="#7a4a24" stroke="#2b1a10" stroke-width="2" stroke-linejoin="round"/>`;
+const BEETLE_SOFT = `<path d="M11 34 Q10 16 28 14 Q46 16 45 34 Q28 39 11 34 Z" fill="#e9a98c" stroke="#2b1a10" stroke-width="3" stroke-linejoin="round"/><path d="M14 28 Q28 23 42 28 M15 22 Q28 17 41 22" fill="none" stroke="#b8705a" stroke-width="2" stroke-linecap="round"/>`;
+
 const ENEMY_SVG = {
   grunt: { w: 46, h: 50, svg: goblinSvg() },
   runner: {
@@ -139,43 +148,50 @@ const ENEMY_SVG = {
     svg: goblinSvg({ legs: '#3d2a5c', body: '#5b3d8a', belt: '#7dff9a', ears: null, head: '#a8c8a0', front: hood('#3d2a5c'),
       weapon: staff(`<circle cx="45" cy="5" r="5.5" fill="#f2e9d8" stroke="#2b1a10" stroke-width="2.5"/><circle cx="43" cy="5" r="1.4" fill="#2b1a10"/><circle cx="47" cy="5" r="1.4" fill="#2b1a10"/>`) }),
   },
-  // Glutling (B-170): Platzhalter, Goblin in Glutfarben mit Flamme auf dem Kopf (finale Figur kommt vom designer)
+  // Glutling (B-170): Flamme mit Gesicht, Bodenglühen; Lodern, Funken und Dampf in render-enemies.js. Nie mit Eis.
   ember: {
-    w: 46, h: 50,
-    svg: goblinSvg({ legs: '#7a3f1e', body: '#c9794a', belt: '#d6483a', ears: '#c9794a', head: '#d79a2b', weapon: '',
-      front: `<path d="M18 7 Q20 -2 24 -6 Q28 -2 30 7 Z" fill="#ffe266" stroke="#2b1a10" stroke-width="2.5" stroke-linejoin="round"/>` }),
+    w: 42, h: 52,
+    svg: `<ellipse cx="21" cy="49" rx="14" ry="3.6" fill="#ff7a1f" opacity=".35"/><ellipse cx="21" cy="49" rx="8" ry="2" fill="rgba(20,30,40,.35)"/><path d="M21 2 Q25 12 31 14 Q30 8 34 6 Q40 20 37 32 Q34 46 21 46 Q8 46 5 32 Q3 22 10 14 Q12 20 15 20 Q14 10 21 2 Z" fill="#ff7a1f" stroke="#2b1a10" stroke-width="3" stroke-linejoin="round"/><path d="M21 16 Q27 24 29 31 Q30 41 21 42 Q12 41 13 31 Q15 24 21 16 Z" fill="#ffc23a"/><ellipse cx="21" cy="37" rx="5" ry="4" fill="#ffe58a"/><ellipse cx="16.5" cy="30" rx="2.4" ry="3" fill="#2a1a17"/><ellipse cx="25.5" cy="30" rx="2.4" ry="3" fill="#2a1a17"/><circle cx="17" cy="29" r="0.9" fill="#ffe58a"/><circle cx="26" cy="29" r="0.9" fill="#ffe58a"/><path d="M13 25 L19 27 M29 25 L23 27" stroke="#2b1a10" stroke-width="2" stroke-linecap="round"/><path d="M12 47 L15 42 L18 47 Z M24 47 L27 43 L30 47 Z" fill="#4a2a22" stroke="#2b1a10" stroke-width="1.5" stroke-linejoin="round"/>`,
   },
-  // Irrlicht (B-168): Platzhalter, leuchtender Kreis mit Schweif (finale Figur kommt vom designer)
+  // Irrlicht (B-168): Lichttropfen mit Schweif, schwebt; Flackern in render-enemies.js, Ausweichen in render-fx.js
   wisp: {
-    w: 46, h: 50,
-    svg: `<circle cx="24" cy="20" r="18" fill="url(#s1-iceglow)" opacity=".8"/><path d="M14 26 Q10 40 22 48 Q20 38 26 32 Z" fill="#bff0ff" stroke="#2b1a10" stroke-width="2.5" stroke-linejoin="round"/><circle cx="24" cy="20" r="10" fill="#dff7ff" stroke="#2b1a10" stroke-width="3"/><circle cx="21" cy="17" r="3.5" fill="#fff"/>`,
+    w: 40, h: 50,
+    svg: `<ellipse cx="20" cy="47" rx="8" ry="2.2" fill="rgba(20,30,40,.25)"/><circle cx="20" cy="20" r="18" fill="#9effd9" opacity=".22"/><circle cx="20" cy="20" r="13" fill="#9effd9" opacity=".3"/><path d="M20 8 Q31 8 31 19 Q31 29 23 32 Q21 37 15 41 Q17 35 14 32 Q9 28 9 19 Q9 8 20 8 Z" fill="#c9fff0" stroke="#2b1a10" stroke-width="2.5" stroke-linejoin="round"/><ellipse cx="20" cy="18" rx="6" ry="6.5" fill="#ffffff"/><ellipse cx="17.5" cy="19" rx="1.6" ry="2.4" fill="#2b1a10"/><ellipse cx="22.5" cy="19" rx="1.6" ry="2.4" fill="#2b1a10"/><circle cx="7" cy="30" r="1.8" fill="#ffffff" stroke="#2b1a10" stroke-width="1"/><circle cx="33" cy="35" r="1.4" fill="#ffffff" stroke="#2b1a10" stroke-width="1"/>`,
   },
-  // Fledermaus (B-167, Platzhalter bis zur Figur vom designer): Körper und zwei Flügel hoch über dem Weg,
-  // Bodenschatten deutlich darunter, damit sie als Flieger erkennbar ist
+  // Fledermaus (B-167): fliegt (Körper 17 px über dem Boden), Schatten zeichnet render-enemies.js
+  // Farben: Flügel enemy-bat-wing #4a3560, Körper enemy-bat-body #6b4a80, Rippen enemy-bat-vein #8a6aa8
   bat: {
-    w: 46, h: 50,
-    svg: `<ellipse cx="23" cy="46" rx="10" ry="3" fill="rgba(20,30,40,.3)"/>`
-      + `<path d="M17 16 Q8 6 1 12 Q5 16 4 22 Q10 18 17 22 Z M29 16 Q38 6 45 12 Q41 16 42 22 Q36 18 29 22 Z" fill="#3a2d44" stroke="#2b1a10" stroke-width="2.5" stroke-linejoin="round"/>`
-      + `<ellipse cx="23" cy="19" rx="7" ry="8" fill="#5d4a66" stroke="#2b1a10" stroke-width="3"/>`
-      + `<path d="M18 13 L19 7 L21 12 M28 13 L27 7 L25 12" fill="#5d4a66" stroke="#2b1a10" stroke-width="2" stroke-linejoin="round"/>`
-      + `<circle cx="20.5" cy="17" r="1.6" fill="#ffe266"/><circle cx="25.5" cy="17" r="1.6" fill="#ffe266"/>`,
+    w: 52, h: 50,
+    svg: `<path d="M22 18 Q12 4 1 9 Q5 14 3 21 Q9 18 12 23 Q15 19 19 25 Z" fill="#4a3560" stroke="#2b1a10" stroke-width="2.5" stroke-linejoin="round"/><path d="M30 18 Q40 4 51 9 Q47 14 49 21 Q43 18 40 23 Q37 19 33 25 Z" fill="#4a3560" stroke="#2b1a10" stroke-width="2.5" stroke-linejoin="round"/><path d="M20 13 L6 11 M20 16 L10 19 M32 13 L46 11 M32 16 L42 19" stroke="#8a6aa8" stroke-width="1.5" stroke-linecap="round"/><path d="M19 13 L18 3 L24 10 Z M33 13 L34 3 L28 10 Z" fill="#6b4a80" stroke="#2b1a10" stroke-width="2.5" stroke-linejoin="round"/><ellipse cx="26" cy="20" rx="9" ry="10" fill="#6b4a80" stroke="#2b1a10" stroke-width="3"/><circle cx="22.5" cy="18" r="2.6" fill="#ffe27a" stroke="#2b1a10" stroke-width="1.5"/><circle cx="29.5" cy="18" r="2.6" fill="#ffe27a" stroke="#2b1a10" stroke-width="1.5"/><path d="M23 25 L24.5 28.5 L26 25 L27.5 28.5 L29 25" fill="#fff3d2" stroke="#2b1a10" stroke-width="1.2" stroke-linejoin="round"/><path d="M23 30 L22 33 M29 30 L30 33" stroke="#2b1a10" stroke-width="2" stroke-linecap="round"/>`,
   },
-  // Panzerkäfer (B-169, Platzhalter bis zur Figur vom designer): Beine, gewölbte Schale mit Mittelnaht, Kopf mit Fühlern
-  beetle: {
-    w: 46, h: 50,
-    svg: `<ellipse cx="24" cy="46" rx="16" ry="4" fill="rgba(20,30,40,.4)"/>`
-      + `<path d="M12 36 L6 46 M24 40 L24 46 M36 36 L42 46" stroke="#2b1a10" stroke-width="3" stroke-linecap="round"/>`
-      + `<path d="M24 4 L18 -2 M24 4 L30 -2" stroke="#2b1a10" stroke-width="2" stroke-linecap="round"/>`
-      + `<circle cx="24" cy="10" r="7" fill="#3a2d44" stroke="#2b1a10" stroke-width="2.5"/>`
-      + `<path d="M6 30 Q6 12 24 12 Q42 12 42 30 Q42 42 24 42 Q6 42 6 30 Z" fill="#2f7a3d" stroke="#2b1a10" stroke-width="3" stroke-linejoin="round"/>`
-      + `<path d="M24 13 V41" stroke="#2b1a10" stroke-width="2"/><path d="M13 20 Q16 16 20 16" stroke="#9aa6b2" stroke-width="2.5" fill="none" stroke-linecap="round"/>`,
-  },
+  // Panzerkäfer (B-169) mit voller Schale; Stufen in BEETLE_SHELL
+  beetle: { w: 56, h: 48, svg: BEETLE_BASE + BEETLE_SHELL_SVG + BEETLE_HEAD },
 };
 // Eingefrorener Goblin (Z.111) und der Eiskristall daraus als Überzug für alle anderen Typen
 const ICED = { w: 54, h: 56, svg: `<ellipse cx="27" cy="50" rx="17" ry="4" fill="rgba(20,30,40,.4)"/><path d="M14 28 Q14 44 27 44 Q40 44 40 28 Z" fill="#8fd0e8" stroke="#2b1a10" stroke-width="3"/><path d="M8 18 L16 22 L14 28 Z M46 18 L38 22 L40 28 Z" fill="#9fdcf0" stroke="#2b1a10" stroke-width="2.5" stroke-linejoin="round"/><circle cx="27" cy="22" r="13" fill="#a8e2f5" stroke="#2b1a10" stroke-width="3"/><path d="M20 20 H25 M30 20 H35" stroke="#2b1a10" stroke-width="2.5" stroke-linecap="round"/><path d="M5 40 L12 8 L21 36 L28 2 L35 36 L44 10 L50 40 L44 52 H10 Z" fill="#dff7ff" fill-opacity=".55" stroke="#2b1a10" stroke-width="2.5" stroke-linejoin="round"/><path d="M14 12 L18 36" stroke="#fff" stroke-width="3" stroke-linecap="round"/>` };
 // Überzug für andere Typen: Lichthof (Z.139) dahinter, Kristall etwas durchsichtiger, damit die Figur erkennbar bleibt
 const ICE_GLOW = `<circle cx="27" cy="30" r="30" fill="url(#s1-iceglow)" opacity=".8"/>`;
 const ICE_SHELL = `<path d="M5 40 L12 8 L21 36 L28 2 L35 36 L44 10 L50 40 L44 52 H10 Z" fill="#dff7ff" fill-opacity=".4" stroke="#2b1a10" stroke-width="2.5" stroke-linejoin="round"/><path d="M14 12 L18 36" stroke="#fff" stroke-width="3" stroke-linecap="round"/>`;
+
+// Zusatzbilder (nicht in ENEMY_SVG, damit ENEMY_KINDS nur echte Gegnertypen enthält)
+// Fledermaus, Flügel oben (Bild 1 des Flügelschlags)
+const BAT_FRAMES = { 1: { w: 52, h: 50, svg: `<path d="M22 18 Q14 0 4 1 Q6 7 3 12 Q10 11 12 16 Q16 14 19 22 Z" fill="#4a3560" stroke="#2b1a10" stroke-width="2.5" stroke-linejoin="round"/><path d="M30 18 Q38 0 48 1 Q46 7 49 12 Q42 11 40 16 Q36 14 33 22 Z" fill="#4a3560" stroke="#2b1a10" stroke-width="2.5" stroke-linejoin="round"/><path d="M20 13 L8 4 M20 16 L8 11 M32 13 L44 4 M32 16 L44 11" stroke="#8a6aa8" stroke-width="1.5" stroke-linecap="round"/><path d="M19 13 L18 3 L24 10 Z M33 13 L34 3 L28 10 Z" fill="#6b4a80" stroke="#2b1a10" stroke-width="2.5" stroke-linejoin="round"/><ellipse cx="26" cy="20" rx="9" ry="10" fill="#6b4a80" stroke="#2b1a10" stroke-width="3"/><circle cx="22.5" cy="18" r="2.6" fill="#ffe27a" stroke="#2b1a10" stroke-width="1.5"/><circle cx="29.5" cy="18" r="2.6" fill="#ffe27a" stroke="#2b1a10" stroke-width="1.5"/><path d="M23 25 L24.5 28.5 L26 25 L27.5 28.5 L29 25" fill="#fff3d2" stroke="#2b1a10" stroke-width="1.2" stroke-linejoin="round"/><path d="M23 30 L22 33 M29 30 L30 33" stroke="#2b1a10" stroke-width="2" stroke-linecap="round"/>` } };
+// Panzerkäfer nach Anzeige-Stufe (5 = ENEMY_SVG.beetle): 3 zwei Risse, 1 Loch, 0 ohne Schale
+const BEETLE_SHELL = {
+  3: { w: 56, h: 48, svg: BEETLE_BASE + BEETLE_SHELL_SVG + CRACK_1 + BEETLE_HEAD },
+  1: { w: 56, h: 48, svg: BEETLE_BASE + BEETLE_SHELL_SVG + CRACK_1 + CRACK_2 + BEETLE_HEAD },
+  0: { w: 56, h: 48, svg: BEETLE_BASE + BEETLE_SOFT + BEETLE_HEAD },
+};
+// Anzeige-Stufe aus den verbliebenen Schichten (5,4 -> 5; 3,2 -> 3; 1 -> 1; 0 -> 0); ohne Zahl: volle Schale
+export function shellStage(n) {
+  if (!Number.isFinite(n)) return 5;
+  return n >= 4 ? 5 : n >= 2 ? 3 : n >= 1 ? 1 : 0;
+}
+function variantDef(type, variant) {
+  if (type === 'bat' && Object.hasOwn(BAT_FRAMES, variant)) return BAT_FRAMES[variant];
+  if (type === 'beetle' && Object.hasOwn(BEETLE_SHELL, variant)) return BEETLE_SHELL[variant];
+  return null;
+}
 
 const enemyCache = new Map();
 // Eis-Teile (Rahmen 54 x 56 des Entwurfs) auf die Figur gestreckt; Box der Figur wächst mit
@@ -193,14 +209,18 @@ function build(def) {
   const parsed = parseFigure(def.svg);
   return { w: def.w, h: def.h, big: def.big || null, els: parsed.all, box: pad(boxOf(parsed.all), 2) };
 }
-// Figur eines Gegnertyps; frozen: eingefrorene Fassung (Goblin eigener Entwurf, sonst mit Eis-Überzug)
-export function enemyFigure(type, frozen) {
-  const key = `${type}:${frozen ? 1 : 0}`;
+// Figur eines Gegnertyps; frozen: eingefrorene Fassung (Goblin eigener Entwurf, sonst mit Eis-Überzug, Glutling nie).
+// variant: Zusatzbild (Fledermaus 1 = Flügel oben, Panzerkäfer = Schalen-Stufe), sonst Grundbild
+export function enemyFigure(type, frozen, variant) {
+  const base = Object.hasOwn(ENEMY_SVG, type) ? ENEMY_SVG[type] : null;
+  if (!base) return null;
+  const alt = variantDef(type, variant);
+  const ice = !!frozen && type !== 'ember';
+  const key = `${type}:${ice ? 1 : 0}:${alt ? variant : ''}`;
   let f = enemyCache.get(key);
   if (f) return f;
-  const def = Object.hasOwn(ENEMY_SVG, type) ? ENEMY_SVG[type] : null;
-  if (!def) return null;
-  if (!frozen) f = build(def);
+  const def = alt || base;
+  if (!ice) f = build(def);
   else if (type === 'grunt') f = withIce(build(ICED), false); // eigener Entwurf (54 x 56)
   else f = withIce(build(def), true);
   enemyCache.set(key, f);
