@@ -2,7 +2,7 @@
 
 Erzeugt aus `tokens.json` mit `node scripts/design-tokens.mjs`. Nicht von Hand ändern.
 
-## Farben (144)
+## Farben (154)
 
 | Token | Wert | Verwendung |
 |---|---|---|
@@ -150,6 +150,16 @@ Erzeugt aus `tokens.json` mit `node scripts/design-tokens.mjs`. Nicht von Hand �
 | `enemy-beetle-soft` | `#e9a98c` | Panzerkäfer: weicher Leib ohne Schale. |
 | `enemy-beetle-soft-line` | `#b8705a` | Panzerkäfer: Linien am weichen Leib. |
 | `steam` | `#f4f1ea` | Dampfwölkchen, wenn Kälte den Glutling trifft (B-170). |
+| `necro-cloak` | `#2a1c40` | Umhang der Nekromantin (ENEMY_SVG.necro). |
+| `necro-robe` | `#5b3d8a` | Robe und Ärmel der Nekromantin. |
+| `necro-robe-dark` | `#3d2a5c` | Kapuze, Kragen und Gürtel der Nekromantin. |
+| `necro-face` | `#1a1226` | Gesicht unter der Kapuze der Nekromantin. |
+| `necro-skin` | `#a8c8a0` | Hände der Nekromantin. |
+| `necro-glow` | `#7dff9a` | Leuchten der Nekromantin in Phase 1: Stabkugel, Augen, Boden-Aura, Beschwörungs-Fleck (ENEMY_STYLE.necro.glow). |
+| `necro-glow-2` | `#ff5fd0` | Leuchten in Phase 2 der Nekromantin, Druckwelle, Schrift „Zweite Phase!“, Füllung und Phase-Text der Boss-Leiste in Phase II (style.css --necro-glow-2). |
+| `boss-shield` | `#bff6ff` | Schild-Kugel beim Phasenwechsel, Streifen der Boss-Leiste bei Schild, Elite-Schildbogen und -zeichen (style.css --boss-shield). |
+| `boss-bar` | `#d0384a` | Füllung der Boss-Leiste (Verlauf #f0606e → #d0384a → #8a1f30), style.css --boss-bar. |
+| `elite-ring` | `rgba(242,193,78,0.9)` | Gestrichelter Fußring der Elite-Gegner (ENEMY_STYLE.elite.ring). |
 
 ## Schrift
 

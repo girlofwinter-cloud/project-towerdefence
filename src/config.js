@@ -913,7 +913,7 @@ export const FIGURE_STYLE = {
   sway: 0.05,        // Schwanken beim Laufen (rad)
   tilt: 0.35,        // Anteil der Neigung auf senkrechten Wegstücken (aufrechte Figuren kippen nur leicht)
   bossScale: 1.3,    // Oger-König = Troll x 1,3 mit Krone
-  necroScale: 1.5,   // Nekromantin auf Goblin-Basis
+  necroScale: 1.56,  // Nekromantin (B-180): sichtbar höchste Figur, auch an den Konturen über dem Oger-König
   // Lebensbalken (Z.113), nur bei Schaden: Breite = share x Figurbreite (mind. minW), über der Figur
   hp: { back: '#2b1a10', good: '#74d048', mid: '#f2c14e', low: '#e5481f', h: 12, inner: 6, pad: 3, gap: 4, minW: 34, share: 0.71, r: 6 },
   outline: '#2b1a10',
@@ -1495,6 +1495,14 @@ export const FX_STYLE = {
     shardSpeed: [60, 110], shardAngle: [-160, -20], gravity: 260, spin: 8, fadeFrom: 0.6, reducedLife: 0.3,
     shardInk: '#2b1a10', shardLine: 1.5, originDy: -22, flash: '#fff3c9', flashR: [10, 26], flashLife: 0.2, flashLine: 2,
   },
+  // B-179: Elite-Schild bricht: Splitter wie bei der Schale, in Schildfarben (boss-shield, ice-b, weiß), Ursprung vor der Brust
+  eliteBreak: {
+    life: 0.45, shards: 6, shardColors: ['#bff6ff', '#8fd8f2', '#ffffff'], shardSize: [3, 5],
+    shardSpeed: [60, 100], shardAngle: [-160, -20], gravity: 260, spin: 8, fadeFrom: 0.6, reducedLife: 0.3,
+    shardInk: '#2b1a10', shardLine: 1.5, originDy: -24, flash: '#bff6ff', flashR: [8, 20], flashLife: 0.15, flashLine: 2,
+  },
+  // B-179: Elite-Abzeichen beim Tod: fliegt rise Entwurfs-px hoch und blendet aus (life in s Spielzeit)
+  eliteGone: { life: 0.3, rise: 12 },
   coin: { color: '#f4c542', dark: '#b07a14', shine: '#fff3c9', hop: 12, bounce: 0.3, split: 0.55, end: 0.85, spins: 1.5, minWidth: 0.3, fadeFrom: 0.6, drift: 20,
     edgeWidth: 1, inner: 0.72, shineMin: 0.6, shineOffset: 0.3, shineR: 0.22 }, // Rand, Innenfläche und Glanz relativ zur Größe
   coinText: { color: '#f4c542', outline: '#3b2415', outlineWidth: 3, rise: 10, lift: 20, font: 'bold 13px system-ui, sans-serif' }, // lift: Start über dem Gegner in px

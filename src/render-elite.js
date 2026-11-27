@@ -2,7 +2,8 @@
 // Eigenschaft über der Figur, gestrichelter Goldring am Fuß und kleine Eigenschaftszeichen an der Figur
 // (schnell: Tempostriche, Schild: Bogen in Laufrichtung, Selbstheilung: steigende Pluszeichen).
 // Transparenz nur über Farben mit Alpha (kein globalAlpha). Bosse tragen nie ein Abzeichen.
-import { ENEMY_STYLE, FIGURE_STYLE as S, TILE } from './config.js';
+import { ENEMY_STYLE, FIGURE_STYLE as S, FX_STYLE, TILE } from './config.js';
+import { enemyFigure } from './figures.js';
 import { withAlpha } from './svg-figure.js';
 
 const E = ENEMY_STYLE.elite;
@@ -142,5 +143,21 @@ export function drawEliteTrait(ctx, e, kind, dir, top, foot, w, time, still) {
       ctx.stroke();
     }
   }
+  ctx.restore();
+}
+
+// Tod eines Elite-Gegners (Ereignis kind 'eliteGone'): Abzeichen fliegt rise Entwurfs-px hoch und blendet aus.
+// Lage wie in drawEnemy (Figur-Oberkante aus Typ und Maßstab). reduced: steigt nicht, blendet nur aus.
+export function drawEliteGone(ctx, fx, reduced = false) {
+  if (!fx || !Number.isFinite(fx.x) || !Number.isFinite(fx.y) || !(fx.max > 0)) return;
+  const f = enemyFigure(fx.type, false) || enemyFigure('grunt', false);
+  const scale = f.big ? S[f.big] : 1;
+  const k = U * scale;
+  const u = Math.max(0, Math.min(1, 1 - fx.ttl / fx.max));
+  const size = eliteBadgeSize(scale);
+  const top = fx.y + S.enemyFoot * U - f.h * k;
+  ctx.save();
+  ctx.globalAlpha = 1 - u;
+  drawEliteBadge(ctx, fx.x + 0.28 * f.w * k, top - E.lift * size - (reduced ? 0 : u * FX_STYLE.eliteGone.rise * U), size, fx.elite);
   ctx.restore();
 }

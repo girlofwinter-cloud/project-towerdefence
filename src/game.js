@@ -842,6 +842,8 @@ function damage(state, enemy, p, direct = false) {
     const absorbed = Math.min(enemy.ward, dmg);
     enemy.ward -= absorbed;
     dmg -= absorbed;
+    // B-179: nur Optik, der Elite-Schild bricht (Splitter)
+    if (enemy.elite === 'shield' && !(enemy.ward > 0)) state.effects.push({ kind: 'eliteBreak', x: enemy.x, y: enemy.y, ttl: FX_STYLE.eliteBreak.life, max: FX_STYLE.eliteBreak.life });
   }
   enemy.hp -= dmg;
   phaseCheck(state, enemy);
@@ -887,6 +889,8 @@ function removeDead(state) {
       state.gold += e.reward;
       state.kills += 1;
       state.effects.push({ kind: 'coin', x: e.x, y: e.y, text: `+${e.reward}`, ttl: 0.8, max: 0.8 });
+      // B-179: nur Optik, das Elite-Abzeichen fliegt weg
+      if (e.elite) state.effects.push({ kind: 'eliteGone', type: e.type, elite: e.elite, x: e.x, y: e.y, ttl: FX_STYLE.eliteGone.life, max: FX_STYLE.eliteGone.life });
     }
   }
   state.enemies = alive;
