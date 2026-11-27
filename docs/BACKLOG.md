@@ -53,7 +53,7 @@ Reihenfolge (je Zeile eine eigene Sitzung mit `/pipeline`, dazwischen `/clear`).
 - Spur C, Optik: B-172 (designer, sofort möglich) → B-173 und B-174 (nach B-175/B-176 für die Fähigkeits-Optik)
 
 ### B-167: Fledermäuse: Flieger, die Kanone und Frost nicht treffen (Spiel-Logik)
-- Status: entwurf
+- Status: offen
 - Aufwand: M
 - Idee: Einfachere Variante von B-036 (ersetzt sie): Fledermäuse folgen dem normalen Weg (kein eigener Luftweg, `path.js` bleibt), fliegen aber. Türme haben `hitsAir`: Pfeil, Scharfschütze und Blitz ja; Kanone und Frost nein (auch kein Flächenschaden, keine Verlangsamung). Der Kettenblitz kann auf Fledermäuse überspringen. Fähigkeiten (Meteor, Kälteschock) treffen sie.
 - Werte als Vorschlag in `ENEMY_TYPES.bat`: hp 30, speed 1.8, reward 3, leak 1. Kommen in Schwärmen von 6 bis 10.
@@ -63,7 +63,7 @@ Reihenfolge (je Zeile eine eigene Sitzung mit `/pipeline`, dazwischen `/clear`).
   - Wann sie in den Wellen vorkommen, regelt B-171.
 
 ### B-168: Irrlicht: weicht langsamen Geschossen aus (Spiel-Logik)
-- Status: entwurf
+- Status: offen
 - Aufwand: M
 - Idee: Ein flackerndes Licht, das in großen Abständen läuft (nie in Klumpen). Geschosse mit `projectileSpeed` unter `dodgeBelow` (z. B. 11, das trifft Kanone 7 und Frost 10) verfehlt es mit `dodgeChance` (z. B. 0,7). Flächenschaden nimmt es nicht, Rückstoß wirkt nicht. Blitz (sofort), Pfeil (12) und Scharfschütze (30) treffen normal.
 - Werte als Vorschlag: hp 60, speed 1.5, reward 6, Abstand beim Erscheinen 1,5 s.
@@ -72,7 +72,7 @@ Reihenfolge (je Zeile eine eigene Sitzung mit `/pipeline`, dazwischen `/clear`).
   - Ein ausgewichenes Geschoss zeigt sichtbar "Verfehlt" (kurzes Aufflackern). Alle Zahlen stehen in `config.js`.
 
 ### B-169: Panzerkäfer: Schale fängt die ersten Treffer ab (Spiel-Logik)
-- Status: entwurf
+- Status: offen
 - Aufwand: M
 - Idee: Eine Schale mit `shellHits` Schichten (z. B. 5). Jeder Treffer nimmt eine Schicht ab und macht keinen Schaden, egal wie stark er ist. Viele kleine Treffer (Pfeil mit Aufwärmen, jeder Sprung des Kettenblitzes) knacken die Schale schnell. Große Einzeltreffer (Kanone, Scharfschütze) verpuffen an ihr. Flächenschaden zählt als ein Treffer je Käfer. Verlangsamung wirkt auch auf die Schale.
 - Werte als Vorschlag: hp 120, speed 1.0, reward 10, leak 2. Laufen in Gruppen von 3 bis 5 mit den Trollen.
@@ -81,7 +81,7 @@ Reihenfolge (je Zeile eine eigene Sitzung mit `/pipeline`, dazwischen `/clear`).
   - Die Schale ist sichtbar (Schichten bzw. Risse); fällt die letzte Schicht, gibt es einen Splitter-Effekt.
 
 ### B-170: Glutling: immun gegen Verlangsamung und Einfrieren (Spiel-Logik)
-- Status: entwurf
+- Status: offen
 - Aufwand: S
 - Idee: Ein schneller Feuergeist (`slowImmune: true`): Frost-Treffer machen nur ihren kleinen Schaden, es gibt kein Verlangsamen und kein Einfrieren. Der Kälteschock wirkt nur halb. Auf der Vulkankarte kommt er öfter vor (`themed`).
 - Werte als Vorschlag: hp 70, speed 2.0, reward 6.
@@ -90,7 +90,7 @@ Reihenfolge (je Zeile eine eigene Sitzung mit `/pipeline`, dazwischen `/clear`).
   - Die Turm-Info des Frostturms nennt die Ausnahme. Der Glutling hat eine eigene Figur mit Glut-Partikeln.
 
 ### B-171: Wellen-Mix mit den neuen Gegnern und Messung "jeder Turm wird gebraucht" (Balancing)
-- Status: entwurf
+- Status: offen
 - Aufwand: M
 - Idee: B-167 bis B-170 in `waveFor` einbauen (Vorschlag: Fledermäuse ab Welle 6, Glutlinge ab 8, Irrlichter ab 10, Panzerkäfer ab 11). Je Karte über `themed` andere Schwerpunkte, damit nicht jede Karte dieselbe Lösung hat.
 - Messung in `tests/balance/`:
