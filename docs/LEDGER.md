@@ -905,3 +905,11 @@ Neue Einträge werden unten angehängt. Bestehende Einträge werden nie geänder
 - Rolle(n): orchestrator, developer, tester, reviewer. PRs #92 (Umbau), #96 (Nacharbeit)
 - Ergebnis: Reviewer (APPROVE, keine Muss) und Tester (PASS, kein Blocker) nachgeholt. Behoben in #96: paintedCache nur aktuelle Karte, kein Endlos-Neurastern, Magic Numbers nach config.js, Kartenwahl ≥ 44 px. Wellenfahne 1,25× (Entscheidung Mensch): je Eingang eine Kachel nicht bebaubar, Bauplätze 226/232/219/194/211.
 - Tests: 538 Unit, 81 e2e grün, CI grün. Backlog B-129–B-154 (außer B-137, B-140, B-146) archiviert; B-137 bleibt offen für weitere Handy-Anpassungen.
+
+---
+
+## 2026-11-27 · B-137 · Handy-Layout neu entschieden
+- Rolle(n): orchestrator, designer (Skizze in Claude Design: https://claude.ai/artifact/MagK7pf7N7MYZwY8UNWxcj). Branch: agent/design-handy-quer
+- Ergebnis: Mensch wählt Querformat über den ganzen Bildschirm mit schwebender Bedienung in den Ecken; Hochformat nur "Bitte Handy drehen". B-137 im Backlog neu geschrieben, Status offen.
+- Entscheidungen: Hochformat mit gedrehter Karte (28 px Kacheln, aber Deko- und Eingabe-Umbau) und ungedreht (19,5 px Kacheln, zu klein) verworfen. Skizze statt ausgearbeitetem Prototyp (Wunsch Mensch), keine Bauvorlage.
+- Offen: Anpassung der Handy-Browser-Tests braucht Freigabe des Menschen, Token `num-compact`.
