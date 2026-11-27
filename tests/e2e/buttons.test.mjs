@@ -4,6 +4,7 @@ import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 import { createServer } from '../../scripts/serve.mjs';
+import { enterGame } from './tile.mjs';
 
 const require = createRequire(import.meta.url);
 const { chromium } = require('playwright');
@@ -27,6 +28,7 @@ async function openPage(viewport, mobile) {
   const ctx = await browser.newContext({ viewport, hasTouch: mobile, isMobile: mobile });
   const page = await ctx.newPage();
   await page.goto(url);
+  await enterGame(page);
   await page.waitForSelector('#abilities .ability-btn');
   return { ctx, page };
 }

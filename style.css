@@ -345,3 +345,55 @@ body:has(#tower-info:not([hidden])) #app { padding-bottom: calc(var(--tower-info
 /* C-Abnahme 11: bis Block E Feld und Leisten senkrecht mittig statt Leerraum unten */
 #app { justify-content: center; min-height: 100vh; min-height: 100dvh; }
 }
+
+/* ---------- C5: Startbildschirm und Spielende-Plakette (Bauvorlagen Start-Kartenwahl.md, Overlay-Spielende.md) ---------- */
+#start-screen { position: fixed; inset: 0; z-index: 40; display: flex; flex-direction: column; align-items: center; padding-top: 70px; background: rgba(16,28,14,.45); overflow: auto; }
+#start-screen[hidden] { display: none; }
+body.on-start .hud, body.on-start .abilities, body.on-start .wave-row, body.on-start .stage, body.on-start #shop, body.on-start #tower-info,
+body.on-start #speed, body.on-start #pause, body.on-start #zoom { visibility: hidden; }
+body.on-start .top-buttons { z-index: 41; } /* Ton und Hilfe bleiben erreichbar */
+.start-title { position: relative; margin: 0; width: 640px; max-width: calc(100vw - 16px); height: 86px; flex: none; border-radius: 22px; display: flex; align-items: center; justify-content: center; gap: 12px; font: 50px/1 var(--display); font-weight: 400;
+  text-shadow: -3px 0 #2b1a10, 3px 0 #2b1a10, 0 -3px #2b1a10, 0 3px #2b1a10, 0 5px 0 #2b1a10; }
+.start-castle { flex: none; margin-top: -8px; }
+.map-cards { display: flex; gap: 20px; margin-top: 54px; }
+.map-card { position: relative; width: 196px; height: 290px; padding: 12px; border-radius: 18px; display: flex; flex-direction: column; align-items: center; gap: 6px; cursor: pointer; flex: none;
+  transition: transform .12s ease-out; }
+.map-thumb { width: 172px; height: 120px; border-radius: 10px; border: 3px solid #2b1a10; box-sizing: border-box; flex: none; }
+.map-name { font: 24px/1.1 var(--display); color: #fff3d2; text-shadow: -2px 0 #2b1a10, 2px 0 #2b1a10, 0 -2px #2b1a10, 0 2px #2b1a10; margin-top: 4px; }
+.map-stars { display: flex; gap: 4px; }
+.map-best { font: 14px 'Trebuchet MS', sans-serif; color: #e8d3a8; text-align: center; }
+.map-card:hover:not(:disabled) { filter: brightness(1.08); }
+.map-card:focus-visible, .map-card.current { transform: translateY(-6px); box-shadow: 0 0 0 4px #ffe266, 0 10px 0 rgba(30,15,5,.45); outline: none; }
+.map-card:disabled { cursor: default; } .map-card:disabled .map-thumb { filter: grayscale(1) brightness(.45); } .map-card:disabled .map-name { color: #c9b89a; }
+.map-lock { position: absolute; left: calc(50% - 22px); top: 50px; }
+.start-hint { margin: 26px 0 0; font: 16px 'Trebuchet MS', sans-serif; color: #fff3d2; text-shadow: 0 2px 0 #2b1a10; }
+.start-keys { margin: 8px 0 0; font: 14px 'Trebuchet MS', sans-serif; color: #e8d3a8; text-shadow: 0 2px 0 #2b1a10; text-align: center; }
+.start-keys kbd { font: 13px/18px var(--display); padding: 0 5px; border-radius: 6px; background: #2b1a10; color: #fff3d2; }
+@media (hover: none), (pointer: coarse), (max-width: 700px) { .start-hint .no-touch { display: none; } }
+@media (max-width: 1100px) { .map-card { width: 172px; } .map-thumb { width: 148px; height: 104px; } .map-cards { gap: 12px; } }
+
+#overlay { background: rgba(16,28,14,.7); }
+.end-card { position: relative; width: 520px; max-width: calc(100vw - 56px); padding: 64px 24px 22px; border-radius: 22px; text-align: center; }
+.end-ribbon { position: absolute; left: -20px; top: -34px; width: calc(100% + 40px); height: auto; overflow: visible; }
+.end-ribbon text { font: 44px var(--display); }
+.end-stars { display: flex; justify-content: center; gap: 10px; margin: 0 0 8px; }
+.end-stars:empty { display: none; }
+.end-stars svg { animation: star-pop .35s ease-out both; } .end-stars svg:nth-child(2) { animation-delay: .15s; } .end-stars svg:nth-child(3) { animation-delay: .3s; }
+@keyframes star-pop { from { transform: scale(0); } 70% { transform: scale(1.2); } }
+#overlay-stats { font: 18px 'Trebuchet MS', sans-serif; color: #fff3d2; margin: 0 0 6px; }
+.end-card #overlay-progress { margin: 0; }
+.end-actions { display: flex; justify-content: center; gap: 12px; margin-top: 14px; }
+.end-actions .wbtn { min-height: 46px; font-size: 22px; padding: 0 22px; border-radius: 23px; }
+@media (prefers-reduced-motion: reduce) { .end-stars svg { animation: none; } .map-card { transition: none; } }
+
+@media (max-width: 759.98px), (max-height: 519.98px) {
+  #start-screen { position: fixed; padding: 64px 8px 16px; }
+  body.on-start .top-buttons { position: fixed; right: 6px; top: 6px; }
+  .start-title { width: 100%; height: 64px; font-size: 32px; gap: 8px; } .start-castle { width: 44px; height: 50px; }
+  .map-cards { flex-wrap: wrap; justify-content: center; gap: 12px; margin-top: 18px; } .map-card { width: 168px; height: 250px; } .map-thumb { width: 144px; height: 100px; }
+  .map-lock { top: 40px; }
+  #overlay { position: fixed; z-index: 30; }
+  .end-card { padding: 48px 16px 18px; } .end-ribbon text { font-size: 50px; }
+  .end-stars svg { width: 44px; height: 44px; }
+  .end-actions .wbtn { font-size: 19px; padding: 0 16px; }
+}
