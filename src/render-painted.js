@@ -413,8 +413,10 @@ export function buildPaintedSvg(state, opts = {}) {
   }
   // Weg, eingesunken (Z.79–87)
   const [groove, rim, edge, main, mid] = c.path;
-  for (const pts of sc.paths) {
-    const d = 'M ' + pts.map((p) => `${f(p[0])} ${f(p[1])}`).join(' L ');
+  // Alle Wege als EIN Pfad mit mehreren Teilstücken: jede Schicht wird für alle Wege gemeinsam gemalt,
+  // so fließen Wege an Kreuzungen und Zusammenläufen ineinander, statt dass Rand/Fuge des einen den anderen überdeckt.
+  if (sc.paths.length) {
+    const d = sc.paths.map((pts) => 'M ' + pts.map((p) => `${f(p[0])} ${f(p[1])}`).join(' L ')).join(' ');
     out.push(`<g class="path"><g filter="url(#p-wob)">`
       + `<path d="${d}" fill="none" stroke="${groove}" stroke-width="86" stroke-linejoin="round"/>`
       + `<path d="${d}" fill="none" stroke="${rim}" stroke-width="72" stroke-linejoin="round"/>`

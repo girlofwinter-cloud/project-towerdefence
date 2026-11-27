@@ -271,3 +271,16 @@ test('Stil 1 (alle Karten): Fahne mit Abstand zur Canvas-Oberkante (Zwei Fronten
   const twin = buildPaintedScene(createGame({ mapId: 'twin' })).flags;
   assert.ok(twin.some((fl) => fl.s < PAINTED_STYLE.flagScale) && twin.some((fl) => fl.s === PAINTED_STYLE.flagScale), 'nur die obere Fahne verkleinert');
 });
+
+test('Stil 1: mehrere Wege werden als ein Weg gemalt (jede Schicht genau einmal, alle Wege als Teilstücke)', () => {
+  for (const id of Object.keys(MAPS)) {
+    const s = createGame({ mapId: id });
+    const n = buildPaintedScene(s).paths.length;
+    const svg = buildPaintedSvg(s);
+    assert.equal((svg.match(/<g class="path">/g) || []).length, 1, `${id}: eine Weg-Gruppe`);
+    const group = svg.slice(svg.indexOf('<g class="path">'));
+    const fuge = group.match(/<path d="([^"]*)"[^>]*stroke-width="86"/);
+    assert.ok(fuge, `${id}: Fuge vorhanden`);
+    assert.equal((fuge[1].match(/M /g) || []).length, n, `${id}: ${n} Wege als Teilstücke derselben Schicht`);
+  }
+});
