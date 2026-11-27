@@ -3032,3 +3032,62 @@ describe('B-170: Glutling ist immun gegen Verlangsamung und Einfrieren', () => {
     assert.ok(em.slowUntil > s.time);
   });
 });
+
+describe('B-168: Irrlicht weicht langsamen Geschossen aus', () => {
+  const every = ENEMY_TYPES.wisp.dodgeEvery;
+
+  test('genau jedes dodgeEvery-te Kanonen-Geschoss trifft, nie Rückstoß, Ausweich-Effekt entsteht', () => {
+    const { s, tower, e } = specialSetup('cannon', 'wisp');
+    const dist0 = e.dist;
+    const hits = [];
+    for (let i = 1; i <= every * 2; i++) {
+      const hp = e.hp;
+      fireAndLand(s, tower);
+      hits.push(e.hp < hp);
+      if (i === 1) assert.ok(s.effects.some((f) => f.kind === 'dodge'), 'dodge-Effekt');
+    }
+    assert.deepEqual(hits, hits.map((_, i) => (i + 1) % every === 0));
+    assert.equal(e.dist, dist0, 'kein Rückstoß');
+  });
+
+  test('Frost: verfehlte Treffer machen keinen Schaden, verlangsamen nicht und zählen nicht fürs Einfrieren', () => {
+    const { s, tower, e } = specialSetup('frost', 'wisp');
+    const hp0 = e.hp;
+    for (let i = 1; i < every; i++) fireAndLand(s, tower);
+    assert.equal(e.hp, hp0);
+    assert.ok(!(s.time < (e.slowUntil || 0)), 'kein Slow');
+    assert.equal(tower.hitCount || 0, 0);
+    fireAndLand(s, tower);
+    assert.ok(e.hp < hp0, 'jeder dodgeEvery-te trifft');
+    assert.ok(s.time < e.slowUntil && e.slowFactor < 1, 'Treffer verlangsamt');
+    assert.equal(tower.hitCount, 1);
+  });
+
+  test('fremde Explosion verletzt das Irrlicht nicht, den Goblin daneben schon', () => {
+    const { s, tower, e: g } = specialSetup('cannon', 'grunt');
+    const w = spawnEnemy(s, 'wisp', 1);
+    w.speed = 0; w.hp = w.maxHp = 1e8; // schwächer als der Goblin: Zielregel "strong" wählt den Goblin
+    setTargetMode(s, tower.id, 'strong');
+    w.dist = g.dist - 5; // knapp hinter dem Goblin, steht im Splash
+    const p = pointAt(enemyPath(s, w), w.dist);
+    w.x = p.x; w.y = p.y;
+    for (let i = 0; i < every; i++) {
+      const gh = g.hp;
+      fireAndLand(s, tower);
+      assert.ok(g.hp < gh, 'Goblin getroffen');
+      assert.ok(Math.hypot(w.x - g.x, w.y - g.y) <= TOWER_TYPES.cannon.splash * TILE, 'Irrlicht im Splash');
+    }
+    assert.equal(w.hp, w.maxHp, 'Irrlicht unverletzt');
+    assert.equal(w.dodgeCount || 0, 0, 'kein Ausweichen nötig');
+  });
+
+  test('Pfeil trifft immer', () => {
+    const { s, tower, e } = specialSetup('arrow', 'wisp');
+    for (let i = 0; i < every * 2; i++) {
+      const hp = e.hp;
+      fireAndLand(s, tower);
+      assert.ok(e.hp < hp, `Pfeil ${i + 1} trifft`);
+    }
+    assert.ok(!s.effects.some((f) => f.kind === 'dodge'));
+  });
+});

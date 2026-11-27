@@ -145,6 +145,11 @@ const ENEMY_SVG = {
     svg: goblinSvg({ legs: '#7a3f1e', body: '#c9794a', belt: '#d6483a', ears: '#c9794a', head: '#d79a2b', weapon: '',
       front: `<path d="M18 7 Q20 -2 24 -6 Q28 -2 30 7 Z" fill="#ffe266" stroke="#2b1a10" stroke-width="2.5" stroke-linejoin="round"/>` }),
   },
+  // Irrlicht (B-168): Platzhalter, leuchtender Kreis mit Schweif (finale Figur kommt vom designer)
+  wisp: {
+    w: 46, h: 50,
+    svg: `<circle cx="24" cy="20" r="18" fill="url(#s1-iceglow)" opacity=".8"/><path d="M14 26 Q10 40 22 48 Q20 38 26 32 Z" fill="#bff0ff" stroke="#2b1a10" stroke-width="2.5" stroke-linejoin="round"/><circle cx="24" cy="20" r="10" fill="#dff7ff" stroke="#2b1a10" stroke-width="3"/><circle cx="21" cy="17" r="3.5" fill="#fff"/>`,
+  },
 };
 // Eingefrorener Goblin (Z.111) und der Eiskristall daraus als Überzug für alle anderen Typen
 const ICED = { w: 54, h: 56, svg: `<ellipse cx="27" cy="50" rx="17" ry="4" fill="rgba(20,30,40,.4)"/><path d="M14 28 Q14 44 27 44 Q40 44 40 28 Z" fill="#8fd0e8" stroke="#2b1a10" stroke-width="3"/><path d="M8 18 L16 22 L14 28 Z M46 18 L38 22 L40 28 Z" fill="#9fdcf0" stroke="#2b1a10" stroke-width="2.5" stroke-linejoin="round"/><circle cx="27" cy="22" r="13" fill="#a8e2f5" stroke="#2b1a10" stroke-width="3"/><path d="M20 20 H25 M30 20 H35" stroke="#2b1a10" stroke-width="2.5" stroke-linecap="round"/><path d="M5 40 L12 8 L21 36 L28 2 L35 36 L44 10 L50 40 L44 52 H10 Z" fill="#dff7ff" fill-opacity=".55" stroke="#2b1a10" stroke-width="2.5" stroke-linejoin="round"/><path d="M14 12 L18 36" stroke="#fff" stroke-width="3" stroke-linecap="round"/>` };

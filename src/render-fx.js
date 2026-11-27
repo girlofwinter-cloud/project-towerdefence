@@ -33,6 +33,7 @@ const OUT_WIDTH = STYLE.outlineWidth;
 const OUT_ICE = outlineOf(HI.ice);
 const COIN_EDGE = outlineOf(CO.dark);
 const CHILL = FX_STYLE.chill;
+const DG = FX_STYLE.dodge;
 const MT = FX_STYLE.meteor;
 const OUT_ROCK = outlineOf(MT.rock);
 const OUT_CHUNK = outlineOf(MT.chunk);
@@ -377,6 +378,17 @@ export function drawEffectOver(ctx, e, reducedMotion = false) {
     ctx.fillRect(0, 0, WIDTH, HEIGHT);
   } else if (e.kind === 'bolt') {
     drawBolt(ctx, e, a);
+  } else if (e.kind === 'dodge') {
+    // B-168: Irrlicht weicht aus, Platzhalter: heller Ring wächst und verblasst
+    const k = a > 0 ? (a < 1 ? a : 1) : 0;
+    ctx.save();
+    ctx.globalAlpha = k;
+    ctx.strokeStyle = DG.color;
+    ctx.lineWidth = DG.line;
+    ctx.beginPath();
+    ctx.arc(e.x, e.y, DG.r + (1 - k) * DG.grow, 0, TWO_PI);
+    ctx.stroke();
+    ctx.restore();
   } else if (e.kind === 'explosion' && e.meteor) {
     drawMeteorOver(ctx, e);
   } else if (e.kind === 'explosion') {

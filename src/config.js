@@ -599,6 +599,9 @@ export const ENEMY_TYPES = {
   // Glutling (B-170): slowImmune = immun gegen Frost-Slow und Einfrieren (Frost-Schaden wirkt normal);
   //   chillFactor = Anteil der Kälteschock-Verlangsamung, der trotzdem wirkt (0,5 = halbe Wirkung).
   ember: { name: 'Glutling', hp: 70, speed: 2.0, reward: 6, leak: 1, radius: 10, color: '#d79a2b', slowImmune: true, chillFactor: 0.5 },
+  // Irrlicht (B-168): weicht Geschossen mit projectileSpeed < dodgeBelow (Kacheln/s) aus, nur jedes dodgeEvery-te trifft
+  //   (fester Zähler je Irrlicht, kein Zufall). Kein Schaden von Explosionen, die anderen galten; nie Rückstoß.
+  wisp: { name: 'Irrlicht', hp: 60, speed: 1.5, reward: 6, leak: 1, radius: 10, color: '#bff0ff', dodgeBelow: 11, dodgeEvery: 3 },
 };
 
 // B-127: Boss-Merkmal statt Typname. Nimmt einen Gegner ({ type }) oder einen Typnamen.
@@ -1261,6 +1264,8 @@ export const FX_STYLE = {
     edgeWidth: 1, inner: 0.72, shineMin: 0.6, shineOffset: 0.3, shineR: 0.22 }, // Rand, Innenfläche und Glanz relativ zur Größe
   coinText: { color: '#f4c542', outline: '#3b2415', outlineWidth: 3, rise: 10, lift: 20, font: 'bold 13px system-ui, sans-serif' }, // lift: Start über dem Gegner in px
   chill: { rgb: '120,200,255', alpha: 0.25 }, // Frost-Schimmer über dem ganzen Feld
+  // B-168: Irrlicht weicht aus, Platzhalter: heller Ring wächst und verblasst (life in s Spielzeit, Radien in px)
+  dodge: { color: '#fff3c9', life: 0.4, r: 10, grow: 10, line: 2 },
   // Meteor (B-112): Anflug -> Einschlag -> Krater. Zeiten in Sekunden Spielzeit (flight + blast + crater = Effektdauer),
   // Radien als Anteil des Meteor-Radius r, sonst px. Der Schaden fällt sofort (game.js), der Anflug ist darum kurz.
   meteor: {
@@ -1397,7 +1402,7 @@ export const SOUND = {
       'shot:lightning': { files: ['lightning-1', 'lightning-2', 'lightning-3'], gain: 0.18, pitchVar: 0.06 },
       // Tod: kurze Monster-Schreie (OpenGameArt, CC0); enemyRate = Tonhöhe je Gegnertyp (klein/schnell höher)
       death:            { files: ['death-1', 'death-2', 'death-3', 'death-4'], gain: 0.55, pitchVar: 0.08,
-                          enemyRate: { runner: 1.25, grunt: 1.1, healer: 1.05, mage: 1.0, shielded: 0.95, tank: 0.85, skeleton: 1.35, ember: 1.2 } },
+                          enemyRate: { runner: 1.25, grunt: 1.1, healer: 1.05, mage: 1.0, shielded: 0.95, tank: 0.85, skeleton: 1.35, ember: 1.2, wisp: 1.3 } },
       // Boss-Tod: langer, tiefer Schrei, zusätzlich tiefer abgespielt (rate = Grund-Tonhöhe)
       boss:             { files: ['boss-1', 'boss-2'], gain: 0.9, pitchVar: 0.03, rate: 0.85 },
       lifeLost:         { files: ['life-lost-1', 'life-lost-2'], gain: 0.8, pitchVar: 0 },
