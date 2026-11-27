@@ -17,47 +17,61 @@ Erledigte Einträge (`fertig`) liegen in `docs/archiv/BACKLOG-fertig.md`. Beim A
 
 ---
 
-### B-160: Tokens im Code anlegen (src/theme.js und CSS-Variablen)
-- Status: vorschlag
-- Aufwand: S
-- Idee: Erst nach dem Merge des Stil-1-Umbaus. Neue Datei `src/theme.js` (kein DOM, in Node importierbar) mit allen Farb-Tokens des Design-Systems "Gemalt und warm" (`docs/design/README.md`) unter camelCase-Namen, dazu `THEME_SIZE` für Konturen, Rundungen und Knopfgrößen. `scripts/theme-css.mjs` (ohne Abhängigkeiten) schreibt daraus den `:root`-Block in `style.css` (Kommentar "generiert aus src/theme.js"). Bestehende 10 Variablen (`--ink`, `--cream` …) behalten ihre Namen. Noch kein Umbau der Nutzer. Konzept: `docs/design/token-einfuehrung.md`.
-- Akzeptanzkriterien:
-  - `src/theme.js` enthält jeden Farb-Token aus dem Design-System (100 Stück, Stand 2026-11-27) mit gleichem Wert.
-  - Neuer Test in `tests/render.test.js`: jeder Eintrag aus `THEME` steht als `--<kebab-name>` mit gleichem Wert im `:root`-Block von `style.css` und umgekehrt.
-  - Spiel sieht pixelgleich aus (Screenshot `#game` und HUD vorher/nachher bei 1280x800 identisch), `npm test` grün.
-
-### B-161: Verstreute Farbwerte auf Tokens umstellen
+### B-160: src/theme.js als einzige Quelle der Optik-Werte
 - Status: vorschlag
 - Aufwand: M
-- Idee: Nach B-160. Alle Farbliterale der Stil-1-Optik durch Tokens ersetzen: `style.css` (78 Literale → `var(--…)`), `src/figures.js` (187, davon Kontur 84×), `src/svg-figure.js` (Verläufe), `src/render-painted.js` (50), `src/config.js` Stil-1-Blöcke (`FIGURE_STYLE`, `PAINTED_PALETTE`, `MAPS.*.theme.painted`, `LAVA_STYLE`), `index.html` und `src/main.js` (Inline-SVG über Klassen bzw. `style="fill:var(--…)"`). Bestand je Datei: `docs/design/token-einfuehrung.md`. Reine Optik, keine Logik.
+- Idee: Grundlage für alle weiteren Design-Umbauten (neue Karten, Gegner, Bauteile). Neue Datei `src/theme.js` (kein DOM, in Node importierbar) mit allen Tokens aus `docs/design/system/tokens.json`: Farben, Karten-Paletten, Schrift, Konturen, Rundungen, Schatten, Abstände, Größen (camelCase, z. B. `THEME.woodB`, `THEME.maps.ice.ground`). Ab dann ist `theme.js` die Quelle; `scripts/design-tokens.mjs` wird umgedreht und erzeugt aus `theme.js` die Dateien `docs/design/system/tokens.json`, `TOKENS.md`, `tokens.css` und den `:root`-Block in `style.css` (Kommentar "erzeugt, nicht von Hand ändern"). Bestehende CSS-Variablen (`--ink`, `--cream` …) behalten ihre Namen. Noch kein Umbau der Nutzer (das ist B-161). Konzept: `docs/design/token-einfuehrung.md`.
 - Akzeptanzkriterien:
-  - `grep -cE "#[0-9a-fA-F]{6}"` in `src/figures.js`, `src/render-painted.js`, `src/svg-figure.js`, `index.html`, `src/main.js` ergibt 0; in `style.css` nur noch im generierten `:root`-Block.
-  - Screenshots vorher/nachher pixelgleich: Wiese mit allen 5 Türmen auf Stufe 1–3 und allen Gegnertypen, jede Karte im Startbild, HUD in allen Zuständen (bzw. Styleguide-Seite, falls B-164 schon da ist).
+  - `node scripts/design-tokens.mjs` erzeugt alle vier Ziele aus `src/theme.js`; ein zweiter Lauf ändert nichts.
+  - Neuer Test in `tests/render.test.js`: die erzeugten Dateien und der `:root`-Block entsprechen `theme.js` (schlägt fehl, wenn jemand nur eine Seite ändert).
+  - Inhalt von `tokens.json` vorher/nachher gleich (113 Farben, Stand main@0110569); Spiel pixelgleich, `npm test` grün.
+
+### B-164: Styleguide-Seite mit allen Bauteilen
+- Status: vorschlag
+- Aufwand: M
+- Idee: Nach B-160. Testseite `styleguide.html` zeigt alle Türme in allen Stufen, alle Gegner (normal, eingefroren, beschädigt, Sonderzustand), Effekte zu fünf festen Zeitpunkten, alle HTML-Bauteile in allen Zuständen (HUD, Knöpfe, Ringmenü, Kartenkarten, Spielende) und alle Karten, mit dem echten Zeichencode und eingefrorener Zeit. Zellen kommen aus `styleguideCatalog()` (liest `config.js`), neue Karten und Gegner erscheinen von selbst. Werkzeug für alle späteren Design-Umbauten: der designer prüft per Screenshot dieser Seite, jeder Optik-PR hängt Vorher/Nachher an. Bauvorlage: `docs/design/elemente/Seite-Styleguide.md`.
+- Akzeptanzkriterien:
+  - Alle Punkte unter "Messbare Abnahme" der Bauvorlage (u. a. 15 Turm-Zellen, ≥ 40 Gegner-Zellen, alle Karten, deterministische Screenshots mit `?t=0.5`).
+  - Neue Tests: Katalog-Test in `tests/render.test.js`, `tests/e2e/styleguide.test.mjs`.
+
+### B-161: Alle Farbwerte auf Tokens umstellen
+- Status: vorschlag
+- Aufwand: M
+- Idee: Nach B-160 und B-164 (die Styleguide-Seite liefert den Vorher/Nachher-Vergleich). Alle Farbliterale der Stil-1-Optik durch Tokens ersetzen: `style.css` → `var(--…)`, `src/figures.js` (Kontur 84×), `src/svg-figure.js`, `src/render-painted.js`, `src/screens.js`, `src/config.js` Stil-1-Blöcke (`FIGURE_STYLE`, `PAINTED_PALETTE`, `MAPS.*.theme.painted`, `LAVA_STYLE`, `RING_MENU`) über `THEME`, `index.html` und `src/main.js` (Inline-SVG über Klassen bzw. `style="fill:var(--…)"`). Bestand je Datei: `docs/design/token-einfuehrung.md`. Reine Optik, darf in zwei Blöcken laufen (CSS/HTML, dann Canvas/SVG).
+- Akzeptanzkriterien:
+  - Screenshots der Styleguide-Seite und von `#game` je Karte vorher/nachher pixelgleich.
+  - Nach dem Umbau greift der Wächter-Test aus B-165 ohne Ausnahmeliste für die umgestellten Dateien.
   - `npm test` und `npm run test:e2e` grün.
+
+### B-165: Wächter-Tests für das Design-System
+- Status: vorschlag
+- Aufwand: S
+- Idee: Nach B-161. Damit tester und reviewer Optik-Regeln nicht von Hand prüfen müssen: (1) kein Farbliteral (`#rgb`, `#rrggbb`, `rgb(a)(`) in `src/` außer `src/theme.js` und in `style.css` außerhalb des erzeugten Blocks; Ausnahmen nur über eine kurze, kommentierte Liste im Test. (2) Kontrast: für eine Liste von Paaren in `theme.js` (`contrastPairs`, z. B. `cream` auf `woodB`, `goldLight` auf `ink`) mindestens 4,5:1 bzw. 3:1 bei großer Schrift. Danach in `tester.md` und `reviewer.md` den Verweis aufs Design-System durch "Design-Regeln prüfen die Tests in `tests/render.test.js`" ersetzen (Änderung an `.claude/`, Mensch).
+- Akzeptanzkriterien:
+  - Beide Tests in `tests/render.test.js`, grün auf main; ein absichtlich eingefügtes `#123456` in `src/render.js` lässt den Test fehlschlagen.
+
+### B-166: Claude Design per Skript aus theme.js befüllen
+- Status: vorschlag
+- Aufwand: S
+- Idee: Nach B-160. `scripts/design-artifact.mjs` baut aus `docs/design/system/` den Ordner für das Design-System in Claude Design (`project/tokens.json`, `README.md`, `components/…`) im Scratchpad; der Orchestrator veröffentlicht ihn mit einem Artifact-Aufruf. Im design-Skill wird Schritt 7 (Abgleich) zu: Skript laufen lassen, einmal veröffentlichen. Damit kein Abgleich von Hand mehr nötig ist.
+- Akzeptanzkriterien:
+  - Ein Lauf erzeugt einen Ordner, dessen `project/tokens.json` mit `docs/design/system/tokens.json` übereinstimmt; Veröffentlichung im selben PR wie die Token-Änderung.
 
 ### B-162: Alte Stile vor Stil 1 entfernen und Doppelwerte vereinheitlichen
 - Status: vorschlag
 - Aufwand: M
-- Idee: Nach B-161. Prüfen, welche Blöcke in `src/config.js` nach dem Stil-1-Umbau nicht mehr gelesen werden (`STYLE`, `ICON`, `PATH_STYLE`, `GROUND_STYLE`, `DECOR_STYLE`, `TREE_FRAME`, `ACCENT_STYLE`, `WATER_STYLE`, `SHOP_CARD`, `MAPS.*.theme.decor/path/grass`, Konstanten in `src/render.js` wie `GRASS_COLORS`, `GATE_WOOD`) und mit ihrem Zeichencode entfernen. Doppelte Schreibweisen einer Rolle (Gold `#f2c14e`/`#f4c542`, Holz `#c88a4c`/`#c58f55`/`#b97a3e`) auf einen Token bringen; wo sich dadurch sichtbar etwas ändert, dem Menschen eine Liste mit Vorher/Nachher vorlegen.
+- Idee: Nach B-161. Prüfen, welche Blöcke in `src/config.js` nach Stil 1 nicht mehr gelesen werden (`STYLE`, `ICON`, `PATH_STYLE`, `GROUND_STYLE`, `DECOR_STYLE`, `TREE_FRAME`, `ACCENT_STYLE`, `WATER_STYLE`, `SHOP_CARD`, `MAPS.*.theme.decor/path/grass`, Konstanten in `src/render.js` wie `GRASS_COLORS`, `GATE_WOOD`) und mit ihrem Zeichencode entfernen. Doppelte Schreibweisen einer Rolle (Gold `#f2c14e`/`#f4c542`, Holz `#c88a4c`/`#c58f55`/`#b97a3e`) auf einen Token bringen; wo sich dadurch sichtbar etwas ändert, dem Menschen Vorher/Nachher von der Styleguide-Seite vorlegen. Macht jede neue Karte billiger, weil nur noch eine Palette pro Karte gepflegt wird (`theme.painted`).
 - Akzeptanzkriterien:
-  - Kein entfernter Block wird noch importiert (`grep`), Tests, die nur alte Stile prüfen, sind mit dem Menschen abgestimmt (Teständerung).
+  - Kein entfernter Block wird noch importiert; Tests, die nur alte Stile prüfen, sind mit dem Menschen abgestimmt (Teständerung).
   - Verschiedene Hexwerte in `src/config.js` sinken von 319 auf höchstens 200.
   - `npm test` und `npm run test:e2e` grün.
 
 ### B-163: Kontrast der Info-Meldung
 - Status: vorschlag
 - Aufwand: S
-- Idee: Die grüne Meldung (`#message.info`, cream auf `#4f8a34`) erreicht 3,8:1, unter 4,5:1 für Text. Vorschlag: Fläche auf `#3f7a2c` (ca. 5,0:1) abdunkeln oder Schrift mit `text-shadow 0 2px 0 ink` wie im Pause-Banner. Gefunden beim Anlegen des Design-Systems.
+- Idee: Die grüne Meldung (`#message.info`, cream auf `#4f8a34`) erreicht 3,8:1, unter 4,5:1 für Text. Vorschlag: Fläche auf `#3f7a2c` (ca. 5,0:1) abdunkeln oder Schrift mit `text-shadow 0 2px 0 ink` wie im Pause-Banner. Kann jederzeit laufen; nach B-165 als Paar in `contrastPairs` aufnehmen.
 - Akzeptanzkriterien:
   - Kontrast cream zu Meldungsfläche ≥ 4,5:1 (gemessen), Token `message-info` im Design-System nachgezogen.
-
-### B-164: Styleguide-Seite mit allen Bauteilen
-- Status: vorschlag
-- Aufwand: M
-- Idee: Nach dem Merge des Stil-1-Umbaus. Testseite `styleguide.html` zeigt alle Türme in allen Stufen, alle Gegner (normal, eingefroren, beschädigt, Sonderzustand), Effekte zu fünf festen Zeitpunkten, alle Knöpfe und HUD-Teile in allen Zuständen und alle Karten, mit dem echten Zeichencode und eingefrorener Zeit. Die Zellen kommen aus `styleguideCatalog()` (liest `config.js`), neue Typen erscheinen von selbst. Der designer prüft künftig per Screenshot dieser Seite statt per nachgespielter Partie. Bauvorlage: `docs/design/elemente/Seite-Styleguide.md`.
-- Akzeptanzkriterien:
-  - Alle Punkte unter "Messbare Abnahme" in der Bauvorlage erfüllt (u. a. 15 Turm-Zellen, ≥ 40 Gegner-Zellen, 5 Karten, deterministische Screenshots mit `?t=0.5`).
-  - Neue Tests: Katalog-Test in `tests/render.test.js`, `tests/e2e/styleguide.test.mjs`.
 
 ### B-128: Magier stärker machen
 - Status: vorschlag

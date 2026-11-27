@@ -1,5 +1,5 @@
 # Seite-Styleguide (B-164): Testseite mit allen Bauteilen des Spiels auf einen Blick
-Fläche: noch keine (wird mit der Freigabe als `Seite-Styleguide.dc.html` in der Bauteil-Bibliothek https://claude.ai/artifact/Sh1JhJ3E4h97wTMLVNEkDs angelegt). Backlog: B-164. Stand: agent/gemalt-karten@a3d15b4. Erst nach dem Merge des Stil-1-Umbaus bauen.
+Fläche: noch keine (wird mit der Freigabe als `Seite-Styleguide.dc.html` in der Bauteil-Bibliothek https://claude.ai/artifact/Sh1JhJ3E4h97wTMLVNEkDs angelegt). Backlog: B-164. Stand: main@0110569. Nach B-160 bauen.
 
 Zweck: Eine Seite `styleguide.html`, die jedes gezeichnete und jedes HTML-Bauteil in allen Zuständen nebeneinander zeigt, mit dem echten Zeichencode des Spiels. Der designer macht davon einen Screenshot statt eine Partie nachzuspielen; der developer sieht nach einer Änderung sofort alle betroffenen Stellen; neue Türme, Gegner und Karten erscheinen ohne Zusatzarbeit, weil die Seite ihre Liste aus `src/config.js` bildet.
 
@@ -9,9 +9,9 @@ Zweck: Eine Seite `styleguide.html`, die jedes gezeichnete und jedes HTML-Bautei
   1. **Türme:** 5 Typen × 3 Stufen, je eine Zelle 120 × 150 Spiel-px (3 × 3,75 Kacheln) auf Wiesenboden `map-meadow-2`, Figur mit Stufenmarke und Goldbändern; darunter dieselben 15 in 0,5-facher Größe (Handy-Maßstab) und eine Zeile "Schuss" (Rückstoß bei `recoilOffset(1)`, Mündungsfeuer).
   2. **Gegner:** alle `ENEMY_TYPES` (heute 10) je in vier Zuständen: normal, eingefroren (`slowUntil > time`), beschädigt (Lebensbalken bei 60 % und 20 %), Sonderzustand (Schamane mit Heil-Aura, Schildträger, Magier-Schild `ward`, Boss-Krone). Zelle 80 × 100 Spiel-px.
   3. **Effekte:** je Effekt eine Zeile mit 5 eingefrorenen Zeitpunkten (t = 0; 0,25; 0,5; 0,75; 1 der Lebensdauer): Pfeil, Kugel mit Spur, Explosion, Frost-Strahl, Scharfschuss, Blitz, Meteor (Anflug, Einschlag, Krater), Münzflug, Beschwörung, Boss-Auftritt.
-  4. **Knöpfe und HUD:** die sieben Bauteile des Design-Systems (Holzleiste, runder Knopf, Fähigkeitsknopf, Wellenknopf, Preisschild, Stufenmarke, Plakette) in allen Zuständen, mit den echten Klassen aus `style.css`.
+  4. **Knöpfe, HUD, Menüs, Bildschirme:** alle Bauteile des Design-Systems (heute 10: Holzleiste, runder Knopf, Fähigkeitsknopf, Wellenknopf, Preisschild, Stufenmarke, Plakette, Ringmenü, Kartenkarte, Spielende-Plakette) in allen Zuständen aus `docs/design/system/komponenten/<Name>/README.md`, mit den echten Klassen aus `style.css`. Ersetzt danach die nachgebauten Vorschauen (`preview.html`), die dann aus Screenshots dieser Seite entstehen.
   5. **Karten:** alle `MAPS` (heute 5) als gemalter Hintergrund mit Weg, Wasser/Lava, Rahmenwald, Burg und Fahne, je 450 × 330 CSS-px (halbe Canvas-Größe 900 × 660), darunter Name und die drei Bodenfarben als Farbfelder.
-  6. **Tokens:** alle Farb-Tokens als Felder (aus `src/theme.js`, sobald es B-161 gibt; davor entfällt der Abschnitt).
+  6. **Tokens:** alle Farb-Tokens als Felder (aus `src/theme.js`, B-160).
 - Jede Zelle hat eine Beschriftung (Trebuchet 12, `muted`): Typ, Stufe/Zustand, Zeitpunkt.
 
 ## Tokens
@@ -58,7 +58,7 @@ Keine Änderung an `src/game.js`, `src/path.js`, `src/main.js`, `index.html`.
 - Bestehende Tests: keine betroffen.
 
 ## Messbare Abnahme
-- `http://localhost:8080/styleguide.html` zeigt bei 1280x800 die Abschnitte 1–5 (6 nach B-161); 15 Turm-Zellen, ≥ 40 Gegner-Zellen, ≥ 50 Effekt-Zellen, 7 Bauteil-Gruppen, 5 Karten.
+- `http://localhost:8080/styleguide.html` zeigt bei 1280x800 die Abschnitte 1–6; 15 Turm-Zellen, ≥ 40 Gegner-Zellen, ≥ 50 Effekt-Zellen, 10 Bauteil-Gruppen, alle Karten aus `MAPS`.
 - Zwei Aufrufe mit `?t=0.5` ergeben pixelgleiche Screenshots von `#tuerme` und `#gegner` (Playwright `toBuffer`-Vergleich), d. h. die Seite ist deterministisch.
 - Ein neuer Eintrag in `ENEMY_TYPES` erscheint ohne Änderung an `src/styleguide*.js` (im Test mit einer Kopie des Katalogs geprüft).
 - Seite lädt in unter 2 s auf dem Testrechner (Playwright `load` bis letzte Zelle gezeichnet).

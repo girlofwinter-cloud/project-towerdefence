@@ -27,15 +27,17 @@ Drei Befunde:
 
 ## Zielbild
 
+Eine Quelle, alles andere erzeugt und durch Tests bewacht:
+
 ```
-src/theme.js          THEME = { ink: '#2b1a10', cream: '#fff3d2', … }   einzige Quelle, Namen = Design-System
-                      THEME_SIZE = { strokeUi: 3, round: 48, … }        Maße, die auch Canvas braucht
-style.css :root       --ink: #2b1a10; …                                 Block "generiert aus src/theme.js", nicht von Hand ändern
-scripts/theme-css.mjs schreibt den :root-Block aus theme.js neu          ohne Abhängigkeiten
-tests/render.test.js  :root-Block == theme.js                           schlägt fehl, wenn jemand nur eine Seite ändert
-src/config.js         importiert THEME; FIGURE_STYLE.outline = THEME.ink usw.
-src/figures.js        SVG-Strings mit ${THEME.ink} statt Literal (eine Konstante K gibt es schon)
-index.html, main.js   Inline-SVG mit class="ink-stroke" bzw. style="fill:var(--cream)" statt Attribut-Hex
+src/theme.js                    einzige Quelle: Farben, Karten-Paletten, Schrift, Konturen, Rundungen, Schatten, Abstände, Größen
+  └─ scripts/design-tokens.mjs  erzeugt:
+       style.css :root           CSS-Variablen (Block "erzeugt, nicht von Hand ändern")
+       docs/design/system/       tokens.json, TOKENS.md, tokens.css (für alle Rollen lesbar)
+  └─ scripts/design-artifact.mjs  Ordner für Claude Design, der Orchestrator veröffentlicht ihn (B-166)
+styleguide.html                 zeigt alle Bauteile mit echtem Zeichencode (B-164), Vorher/Nachher je Optik-PR
+tests/render.test.js            erzeugte Dateien == theme.js; keine Farbliterale außerhalb theme.js; Kontrastpaare (B-160, B-165)
+src/config.js, figures.js …     lesen THEME statt Hex-Werten (B-161)
 ```
 
 Warum `theme.js` die Quelle ist und nicht CSS: Canvas und die SVG-Strings für Sprites brauchen die Werte in JavaScript und in Node (Tests); CSS-Variablen sind dort nicht lesbar. Umgekehrt lädt CSS ohne JavaScript sofort richtig, darum steht der Block zusätzlich in `style.css` statt zur Laufzeit gesetzt zu werden.
@@ -45,8 +47,13 @@ Namen: Design-System `kebab-case` (`wood-a`, `map-meadow-1`), in `theme.js` `cam
 Architektur (CLAUDE.md): `config.js` bleibt für Balancing und Lage zuständig; `theme.js` nur für Farben und Optik-Maße, ohne DOM, in Node importierbar. Die Zeile in CLAUDE.md "ALLE Balancing-Zahlen in config.js" ergänzt der Mensch um "Farben und Optik-Tokens in src/theme.js".
 
 ## Reihenfolge
-1. **B-160** `src/theme.js` + `:root`-Block + Abgleich-Test. Nur Anlage, noch kein Umbau der Nutzer (klein, risikolos).
-2. **B-161** Nutzer umstellen: `style.css` (alle Literale → `var(--…)`), `config.js`-Stil-1-Blöcke, `figures.js`, `svg-figure.js`, `render-painted.js`, `index.html`, `main.js`. Pixelgleich: Screenshots vorher/nachher identisch.
-3. **B-162** Alte Stile entfernen, die nach Stil 1 nicht mehr gelesen werden, und doppelte Schreibweisen auf einen Token bringen (Liste dem Menschen vorlegen, wo sich dadurch eine Farbe sichtbar ändert).
-4. **B-163** Kontrastlücke Meldung Info (cream auf `message-info` 3,8:1).
-5. Danach: Design-System bei jeder Token-Änderung nachziehen (Orchestrator, im selben PR).
+
+Begründung: Es kommen weitere Karten, Gegner und Design-Umbauten. Jede davon braucht heute Farben an mehreren Stellen, eine Partie zum Prüfen und einen Abgleich des Design-Systems von Hand. Nach dem Umbau ist eine neue Karte eine Palette in `theme.js`, erscheint von selbst auf der Styleguide-Seite und im Design-System.
+
+1. **B-160** `theme.js` als Quelle, Erzeugungsskript umdrehen, Abgleich-Test. Pixelgleich.
+2. **B-164** Styleguide-Seite. Ab hier gibt es für jede Optik-Änderung einen festen Vorher/Nachher-Vergleich.
+3. **B-161** Nutzer auf `THEME`/`var(--…)` umstellen, geprüft mit der Styleguide-Seite. Pixelgleich.
+4. **B-165** Wächter-Tests (keine Literale, Kontrast); danach brauchen tester und reviewer keinen Design-System-Verweis mehr.
+5. **B-166** Claude Design per Skript befüllen.
+6. **B-162** Alte Stile entfernen, Doppelwerte vereinheitlichen (sichtbare Änderungen legt der Mensch fest).
+7. **B-163** Kontrast Info-Meldung (unabhängig, jederzeit).

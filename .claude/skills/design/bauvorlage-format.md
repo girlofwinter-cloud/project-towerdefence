@@ -51,6 +51,22 @@ Prüfbare Sätze mit Zahl, Messweg und Gerät, z. B.:
 - `npm test` und `npm run test:e2e` grün, Konsole ohne Fehler.
 ```
 
+## Checklisten für wiederkehrende Elemente
+
+Neue Karten und neue Gegner kommen oft. Ihre Bauvorlage (`Karte-<Name>.md`, `Gegner-<Name>.md`) enthält zusätzlich zu den Abschnitten oben diese Punkte, im Abschnitt **Tokens** bzw. **Zustände**:
+
+**Neue Karte**
+- Palette als vollständiger Satz wie die bestehenden Karten: Boden 3 Stufen (`map-<id>-1..3`), Weg (`map-<id>-path-groove/-edge/-earth/-mid`), Tupfen (`dotKind`, 3 Farben), Bäume (Tanne 4, Laubbaum 3 oder kahl), Fels, Klippe, Vignette, Licht; optional Wasser oder Lava. Werte als Tabelle, neue Tokens als `neu:`-Zeilen.
+- Kontrast: Weg gegen Boden sichtbar (Mitte des Wegs zu `map-<id>-2` mindestens 1,5:1), Gegner und Türme auf dem hellsten Boden erkennbar (Screenshot).
+- Kartenkarte im Startbildschirm (Vorschaubild, Name) und Musik/Welt-Zuordnung genannt.
+- Abnahme: Karte auf der Styleguide-Seite (sobald es B-164 gibt), Screenshot `#game` bei 1280x800 und 390x844.
+
+**Neuer Gegner**
+- Basis-Figur (heute meist Goblin, Plan G7) und was sich ändert (Farbe, Kopf, Gegenstand), Größe in Kacheln, Fußpunkt.
+- Zustände: normal, eingefroren, beschädigt (Lebensbalken), Sonderfähigkeit (Aura, Schild, Beschwörung), Boss-Variante falls vorgesehen.
+- Unterscheidbarkeit: Silhouette oder Helligkeit unterscheidet ihn von allen bestehenden Gegnern, nicht nur der Farbton.
+- Abnahme: alle Zustände auf der Styleguide-Seite (sobald es B-164 gibt), sonst Screenshot einer Welle mit dem Gegner.
+
 ## Regeln
 - Ein Element je Datei; ändert sich das Element, wird die Datei geändert, keine zweite angelegt.
 - Werte aus dem Code oder dem Design-System übernehmen, nicht schätzen. Quelle mit Datei und Zeile, wenn ein Wert neu gemessen wurde.
