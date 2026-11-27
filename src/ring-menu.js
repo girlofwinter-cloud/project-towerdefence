@@ -64,10 +64,11 @@ export function towerHitBox(t) {
 
 // Turm unter dem Punkt (x, y in Feld-px): zuerst der Turm auf der Kachel selbst, sonst die vorderste Figur
 // (größter Fußpunkt), deren Silhouette den Punkt enthält. null, wenn keiner getroffen ist.
-export function pickTower(towers, x, y) {
+export function pickTower(towers, x, y, canBuildAt = () => false) {
   const col = Math.floor(x / TILE), row = Math.floor(y / TILE);
   const own = towers.find((t) => t.col === col && t.row === row);
   if (own) return own;
+  if (canBuildAt(col, row)) return null;
   let best = null;
   for (const t of towers) {
     const b = towerHitBox(t);

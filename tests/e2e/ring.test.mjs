@@ -167,6 +167,26 @@ test('Turm-Ring: zu teures Verbessern ist gesperrt; Klick auf die Turmspitze üb
   await ctx.close();
 });
 
+test('Freie Baufläche über jedem Turm öffnet statt Upgrade-Menü den Bau-Ring', async () => {
+  const { ctx, page } = await open();
+  await page.evaluate(() => { window.__game().gold = 5000; });
+  const cols = [0, 2, 4, 6, 9];
+  for (const [i, type] of Object.keys(TOWER_TYPES).entries()) {
+    const col = cols[i], row = 1;
+    await build(page, type, col, row);
+    await openTower(page, col, row);
+    assert.ok(await page.locator('#tower-info').isVisible(), `${type}: Upgrade-Menü geöffnet`);
+    await page.locator('#ti-close').click();
+    assert.ok(await page.locator('#tower-info').isHidden(), `${type}: Upgrade-Menü geschlossen`);
+    await clickTile(page, col, row - 1);
+    const ring = await page.evaluate(() => window.__ui.ring);
+    assert.deepEqual(ring, { col, row: row - 1 }, `${type}: Bau-Ring auf freier Nachbarkachel`);
+    assert.equal((await towers(page)).length, i + 1, `${type}: kein zusätzlicher Turm`);
+    await page.keyboard.press('Escape');
+  }
+  await ctx.close();
+});
+
 for (const [width, height] of [[1280, 800], [1366, 768]]) {
   test(`${width}x${height}: Bau-Ring an den Feldecken ganz im Fenster, nicht über HUD-Leiste und runden Knöpfen`, async () => {
     const { ctx, page } = await open({ width, height });
