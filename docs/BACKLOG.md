@@ -48,8 +48,11 @@ Problem: Kanone (Fläche + Rückstoß) und Frost (Verlangsamung) decken fast all
 Idee: Jeder neue Gegner bremst gezielt Kanone oder Frost aus und belohnt einen anderen Turm. Bis zur Freigabe steht der Status auf `entwurf`, die Pipeline nimmt nur `offen`.
 Wer gegen wen: Fledermaus → Pfeil, Blitz, Scharfschütze | Irrlicht → Blitz, Pfeil | Panzerkäfer → Pfeil, Blitz | Glutling → Blitz, Pfeil, Scharfschütze.
 Reihenfolge (neu 27.11., freigegeben; je Zeile eine Sitzung mit `/pipeline`, dazwischen `/clear`). **Balancing erst ganz am Ende:** Die Logik-Einträge bauen nur die Mechanik mit vorläufigen Werten in `config.js` und Unit-Tests; `npm run test:balance` darf dort rot werden, wenn es nur um Zahlen geht (im Ledger vermerken, kein Merge auf main bis Schritt 5, alles auf einem Sammel-Branch `agent/stufe3-und-gegner`).
-- Spur L, Logik (nacheinander, alle ändern `game.js`/`config.js`): 1. B-175 → 2. B-176 → 3. B-179 (Elite-Gegner, Wellen) → 4. B-180 Logik (Phasen der Nekromantin) → 5. Balancing-Sitzung: alles zusammen messen und Werte einstellen, dann PR und Merge.
-- Spur O, Optik (parallel in zweiter Sitzung, nur `render*`/`*-fx.js`/Design): B-172 + Entwurf Nekromantin aus B-180 (designer, sofort möglich) → B-173 und B-174 (nach Schritt 2) → Optik B-180 (nach Schritt 4).
+Zwei developer parallel (je eigene Sitzung, eigener Unter-Branch von `agent/stufe3-und-gegner`, in den Sammel-Branch mergen; beide ändern `game.js`/`config.js`, aber an getrennten Stellen: Türme bzw. Gegner/Wellen):
+- Spur T, Türme: 1. B-175 → 2. B-176
+- Spur G, Gegner: 1. B-179 (Elite-Gegner, Wellen) → 2. B-180 Logik (Phasen der Nekromantin)
+- Danach gemeinsam: Balancing-Sitzung, alles zusammen messen und Werte einstellen, dann PR und Merge auf main.
+- Spur O, designer (sofort, parallel): Skizzen Stufe 3 (B-172), Entwurf Nekromantin (B-180), dazu Effekt-Skizzen für die Stufe-3-Fähigkeiten (Mehrfachschuss, Gewitter, Brandfläche, Eisboden, Markierung) und das Elite-Abzeichen (B-179). Umsetzung der Optik (B-173, B-174, Optik B-180) nach den Logik-Schritten.
 
 ### B-172: Stufe 3 als eigene Gestalt: Skizzen für alle fünf Türme (Design)
 - Status: entwurf
