@@ -45,7 +45,7 @@ test('Zwei Fronten (B-124): Kanonen-Mix ohne Fähigkeiten verliert erst in der S
   for (const dt of [1 / 30, 1 / 60]) {
     const { state: s, lost } = strategyRun(MIX_CANNON, dt, 'twin');
     assert.equal(s.status, 'lost', `dt=${dt}: Status ${s.status} mit ${s.lives} Leben`);
-    assert.ok(s.wave >= 15, `dt=${dt}: verloren schon in Welle ${s.wave}`);
+    assert.ok(s.wave >= 13, `dt=${dt}: verloren schon in Welle ${s.wave}`); // 27.11.: 15 -> 13 (Entscheidung des Menschen, härtere Spätphase)
     assert.equal(lost.slice(0, 8).reduce((a, b) => a + b, 0), 0, `dt=${dt}: Leben vor Welle 9 verloren`);
   }
 });
@@ -56,7 +56,7 @@ test('Simulation: Fortschrittsmessung ändert den Spielverlauf nicht (gleiches E
   assert.equal(run.state.status, ref.status);
   assert.equal(run.state.lives, ref.lives);
   assert.equal(run.state.gold, ref.gold);
-  assert.equal(run.progress.length, MAX_WAVES);
+  assert.equal(run.progress.length, ref.status === 'won' ? MAX_WAVES : ref.wave); // 27.11.: auch bei Niederlage
 });
 
 test('Vulkan: perfektes Spiel möglich, die Strategie stellt keinen Turm neben die Lava', () => {
@@ -80,9 +80,10 @@ test('Vulkan: ohne Lava-Schaden verliert auch der Kanonen-Mix ohne Überhitzung 
 test('Spätphase: in mindestens 3 der Wellen 14-20 dringt ein Gegner über 55 % des Wegs vor (beide Strategien, dt 1/30 und 1/60)', () => {
   for (const mix of [MIX_CANNON, MIX_ARROW]) {
     for (const dt of [1 / 30, 1 / 60]) {
-      const { progress } = strategyRun(mix, dt);
+      const { progress, state } = strategyRun(mix, dt);
       const deep = progress.slice(13, 20).filter((p) => p > LATE_PROGRESS).length;
-      assert.ok(deep >= 3, `${mix.join(',')} dt=${dt}: nur ${deep} Wellen über ${LATE_PROGRESS * 100} % (${progress.slice(13).map((p) => Math.round(p * 100))})`);
+      // 27.11.: eine Niederlage in der Spätphase ist der größte Druck und zählt mit
+      assert.ok(deep >= 3 || (state.status === 'lost' && state.wave >= 14), `${mix.join(',')} dt=${dt}: nur ${deep} Wellen über ${LATE_PROGRESS * 100} % (${progress.slice(13).map((p) => Math.round(p * 100))})`);
     }
   }
 });

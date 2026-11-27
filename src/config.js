@@ -18,11 +18,13 @@ export const START_LIVES = 10;
 export const LOW_LIVES = 3;
 export const MAX_WAVES = 20;
 // HP-Zuwachs je Welle: früh (bis 5), Mitte (6-10), spät (ab 11)
-export const HP_GROWTH = { early: 1.15, mid: 1.26, late: 1.12 }; // late 1.11 -> 1.12 (Balancing 27.11.)
+export const HP_GROWTH = { early: 1.15, mid: 1.26, late: 1.16 }; // late 1.11 -> 1.12 -> 1.16 (27.11., Maßstab jetzt Spiel mit Aufrüsten; Entscheidung des Menschen)
 export const SELL_RATIO = 0.7;
 export const MAX_LEVEL = 3;
 // Aufrüstkosten: Anteil der Baukosten je aktueller Stufe (Stufe 1→2, 2→3), mal Stufe
-export const UPGRADE_COST_FACTOR = { 1: 0.75, 2: 0.75 };
+export const UPGRADE_COST_FACTOR = { 1: 0.75, 2: 1.0 }; // 2 -> 3: doppelter Baupreis (Balancing 27.11., Stufe 3 war zu billig)
+// Schadensfaktor je Stufe (Index = Stufe); Stufe 3 bewusst unter 1,5^2, weil sie zusätzlich eine Fähigkeit hat
+export const LEVEL_DAMAGE = [1, 1, 1.5, 1.9];
 // Zielregeln der Türme (Reihenfolge = Umschalt-Reihenfolge) mit deutschen Anzeigenamen
 export const TARGET_MODES = ['first', 'last', 'strong', 'close'];
 export const TARGET_MODE_NAMES = { first: 'Erster', last: 'Letzter', strong: 'Stärkster', close: 'Nächster' };
@@ -206,6 +208,7 @@ export const MAPS = {
     // Pfeil-Mix über beide Wege gewinnt mit 2 bis 8 Leben, nur die obere Seite verteidigt verliert in Welle 13 bis 14.
     // Bei enemySpeed 1,02 verliert auch die Strategie über beide Wege. Nicht ahnungslos ändern.
     modifiers: { towerDamage: { cannon: 0.92 } },
+    newEnemyScale: { ember: 0.6 }, // etwas weniger Glutlinge (Balancing 27.11., Spätphase 16 %)
     // B-103: wenige Hindernisse: Baum, Fels, Baum, Baum
     obstacles: [[10, 1], [11, 2], [15, 11], [1, 6]],
     flagTiles: [[0, 0], [0, 10]], // Wellenfahne am Eingang ragt hierüber ins Feld: nicht bebaubar, Klick startet die Welle (Test: flagTilesOf)

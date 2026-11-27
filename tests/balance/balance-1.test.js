@@ -49,3 +49,13 @@ test('Schwierigkeit: nur Pfeiltürme ohne Aufrüstung verlieren vor Welle 12 (dt
     assert.ok(s.wave < 12, `dt=${dt}: verloren erst in Welle ${s.wave}`);
   }
 });
+
+// 27.11.: Stufe 3 darf nicht übermächtig sein. Die Aufrüst-Strategie ohne Fähigkeiten gewinnt nicht auf allen Karten
+// mit vollen Leben (vorher: auf 4 von 5 Karten mit 10 Leben, schon in Welle 10 sechs Endstufen).
+test('Stufe 3 nicht übermächtig: Aufrüsten ohne Fähigkeiten gewinnt nicht überall mit vollen Leben (dt 1/30)', async () => {
+  const { maxFirstRun, MIX_MAX } = await import('./sim.js');
+  const { MAP_ORDER } = await import('../../src/progress.js');
+  const results = MAP_ORDER.map((m) => maxFirstRun(MIX_MAX, 1 / 30, m));
+  const perfect = results.filter((s) => s.status === 'won' && s.lives === START_LIVES).length;
+  assert.ok(perfect <= 1, `${perfect} Karten mit vollen Leben: ${results.map((s) => `${s.mapId}:${s.status}${s.lives}`).join(' ')}`);
+});

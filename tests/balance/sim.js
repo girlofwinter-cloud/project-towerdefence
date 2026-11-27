@@ -169,32 +169,37 @@ export const MIX_CANNON_FROST = ['cannon', 'cannon', 'frost', 'cannon'];
 // Blitz; mit Restgold das billigste Upgrade. Meteor auf den vordersten Gegner, sobald er die letzten 12 Kacheln erreicht,
 // Kälteschock in den letzten 6 Kacheln; keine Reparatur. Auf dem Vulkan kommt der Scharfschütze als dritter Turm
 // (der erste Boss in Welle 5 ist schneller), sonst die zweite Kanone (Zwei Fronten: viele Flitzer in Welle 4).
-export const PERFECT_ORDER = ['cannon', 'arrow', 'cannon', 'sniper', 'sniper', 'frost', 'sniper', 'lightning'];
-export const PERFECT_ORDER_VOLCANO = ['cannon', 'arrow', 'sniper', 'cannon', 'sniper', 'frost', 'sniper', 'lightning'];
+export const PERFECT_ORDER = ['cannon', 'arrow', 'lightning', 'sniper', 'frost', 'cannon', 'sniper']; // 27.11.: mit Aufrüsten
+export const PERFECT_ORDER_VOLCANO = PERFECT_ORDER;
 // B-125: Auf Zwei Fronten reicht seit der stärkeren Spätphase der Kanonen-Mix (mit Fähigkeiten) für ein perfektes Spiel,
 // die Scharfschützen-Reihenfolge verliert dort Leben.
-export const PERFECT_ORDER_TWIN = ['arrow', 'cannon', 'cannon', 'frost'];
+export const PERFECT_ORDER_TWIN = PERFECT_ORDER;
 
 export function bestCoolSpot(state, rangeTiles) {
   return rankedSpots(state, rangeTiles, true)[0] || null;
 }
 
-export function perfectRun(mapId, dt) {
+// Anzahl Türme, die das perfekte Spiel baut, bevor es aufrüstet
+export const PERFECT_BASE = { default: 7, twin: 10 };
+export function perfectRun(mapId, dt, base = PERFECT_BASE[mapId] ?? PERFECT_BASE.default) {
   const s = createGame({ mapId });
   const order = mapId === 'volcano' ? PERFECT_ORDER_VOLCANO : mapId === 'twin' ? PERFECT_ORDER_TWIN : PERFECT_ORDER;
   let lost = 0;
   while (s.status === 'playing' && s.wave < MAX_WAVES) {
     for (let again = true; again;) {
       again = false;
+      // 27.11.: Aufrüsten zuerst (stärkste Spielweise): nach PERFECT_BASE Türmen erst alle voll aufrüsten, dann weiterbauen
+      if (s.towers.length >= base) {
+        let best = null;
+        for (const t of s.towers) {
+          const c = upgradeCost(t);
+          if (c !== null && (!best || c < best.c)) best = { id: t.id, c };
+        }
+        if (best) { if (s.gold >= best.c) { upgradeTower(s, best.id); again = true; } continue; }
+      }
       const type = order[s.towers.length % order.length];
       const spot = s.gold >= TOWER_TYPES[type].cost ? bestCoolSpot(s, TOWER_TYPES[type].range) : null;
-      if (spot) { buildTower(s, type, spot.c, spot.r); again = true; continue; }
-      let best = null;
-      for (const t of s.towers) {
-        const c = upgradeCost(t);
-        if (c !== null && (!best || c < best.c)) best = { id: t.id, c };
-      }
-      if (best && s.gold >= best.c) { upgradeTower(s, best.id); again = true; }
+      if (spot) { buildTower(s, type, spot.c, spot.r); again = true; }
     }
     const before = s.lives;
     startWave(s);
@@ -214,4 +219,25 @@ export function perfectRun(mapId, dt) {
   }
   assert.equal(s.abilities.repair.uses, 0, 'keine Reparatur');
   return { state: s, lost };
+}
+
+// 27.11.: Strategie "Aufrüsten zuerst" ohne Fähigkeiten (so spielen gute Spieler): erst `base` Türme bauen,
+// dann jeden Turm voll aufrüsten, erst danach weiterbauen.
+export const MIX_MAX = ['arrow', 'cannon', 'lightning', 'frost', 'sniper'];
+export function maxFirstRun(order, dt, mapId = 'meadow', base = 5) {
+  const s = createGame({ mapId });
+  const spots = rankedSpots(s, TOWER_TYPES.cannon.range);
+  let i = 0;
+  while (s.status === 'playing' && s.wave < MAX_WAVES) {
+    for (let again = true; again;) {
+      again = false;
+      const up = s.towers.length >= Math.min(base, i + 1) ? s.towers.find((t) => upgradeCost(t) !== null) : null;
+      if (up) { if (s.gold >= upgradeCost(up)) { upgradeTower(s, up.id); again = true; } continue; }
+      const type = order[s.towers.length % order.length];
+      if (i < spots.length && s.gold >= TOWER_TYPES[type].cost) { buildTower(s, type, spots[i].c, spots[i].r); i++; again = true; }
+    }
+    startWave(s);
+    for (let k = 0; k < Math.round(600 / dt) && s.waveActive && s.status === 'playing'; k++) update(s, dt);
+  }
+  return s;
 }

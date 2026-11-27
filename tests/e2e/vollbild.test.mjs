@@ -40,10 +40,13 @@ test('B-178 Querformat 844x390: Vollbild-Knopf im Fenster, Tippziel >= 44, über
   }
   await page.locator('#fullscreen').tap();
   await page.waitForFunction(() => document.fullscreenElement !== null);
+  // Knopf wird erst im fullscreenchange-Ereignis umgestellt: darauf warten statt sofort lesen (Wackler in der CI)
+  await page.waitForFunction(() => document.getElementById('fullscreen').getAttribute('aria-pressed') === 'true');
   assert.equal(await page.locator('#fullscreen').getAttribute('aria-pressed'), 'true');
   assert.equal(await page.locator('#fullscreen-label').textContent(), 'Vollbild beenden');
   await page.locator('#fullscreen').tap();
   await page.waitForFunction(() => document.fullscreenElement === null);
+  await page.waitForFunction(() => document.getElementById('fullscreen').getAttribute('aria-pressed') === 'false');
   assert.equal(await page.locator('#fullscreen').getAttribute('aria-pressed'), 'false');
   await ctx.close();
 });
