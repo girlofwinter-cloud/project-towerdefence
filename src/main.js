@@ -1,5 +1,5 @@
 // Verbindet Spiel-Logik, Rendering und Bedienung (DOM, Maus, Tastatur).
-import { TILE, FRAME_MARGIN, VIEW_WIDTH, VIEW_HEIGHT, PAINTED_STYLE, FIGURE_STYLE, SHOP_CARD, TOWER_TYPES, ENEMY_TYPES, MAX_WAVES, MAPS, SPEED_STEPS, TARGET_MODES, MAX_SUBSTEP, LOW_LIVES, ABILITIES, ICON, COIN_BURST, waveSummary, meteorText } from './config.js';
+import { TILE, FRAME_MARGIN, VIEW_WIDTH, VIEW_HEIGHT, PAINTED_STYLE, FIGURE_STYLE, SHOP_CARD, TOWER_TYPES, ENEMY_TYPES, MAX_WAVES, MAPS, SPEED_STEPS, TARGET_MODES, MAX_SUBSTEP, LOW_LIVES, ABILITIES, ICON, VIEW_FIT, COIN_BURST, waveSummary, meteorText } from './config.js';
 import {
   createGame, stepGame, togglePause, buildTower, upgradeTower, sellTower, setTargetMode, startWave,
   useAbility, abilityCooldownLeft, canBuild, towerAt, towerStats,
@@ -7,12 +7,13 @@ import {
 import { renderView, drawTower, paintedStatus, paintedImage, setPaintedExtent, flagBoxes } from './render.js';
 import { abilityView, overheatNote, startButtonView, waveProgress } from './hud.js';
 import { drawIcon } from './render-icons.js';
-import { buildTapStep, aimStep, fieldPoint, canvasSize } from './input.js';
+import { buildTapStep, aimStep, fieldPoint, canvasSize, moveFocusTile } from './input.js';
 import { createSoundTracker, collectSounds, loadSoundOn, saveSoundOn } from './sound-events.js';
 import { unlockAudio, setSoundOn, playSound, updateMusic } from './audio.js';
 import { loadProgress, saveProgress, recordResult, isUnlocked, mapProgress, starText, resultLines, startMap, mapAfterResult, starsFor, MAP_ORDER } from './progress.js';
 import { mountStartScreen, endView, starsHtml, STAR_COUNT } from './screens.js';
 import { ringRadius, tileCenterPx, ringCenter, infoOnLeft, pickTower, buildRingView, towerRingView } from './ring-menu.js';
+import { mountViewport } from './viewport.js';
 
 const canvas = document.getElementById('game');
 canvas.width = VIEW_WIDTH; // Stil 1: Feld + Rand (Wald, Burg, Fahne); HiDPI-Größe setzt fitCanvas()
@@ -25,12 +26,13 @@ for (const [k, v] of Object.entries({ 'view-w': VIEW_WIDTH, 'view-h': VIEW_HEIGH
 }
 
 // ---------- HiDPI ----------
-// Die Anzeigegröße des Canvas legt allein style.css fest (Vollbild: --cw x --ch, kompakt: volle Breite, Zoom: 200 %).
-// Hier nur der Backing-Store = Anzeigegröße x Pixeldichte (höchstens VIEW_FIT.maxDpr, canvasSize in input.js);
+// Die Anzeigegröße des Canvas legt allein style.css fest (Vollbild: --cw x --ch, Handy: Nah/Übersicht, siehe viewport.js).
+// Hier nur der Backing-Store = Anzeigegröße x Pixeldichte (höchstens VIEW_FIT.maxDpr und maxSide je Seite, canvasSize in input.js);
 // frame() zeichnet mit setTransform(view.sx, ...) weiter in Canvas-Einheiten (VIEW_WIDTH x VIEW_HEIGHT).
 const view = { sx: 1, sy: 1 };
+const compactQuery = window.matchMedia('(max-width: 759.98px), (max-height: 519.98px)'); // = Kompakt-Schwelle in style.css
 function fitCanvas() {
-  const s = canvasSize(canvas.clientWidth, Infinity, window.devicePixelRatio || 1);
+  const s = canvasSize(canvas.clientWidth, Infinity, window.devicePixelRatio || 1, compactQuery.matches ? VIEW_FIT.maxSide : Infinity);
   if (canvas.width !== s.width || canvas.height !== s.height) { canvas.width = s.width; canvas.height = s.height; }
   view.sx = s.sx;
   view.sy = s.sy;
@@ -52,7 +54,6 @@ if (document.fonts && document.fonts.load) document.fonts.load('14px "Lilita One
 // Seitenzonen in einem Bild, der Canvas zeigt davon den Ausschnitt 1:1), daher keine Naht an der Canvas-Kante.
 // Kompakt (Handy) scrollt der Canvas: dort bleibt das unscharfe, verkleinerte Bild dahinter.
 const backdrop = document.getElementById('backdrop');
-const compactQuery = window.matchMedia('(max-width: 759.98px), (max-height: 519.98px)'); // = Kompakt-Schwelle in style.css
 let backdropFor = null;
 // Seitenzonen in Geräte-px messen und an render.js melden (auf PAINTED_STYLE.sideZone.quantum aufgerundet: seltener neu rastern)
 function measureExtent() {
@@ -305,6 +306,7 @@ function buildFromRing(type) {
     if (lastPointerType !== 'mouse') ui.hover = null;
   }
   refreshUI();
+  keepFocus();
 }
 // Ring an die Kachel (col,row) legen: ganz im sichtbaren Teil des Canvas, nicht über HUD-Leiste und runden Knöpfen.
 function placeRing(el, col, row) {
@@ -484,6 +486,7 @@ for (const [evName, on] of [['pointerenter', true], ['pointerleave', false], ['f
 $('ti-close').addEventListener('click', () => {
   closeRings();
   refreshUI();
+  keepFocus(); // Fokus aufs Spielfeld, nicht verloren auf body
 });
 // Handy-Leiste (fest unten): echte Höhe als --tower-info-h, damit main genug Platz darunter lässt (auch bei großer Schrift)
 const towerInfo = $('tower-info');
@@ -508,7 +511,8 @@ const startScreen = mountStartScreen($('start-screen'), {
 });
 $('to-maps').addEventListener('click', () => startScreen.show(true));
 if (!TEST_MODE) startScreen.show();
-$('zoom').addEventListener('click', toggleZoom);
+// C6 Handy: Feld wischen, Zoom-Knopf Nah/Übersicht (viewport.js)
+mountViewport({ board: $('app'), stage: document.querySelector('.stage'), canvas, zoomBtn: $('zoom'), zoomLabel: $('zoom-label') });
 $('sound').addEventListener('click', toggleSound);
 
 function toggleSound() {
@@ -517,13 +521,6 @@ function toggleSound() {
   if (ui.soundOn) unlockAudio(); // Klick bzw. Taste ist die Nutzeraktion
   saveSoundOn(soundStorage(), ui.soundOn);
   refreshUI();
-}
-
-// Zoom (mobil): Spielfeld auf doppelte Breite, im Rahmen verschiebbar. Größere Kacheln = treffsicheres Tippen.
-function toggleZoom() {
-  const on = document.querySelector('.board').classList.toggle('zoomed');
-  $('zoom').setAttribute('aria-pressed', String(on));
-  $('zoom-label').textContent = on ? 'Normal' : 'Zoom';
 }
 
 function doStartWave() {
@@ -594,6 +591,7 @@ function doSell() {
   sellTower(state, ui.selectedTowerId);
   ui.selectedTowerId = null;
   refreshUI();
+  keepFocus();
 }
 function restart() {
   // Gesperrte Karte: auf die erste Karte zurückfallen.
@@ -605,8 +603,42 @@ function restart() {
   refreshUI();
 }
 
+// C4 Tastatur auf dem Spielfeld (Canvas hat tabindex): Pfeiltasten bewegen die Fokus-Kachel, Enter öffnet dort den Ring.
+// Leertaste bleibt Wellenstart. Liefert true, wenn die Taste verbraucht ist.
+function fieldKey(ev) {
+  if (ev.target !== canvas || state.status !== 'playing') return false;
+  const base = ui.hover ?? ui.ring ?? (ui.selectedTowerId !== null ? state.towers.find((x) => x.id === ui.selectedTowerId) : null);
+  const next = moveFocusTile(base ? { col: base.col, row: base.row } : null, ev.key);
+  if (next) {
+    ev.preventDefault();
+    closeRings();
+    ui.hover = { ...next, ok: canBuild(state, next.col, next.row).ok };
+    refreshUI();
+    return true;
+  }
+  if (ev.key !== 'Enter' || !ui.hover) return false;
+  ev.preventDefault();
+  const { col, row } = ui.hover;
+  const existing = towerAt(state, col, row);
+  const check = existing ? { ok: true } : canBuild(state, col, row);
+  if (existing) Object.assign(ui, { selectedTowerId: existing.id, buildType: null, pending: null, ring: null, ringPreview: null });
+  else if (check.ok) openBuildRing(col, row);
+  else flash(check.reason);
+  refreshUI();
+  // Fokus auf den ersten Ring-Knopf
+  const first = existing ? [...document.querySelectorAll('#tower-info .ring-acts .rbtn, #ti-close')].find((b) => !b.disabled) : shop.querySelector('.tower-btn');
+  if (check.ok) first?.focus({ preventScroll: true });
+  return true;
+}
+// Ring zu, Fokus lag darin (×, Esc, Bauen, Verkaufen): Fokus zurück aufs Spielfeld statt verloren auf body
+function keepFocus() {
+  const a = document.activeElement;
+  if (!a || a === document.body || a.closest?.('.ring[hidden]')) canvas.focus({ preventScroll: true });
+}
+
 window.addEventListener('keydown', (ev) => {
   if (startScreen.handleKey(ev)) return; // C5: Startbildschirm offen
+  if (fieldKey(ev)) return;
   const key = ev.key.toLowerCase();
   // Enter/Leertaste auf einem Ringknopf löst den Knopf aus (nicht den Wellenstart)
   if ((key === ' ' || key === 'enter') && ev.target.closest?.('.ring')) return;
@@ -616,7 +648,11 @@ window.addEventListener('keydown', (ev) => {
   else if (type) selectBuild(type);
   else if (ability) doAbility(ability);
   else if (key === ' ') { ev.preventDefault(); if (!ev.repeat) doStartWave(); } // B-005: gehaltene Taste startet nicht mehrfach
-  else if (key === 'escape') { ui.aiming = false; ui.buildType = null; closeRings(); refreshUI(); }
+  else if (key === 'escape') {
+    const inRing = document.activeElement?.closest?.('.ring');
+    ui.aiming = false; ui.buildType = null; closeRings(); refreshUI();
+    if (inRing) keepFocus();
+  }
   else if (key === 'u') doUpgrade();
   else if (key === 's') doSell();
   else if (key === 't') doCycleTarget();

@@ -83,7 +83,7 @@ test('B-005: Leertaste startet früh, gehaltene Taste (Wiederholung) startet nic
   assert.deepEqual(errors, []);
 });
 
-test('Handy: Bauen per Touch in zwei Schritten (Tipp Kachel -> Ring, Tipp Knopf), Zoom vergrößert das Spielfeld', async () => {
+test('Handy: Bauen per Touch in zwei Schritten (Tipp Kachel -> Ring, Tipp Knopf), Zoom auf Übersicht verkleinert das Spielfeld', async () => {
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, deviceScaleFactor: 2 });
   const m = await ctx.newPage();
   const mErrors = [];
@@ -99,10 +99,13 @@ test('Handy: Bauen per Touch in zwei Schritten (Tipp Kachel -> Ring, Tipp Knopf)
     // Zweiter Tipp auf den Knopf baut.
     await m.locator('#shop .tower-btn[data-type="arrow"]').tap();
     assert.equal(await m.evaluate(() => window.__game().towers.length), 1);
-    // Zoom: Spielfeld wird deutlich breiter als der Bildschirm und liegt in einem scrollbaren Rahmen.
+    // C6: Standard ist Nah (Feld breiter als der Bildschirm, wischbar). Zoom-Knopf schaltet auf Übersicht: ganzes Feld sichtbar.
+    assert.ok(box.width > 390, `Nah: Feld ${box.width} breiter als der Bildschirm`);
     await m.locator('#zoom').tap();
     const zoomed = await m.locator('#game').boundingBox();
-    assert.ok(zoomed.width > box.width * 1.8, `Zoom: ${zoomed.width} statt ${box.width}`);
+    assert.ok(zoomed.width < box.width * 0.5, `Übersicht: ${zoomed.width} statt ${box.width}`);
+    assert.ok(zoomed.x >= 0 && zoomed.x + zoomed.width <= 390, 'Übersicht: ganzes Feld im Bild');
+    assert.equal(await m.locator('#zoom').getAttribute('aria-pressed'), 'true');
     assert.deepEqual(mErrors, []);
   } finally {
     await ctx.close();

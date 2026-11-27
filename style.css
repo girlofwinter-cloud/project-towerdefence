@@ -300,8 +300,6 @@ canvas#game, #game { height: auto; border-radius: 10px; }
 .ab { width: 56px; height: 56px; }
 .cap { bottom: -14px; font: 15px/20px var(--display); padding: 0 8px; }
 body:has(#tower-info:not([hidden])) #app { padding-bottom: calc(var(--tower-info-h, 140px) + 8px); }
-.zoomed .stage { overflow: auto; max-height: 60vh; }
-.zoomed canvas#game { width: 200%; max-width: none; }
 #test-panel { position: relative; z-index: auto; order: 6; left: 0; bottom: 0; width: auto; }
 
 #app { min-height: 100%; }
@@ -412,3 +410,137 @@ body.on-start .top-buttons { z-index: 41; } /* Ton und Hilfe bleiben erreichbar 
   #ti-special { display: none; }
   #tower-info .ring-acts { grid-area: acts; display: flex; gap: 6px; } #tower-info .ring-acts .rbtn { flex: 1 1 0; min-width: 0; }
 }
+/* ---------- C6 Handy (Bauvorlagen Handy-Hoch.md, Handy-Quer.md): ersetzt die Kompakt-Ansicht getrennt nach Ausrichtung ----------
+   Hochformat: Feld füllt die Höhe, seitlich wischen (viewport.js), Dock unten. Querformat: Feld mittig, Spalten links/rechts.
+   C4 Ringmenü: Bau-Ring liegt über dem Feld (keine Turmleiste mehr, --shop-w: 0), Turm-Ring wird im Hochformat zur Leiste im Dock,
+   im Querformat zur rechten Spalte. */
+.swipe-hint, .vp-edges { display: none; }
+#zoom .ic-in, #zoom[aria-pressed="true"] .ic-out { display: none; }
+#zoom[aria-pressed="true"] .ic-in { display: block; }
+@media (max-width: 759.98px), (max-height: 519.98px) { #zoom { display: none; } }
+
+@media (max-width: 759.98px) and (orientation: portrait) {
+  :root { --safe-t: env(safe-area-inset-top, 0px); --safe-b: env(safe-area-inset-bottom, 0px); --shop-w: 0px;
+    --field-vh: calc(100vh - 216px - var(--safe-t) - var(--safe-b)); --uh: calc(var(--field-vh) / 560); --u: var(--uh); }
+  @supports (height: 100dvh) { :root { --field-vh: calc(100dvh - 216px - var(--safe-t) - var(--safe-b)); } }
+  html, body { overflow: hidden; height: 100%; }
+  #app, body:has(#tower-info:not([hidden])) #app { position: fixed; inset: 0; display: block; padding: 0; min-height: 0; }
+  .zoomed-out { --u: calc((100vw - 12px - var(--shop-w)) / 900); } /* Übersicht: ganzes Feld sichtbar */
+  /* Dock unten (Fläche hinter Fähigkeiten, Zoom und Wellenknopf) */
+  #app::after { content: ''; position: fixed; left: 0; right: 0; bottom: 0; z-index: 9; height: calc(160px + var(--safe-b)); pointer-events: none;
+    background: linear-gradient(var(--wood-a), var(--wood-b)); border-top: 3px solid var(--ink); border-radius: 16px 16px 0 0; box-shadow: inset 0 2px 0 rgba(255,220,160,.55); }
+  /* Feld: Rand oben/unten abgeschnitten, links/rechts beim Wischen sichtbar */
+  .stage { position: absolute; left: 0; right: 0; width: auto; top: calc(56px + var(--safe-t)); height: var(--field-vh); order: 0;
+    display: flex; align-items: flex-start; overflow-x: auto; overflow-y: hidden; touch-action: pan-x; overscroll-behavior-x: contain; scrollbar-width: none; }
+  .stage::-webkit-scrollbar { display: none; }
+  canvas#game, #game { flex: none; width: calc(900 * var(--u)); height: calc(660 * var(--u)); max-width: none; margin: calc(-50 * var(--u)) var(--shop-w) 0 0; border-radius: 0; touch-action: pan-x; }
+  .zoomed-out .stage { overflow: hidden; align-items: center; }
+  .zoomed-out canvas#game { margin: 0 0 0 6px; border-radius: 10px; }
+  /* Kopfleiste: HUD kompakt links, drei runde Knöpfe rechts */
+  .hud { position: absolute; left: 6px; top: calc(6px + var(--safe-t)); order: 0; align-self: auto; justify-content: flex-start; height: 44px; padding: 0 8px 0 4px; gap: 6px; border-radius: 12px; }
+  .hud .sep { display: none; }
+  .hud .num { font-size: 20px; line-height: 22px; } .num small { font-size: 14px; }
+  .hud-ico { width: 28px; height: 28px; } .hud-item { gap: 2px; } .hud .num { white-space: nowrap; }
+  #gold { min-width: 40px; } #wave { min-width: 44px; } #lives { min-width: 22px; }
+  .top-buttons { position: absolute; right: 6px; top: calc(6px + var(--safe-t)); order: 0; transform: none; gap: 6px; justify-content: flex-end; }
+  .top-buttons .rb { width: 44px; height: 44px; } .top-buttons .rb > svg { width: 32px; height: 32px; }
+  .help { display: none; }
+  /* Dock: Zeile 1 Fähigkeiten 3 x 56 + Zoom 44, Zeile 2 Wellenknopf volle Breite */
+  #zoom { display: inline-grid; position: absolute; right: 4px; top: calc(var(--field-vh) + 60px); } /* Dock Zeile 1 rechts (Bezug: .top-buttons) */
+  .abilities { position: fixed; left: 10px; top: auto; bottom: calc(94px + var(--safe-b)); order: 0; align-self: auto; transform: none; width: auto; height: 56px;
+    padding: 0; gap: 18px; justify-content: flex-start; background: none; border: 0; border-radius: 0; box-shadow: none; }
+  .ab { width: 56px; height: 56px; }
+  .cap { bottom: -12px; font: 13px/16px var(--display); padding: 0 6px; }
+  .wave-row { position: fixed; left: 10px; right: 10px; bottom: calc(10px + var(--safe-b)); width: auto; height: 52px; display: block; order: 0; }
+  .wave-btn { width: 100%; min-width: 0; height: 52px; border-radius: 26px; font-size: 22px; }
+  #wave-preview, .map-pick { display: none; }
+  /* Turm-Ring: Leiste genau über dem Dock (gleiche Höhe), Dock-Inhalt solange ausgeblendet; das Feld bleibt frei */
+  #tower-info.ring { height: calc(160px + var(--safe-b)); box-sizing: border-box; align-content: start; overflow-y: auto; }
+  body:has(#tower-info:not([hidden])) :is(.abilities, .wave-row, #zoom) { visibility: hidden; }
+  /* Meldung, Pause, Spielende fest im Fenster (der Feldbehälter wischt) */
+  #message { position: fixed; top: calc(66px + var(--safe-t)); max-width: calc(100vw - 90px); white-space: normal; text-align: center; }
+  #pause-banner { position: fixed; top: calc(56px + var(--safe-t) + var(--field-vh) / 2); }
+  #overlay { position: fixed; inset: 0; z-index: 30; background: rgba(16,28,14,.78); overflow: auto; }
+  /* Wisch-Hinweis und Schattenkanten (Klassen swiped, can-left, can-right aus viewport.js) */
+  .swipe-hint { display: block; position: fixed; left: 50%; bottom: calc(172px + var(--safe-b)); transform: translateX(-50%); z-index: 11; pointer-events: none;
+    padding: 4px 16px; border-radius: 16px; border: 3px solid var(--ink); background: linear-gradient(#b97a3e, #7a4520); box-shadow: 0 3px 0 rgba(30,15,5,.5);
+    color: var(--cream); font: 15px/1.3 var(--display); text-shadow: 0 2px 0 var(--ink); white-space: nowrap; animation: swipe-wiggle 2.4s ease-in-out infinite; }
+  .swiped .swipe-hint, .zoomed-out .swipe-hint, body.on-start .swipe-hint, body:has(#tower-info:not([hidden])) .swipe-hint, body:has(#overlay:not([hidden])) .swipe-hint { display: none; }
+  body.on-start #app::after { display: none; }
+  .vp-edges { display: block; position: fixed; left: 0; right: 0; top: calc(56px + var(--safe-t)); height: var(--field-vh); z-index: 8; pointer-events: none; }
+  .vp-edges::before, .vp-edges::after { content: ''; position: absolute; top: 0; bottom: 0; width: 18px; opacity: 0; transition: opacity .15s; }
+  .vp-edges::before { left: 0; background: linear-gradient(90deg, rgba(0,0,0,.35), transparent); }
+  .vp-edges::after { right: 0; background: linear-gradient(270deg, rgba(0,0,0,.35), transparent); }
+  .can-left .vp-edges::before, .can-right .vp-edges::after { opacity: 1; }
+  .zoomed-out .vp-edges { display: none; }
+  #test-panel { position: fixed; left: 6px; bottom: calc(166px + var(--safe-b)); width: calc(100vw - 80px); max-height: 40vh; overflow: auto; z-index: 25; order: 0; }
+  /* Startbildschirm: alle fünf Karten ohne Scrollen (2 Spalten), nur der Ton-Knopf oben rechts */
+  #start-screen { padding: calc(6px + var(--safe-t)) 8px calc(12px + var(--safe-b)); }
+  body.on-start .top-buttons { position: fixed; right: 6px; top: calc(6px + var(--safe-t)); }
+  body.on-start #speed, body.on-start #pause { display: none; }
+  .start-title { align-self: flex-start; width: calc(100% - 56px); height: 48px; font-size: 24px; gap: 6px; border-radius: 16px; }
+  .start-castle { width: 34px; height: 38px; margin-top: -4px; }
+  .map-cards { display: grid; grid-template-columns: repeat(2, minmax(0, 172px)); justify-content: center; gap: 10px; margin-top: 12px; }
+  .map-card { width: auto; height: auto; padding: 8px 8px 10px; gap: 4px; border-radius: 16px; }
+  .map-card:last-child:nth-child(odd) { grid-column: 1 / -1; justify-self: center; width: calc((100% - 10px) / 2); }
+  .map-thumb { width: 100%; height: auto; aspect-ratio: 16 / 10; object-fit: cover; }
+  .map-name { font-size: 20px; margin-top: 2px; } .map-stars svg { width: 20px; height: 20px; } .map-best { font-size: 13px; line-height: 1.2; }
+  .map-lock { top: 34px; }
+  .start-hint { margin-top: 14px; }
+}
+/* Schmal (unter 380 px): HUD kleiner, Welle ohne "/ 20" */
+@media (max-width: 379.98px) and (orientation: portrait) {
+  .hud .num { font-size: 18px; } .hud-ico { width: 24px; height: 24px; } #wave small { display: none; } #wave { min-width: 26px; }
+}
+
+@media (max-height: 519.98px) and (orientation: landscape) {
+  :root { --u: min(100vh / 560, (100vw - 224px) / 800); --side: max(112px, calc((100vw - 800 * var(--u)) / 2)); --shop-w: 0px; }
+  html, body { overflow: hidden; height: 100%; }
+  #app, body:has(#tower-info:not([hidden])) #app { position: fixed; inset: 0; display: block; padding: 0; min-height: 0; }
+  #app::before, #app::after { content: ''; position: fixed; top: 0; bottom: 0; width: var(--side); z-index: 1; pointer-events: none; background: rgba(16,28,14,.35); }
+  #app::before { left: 0; } #app::after { right: 0; }
+  body.on-start #app::before, body.on-start #app::after { display: none; }
+  /* Feld 800u x 560u mittig, Rand abgeschnitten */
+  .stage { position: absolute; left: var(--side); top: calc((100vh - 560 * var(--u)) / 2); width: calc(800 * var(--u)); height: calc(560 * var(--u)); overflow: hidden; order: 0; }
+  canvas#game, #game { position: absolute; left: calc(-50 * var(--u)); top: calc(-50 * var(--u)); width: calc(900 * var(--u)); height: calc(660 * var(--u)); max-width: none; border-radius: 0; }
+  /* Spalte links: HUD senkrecht, Fähigkeiten senkrecht */
+  .hud { position: absolute; left: 6px; top: 6px; width: calc(var(--side) - 12px); height: auto; order: 0; align-self: auto; flex-direction: column; align-items: stretch; justify-content: flex-start; gap: 2px; padding: 6px 8px; }
+  .hud .sep { display: none; } .hud .num { font-size: 22px; line-height: 26px; } .hud-ico { width: 26px; height: 26px; }
+  .hud-item { height: 32px; gap: 6px; } #gold, #wave, #lives { min-width: 0; } .hud .num { white-space: nowrap; } #wave small { font-size: 15px; }
+  .abilities { position: absolute; left: calc((var(--side) - 76px) / 2); top: 128px; bottom: auto; order: 0; align-self: auto; transform: none; width: 76px; height: auto;
+    flex-direction: column; align-items: center; gap: 22px; padding: 8px 0 18px; border-radius: 38px; }
+  .ab { width: 48px; height: 48px; } .cap { font-size: 12px; line-height: 16px; bottom: -12px; }
+  /* Spalte rechts: runde Knöpfe 2 x 2, Wellenknopf unten (Bau-Ring liegt über dem Feld) */
+  .top-buttons { position: absolute; right: 6px; top: 6px; width: calc(var(--side) - 12px); order: 0; transform: none; display: grid; grid-template-columns: 44px 44px; justify-content: center; gap: 8px; }
+  .top-buttons .rb { width: 44px; height: 44px; } .top-buttons .rb > svg { width: 32px; height: 32px; }
+  .help, #zoom { display: none; }
+  .wave-row { position: absolute; right: 6px; bottom: 8px; left: auto; width: calc(var(--side) - 12px); height: auto; display: block; order: 0; }
+  .wave-btn { width: 100%; min-width: 0; height: 56px; padding: 0 8px; font-size: 18px; white-space: normal; line-height: 1.05; }
+  #wave-preview, .map-pick { display: none; }
+  /* Turm-Ring: rechte Spalte über den Knöpfen (statt Leiste unten, die das Feld verdecken würde) */
+  #tower-info.ring { left: auto; right: 0; top: 0; bottom: 0; width: var(--side); border-top: 0; border-left: 3px solid #2b1a10; border-radius: 14px 0 0 14px;
+    align-content: start; padding: 8px 8px calc(8px + env(safe-area-inset-bottom)); overflow-y: auto; box-sizing: border-box; }
+  #tower-info h3 { font-size: 16px; } #tower-info p { font-size: 12px; }
+  #tower-info .ring-acts { flex-direction: column; } #tower-info .ring-acts .rbtn { flex: none; height: 44px; }
+  #message { top: 10px; max-width: calc(100% - 20px); white-space: normal; text-align: center; }
+  #overlay { position: fixed; inset: 0; z-index: 30; background: rgba(16,28,14,.78); overflow: auto; }
+  #test-panel { position: fixed; left: var(--side); bottom: 0; width: calc(100vw - 2 * var(--side)); max-height: 40vh; overflow: auto; z-index: 25; order: 0; }
+  /* Startbildschirm: Titel oben, fünf Karten in einer Reihe */
+  #start-screen { padding: 6px 8px 10px; }
+  body.on-start .top-buttons { position: fixed; right: 6px; top: 6px; display: flex; width: auto; }
+  body.on-start #speed, body.on-start #pause { display: none; }
+  .start-title { width: min(520px, calc(100vw - 120px)); height: 46px; font-size: 26px; gap: 8px; border-radius: 16px; }
+  .start-castle { width: 32px; height: 36px; margin-top: -4px; }
+  .map-cards { flex-wrap: nowrap; justify-content: center; gap: 8px; margin-top: 12px; }
+  .map-card { width: min(160px, calc((100vw - 48px) / 5)); height: auto; padding: 8px 8px 10px; gap: 4px; border-radius: 16px; }
+  .map-thumb { width: 100%; height: auto; aspect-ratio: 16 / 10; object-fit: cover; }
+  .map-name { font-size: 18px; } .map-stars svg { width: 18px; height: 18px; } .map-best { font-size: 12px; line-height: 1.2; }
+  .map-lock { top: 26px; }
+  .start-hint { margin-top: 12px; }
+}
+/* Querformat schmal (Spalten unter 130 px, z. B. 740x360): HUD-Zahlen kleiner */
+@media (max-height: 519.98px) and (orientation: landscape) and (max-width: 799.98px) {
+  .hud .num { font-size: 19px; } .hud-ico { width: 22px; height: 22px; } .hud-item { gap: 4px; } #wave small { font-size: 13px; }
+}
+@media (prefers-reduced-motion: reduce) { .swipe-hint { animation: none; } }
+@keyframes swipe-wiggle { 0%, 70%, 100% { transform: translateX(-50%); } 80% { transform: translateX(calc(-50% - 6px)); } 90% { transform: translateX(calc(-50% + 6px)); } }

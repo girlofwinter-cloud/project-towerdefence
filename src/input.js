@@ -20,6 +20,17 @@ export function aimStep(aiming, event) {
   return { aiming, fire: false };
 }
 
+// C4 Tastatur: Fokus-Kachel per Pfeiltaste verschieben (ev.key, z. B. 'ArrowLeft'), am Feldrand begrenzt.
+// Ohne bisherige Kachel startet sie bei (0,0). Andere Tasten: null (nicht zuständig).
+const ARROW_STEPS = { arrowleft: [-1, 0], arrowright: [1, 0], arrowup: [0, -1], arrowdown: [0, 1] };
+export function moveFocusTile(tile, key) {
+  const step = ARROW_STEPS[String(key).toLowerCase()];
+  if (!step) return null;
+  if (!tile) return { col: 0, row: 0 };
+  const clamp = (v, n) => Math.max(0, Math.min(n - 1, v));
+  return { col: clamp(tile.col + step[0], COLS), row: clamp(tile.row + step[1], ROWS) };
+}
+
 // Stil 1: Canvas = Feld + Rand. Bildschirmpunkt (clientX/Y, rect = getBoundingClientRect des Canvas) -> Feldkoordinaten in px,
 // Kachel und inField (false im Rand: dort wird nichts gebaut).
 export function fieldPoint(clientX, clientY, rect) {
@@ -31,16 +42,18 @@ export function fieldPoint(clientX, clientY, rect) {
 }
 
 // HiDPI: Größe des Canvas für verfügbaren Platz (availW x availH in CSS-px) und Pixeldichte dpr.
-// Seitenverhältnis VIEW_WIDTH:VIEW_HEIGHT bleibt; dpr wird auf [1, VIEW_FIT.maxDpr] begrenzt.
+// Seitenverhältnis VIEW_WIDTH:VIEW_HEIGHT bleibt; dpr wird auf [1, VIEW_FIT.maxDpr] begrenzt, jede Seite auf maxSide (Geräte-px).
 // cssW/cssH: Anzeigegröße, width/height: Backing-Store in Geräte-px, sx/sy: Transformation Canvas-Einheit -> Geräte-px.
-export function canvasSize(availW, availH, dpr) {
+export function canvasSize(availW, availH, dpr, maxSide = Infinity) {
   const d = Number.isFinite(dpr) && dpr > 0 ? Math.min(VIEW_FIT.maxDpr, Math.max(1, dpr)) : 1;
   const w = Number.isFinite(availW) && availW > 0 ? availW : VIEW_WIDTH;
   const h = availH > 0 ? availH : Infinity; // Infinity = nur die Breite zählt
   const scale = Math.min(w / VIEW_WIDTH, h / VIEW_HEIGHT);
   const cssW = Math.max(1, Math.floor(VIEW_WIDTH * scale + 1e-6)); // + 1e-6: 939 / 900 * 900 ergibt sonst 938,999…
   const cssH = Math.max(1, Math.round((cssW * VIEW_HEIGHT) / VIEW_WIDTH));
-  const width = Math.round(cssW * d);
-  const height = Math.round(cssH * d);
+  // C6: Obergrenze je Seite in Geräte-px (main.js gibt im Handy-Layout VIEW_FIT.maxSide mit, sonst unbegrenzt)
+  const k = maxSide > 0 ? Math.min(d, maxSide / Math.max(cssW, cssH)) : d;
+  const width = Math.round(cssW * k);
+  const height = Math.round(cssH * k);
   return { cssW, cssH, dpr: d, width, height, sx: width / VIEW_WIDTH, sy: height / VIEW_HEIGHT };
 }
