@@ -111,6 +111,14 @@ test('Große Wellenfahne: Klick auf die Fahnen-Kachel im Feld startet Welle 1, k
   await ctx.close();
 });
 
+// Tester: Kartenwahl ist ein Tippziel (size-touch-min 44 px)
+test('Kartenwahl #map-select mindestens 44 px hoch (1280x800)', async () => {
+  const { ctx, page } = await openPage({ width: 1280, height: 800 });
+  const b = await page.locator('#map-select').boundingBox();
+  assert.ok(b.height >= 44 && b.width >= 44, `#map-select ${b.width}x${b.height}`);
+  await ctx.close();
+});
+
 // C-Abnahme 1: Seitenzonen sind die scharfe Fortsetzung des Bildes; keine Naht an den Canvas-Kanten
 for (const [width, height] of [[1280, 800], [1366, 768]]) {
   test(`C-Abnahme 1 ${width}x${height}: keine Naht an der Canvas-Kante (Spaltendifferenz < 12/255), kein Weichzeichner`, async () => {
