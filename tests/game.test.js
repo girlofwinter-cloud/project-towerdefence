@@ -211,7 +211,7 @@ test('B-171: Karten-Faktor newEnemyScale: Zwei Fronten ohne Panzerkäfer, Spiel 
 test('waveSummary: Anzahl pro Gegnertyp für Welle 1, 5 und 10', () => {
   assert.deepEqual(waveSummary(1), { grunt: 9 });
   assert.deepEqual(waveSummary(5), { grunt: 21, runner: 13, tank: 3, boss: 1 });
-  assert.deepEqual(waveSummary(10), { grunt: 36, runner: 23, tank: 6, shielded: 1, mage: 1, healer: 1, boss: 2, bat: 3, ember: 2, wisp: 1 });
+  assert.deepEqual(waveSummary(10), { grunt: 36, runner: 23, tank: 6, shielded: 1, mage: 1, healer: 1, boss: 2, bat: 4, ember: 2, wisp: 1 }); // 27.11.: mehr Fledermäuse (Entscheidung des Menschen)
   assert.equal(NECRO_WAVE, 15);
   assert.equal(waveSummary(15).necro, 2, 'B-127: Nekromantin in Welle 15 (gleiche Anzahl wie der Oger-König)');
   assert.equal(waveSummary(15).boss, undefined);

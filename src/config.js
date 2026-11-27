@@ -383,6 +383,7 @@ export const MAPS = {
     // Perfektes Spiel (10 von 10 Leben) gelingt mit kühlen Plätzen und dem Scharfschützen als drittem Turm (Test in game.test.js).
     // Nicht ahnungslos ändern.
     modifiers: { enemySpeed: 1.15 },
+    newEnemyScale: { bat: 0.9 }, // etwas weniger Fledermäuse (Balancing 27.11.)
     lavaRiver: VOLCANO_LAVA_RIVER,
     lavaPools: VOLCANO_LAVA_POOLS,
     bridges: VOLCANO_BRIDGES,
@@ -648,7 +649,7 @@ export const ENEMY_TYPES = {
   //   (fester Zähler je Irrlicht, kein Zufall). Kein Schaden von Explosionen, die anderen galten; nie Rückstoß.
   wisp: { name: 'Irrlicht', hp: 60, speed: 1.5, reward: 6, leak: 1, radius: 10, color: '#bff0ff', dodgeBelow: 11, dodgeEvery: 3 },
   // Fledermaus (B-167): flying = Flieger, nur Türme mit hitsAir zielen auf sie; Kanonen-Splash trifft sie nicht.
-  bat: { name: 'Fledermaus', hp: 30, speed: 1.8, reward: 3, leak: 1, radius: 9, color: '#5d4a66', flying: true },
+  bat: { name: 'Fledermaus', hp: 20, speed: 1.8, reward: 3, leak: 1, radius: 9, color: '#5d4a66', flying: true },
   // Panzerkäfer (B-169): shellHits = Schichten der Schale; jeder Treffer (nicht Lava) nimmt eine Schicht und macht 0 Schaden.
   beetle: { name: 'Panzerkäfer', hp: 120, speed: 1.0, reward: 10, leak: 2, radius: 12, color: '#2f7a3d', shellHits: 5 },
 };
@@ -707,7 +708,7 @@ export const FINAL_WAVE_NECROS = 1;
 // Fledermäuse kommen als Schwarm nach den Flitzern, Glutlinge danach, Panzerkäfer zwischen den Trollen,
 // Irrlichter mit großen Abständen am Ende (vor den Bossen).
 export const NEW_ENEMY_WAVES = {
-  bat: { from: 6, count: 2, perWave: 0.25, max: 5, gap: 0.3 },
+  bat: { from: 6, count: 2, perWave: 0.5, max: 9, gap: 0.3 }, // mehr Fledermäuse (Wunsch des Menschen 27.11.)
   ember: { from: 8, count: 2, perWave: 0.25, max: 5, gap: 0.6 },
   beetle: { from: 11, count: 3, perWave: 0.25, max: 5, gap: 1.0, offset: 0.5 }, // offset: Sekunden nach dem ersten Troll
   wisp: { from: 10, count: 1, perWave: 0.2, max: 3, gap: 1.5 },
