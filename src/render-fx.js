@@ -5,8 +5,8 @@ import {
   K_NONE, K_SMOKE, K_ICE, K_SPARK, K_FLASH, K_COIN, K_DUST, K_ROCK, K_SUMMON, coinHop, coinSpin, meteorPhase,
   T_ARROW, T_CANNON, T_FROST, T_SNIPER,
 } from './fx-system.js';
-import { BOSS_ENTRY, FX_STYLE, STYLE, WIDTH, HEIGHT } from './config.js';
-import { outlineOf } from './draw-utils.js';
+import { BOSS_ENTRY, FX_STYLE, STYLE, WIDTH, HEIGHT, TILE, FIGURE_STYLE } from './config.js';
+import { outlineOf, starPath, zigPath } from './draw-utils.js';
 
 // Ein gemeinsamer Partikelzustand fuer das Spiel (wird bei Neustart/Zeitsprung von syncFx geleert).
 const fx = createFx();
@@ -16,8 +16,8 @@ export function getFx() {
 
 // Rein visuelle Konstanten (Farben und Maße in config.js, FX_STYLE). Konturen einmal beim Laden ableiten.
 const TWO_PI = Math.PI * 2;
+const U = TILE / FIGURE_STYLE.unit; // Stil 1: Entwurfs-px -> Spiel-px
 const A = FX_STYLE.arrow;
-const TR = FX_STYLE.trail;
 const CN = FX_STYLE.cannon;
 const FR = FX_STYLE.frost;
 const SN = FX_STYLE.sniper;
@@ -25,15 +25,11 @@ const BO = FX_STYLE.bolt;
 const EX = FX_STYLE.explosion;
 const HI = FX_STYLE.hit;
 const SM = FX_STYLE.smoke;
+const GLOW_STEPS = [1, EX.glowCore];
+const BOLT_LAYERS = [[BO.outer, BO.outerWidth], [BO.mid, BO.midWidth], [BO.core, BO.coreWidth]];
 const CO = FX_STYLE.coin;
 const CT = FX_STYLE.coinText;
 const OUT_WIDTH = STYLE.outlineWidth;
-const OUT_SHAFT = outlineOf(A.shaft);
-const OUT_HEAD = outlineOf(A.head);
-const OUT_FLETCH = outlineOf(A.fletch);
-const OUT_CANNON = outlineOf(CN.color);
-const OUT_FROST = outlineOf(FR.color);
-const OUT_EXPLOSION = outlineOf(EX.ring);
 const OUT_ICE = outlineOf(HI.ice);
 const COIN_EDGE = outlineOf(CO.dark);
 const CHILL = FX_STYLE.chill;
@@ -41,7 +37,6 @@ const MT = FX_STYLE.meteor;
 const OUT_ROCK = outlineOf(MT.rock);
 const OUT_CHUNK = outlineOf(MT.chunk);
 const OUT_CRATER = outlineOf(MT.pit);
-const OUT_FIRE = outlineOf(MT.fire[0]);
 const MT_DIR = Math.hypot(MT.fromX, MT.fromY); // Länge des Anflugwegs in px
 const meteorScratch = { phase: 'none', u: 0 };
 
@@ -110,135 +105,106 @@ export function drawProjectileFx(ctx, p) {
   ctx.lineJoin = 'round';
   ctx.lineCap = 'round';
   if (type === T_ARROW) drawArrow(ctx, x, y, dx, dy);
-  else if (type === T_CANNON) drawCannonball(ctx, x, y);
-  else if (type === T_FROST) drawFrostShard(ctx, x, y, dx, dy);
+  else if (type === T_CANNON) drawCannonball(ctx, x, y, dx, dy);
+  else if (type === T_FROST) drawFrostShard(ctx, x, y, dx, dy, fx.lastTime);
   else drawSniperShot(ctx, x, y, dx, dy);
   ctx.globalAlpha = 1;
   ctx.restore();
   return true;
 }
 
-// Pfeil: Schweif aus wenigen Punkten, Holzschaft, Steinspitze, rote Federn. Spitze zeigt in Flugrichtung.
+// Pfeil (Z.123): Schaft mit dunkler Kontur, Steinspitze, rote Federn. Spitze zeigt in Flugrichtung.
 function drawArrow(ctx, x, y, dx, dy) {
-  const h = A.length / 2;
-  ctx.fillStyle = TR.color;
-  for (let i = 0; i < TR.points; i++) {
-    const k = 1 - i / TR.points;
-    const d = h + (i + 1) * TR.spacing;
-    ctx.globalAlpha = TR.alpha * k;
-    ctx.beginPath();
-    ctx.arc(x - dx * d, y - dy * d, TR.size * (TR.minSize + (1 - TR.minSize) * k), 0, TWO_PI);
-    ctx.fill();
-  }
-  ctx.globalAlpha = 1;
   ctx.translate(x, y);
   ctx.transform(dx, dy, -dy, dx, 0, 0); // lokale x-Achse = Flugrichtung
-  // Schaft mit Kontur
-  ctx.strokeStyle = OUT_SHAFT;
-  ctx.lineWidth = A.shaftWidth + OUT_WIDTH;
+  ctx.scale(U, U);
   ctx.beginPath();
-  ctx.moveTo(-h, 0);
-  ctx.lineTo(h - A.headLen, 0);
+  ctx.moveTo(-A.back, 0);
+  ctx.lineTo(A.front, 0);
+  ctx.strokeStyle = A.ink;
+  ctx.lineWidth = A.inkWidth;
   ctx.stroke();
   ctx.strokeStyle = A.shaft;
   ctx.lineWidth = A.shaftWidth;
   ctx.stroke();
-  ctx.lineWidth = OUT_WIDTH;
-  // Federn
-  ctx.fillStyle = A.fletch;
-  ctx.strokeStyle = OUT_FLETCH;
   ctx.beginPath();
-  ctx.moveTo(-h - A.fletchBack, -A.fletchHalf);
-  ctx.lineTo(-h + A.fletchLen, 0);
-  ctx.lineTo(-h - A.fletchBack, A.fletchHalf);
-  ctx.lineTo(-h + A.fletchNotch, 0);
+  ctx.moveTo(A.tip, 0);
+  ctx.lineTo(A.tip - A.headLen, -A.headHalf);
+  ctx.lineTo(A.tip - A.headLen, A.headHalf);
   ctx.closePath();
-  ctx.fill();
-  ctx.stroke();
-  // Spitze
   ctx.fillStyle = A.head;
-  ctx.strokeStyle = OUT_HEAD;
-  ctx.beginPath();
-  ctx.moveTo(h, 0);
-  ctx.lineTo(h - A.headLen, -A.headHalf);
-  ctx.lineTo(h - A.headLen, A.headHalf);
-  ctx.closePath();
   ctx.fill();
+  ctx.strokeStyle = A.ink;
+  ctx.lineWidth = A.headLine;
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(-A.back, 0);
+  ctx.lineTo(-A.back - A.fletchLen, -A.fletchLen);
+  ctx.moveTo(-A.back, 0);
+  ctx.lineTo(-A.back - A.fletchLen, A.fletchLen);
+  ctx.strokeStyle = A.fletch;
+  ctx.lineWidth = A.fletchWidth;
   ctx.stroke();
 }
 
-// Kanonenkugel: dunkle Kugel mit Kontur und einem Glanzpunkt oben links.
-function drawCannonball(ctx, x, y) {
+// Kanonenkugel (Z.130): gepunktete Flugspur, dunkle Kugel mit Kontur
+function drawCannonball(ctx, x, y, dx, dy) {
+  ctx.beginPath();
+  ctx.moveTo(x, y);
+  ctx.lineTo(x - dx * CN.trailLen * U, y - dy * CN.trailLen * U);
+  ctx.strokeStyle = CN.trail;
+  ctx.lineWidth = CN.trailWidth * U;
+  ctx.setLineDash(CN.dash);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.beginPath();
+  ctx.arc(x, y, CN.radius * U, 0, TWO_PI);
   ctx.fillStyle = CN.color;
-  ctx.strokeStyle = OUT_CANNON;
-  ctx.lineWidth = OUT_WIDTH;
-  ctx.beginPath();
-  ctx.arc(x, y, CN.radius, 0, TWO_PI);
   ctx.fill();
+  ctx.strokeStyle = CN.ink;
+  ctx.lineWidth = CN.line * U;
   ctx.stroke();
-  ctx.fillStyle = CN.shine;
-  ctx.beginPath();
-  ctx.arc(x - CN.radius * CN.shineOffset, y - CN.radius * CN.shineOffset, CN.shineR, 0, TWO_PI);
-  ctx.fill();
 }
 
-// Frostsplitter: Raute in Flugrichtung mit heller Oberseite und schwachem Leuchten.
-function drawFrostShard(ctx, x, y, dx, dy) {
-  ctx.globalAlpha = FR.glowAlpha;
-  ctx.fillStyle = FR.glowColor;
+// Frost (Z.137–141): hellblauer Strahl mit gestricheltem Kern, vorn ein drehender Eisstern
+function drawFrostShard(ctx, x, y, dx, dy, time) {
   ctx.beginPath();
-  ctx.arc(x, y, FR.glowR, 0, TWO_PI);
-  ctx.fill();
-  ctx.globalAlpha = 1;
-  ctx.translate(x, y);
-  ctx.transform(dx, dy, -dy, dx, 0, 0);
-  const back = -FR.len * FR.back;
+  ctx.moveTo(x, y);
+  ctx.lineTo(x - dx * FR.beamLen * U, y - dy * FR.beamLen * U);
+  ctx.strokeStyle = FR.beam;
+  ctx.lineWidth = FR.beamWidth * U;
+  ctx.stroke();
+  ctx.strokeStyle = FR.core;
+  ctx.lineWidth = FR.coreWidth * U;
+  ctx.setLineDash(FR.dash);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.beginPath();
+  starPath(ctx, x, y, FR.r1 * U, FR.r2 * U, FR.points, (Number.isFinite(time) ? time : 0) * FR.spin);
   ctx.fillStyle = FR.color;
-  ctx.beginPath();
-  ctx.moveTo(FR.len, 0);
-  ctx.lineTo(0, -FR.half);
-  ctx.lineTo(back, 0);
-  ctx.lineTo(0, FR.half);
-  ctx.closePath();
   ctx.fill();
-  ctx.fillStyle = FR.light;
-  ctx.beginPath();
-  ctx.moveTo(FR.len, 0);
-  ctx.lineTo(0, -FR.half);
-  ctx.lineTo(back, 0);
-  ctx.closePath();
-  ctx.fill();
-  ctx.strokeStyle = OUT_FROST;
-  ctx.lineWidth = OUT_WIDTH;
-  ctx.beginPath();
-  ctx.moveTo(FR.len, 0);
-  ctx.lineTo(0, -FR.half);
-  ctx.lineTo(back, 0);
-  ctx.lineTo(0, FR.half);
-  ctx.closePath();
+  ctx.strokeStyle = FR.ink;
+  ctx.lineWidth = FR.line * U;
   ctx.stroke();
 }
 
-// Scharfschuetze: heller Strahl hinter einer kleinen Kugel.
+// Scharfschuss (Z.125): gelbe gestrichelte Spur hinter einer kleinen Kugel
 function drawSniperShot(ctx, x, y, dx, dy) {
+  ctx.beginPath();
+  ctx.moveTo(x, y);
+  ctx.lineTo(x - dx * SN.beamLen * U, y - dy * SN.beamLen * U);
   ctx.strokeStyle = SN.beam;
-  ctx.globalAlpha = SN.beamAlpha;
-  ctx.lineWidth = SN.beamWidth;
-  ctx.beginPath();
-  ctx.moveTo(x, y);
-  ctx.lineTo(x - dx * SN.beamLen, y - dy * SN.beamLen);
+  ctx.lineWidth = SN.beamWidth * U;
+  ctx.setLineDash(SN.dash);
   ctx.stroke();
-  ctx.globalAlpha = 1;
-  ctx.strokeStyle = SN.core;
-  ctx.lineWidth = SN.coreWidth;
+  ctx.setLineDash([]);
   ctx.beginPath();
-  ctx.moveTo(x, y);
-  ctx.lineTo(x - dx * SN.beamLen * SN.inner, y - dy * SN.beamLen * SN.inner);
-  ctx.stroke();
+  ctx.arc(x, y, SN.bulletR * U, 0, TWO_PI);
   ctx.fillStyle = SN.bullet;
-  ctx.beginPath();
-  ctx.arc(x, y, SN.bulletR, 0, TWO_PI);
   ctx.fill();
+  ctx.strokeStyle = SN.ink;
+  ctx.lineWidth = SN.line * U;
+  ctx.stroke();
 }
 
 // Partikel in zwei Schichten: under = true zeichnet Rauch (unter den Gegnern), sonst Funken, Eis,
@@ -267,18 +233,14 @@ export function drawParticles(ctx, under = false) {
       ctx.arc(x, y, size * (1 + u * SM.grow), 0, TWO_PI);
       ctx.fill();
     } else if (k === K_ICE) {
-      // kleine Eisraute mit Kontur
-      const r = HI.iceSize * (size > 1 ? size / HI.iceBase : 1);
+      // kleiner Eisstern mit Kontur (Stil 1, wie der Frost-Treffer Z.140)
+      const r = HI.iceSize * (size > 1 ? size / HI.iceBase : 1) * HI.iceStretch;
       ctx.globalAlpha = 1 - u;
       ctx.fillStyle = HI.ice;
       ctx.strokeStyle = OUT_ICE;
       ctx.lineWidth = HI.iceLine;
       ctx.beginPath();
-      ctx.moveTo(x, y - r * HI.iceStretch);
-      ctx.lineTo(x + r, y);
-      ctx.lineTo(x, y + r * HI.iceStretch);
-      ctx.lineTo(x - r, y);
-      ctx.closePath();
+      starPath(ctx, x, y, r * 2, r * 0.8, 6, u * 2);
       ctx.fill();
       ctx.stroke();
     } else if (k === K_SPARK) {
@@ -354,27 +316,55 @@ export function drawParticles(ctx, under = false) {
   ctx.restore();
 }
 
-// Effekte aus dem Spielzustand, die unter den Gegnern liegen (Explosion als Bodenfleck mit Ring).
+// Effekte aus dem Spielzustand, die unter den Figuren liegen: Lichthof und Rauch der Explosion (Z.131f)
 export function drawEffectUnder(ctx, e) {
   if (!e || e.kind !== 'explosion') return;
   if (e.meteor) { drawMeteorUnder(ctx, e); return; }
   const a = e.ttl / e.max;
-  const r = e.r * (EX.endScale - a * EX.grow);
-  if (!(r > 0) || !(a > 0)) return;
+  const k = explosionScale(a);
+  if (!(k > 0) || !Number.isFinite(e.x) || !Number.isFinite(e.y)) return;
   ctx.save();
-  ctx.globalAlpha = EX.fillAlpha * a;
+  ctx.globalAlpha = a > 1 ? 1 : a;
   ctx.fillStyle = EX.fill;
-  ctx.beginPath();
-  ctx.arc(e.x, e.y, r, 0, TWO_PI);
-  ctx.fill();
-  ctx.globalAlpha = a;
-  ctx.strokeStyle = OUT_EXPLOSION;
-  ctx.lineWidth = EX.ringWidth * a + OUT_WIDTH;
-  ctx.stroke();
-  ctx.strokeStyle = EX.ring;
-  ctx.lineWidth = EX.ringWidth * a;
-  ctx.stroke();
+  for (const f of GLOW_STEPS) {
+    ctx.beginPath();
+    ctx.arc(e.x, e.y, EX.glowR * U * k * f, 0, TWO_PI);
+    ctx.fill();
+  }
+  ctx.strokeStyle = EX.smokeInk;
+  ctx.lineWidth = EX.smokeLine * U;
+  for (const [color, ox, oy, r] of EX.smoke) {
+    ctx.beginPath();
+    ctx.arc(e.x + ox * U * k, e.y + oy * U * k, r * U * k, 0, TWO_PI);
+    ctx.fillStyle = color;
+    ctx.fill();
+    ctx.stroke();
+  }
   ctx.globalAlpha = 1;
+  ctx.restore();
+}
+
+// Größe der Explosion über die Zeit: schnell auf, dann langsam kleiner (a = Restzeit-Anteil 1..0)
+function explosionScale(a) {
+  if (!(a > 0)) return 0;
+  const u = 1 - Math.min(1, a);
+  return u < EX.grow ? 0.4 + 0.6 * (u / EX.grow) : 1 - EX.shrink * ((u - EX.grow) / (1 - EX.grow));
+}
+
+// Explosionssterne (Z.133–135) über den Figuren
+function drawExplosionStars(ctx, e, a) {
+  const k = explosionScale(a);
+  if (!(k > 0) || !Number.isFinite(e.x) || !Number.isFinite(e.y)) return;
+  ctx.save();
+  ctx.lineJoin = 'round';
+  ctx.strokeStyle = EX.ink;
+  for (const [r1, r2, n, rot, color, w] of EX.stars) {
+    ctx.beginPath();
+    starPath(ctx, e.x, e.y, r1 * U * k, r2 * U * k, n, rot);
+    ctx.fillStyle = color;
+    ctx.fill();
+    if (w) { ctx.lineWidth = w * U; ctx.stroke(); }
+  }
   ctx.restore();
 }
 
@@ -389,6 +379,8 @@ export function drawEffectOver(ctx, e, reducedMotion = false) {
     drawBolt(ctx, e, a);
   } else if (e.kind === 'explosion' && e.meteor) {
     drawMeteorOver(ctx, e);
+  } else if (e.kind === 'explosion') {
+    drawExplosionStars(ctx, e, a);
   } else if (e.kind === 'coin') {
     const ty = e.y - CT.lift + (reducedMotion ? 0 : a * CT.rise);
     ctx.save();
@@ -406,30 +398,27 @@ export function drawEffectOver(ctx, e, reducedMotion = false) {
   }
 }
 
-// Blitzlinie: Turm -> Ziel 1 -> Ziel 2 ..., blauer Rand, goldene Mitte, heller Kern; blendet aus.
+// Kettenblitz (Z.143–145): Zickzack Turm -> Ziel 1 -> Ziel 2 ..., blauer Schein, dunkle Kontur, heller Kern.
+// Die Zacken springen mit der Restzeit hin und her (flackert), deterministisch.
 function drawBolt(ctx, e, a) {
   const pts = e.points;
   if (!Array.isArray(pts) || pts.length < 2) return;
+  const sign = Math.floor((e.ttl || 0) * BO.flicker) % 2 ? -1 : 1;
   ctx.save();
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
-  const path = () => {
-    ctx.beginPath();
-    ctx.moveTo(pts[0].x, pts[0].y);
-    for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+  ctx.beginPath();
+  for (let i = 1; i < pts.length; i++) {
+    const p = pts[i - 1], q = pts[i];
+    const n = Math.max(2, Math.round(Math.hypot(q.x - p.x, q.y - p.y) / (BO.step * U)));
+    zigPath(ctx, p.x, p.y, q.x, q.y, n, BO.amp * U, i === 1, sign);
+  }
+  ctx.globalAlpha = a > 1 ? 1 : a > 0 ? a : 0;
+  for (const [color, w] of BOLT_LAYERS) {
+    ctx.strokeStyle = color;
+    ctx.lineWidth = w * U;
     ctx.stroke();
-  };
-  ctx.globalAlpha = BO.outerAlpha * a;
-  ctx.strokeStyle = BO.outer;
-  ctx.lineWidth = BO.outerWidth;
-  path();
-  ctx.globalAlpha = a;
-  ctx.strokeStyle = BO.mid;
-  ctx.lineWidth = BO.midWidth;
-  path();
-  ctx.strokeStyle = BO.core;
-  ctx.lineWidth = BO.coreWidth;
-  path();
+  }
   ctx.globalAlpha = 1;
   ctx.restore();
 }
@@ -572,29 +561,39 @@ function drawMeteorOver(ctx, e) {
     ctx.arc(x - dx * MT.rockR * 0.45, y - dy * MT.rockR * 0.45, MT.rockR * 0.45, 0, TWO_PI);
     ctx.fill();
   } else {
-    // Feuerball als Puff-Wolke in drei Lagen (außen orange mit Kontur, Mitte gelb, Kern creme):
-    // schnell auf, dann driften die Puffs nach außen, schrumpfen und verblassen
+    // Feuerball in der Sternsprache der Explosion (Stil 1, Z.133–135): Lichthof, Rauchballen, drei Sterne;
+    // schnell auf, dann schrumpfen und verblassen
     if (p.u < MT.fireEnd) {
       const grow = p.u < MT.fireGrow ? easeOut(p.u / MT.fireGrow) : 1;
       const fall = p.u < MT.fireStart ? 1 : 1 - (p.u - MT.fireStart) / (MT.fireEnd - MT.fireStart);
       const drift = 1 + MT.fireDrift * (1 - fall);
+      const R = r * grow * (0.7 + 0.3 * fall); // Feuerball-Radius
       ctx.globalAlpha = fall > 0 ? fall : 0;
-      for (let layer = -1; layer < 3; layer++) {
-        const R = r * MT.fireR[layer < 0 ? 0 : layer] * grow * (0.7 + 0.3 * fall);
-        const edge = layer < 0 ? MT.fireEdge : 0;
-        ctx.fillStyle = layer < 0 ? OUT_FIRE : MT.fire[layer];
+      ctx.fillStyle = EX.fill;
+      ctx.beginPath();
+      ctx.arc(e.x, e.y, R * 1.1, 0, TWO_PI);
+      ctx.fill();
+      ctx.strokeStyle = EX.smokeInk;
+      ctx.lineWidth = EX.smokeLine * U;
+      for (let i = 0; i < MT.firePuffs; i++) {
+        const a = (i / MT.firePuffs) * TWO_PI + 0.4;
+        const d = R * MT.puffDist * drift;
+        ctx.fillStyle = EX.smoke[i % EX.smoke.length][0];
         ctx.beginPath();
-        ctx.arc(e.x, e.y, R + edge, 0, TWO_PI);
+        ctx.arc(e.x + Math.cos(a) * d, e.y + Math.sin(a) * d, R * MT.puffR * 0.45 * (i % 3 ? 1 : 0.8), 0, TWO_PI);
         ctx.fill();
-        if (layer === 2) continue; // Kern ohne Puffs
-        for (let i = 0; i < MT.firePuffs; i++) {
-          const a = (i / MT.firePuffs) * TWO_PI + 0.4;
-          const d = R * MT.puffDist * drift * (i % 2 ? 1 : 0.8);
-          const pr = R * MT.puffR * (i % 3 ? 1 : 0.8) + edge;
-          ctx.beginPath();
-          ctx.arc(e.x + Math.cos(a) * d, e.y + Math.sin(a) * d, pr, 0, TWO_PI);
-          ctx.fill();
-        }
+        ctx.stroke();
+      }
+      ctx.lineJoin = 'round';
+      ctx.strokeStyle = EX.ink;
+      for (let layer = 0; layer < 3; layer++) {
+        const R1 = R * MT.fireR[layer] * 1.3;
+        const [, , n, rot, color, w] = EX.stars[layer];
+        ctx.beginPath();
+        starPath(ctx, e.x, e.y, R1, R1 * 0.5, n + 2, rot);
+        ctx.fillStyle = color;
+        ctx.fill();
+        if (w) { ctx.lineWidth = w * U * 1.4; ctx.stroke(); }
       }
     }
     // Heller Blitz ganz am Anfang

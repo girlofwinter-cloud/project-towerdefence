@@ -1,3 +1,6 @@
+/* Stil 1: Schrift der Stufenmarken und Plaketten (OFL, assets/fonts) */
+@font-face { font-family: 'Lilita One'; src: url('assets/fonts/LilitaOne-Regular.ttf') format('truetype'); font-display: swap; }
+
 /* Cartoon-Holz-Optik (Prototyp): dunkle Holzleisten, goldene Kanten, Wald-Hintergrund. */
 :root {
   --bg: #1f3a24;

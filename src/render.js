@@ -4,9 +4,9 @@ import { towerStats, enemyPath } from './game.js';
 import { disc, shd } from './draw-utils.js';
 import { buildPaintedSvg, rasterizePainted, canRasterize } from './render-painted.js';
 import { drawPathStyled } from './render-path.js';
-import { TOWER_DRAWERS } from './render-towers.js';
+import { drawTowerFigure, drawTowerBadge, towerFootY } from './render-towers.js';
 import { recoilOffset } from './tower-fx.js';
-import { drawEnemy, drawHealAura } from './render-enemies.js';
+import { drawEnemy, drawHealAura, enemyFootY } from './render-enemies.js';
 import { updateFx, shakeX, shakeY, drawProjectileFx, drawParticles, drawBossEntry, drawEffectUnder, drawEffectOver } from './render-fx.js';
 import { drawTreeFrame } from './render-trees.js';
 import * as flat from './render-decor.js';
@@ -70,13 +70,14 @@ export function render(ctx, state, ui) {
     drawGround(ctx, state, reduced);
   }
   drawHover(ctx, state, ui);
-  for (const t of state.towers) drawTower(ctx, t, ui.selectedTowerId === t.id);
   for (const e of state.enemies) drawHealAura(ctx, e, state.time);
   drawBossEntry(ctx);
-  // Explosionen und Rauch unter den Gegnern, damit sie keine Figur verdecken (B-068)
+  // Explosionen und Rauch unter den Figuren, damit sie keine Figur verdecken (B-068)
   for (const fx of state.effects) drawEffectUnder(ctx, fx);
   drawParticles(ctx, true);
-  for (const e of state.enemies) drawEnemy(ctx, e, state.time, enemyPath(state, e));
+  // Stil 1: Türme und Gegner nach Fußpunkt sortiert (weiter unten = davor), Stufenmarken danach
+  drawFigures(ctx, state, ui);
+  for (const t of state.towers) drawTowerBadge(ctx, t);
   for (const p of state.projectiles) drawProjectile(ctx, p);
   drawParticles(ctx);
   for (const fx of state.effects) drawEffectOver(ctx, fx, reduced);
@@ -404,15 +405,29 @@ function rangeCircle(ctx, x, y, r, fill) {
 }
 
 // ---------- Türme ----------
-// Zeichenfunktionen je Typ: src/render-towers.js (Maße in TOWER_STYLE, config.js).
-const RECOIL_PX = { arrow: 3, cannon: 4, frost: 3, sniper: 3, lightning: 2 }; // maximaler Rückstoß in Pixeln
+// Zeichnung je Typ: src/render-towers.js (Formen in src/figures.js, Maße in FIGURE_STYLE, config.js).
 
-// Exportiert, damit Tests einen einzelnen Turm gegen einen Mock-Kontext zeichnen koennen.
+// Tiefen-Sortierung ohne Allokation pro Frame: eine Liste wird wiederverwendet
+const figures = [];
+const footOf = (o) => (o.hp === undefined ? towerFootY(o) : enemyFootY(o));
+const byFoot = (a, b) => footOf(a) - footOf(b);
+function drawFigures(ctx, state, ui) {
+  figures.length = 0;
+  for (const t of state.towers) figures.push(t);
+  for (const e of state.enemies) figures.push(e);
+  figures.sort(byFoot);
+  for (const o of figures) {
+    if (o.hp === undefined) drawTower(ctx, o, ui.selectedTowerId === o.id);
+    else drawEnemy(ctx, o, state.time, enemyPath(state, o));
+  }
+  figures.length = 0;
+}
+
+// Exportiert, damit Tests einen einzelnen Turm gegen einen Mock-Kontext zeichnen koennen (ohne Stufenmarke).
 export function drawTower(ctx, t, selected) {
   const def = TOWER_TYPES[t.type];
   // Rückstoß aus der Abklingzeit (game.js setzt cooldown beim Schuss auf das Intervall)
-  const rec = recoilOffset(t.cooldown / def.rate) * RECOIL_PX[t.type];
-  TOWER_DRAWERS[t.type](ctx, t.x, t.y, t.level, t.angle, rec, def.color);
+  drawTowerFigure(ctx, t, def ? recoilOffset(t.cooldown / def.rate) : 0);
   if (selected) {
     ctx.strokeStyle = '#fff';
     ctx.lineWidth = 2;

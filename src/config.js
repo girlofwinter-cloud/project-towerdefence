@@ -731,54 +731,32 @@ export const SHOP_CARD = {
   minContrast: 4.5,
 };
 
-// Pfeilturm im Flat-Pop-Stil (B-063). Alle Maße in px, Ursprung = Bodenmitte des Turms, y nach oben negativ.
-export const ARROW_TOWER = {
-  scale: 0.85,              // Gesamtskalierung (Turm ca. 30 px breit, ca. 58 px hoch)
-  groundDy: 13,             // Boden liegt so weit unter der Turmmitte (x, y)
-  shadowR: 15,              // Radius des Bodenschattens
-  headY: -34,               // Drehpunkt des Bogens (Brust des Schützen)
-  roofBaseY: -41,           // Unterkante des Dachs
-  roofHeight: [17, 19, 22], // Dachhöhe je Stufe
-  roofHalf: [17, 17.5, 19], // halbe Dachbreite je Stufe
-  poleHeight: [0, 6, 5],    // Wimpelstange über dem Dach je Stufe (0 = kein Wimpel)
-  bowRadius: 8,             // Bogenradius
-  bowSpan: 1.1,             // halber Öffnungswinkel des Bogens (rad)
-  bowWidth: 1.6,            // Bogenbreite
-  iconScale: 0.75,          // Skalierung in der Shop-Vorschau (40x40-Platz, Turm ist höher)
-  iconDy: 9,                // Verschiebung der Shop-Vorschau nach unten in px
-  arrowLength: 11,          // Länge des aufgelegten Pfeils
-};
-
-// Kanone, Frostturm, Scharfschütze und Blitzturm im Flat-Pop-Stil (B-064). Maße in px, Ursprung = Bodenmitte,
-// y nach oben negativ. Arrays haben je einen Wert für Stufe 1 bis 3. iconScale/iconDy: Shop-Vorschau (48x48).
-export const TOWER_STYLE = {
-  cannon: {
-    scale: 0.9, groundDy: 13, shadowR: 15, iconScale: 1.1, iconDy: 4,
-    halfWidth: [15, 16.5, 18],    // halbe Breite des Steinbunkers
-    height: [12, 14, 16],         // Höhe des Bunkers bis zur Zinne
-    merlons: [3, 4, 5],           // Anzahl der Zinnen
-    barrelLength: [16, 17.5, 19], // Rohrlänge ab Drehpunkt
-    barrelThick: [1, 1.1, 1.2],   // Rohrdicke (Faktor)
-  },
-  frost: {
-    scale: 0.9, groundDy: 13, shadowR: 14, iconScale: 0.9, iconDy: 7,
-    pivotY: -35,                  // Drehpunkt des Eissplitters
-    shardLength: [11, 13, 15],    // Länge des Eissplitters
-    icicleLength: [5, 7, 9],      // Länge der Eiszapfen am Kragen
-    crystals: [0, 1, 2],          // Paare seitlicher Eiskristalle am Schaft
-  },
-  sniper: {
-    scale: 0.8, groundDy: 13, shadowR: 13, iconScale: 0.85, iconDy: 8,
-    shaftHeight: [30, 33, 36],    // Höhe des Schafts
-    barrelLength: [17, 19, 21],   // Länge des Zielrohrs
-  },
-  lightning: {
-    scale: 0.9, groundDy: 13, shadowR: 14, iconScale: 0.9, iconDy: 7,
-    pivotY: -37,                 // Drehpunkt des Kristalls
-    rings: [2, 3, 4],             // Metallringe an der Spule
-    crystalSize: [1, 1.15, 1.3],  // Größe des Kristalls (Faktor)
-    arms: [0, 1, 2],              // Paare von Fangarmen mit Leuchtkugel
-  },
+// Stil 1 (G6, G7): Türme und Gegner nach docs/design/stil1-entwurf.dc.html. Maße in Entwurfs-px (Kachel = unit),
+// gezeichnet mit TILE / unit. Formen stehen in src/figures.js, hier nur Lage, Größe und Farben.
+export const FIGURE_STYLE = {
+  unit: 57,
+  towerFoot: 22,  // Fußpunkt des Turms unter der Kachelmitte (0,39 Kachel, Entwurf Z.197)
+  enemyFoot: 14,  // Fußpunkt des Gegners unter der Wegmitte (Z.199)
+  towerScale: { arrow: 1.15, cannon: 1.2, frost: 1.15, sniper: 1.08, lightning: 1.15 }, // Scharfschütze 1,2 x 0,9 (Plan)
+  // Stufenmarke (.bd1, Z.15): Kreis rechts unten am Turm, Mitte bei (W + dx, H + dy) der Turm-Box
+  badge: { colors: ['#d7dde0', '#f2c14e', '#ff8a3d'], r: 11, line: 2.5, dx: -9, dy: -15, ink: '#2b1a10', font: '14px "Lilita One", "Trebuchet MS", sans-serif', textDy: 0.5 },
+  trim: { color: '#f2c14e', ink: '#2b1a10', width: 3, edge: 5 }, // Goldband ab Stufe 2 (Stufe 3: zwei Bänder)
+  cannonTilt: 1.25, // größte Neigung des Kanonenrohrs aus der Senkrechten (rad)
+  muzzle: 0.55,     // Mündungsfeuer, solange der Rückstoß-Anteil darüber liegt
+  squash: 0.05,     // Stauchung feststehender Türme direkt nach dem Schuss (Anteil der Höhe)
+  recoil: { arrow: 0, cannon: 4, frost: 0, sniper: 3, lightning: 0 }, // Rückstoß drehender Teile in Entwurfs-px
+  shotGlow: { frost: 'rgba(216,247,255,0.85)', lightning: 'rgba(255,246,168,0.9)', edge: 'rgba(255,255,255,0)', r: 26 }, // Aufleuchten beim Schuss
+  // Shop-Vorschau (48x48): Skalierung und Verschiebung nach unten in px
+  icon: { arrow: { scale: 0.58, dy: 10 }, cannon: { scale: 0.59, dy: 10 }, frost: { scale: 0.57, dy: 10 }, sniper: { scale: 0.53, dy: 11 }, lightning: { scale: 0.54, dy: 11 } },
+  // Gegner
+  bob: 1.6,          // Wippen beim Laufen (Entwurfs-px)
+  sway: 0.05,        // Schwanken beim Laufen (rad)
+  tilt: 0.35,        // Anteil der Neigung auf senkrechten Wegstücken (aufrechte Figuren kippen nur leicht)
+  bossScale: 1.3,    // Oger-König = Troll x 1,3 mit Krone
+  necroScale: 1.5,   // Nekromantin auf Goblin-Basis
+  // Lebensbalken (Z.113), nur bei Schaden: Breite = share x Figurbreite (mind. minW), über der Figur
+  hp: { back: '#2b1a10', good: '#74d048', mid: '#f2c14e', low: '#e5481f', h: 12, inner: 6, pad: 3, gap: 4, minW: 34, share: 0.71, r: 6 },
+  outline: '#2b1a10',
 };
 
 // Weg im Flat-Pop-Stil (B-071). Maße in px bei 1x. Gesamtbreite in Kachelmitte = TILE, der wellige
@@ -1180,73 +1158,11 @@ export const RANGE_STYLE = {
   maxFillAlpha: 0.1,      // Obergrenze (Test)
 };
 
-// B-065: Gegner im Flat-Pop-Stil (Goblin, Flitzer, Troll). Maße in Design-Pixeln bei Radius `ref`
-// (die Figur wird mit radius/ref skaliert). `main` = Flächenanteil der Hauptfarben (Summe 1) für den Kontrasttest.
+// Gegner-Zusätze (die Figuren selbst: FIGURE_STYLE und src/figures.js)
 export const ENEMY_STYLE = {
-  legSwing: 2.6,     // Beinschwung vor/zurück in px
-  bob: 1.1,          // Wippen in px
-  legLift: 1.2,      // Fuß hebt sich im Vorschwung
-  outlineWidth: 1.8, // kräftigere Kontur als STYLE.outlineWidth (Lesbarkeit auf hellem Weg, B-085)
-  eyeRim: '#ffffff',
-  eyeDark: '#1a1a1a',
-  browColor: '#2a1d1a',
-  grunt: {
-    ref: 12,
-    skin: '#6fbf4a', tunic: '#764324', belt: '#4a2a18',
-    main: { skin: 0.4, tunic: 0.6 },
-  },
-  runner: {
-    ref: 10.5,
-    skin: '#f2c14e', suit: '#a8500f', cap: '#7a3a14', streak: 'rgba(122,58,20,0.55)',
-    main: { skin: 0.35, suit: 0.5, cap: 0.15 },
-  },
-  tank: {
-    ref: 14,
-    skin: '#b5523b', plate: '#9aa3a8', plateDark: '#6d767b', tusk: '#f1e8d2',
-    main: { skin: 0.5, plate: 0.2, plateDark: 0.3 },
-  },
-  healer: {
-    ref: 11,
-    skin: '#3fbf8f', robe: '#1f6e50', robeDark: '#154c37', face: '#bfe8cf', staff: '#6b4a2b', orb: '#b8ffd8', cross: '#1f6e50',
-    orbRadius: 2.6, orbPulse: 0.3, orbSpeed: 4, // Leuchtkugel: Grundradius, Pulsausschlag (px), Tempo (rad/s)
-    main: { skin: 0.3, robe: 0.7 },
-  },
-  shielded: {
-    ref: 13,
-    skin: '#6f86a8', body: '#4f607c', helm: '#9aa7ba', shield: '#7a5530', rim: '#c9ccd2', emblem: '#e8d27a',
-    main: { skin: 0.3, body: 0.3, shield: 0.4 },
-  },
-  // B-126: Magier mit Schildzauber; wardFill/wardRing = Schild-Blase um geschützte Gegner (Stärke ~ ward/Höchstschild)
+  // B-126: Schild-Blase um geschützte Gegner (Stärke ~ ward/Höchstschild)
   mage: {
-    ref: 11,
-    skin: '#d9c3a0', robe: '#4b3fa8', robeDark: '#31287a', hat: '#3a2f8c', hatBand: '#f2c14e', staff: '#6b4a2b', orb: '#9fe8ff',
-    orbRadius: 2.6, orbPulse: 0.3, orbSpeed: 4,
     wardFill: 'rgba(120,200,255,0.28)', wardRing: 'rgba(190,235,255,0.9)', wardRingWidth: 1.6, wardPad: 4, wardPulse: 0.6, wardSpeed: 3,
-    main: { skin: 0.2, robe: 0.5, hat: 0.3 },
-  },
-  // Boss Oger-König (B-067): ref wird aus sizeFactor berechnet (render-enemies-flat.js), damit ein Design-Pixel
-  // beim Boss sizeFactor-mal so groß ist wie beim Goblin.
-  boss: {
-    sizeFactor: 1.6,
-    skin: '#7a2e8e', belly: '#b77fc4', fur: '#8a5a34', club: '#c58f55', stud: '#b3adaa',
-    gold: '#f4c542', jewel: '#d4503f', tusk: '#f1e8d2',
-    aura: 'rgba(190,110,235,0.2)', auraRing: 'rgba(225,170,255,0.65)', auraWidth: 1.1,
-    auraRadius: 12.6, auraPulse: 0.7, auraSpeed: 3, // Aura: Grundradius, Pulsausschlag (Design-px), Tempo (rad/s)
-    main: { skin: 0.55, belly: 0.15, fur: 0.15, gold: 0.15 },
-  },
-  // Boss Nekromantin (B-127): so groß wie der Oger-König (sizeFactor), Kapuze, Robe, Stab mit grünem Licht.
-  necro: {
-    sizeFactor: 1.6,
-    skin: '#3d4a5c', robe: '#2a2f45', robeDark: '#1d2033', face: '#151622', hand: '#b9c4b0', staff: '#6b4a2b',
-    glow: '#7dff9a', orb: '#b8ffc8', halo: 'rgba(125,255,154,0.3)',
-    orbRadius: 2.2, orbPulse: 0.35, orbSpeed: 3.5, haloScale: 1.6, // Leuchtkugel: Grundradius, Pulsausschlag (Design-px), Tempo (rad/s), Lichthof
-    main: { skin: 0.35, robe: 0.65 },
-  },
-  // Skelett (B-127): knochig, klein, zerlumpter dunkler Umhang (Kontrast zum hellen Weg)
-  skeleton: {
-    ref: 10,
-    skin: '#e6e0cf', rag: '#3b3550', socket: '#1a1a1a', bone: '#c9c0a6',
-    main: { skin: 0.4, rag: 0.6 },
   },
 };
 
@@ -1275,13 +1191,20 @@ export const BOSS_ENTRY = {
 // Projektile und Effekte im Flat-Pop-Stil (B-068, nur Darstellung). Maße in px bei 1x, Zeiten in Sekunden Spielzeit.
 // Konturen werden aus der Eigenfarbe abgeleitet (outlineOf). Bei prefers-reduced-motion: kein Hopsen, kein Drehen.
 export const FX_STYLE = {
-  arrow: { shaft: '#c58f55', head: '#b3adaa', fletch: '#d4503f', length: 12, headLen: 4.5, headHalf: 2.6, fletchLen: 3.5, fletchHalf: 2.2, shaftWidth: 1.6, fletchBack: 1, fletchNotch: 0.5 }, // fletchBack/-Notch: Federende und Kerbe in px
-  trail: { color: '#fff3c9', points: 4, spacing: 4, size: 1.6, alpha: 0.6, minSize: 0.5 }, // Schweif aus 3 bis 5 Punkten, minSize: Anteil am Ende
-  cannon: { color: '#4a3f55', radius: 4.5, shine: '#fff3c9', shineR: 1.4, shineOffset: 0.35 }, // Glanzpunkt-Versatz in Radien
-  frost: { color: '#7fd8f4', light: '#bff0ff', len: 5.5, half: 2.8, glowColor: '#bff0ff', glowR: 5.5, glowAlpha: 0.25, back: 0.6 }, // back: Heck der Raute in Längen
-  sniper: { beam: '#efe2ff', core: '#ffffff', bullet: '#e6d1ff', beamLen: 38, beamAlpha: 0.4, bulletR: 2.2, beamWidth: 3, coreWidth: 1, inner: 0.7 }, // inner: Anteil des hellen Kerns am Strahl
-  bolt: { outer: '#4f7fc8', outerWidth: 4.5, outerAlpha: 0.55, mid: '#f4c542', midWidth: 2.4, core: '#fff3c9', coreWidth: 1 },
-  explosion: { fill: '#ff9a3c', fillAlpha: 0.3, ring: '#f4c542', ringWidth: 3, grow: 0.5, endScale: 1.2 }, // unter den Gegnern; endScale: Endradius in Splash-Radien
+  // Stil 1 (G8): Formen und Farben aus dem Entwurf (Pfeil Z.123, Scharfschuss Z.125, Kugel Z.130, Explosion Z.131–135,
+  // Frost Z.137–141, Blitz Z.143–145). Maße in Entwurfs-px (Kachel 57), gezeichnet mit TILE / 57.
+  arrow: { shaft: '#e8c185', head: '#d9dde2', fletch: '#d6483a', ink: '#2b1a10', back: 14, front: 12, tip: 14, headLen: 8, headHalf: 5, fletchLen: 5, shaftWidth: 2.4, inkWidth: 5, fletchWidth: 3, headLine: 2 },
+  cannon: { color: '#33283a', ink: '#2b1a10', radius: 6, line: 2, trail: 'rgba(43,26,16,0.6)', trailWidth: 3, trailLen: 70, dash: [2, 10] },
+  frost: { color: '#bfeeff', light: '#ffffff', ink: '#2b1a10', beam: 'rgba(143,216,242,0.5)', beamWidth: 7, core: '#f4fcff', coreWidth: 3, dash: [10, 6], beamLen: 60, r1: 13, r2: 5, points: 6, spin: 6, line: 2 },
+  sniper: { beam: 'rgba(255,246,168,0.85)', bullet: '#fff6a8', ink: '#2b1a10', beamLen: 90, beamWidth: 2, dash: [14, 5], bulletR: 3.5, line: 1.5 },
+  bolt: { outer: 'rgba(127,208,255,0.35)', outerWidth: 12, mid: '#2b1a10', midWidth: 6, core: '#fffbd0', coreWidth: 3, step: 30, amp: 8, flicker: 20 },
+  // Explosion: Lichthof und Rauch unter den Figuren, drei Sterne darüber (Größe 1,4 Kacheln = Außenradius 40)
+  explosion: {
+    fill: 'rgba(255,246,168,0.35)', glowR: 58, glowCore: 0.55,
+    smoke: [['#6b625b', -14, -18, 15], ['#80776e', 16, -10, 12], ['#80776e', -30, 2, 10]], smokeInk: 'rgba(43,26,16,0.85)', smokeLine: 3,
+    stars: [[40, 22, 9, 0.2, '#e5481f', 4], [26, 13, 8, 0.5, '#ffc93c', 3], [12, 6, 7, 0.1, '#fffbd0', 0]], ink: '#2b1a10',
+    grow: 0.25, shrink: 0.4, // Anteil der Dauer bis zur vollen Größe; Schrumpfen bis zum Ende
+  },
   // Treffer: Blitz (Vierzack-Stern) 0,08 s laut STIL.md; Funken als kurze Striche, Eis als kleine Rauten.
   hit: {
     flash: '#fff3c9', flashSize: 4, flashAlpha: 0.8, flashLife: 0.08, flashStart: 0.6, flashGrow: 0.6, flashWaist: 0.3,
