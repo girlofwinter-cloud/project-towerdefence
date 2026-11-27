@@ -2,7 +2,7 @@
 
 Erzeugt aus `tokens.json` mit `node scripts/design-tokens.mjs`. Nicht von Hand ändern.
 
-## Farben (100)
+## Farben (113)
 
 | Token | Wert | Verwendung |
 |---|---|---|
@@ -13,6 +13,10 @@ Erzeugt aus `tokens.json` mit `node scripts/design-tokens.mjs`. Nicht von Hand �
 | `bad` | `#ff6b5a` | Warnung im Text: wenig Leben (pulsiert). Nur auf ink oder Holz dunkel. style.css --bad. |
 | `frame-bg` | `#1d3a1f` | Seitenhintergrund hinter der Bühne (body). Nur Fläche, kein Text darauf außer cream. |
 | `overlay-bg` | `rgba(16,28,14,0.7)` | Abdunklung hinter Spielende-Overlay (#overlay). |
+| `overlay-bg-mobile` | `rgba(16,28,14,0.78)` | Abdunklung hinter dem Spielende auf dem Handy. |
+| `start-bg` | `rgba(16,28,14,0.45)` | Abdunklung hinter dem Startbildschirm (#start-screen). |
+| `side-shade` | `rgba(16,28,14,0.35)` | Handy hochkant: Schatten der seitlichen Ränder (#app::before/::after). |
+| `ring-yard` | `rgba(43,26,16,0.38)` | Dunkler Hof hinter dem Ringmenü (radial bis 45 %, aus bei 70 %). |
 | `wood-a` | `#a4672f` | Holzleiste oben (Verlauf .plq, Pause-Banner, Overlay-Plakette). style.css --wood-a. |
 | `wood-b` | `#7a4520` | Holzleiste unten, Ende aller Holzverläufe. style.css --wood-b. |
 | `wood-btn` | `#b97a3e` | Textknopf aus Holz oben (.wbtn), Verlauf nach wood-b. |
@@ -23,19 +27,24 @@ Erzeugt aus `tokens.json` mit `node scripts/design-tokens.mjs`. Nicht von Hand �
 | `wood-fig-c` | `#a9703d` | Zinnen und Brüstung an Pfeil- und Scharfschützenturm, Fahnenmast innen. |
 | `gold` | `#f2c14e` | Gold: Münze, Stufe 2, Badges auf Knöpfen (.rb-badge, .ab-badge), Lebensbalken mittel. style.css --gold. |
 | `gold-dark` | `#b9851d` | Innenring der Münze im HUD. |
-| `gold-light` | `#ffe27a` | Preis auf ink (12:1), +Gold-Text beim Münzflug. SHOP_CARD.cost. |
-| `gold-btn-a` | `#ffd45a` | Goldknopf oben (Wellenknopf, .wbtn-gold). |
+| `gold-light` | `#ffe27a` | Preis auf ink (13:1), +Gold-Text beim Münzflug, Verbessern-Knopf im Ringmenü (Licht, nach gold-btn-b). SHOP_CARD.cost. |
+| `gold-btn-a` | `#ffd45a` | Goldknopf oben (Wellenknopf, .wbtn-gold); Fortschritt der laufenden Welle. |
 | `gold-btn-b` | `#e08a1c` | Goldknopf unten. |
+| `wave-progress` | `{gold-btn-a} = #ffd45a` | Fortschrittsleiste im laufenden Wellenknopf (4 px, --wave-fill 0..1). |
+| `sell-a` | `#e88a6a` | Verkaufen-Knopf im Ringmenü, Licht (.rbtn-red). |
+| `sell-b` | `#a8412c` | Verkaufen-Knopf im Ringmenü, Schatten. |
 | `price-poor` | `#ff9e8f` | Preis, wenn das Gold nicht reicht (auf ink 8:1), immer zusammen mit Durchstreichen. SHOP_CARD.costPoor. |
 | `card-bg` | `#4e321d` | Turmknopf Fläche (SHOP_CARD.bg, bis zum Ringmenü). |
 | `card-bg-active` | `#62402a` | Turmknopf gewählt, dazu Ring hl. |
 | `card-icon-bg` | `#5fae48` | Fläche hinter dem Mini-Turm im Turmknopf. |
 | `card-key-bg` | `#2e1d10` | Tasten-Badge am Turmknopf: Fläche. |
 | `card-key-text` | `#fff4dc` | Tasten-Badge am Turmknopf: Schrift. |
-| `disabled-a` | `#cdb48a` | Wellenknopf gesperrt oben. |
-| `disabled-b` | `#9c8462` | Wellenknopf gesperrt unten. |
-| `disabled-ink` | `#4a3a2a` | Schrift auf gesperrtem Wellenknopf. |
 | `flag-red` | `#c4452f` | Wellenfahne, Burgdach, Kanonier-Mütze. |
+| `ribbon-win` | `{flag-red} = #c4452f` | Band der Spielende-Plakette: gewonnen. |
+| `ribbon-loss` | `{stone-line} = #6b5a48` | Band der Spielende-Plakette: verloren. |
+| `star-empty` | `#5a3a22` | Nicht erreichter Stern (Kartenkarte, Spielende). |
+| `map-locked` | `#c9b89a` | Name einer gesperrten Kartenkarte. |
+| `lock-shackle` | `#d9dde2` | Bügel des Schlosses auf gesperrten Karten, Klinge im Reparatur-Icon. |
 | `heart` | `#e0393e` | Herz im HUD (Leben). |
 | `message-bad` | `#b8432f` | Meldung Warnung (#message), Schrift cream. |
 | `message-info` | `#4f8a34` | Meldung Info (#message.info), Schrift cream. |
@@ -56,6 +65,10 @@ Erzeugt aus `tokens.json` mit `node scripts/design-tokens.mjs`. Nicht von Hand �
 | `stone-b` | `#b9a283` | Turmsockel Mitte. |
 | `stone-c` | `#8a7560` | Turmsockel dunkel. |
 | `stone-line` | `#6b5a48` | Fugen im Stein. |
+| `castle-gate` | `#33211a` | Tor und Fenster der Burg (Rand und Start-Titel). |
+| `castle-flag` | `#3a7bd5` | Fahne auf dem Burgturm. |
+| `castle-icon-a` | `#cfc8bb` | Burg im Start-Titel hell (Turm). |
+| `castle-icon-b` | `#b9b2a6` | Burg im Start-Titel dunkel (Mauer). |
 | `skin` | `#f2c9a0` | Gesichter der Turmbesatzung. |
 | `path-groove` | `#3a6a2c` | Weg: Grasschatten außen (86 Entwurfs-px). PAINTED_PALETTE.path[0]. |
 | `path-outline` | `{ink} = #2b1a10` | Weg: Kontur (72). |
@@ -115,19 +128,25 @@ Erzeugt aus `tokens.json` mit `node scripts/design-tokens.mjs`. Nicht von Hand �
 
 | Stil | Familie | Größe | Zeilenhöhe | Beispiel | Verwendung |
 |---|---|---|---|---|---|
+| `start-title` | display | 50px | 1 | Project TowerDefence | Titel des Startbildschirms, Umriss 3 px plus 0 5px 0 ink; Handy 32 px. |
 | `overlay-title` | display | 56px | 1 | Sieg! | Spielende-Titel, Farbe gold, text-shadow 0 4px 0 ink. |
+| `ribbon` | display | 44px | 1 | Gewonnen! | Text im Band der Spielende-Plakette (SVG text), cream mit Umriss 3 px; Handy 50. |
 | `banner` | display | 34px | 1.1 | Pause | Pause-Banner auf Holz. |
 | `num` | display | 28px | 30px | 1.240 | HUD-Zahlen (.num), cream mit 2-px-Umriss ink. |
 | `round-glyph` | display | 26px | 1 | ? | Zeichen im runden Knopf (.rb-q). |
 | `cooldown` | display | 24px | 1 | 12 | Sekunden im Fähigkeitsknopf (.ab-num). |
+| `map-name` | display | 24px | 1.1 | Eiswelt | Name auf der Kartenkarte, cream mit Umriss. |
 | `wave-button` | display | 22px | 1 | Welle 8 starten | Wellenknopf, ink auf Gold. |
 | `num-small` | display | 20px | 22px | / 20 | Kleine Zahl in der HUD-Leiste, +Gold beim Münzflug, Turmname im Panel. |
+| `ring-title` | display | 19px | 1.1 | Kanone | Turmname in der Info-Plakette am Ringmenü. |
 | `message` | display | 18px | 1.3 | Nicht genug Gold | Meldung (#message). |
 | `button-text` | display | 17px | 1 | Verbessern | Holz-Textknopf (.wbtn). |
 | `label` | display | 15px | 20px | Meteor | Beschriftung unter Fähigkeiten (.cap), Preisschild, Wellenvorschau, Kartenwahl. |
 | `badge` | display | 14px | 17px | ×2 | Abzeichen am Knopf (.rb-badge), Stufenmarke (Canvas), Tasten-Badge. |
+| `hint` | body | 16px | 1.3 | Klicke eine Karte zum Starten | Hinweis unter den Kartenkarten, cream mit 0 2px 0 ink. |
 | `body` | body | 15px | 1.35 | Leertaste startet die nächste Welle. | Hilfe-Plakette, Fließtext. |
 | `body-small` | body | 14px | 1.3 | Schaden 12 · Reichweite 3,0 | Werte im Turm-Panel, Farbe muted. |
+| `ring-text` | body | 13px | 1.3 | Schaden 30 · Reichweite 3,0 | Werte in der Info-Plakette am Ringmenü, muted. |
 | `kbd` | body | 12px | 1.4 | P | Tastenkürzel (kbd) auf rgba(0,0,0,.35). |
 
 ## Abstände
@@ -153,12 +172,14 @@ CSS-px bei 1280x800. Feldmaße in Spiel-px stehen in size.
 |---|---|---|
 | `radius-kbd` | `4px` | Tastenkürzel kbd. |
 | `radius-tag` | `9px` | Preisschild, Beschriftung .cap, Tasten-Badge am Turmknopf. |
+| `radius-thumb` | `10px` | Vorschaubild auf der Kartenkarte. |
 | `radius-badge` | `11px` | Abzeichen 22 px hoch (.rb-badge, Tasten-Badge der Fähigkeit), Stufenmarke r = 11. |
 | `radius-select` | `12px` | Auswahlfeld Karte. |
 | `radius-ab-badge` | `13px` | Ladungs-Badge der Fähigkeit (26 px). |
 | `radius-plaque` | `14px` | Holzleiste und Plaketten. |
 | `radius-pill-s` | `17px` | Wellenvorschau (34 px hoch). |
-| `radius-banner` | `18px` | Pause-Banner, große Plaketten. |
+| `radius-banner` | `18px` | Pause-Banner, Kartenkarte. |
+| `radius-card` | `22px` | Spielende-Plakette, Start-Titel, Fähigkeiten-Leiste auf dem Handy. |
 | `radius-pill-m` | `20px` | Holz-Textknopf (40 px hoch). |
 | `radius-pill-l` | `23px` | Wellenknopf (46 px hoch). |
 | `radius-round` | `50%` | Runde Knöpfe, Fähigkeiten, Turmknöpfe. |
@@ -178,8 +199,11 @@ Immer harter Schatten nach unten (0 Unschärfe) plus Lichtkante innen oben: gema
 | `shadow-gold` | `inset 0 2px 0 rgba(255,255,255,0.6), 0 4px 0 rgba(30,15,5,0.5)` | Wellenknopf. |
 | `shadow-gold-pressed` | `inset 0 2px 0 rgba(255,255,255,0.6), 0 2px 0 rgba(30,15,5,0.5)` | Wellenknopf gedrückt. |
 | `shadow-gold-ready` | `inset 0 2px 0 rgba(255,255,255,0.6), 0 4px 0 rgba(30,15,5,0.5), 0 0 0 6px rgba(255,212,90,0.45)` | Wellenknopf bereit, Spitze der Puls-Animation (1,6 s). |
-| `shadow-disabled` | `inset 0 2px 0 rgba(255,255,255,0.3), 0 4px 0 rgba(30,15,5,0.4)` | Wellenknopf gesperrt. |
+| `shadow-disabled` | `inset 0 2px 0 rgba(255,235,190,0.4), 0 4px 0 rgba(30,15,5,0.45)` | Wellenknopf gesperrt bzw. Welle läuft (Holz, C-Abnahme 4). |
 | `shadow-paused` | `0 0 0 3px #ffe266, inset 0 2px 0 rgba(255,235,190,0.6), 0 3px 0 rgba(30,15,5,0.5)` | Pause-Knopf, solange pausiert. |
+| `shadow-selected` | `0 0 0 4px #ffe266, 0 0 16px 4px rgba(255,226,102,0.6), 0 4px 0 rgba(30,15,5,0.55)` | Turmknopf im Bau-Ring bei Hover/Fokus, Turmknopf gewählt. |
+| `shadow-ring-focus` | `0 0 0 4px #ffe266, 0 4px 0 rgba(30,15,5,0.55)` | Aktionsknopf im Turm-Ring (Verbessern, Ziel, Verkaufen) bei Hover/Fokus. |
+| `shadow-card-current` | `0 0 0 4px #ffe266, 0 10px 0 rgba(30,15,5,0.45)` | Kartenkarte gewählt oder fokussiert (dazu 6 px nach oben). |
 
 ## Konturen
 
@@ -207,6 +231,8 @@ Knopf- und Feldgrößen. Tippziel nie unter 44 px.
 | `size-wbtn-h` | `40px` | Holz-Textknopf Höhe (min-height). |
 | `size-wave-h` | `46px` | Wellenknopf Höhe. |
 | `size-wave-min-w` | `168px` | Wellenknopf Mindestbreite. |
+| `size-wave-h-mobile` | `52px` | Wellenknopf Handy hochkant (volle Breite). |
+| `size-wave-h-compact` | `56px` | Wellenknopf Handy quer (zweizeilig, 18 px Schrift). |
 | `size-round` | `48px` | Runder Knopf (Hilfe, Ton, Tempo, Pause). |
 | `size-hud-h` | `56px` | Holzleiste Höhe. |
 | `size-ability-mobile` | `56px` | Fähigkeitsknopf auf dem Handy. |
@@ -214,6 +240,12 @@ Knopf- und Feldgrößen. Tippziel nie unter 44 px.
 | `size-ability` | `64px` | Fähigkeitsknopf. |
 | `size-badge` | `22px` | Abzeichen und Stufenmarke (Durchmesser). |
 | `size-ab-badge` | `26px` | Ladungs-Badge der Fähigkeit. |
+| `size-ring-btn` | `60px` | Knopf im Ringmenü (Turm im Bau-Ring, Aktion im Turm-Ring); Handy 48 (size-round). |
+| `size-ring-close` | `44px` | Schließen-Knopf im Turm-Ring (ink, ×). |
+| `ring-radius` | `68px` | Mindestradius des Ringmenüs (RING_MENU.minRadius; sonst 1,55 Kacheln, kompakt 62). |
+| `size-map-card` | `196px` | Kartenkarte Breite (Höhe 290); unter 1100 px 172, Handy 168 × 250. |
+| `size-map-thumb` | `172px` | Vorschaubild der Kartenkarte Breite (Höhe 120, Seitenverhältnis 900:660 gestaucht). |
+| `size-end-card` | `520px` | Spielende-Plakette Breite (höchstens 100vw − 56). |
 | `size-tile` | `40px` | Kachel in Spiel-px (TILE). Feld 20 x 14 Kacheln = 800 x 560. |
 | `size-tile-design` | `57px` | Kachel im Entwurf (FIGURE_STYLE.unit). Formen skalieren mit TILE/57. |
 | `size-frame` | `50px` | Rand um das Feld in Spiel-px (FRAME_MARGIN), Canvas 900 x 660. |

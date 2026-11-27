@@ -15,7 +15,7 @@ Diese Ordner ist die **Kopie des Design-Systems im Projekt**, lesbar für alle R
 | `icons/*.svg` | Icons der Bedienung |
 | `vorschau.html` | alle Bauteile auf einer Seite: `npm start`, dann http://localhost:8080/docs/design/system/vorschau.html |
 
-Bauteile: HudBar (Holzleiste), RoundButton (runder Knopf), AbilityButton (Fähigkeitsknopf), WaveButton (Wellenknopf), PriceTag (Preisschild), LevelBadge (Stufenmarke), Plaque (Plakette).
+Bauteile: HudBar (Holzleiste), RoundButton (runder Knopf), AbilityButton (Fähigkeitsknopf), WaveButton (Wellenknopf), PriceTag (Preisschild), LevelBadge (Stufenmarke), Plaque (Plakette), RingMenu (Ringmenü), MapCard (Kartenkarte), EndCard (Spielende-Plakette).
 
 ## Wer es wie nutzt
 - **designer:** Zeichenflächen und Bauvorlagen nur aus diesen Tokens und Bauteilen; Prüfungen nennen Abweichungen vom System mit Token-Namen. Ein fehlender Token wird als Vorschlag gemeldet.
@@ -34,7 +34,7 @@ Bauteile: HudBar (Holzleiste), RoundButton (runder Knopf), AbilityButton (Fähig
 
 Das Design-System von Project TowerDefence: Stil 1 "Gemalt und warm". Dicke dunkelbraune Konturen, Holz und Gold, harte Schatten nach unten, runde Formen, Lilita One für alles, was gezählt oder gedrückt wird.
 
-Quelle der Werte: Code auf `agent/gemalt-karten` (Stand a3d15b4, 2026-11-27): `style.css`, `src/config.js` (`FIGURE_STYLE`, `PAINTED_STYLE`, `PAINTED_PALETTE`, `MAPS.*.theme.painted`, `LAVA_STYLE`, `SHOP_CARD`), `src/figures.js`, `src/svg-figure.js`, `src/render-painted.js`. Nichts ist neu erfunden.
+Quelle der Werte: Code auf `main` (Stand 884e430, 2026-11-27, nach dem Merge von Stil 1): `style.css`, `src/config.js` (`FIGURE_STYLE`, `PAINTED_STYLE`, `PAINTED_PALETTE`, `MAPS.*.theme.painted`, `LAVA_STYLE`, `SHOP_CARD`), `src/figures.js`, `src/svg-figure.js`, `src/render-painted.js`, `src/screens.js`, `src/main.js` (`RING_SVG`). Nichts ist neu erfunden.
 
 ## Grundlagen
 
@@ -49,7 +49,7 @@ Licht kommt von oben links. Flächen sind Verläufe von hell oben nach dunkel un
 
 ### Farbe
 - **Holz** (`wood-*`, `btn-*`) für alle Bedienflächen. **Gold** (`gold*`) nur für Geld und die eine wichtigste Aktion (Wellenknopf, Badges). **hl** (#ffe266) nur für Auswahl und Fokus.
-- **Signale:** `bad` (wenig Leben), `message-bad`, `message-info`, `hp-*`. Nie nur über Farbe: Preis zu teuer ist zusätzlich durchgestrichen, Stufen haben Ziffern.
+- **Signale:** `bad` (wenig Leben), `message-bad`, `message-info`, `hp-*`, Verkaufen `sell-a/-b`, Spielende-Band `ribbon-win`/`ribbon-loss`. Nie nur über Farbe: Preis zu teuer ist zusätzlich durchgestrichen, Stufen haben Ziffern.
 - **Welt:** Weg (`path-*`), Wasser (`water-*`), Lava (`lava*`), Stein (`stone-*`), Eis (`ice-*`).
 - **Karten-Paletten:** je Karte ein Bodenverlauf in drei Stufen `map-<id>-1..3` (Wiese = Basis aus `PAINTED_PALETTE`), dazu Wegfarben `map-<id>-path-*`. Ids: meadow (Wiese), ice (Eiswelt), fork (Zangenangriff, Herbst), twin (Zwei Fronten), volcano (Vulkan).
 
@@ -60,7 +60,8 @@ Licht kommt von oben links. Flächen sind Verläufe von hell oben nach dunkel un
 
 ### Formen und Maße
 - Runde Knöpfe: 48 (`size-round`), Turm 60, Fähigkeit 64 (Handy 56). Pillen: Textknopf 40 hoch, Wellenknopf 46 × mind. 168. Tippziel nie unter 44 (`size-touch-min`).
-- Rundungen: Plakette 14, Banner 18, Schild 9, Abzeichen 11; Pillen = halbe Höhe.
+- Rundungen: Plakette 14, Banner und Kartenkarte 18, große Plakette 22, Schild 9, Abzeichen 11, Vorschaubild 10; Pillen = halbe Höhe.
+- Ringmenü: Knöpfe 60 (Handy 48), Schließen 44, Radius mindestens 68. Kartenkarte 196 × 290, Spielende-Plakette 520 breit.
 - Abstände: 6 (Icon zu Zahl), 8 (Knopfreihe), 12 (HUD), 18 (Fähigkeiten), 22 (Wellenknopf innen).
 - Spielfeld: Kachel 40 Spiel-px (`size-tile`), Entwurf 57 (`size-tile-design`), Rand 50 (`size-frame`). Feld 20 × 14 bleibt.
 
@@ -68,7 +69,7 @@ Licht kommt von oben links. Flächen sind Verläufe von hell oben nach dunkel un
 Kurz und federnd: Bereit-Puls 1,6 s, Fähigkeit bereit 0,5 s (Skalierung 1,12), wenig Leben 1 s Puls. Bei `prefers-reduced-motion` kein Puls und kein Wasserfluss.
 
 ## Bauteile
-Holzleiste (HudBar), Runder Knopf (RoundButton), Fähigkeitsknopf (AbilityButton), Wellenknopf (WaveButton), Preisschild (PriceTag), Stufenmarke (LevelBadge), Plakette (Plaque). Die CSS in `komponenten/bauteile.css` ist die Regel aus `style.css`, auf Tokens umgestellt. Vorschauen sind statisch (kein Skript), wie im Spiel.
+Holzleiste (HudBar), Runder Knopf (RoundButton), Fähigkeitsknopf (AbilityButton), Wellenknopf (WaveButton), Preisschild (PriceTag), Stufenmarke (LevelBadge), Plakette (Plaque), Ringmenü (RingMenu), Kartenkarte (MapCard), Spielende-Plakette (EndCard). Die CSS in `komponenten/bauteile.css` ist die Regel aus `style.css`, auf Tokens umgestellt. Vorschauen sind statisch (kein Skript), wie im Spiel.
 
 ## Icons
 Gruppe Icons: HUD (Gold, Welle, Leben), Knöpfe (Ton an/aus, Tempo, Pause, Weiter), Fähigkeiten (Meteor, Kälte, Reparatur). SVG wörtlich aus den Bauvorlagen. Füllung `cream` bzw. Objektfarbe, Kontur `ink`.
