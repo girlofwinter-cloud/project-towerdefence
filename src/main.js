@@ -2,7 +2,7 @@
 import { TILE, FRAME_MARGIN, VIEW_WIDTH, VIEW_HEIGHT, PAINTED_STYLE, FIGURE_STYLE, SHOP_CARD, TOWER_TYPES, ENEMY_TYPES, MAX_WAVES, MAPS, SPEED_STEPS, TARGET_MODES, MAX_SUBSTEP, LOW_LIVES, ABILITIES, ICON, VIEW_FIT, COIN_BURST, HUD_BAR, waveSummary, meteorText } from './config.js';
 import {
   createGame, stepGame, togglePause, buildTower, upgradeTower, sellTower, setTargetMode, startWave,
-  useAbility, abilityCooldownLeft, canBuild, towerAt, towerStats,
+  useAbility, abilityCooldownLeft, canBuild, towerAt, towerStats, masterInfo,
 } from './game.js';
 import { renderView, drawTower, paintedStatus, paintedImage, setPaintedExtent, flagBoxes } from './render.js';
 import { abilityView, overheatNote, startButtonView, waveProgress } from './hud.js';
@@ -780,7 +780,7 @@ function refreshUI() {
     $('ti-name').textContent = v.name;
     const heat = overheatNote(t); // B-030: steht in der Werte-Zeile, damit es auch auf dem Handy sichtbar bleibt
     $('ti-stats').textContent = `Schaden ${Math.round(s.damage)} · Reichweite ${s.range.toFixed(1)} · ${(1 / s.rate).toFixed(1)} Schuss/s${heat ? ` · ${heat}` : ''}`;
-    $('ti-special').textContent = s.special?.text ?? '';
+    $('ti-special').textContent = [s.special?.text, masterInfo(t)].filter(Boolean).join(' '); // B-175: Stufe 3 (Vorschau ab Stufe 2)
     // Knöpfe: Symbol und Preis bzw. Regel; der zugängliche Name bleibt vollständig (aria-label mit Kürzel)
     setHtml($('upgrade'), v.upgrade.max ? `${RING_SVG.max}<span class="cap">Max.</span>` : `${RING_SVG.upgrade}<span class="cap act-cost">${v.upgrade.cost} ${COIN()}</span>`);
     $('upgrade').setAttribute('aria-label', v.upgrade.label);

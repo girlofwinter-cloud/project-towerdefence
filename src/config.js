@@ -475,6 +475,8 @@ export const TOWER_TYPES = {
     hitsAir: true, // B-167: trifft Flieger
     // Aufwärmen: Schussabstand sinkt je Folgeschuss auf dasselbe Ziel um warmupStep (Anteil), höchstens um warmupMax.
     special: { warmupStep: 0.05, warmupMax: 0.25 },
+    // B-175 Stufe 3 "Adlerhorst", Mehrfachschuss: bis zu multiTargets Ziele zugleich, Nebenziele mit extraDamage (Anteil).
+    master: { name: 'Adlerhorst', multiTargets: 3, extraDamage: 0.6 },
   },
   cannon: {
     name: 'Kanone',
@@ -540,6 +542,9 @@ export const TOWER_TYPES = {
     description: 'Kettenblitz trifft sofort und verfehlt nie. Ideal gegen schnelle Flitzer und Schwärme.',
     hitsAir: true,
     special: {},
+    // B-175 Stufe 3 "Sturmspule", Gewitter: alle stormEvery Sekunden ein Einschlag in den dichtesten Pulk in Reichweite;
+    // Flächenschaden stormDamage (Anteil des Turmschadens) im Umkreis stormRadius (Kacheln), trifft auch Flieger.
+    master: { name: 'Sturmspule', stormEvery: 3, stormRadius: 1.2, stormDamage: 2 },
   },
 };
 
@@ -553,6 +558,12 @@ const SPECIAL_TEXTS = {
   lightning: (s, d) => `Kettenblitz: Springt auf bis zu ${d.chainCount} weitere Gegner im Umkreis von ${num(d.chainRange)} Kacheln, jeder Sprung mit ${pct(d.chainFalloff)} des vorigen Schadens.`,
   sniper: (s) => `Rüstungsbrecher: Gegen zähe Gegner (ab ${s.bonusMinHp} Basis-HP) ${pct(s.bonusDamage - 1)} mehr Schaden, Rüstung wird ignoriert.`,
 };
+// B-175: Stufe-3-Fähigkeiten (master.text), ebenfalls aus den Werten gebaut.
+const MASTER_TEXTS = {
+  arrow: (m) => `${m.name}, Mehrfachschuss: Schießt zugleich auf bis zu ${m.multiTargets} Ziele, die Nebenziele mit ${pct(m.extraDamage)} Schaden.`,
+  lightning: (m) => `${m.name}, Gewitter: Alle ${num(m.stormEvery)} s schlägt ein Blitz in den dichtesten Gegnerpulk ein (${pct(m.stormDamage)} des Turmschadens im Umkreis von ${num(m.stormRadius)} Kacheln, auch Flieger).`,
+};
+for (const [type, build] of Object.entries(MASTER_TEXTS)) TOWER_TYPES[type].master.text = build(TOWER_TYPES[type].master);
 // B-167: dazu je Turm ein Satz, ob er Flieger trifft (Tooltip und Turm-Info).
 const airText = (d) => (d.hitsAir ? 'Trifft Flieger.' : 'Trifft keine Flieger.');
 for (const [type, build] of Object.entries(SPECIAL_TEXTS)) {

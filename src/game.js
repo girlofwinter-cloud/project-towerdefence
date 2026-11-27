@@ -85,6 +85,18 @@ export function towerStats(tower, modifiers) {
   };
 }
 
+// B-175/B-176: Stufe-3-Fähigkeit des Turms (TOWER_TYPES[typ].master) oder null, solange er darunter liegt.
+export function masterOf(tower) {
+  return tower.level >= MAX_LEVEL ? TOWER_TYPES[tower.type]?.master || null : null;
+}
+
+// B-175: Text der Stufe-3-Fähigkeit für die Turm-Info; auf Stufe 2 als Vorschau, auf Stufe 1 leer.
+export function masterInfo(tower) {
+  const m = TOWER_TYPES[tower.type]?.master;
+  if (!m || tower.level < MAX_LEVEL - 1) return '';
+  return tower.level >= MAX_LEVEL ? `Stufe 3: ${m.text}` : `Auf Stufe 3: ${m.text}`;
+}
+
 export function upgradeCost(tower) {
   if (tower.level >= MAX_LEVEL) return null;
   return Math.round(TOWER_TYPES[tower.type].cost * 0.75 * tower.level);
@@ -551,12 +563,27 @@ export function chainTargets(enemies, first, chainCount, chainRange) {
   return chain;
 }
 
+// B-175 Gewitter: Gegner in Reichweite (Pixel) mit den meisten Nachbarn im Umkreis radius (Pixel, sich selbst mitgezählt);
+// seine Position ist das Zentrum des Einschlags. Gleichstand: erster in Listenreihenfolge. Ohne Gegner null. Rein.
+export function densestCluster(enemies, tower, range, radius) {
+  const inRange = enemies.filter((e) => e.hp > 0 && Math.hypot(e.x - tower.x, e.y - tower.y) <= range);
+  let best = null;
+  let bestCount = 0;
+  for (const e of inRange) {
+    const count = inRange.filter((o) => Math.hypot(o.x - e.x, o.y - e.y) <= radius).length;
+    if (count > bestCount) { best = e; bestCount = count; }
+  }
+  return best ? { x: best.x, y: best.y } : null;
+}
+
 function findTarget(state, tower, range) {
   return pickTarget(state.enemies, tower, range, tower.targetMode);
 }
 
 function towersStep(state, dt) {
   for (const tower of state.towers) {
+    const master = masterOf(tower);
+    if (master?.stormEvery) stormStep(state, tower, master);
     tower.cooldown -= dt;
     if (tower.cooldown > 0) continue;
     const stats = towerStats(tower, state.modifiers);
@@ -579,29 +606,61 @@ function towersStep(state, dt) {
       lightningStrike(state, tower, stats, target);
       continue;
     }
-    const breaker = sp.bonusMinHp !== undefined && (ENEMY_TYPES[target.type]?.hp ?? 0) >= sp.bonusMinHp;
-    state.projectiles.push({
-      id: state.nextId++,
-      towerType: tower.type,
-      x: tower.x,
-      y: tower.y,
-      targetId: target.id,
-      tx: target.x,
-      ty: target.y,
-      speed: stats.projectileSpeed * TILE,
-      damage: breaker ? stats.damage * sp.bonusDamage : stats.damage,
-      ignoreArmor: breaker && !!sp.ignoreArmor,
-      towerId: tower.id,
-      knockback: sp.knockback ? sp.knockback * TILE : 0,
-      bossKnockbackFactor: sp.bossKnockbackFactor ?? 1,
-      knockbackCooldown: sp.knockbackCooldown || 0,
-      freezeEvery: sp.freezeEvery || 0,
-      freezeDuration: sp.freezeDuration || 0,
-      splash: stats.splash ? stats.splash * TILE : 0,
-      slow: stats.slow || 0,
-      slowDuration: stats.slowDuration || 0,
-    });
+    shoot(state, tower, stats, target, 1);
+    // B-175 Mehrfachschuss: weitere, verschiedene Ziele nach derselben Zielregel, mit geringerem Schaden
+    if (master?.multiTargets) {
+      const taken = [target];
+      for (let i = 1; i < master.multiTargets; i++) {
+        const extra = pickTarget(state.enemies.filter((e) => !taken.includes(e)), tower, stats.range * TILE, tower.targetMode);
+        if (!extra) break;
+        taken.push(extra);
+        shoot(state, tower, stats, extra, master.extraDamage);
+      }
+    }
   }
+}
+
+// Geschoss eines Turms auf target; factor skaliert den Schaden (Nebenziele beim Mehrfachschuss).
+function shoot(state, tower, stats, target, factor) {
+  const sp = stats.special || {};
+  const breaker = sp.bonusMinHp !== undefined && (ENEMY_TYPES[target.type]?.hp ?? 0) >= sp.bonusMinHp;
+  state.projectiles.push({
+    id: state.nextId++,
+    towerType: tower.type,
+    x: tower.x,
+    y: tower.y,
+    targetId: target.id,
+    tx: target.x,
+    ty: target.y,
+    speed: stats.projectileSpeed * TILE,
+    damage: (breaker ? stats.damage * sp.bonusDamage : stats.damage) * factor,
+    ignoreArmor: breaker && !!sp.ignoreArmor,
+    towerId: tower.id,
+    knockback: sp.knockback ? sp.knockback * TILE : 0,
+    bossKnockbackFactor: sp.bossKnockbackFactor ?? 1,
+    knockbackCooldown: sp.knockbackCooldown || 0,
+    freezeEvery: sp.freezeEvery || 0,
+    freezeDuration: sp.freezeDuration || 0,
+    splash: stats.splash ? stats.splash * TILE : 0,
+    slow: stats.slow || 0,
+    slowDuration: stats.slowDuration || 0,
+  });
+}
+
+// B-175 Gewitter: Takt je Turm (tower.stormAt); ohne Gegner in Reichweite wartet der Einschlag.
+// Flächenschaden wie Splash (ohne Rüstung), trifft auch Flieger. Effekt 'storm' für die Optik.
+function stormStep(state, tower, master) {
+  if (state.time < (tower.stormAt ?? 0)) return;
+  const stats = towerStats(tower, state.modifiers);
+  const radius = master.stormRadius * TILE;
+  const center = densestCluster(state.enemies, tower, stats.range * TILE, radius);
+  if (!center) return;
+  tower.stormAt = state.time + master.stormEvery;
+  const dmg = stats.damage * master.stormDamage;
+  for (const e of state.enemies) {
+    if (e.hp > 0 && Math.hypot(e.x - center.x, e.y - center.y) <= radius) damage(state, e, { damage: dmg });
+  }
+  state.effects.push({ kind: 'storm', x: center.x, y: center.y, r: radius, ttl: stats.boltDuration, max: stats.boltDuration });
 }
 
 // Blitzturm: trifft sofort; Schaden sinkt je Sprung um chainFalloff, Rüstung wie bei Direkttreffern.
