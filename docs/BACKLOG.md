@@ -57,15 +57,6 @@ Erledigte Einträge (`fertig`) liegen in `docs/archiv/BACKLOG-fertig.md`. Beim A
 - Akzeptanzkriterien:
   - Ein Lauf erzeugt einen Ordner, dessen `project/tokens.json` mit `docs/design/system/tokens.json` übereinstimmt; Veröffentlichung im selben PR wie die Token-Änderung.
 
-### B-167: Browser-Tests bei Bedarf in WebKit (Safari-Engine)
-- Status: vorschlag
-- Aufwand: S
-- Idee: Die e2e-Tests in `tests/e2e/` starten nur `chromium`. Playwright bringt auch WebKit mit, die Engine von Safari und vom iPhone. Ein zusätzlicher, nur von Hand gestarteter Befehl (z. B. `npm run test:e2e:webkit`) führt die Tests in WebKit aus, etwa vor größeren Optik- oder Handy-Änderungen. Der schnelle Ablauf bleibt unverändert: `npm run test:e2e` und die CI laufen weiter nur in Chromium, keine Änderung an `.github/workflows/`. Keine neue Abhängigkeit, Playwright ist schon da. Ändert Testdateien (Browser wählbar machen), deshalb Freigabe durch den Menschen.
-- Akzeptanzkriterien:
-  - `npm run test:e2e` und die CI bleiben gleich schnell und laufen nur in Chromium.
-  - Der neue Befehl führt mindestens `smoke`, `handy` und `layout` in WebKit aus; Aufruf in `CLAUDE.md` unter Befehle dokumentiert.
-  - Keine Prüfung wird abgeschwächt; echte WebKit-Fehler werden als eigene Backlog-Einträge erfasst.
-
 ### B-162: Alte Stile vor Stil 1 entfernen und Doppelwerte vereinheitlichen
 - Status: vorschlag
 - Aufwand: M
