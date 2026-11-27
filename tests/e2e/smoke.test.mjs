@@ -124,7 +124,10 @@ test('Stil 1: gemalter Hintergrund wird gerastert; Klick in den Rand baut nichts
   try {
     await p.goto(`${url}?test`);
     await p.waitForFunction(() => window.__painted() === 'ready', null, { timeout: 10000 });
-    assert.deepEqual(await p.evaluate(() => [document.getElementById('game').width, document.getElementById('game').height]), [VIEW_WIDTH, VIEW_HEIGHT]);
+    // HiDPI (C1): Backing-Store = Anzeigegröße x Pixeldichte (hier 1), Seitenverhältnis VIEW_WIDTH:VIEW_HEIGHT
+    const cv = await p.evaluate(() => { const c = document.getElementById('game'); return [c.width, c.height, c.clientWidth, c.clientHeight]; });
+    assert.equal(cv[0], cv[2]);
+    assert.ok(Math.abs(cv[1] - cv[3]) <= 1 && Math.abs(cv[0] / cv[1] - VIEW_WIDTH / VIEW_HEIGHT) < 0.01, `Canvas ${cv.join(' x ')}`);
     await p.locator('.tower-btn[data-type="arrow"]').click();
     const box = await p.locator('#game').boundingBox();
     // Rand links neben Kachel (0,5) und Rand oben über Kachel (6,0): kein Turm, keine Fehlermeldung

@@ -9,6 +9,10 @@ export const HEIGHT = ROWS * TILE;
 export const FRAME_MARGIN = 50; // px bei 1x je Seite (1,25 Kacheln)
 export const VIEW_WIDTH = WIDTH + 2 * FRAME_MARGIN;   // Canvas = Feld + 2 * Rand
 export const VIEW_HEIGHT = HEIGHT + 2 * FRAME_MARGIN;
+// Anzeige des Canvas (nur Optik/Layout): Pixeldichte höchstens maxDpr; im breiten Layout (Seitenpanel daneben)
+// passt sich das Canvas der Fensterhöhe an (darunter Platz fürs Turm-Panel panelBelow px plus bottomGap px),
+// aber nie schmaler als baseWidth (bisherige Breite); schmal (Panel darunter) bleibt es höchstens baseWidth breit.
+export const VIEW_FIT = { maxDpr: 2, bottomGap: 16, panelBelow: 84, baseWidth: 800 };
 
 export const START_GOLD = 140;
 export const START_LIVES = 10;

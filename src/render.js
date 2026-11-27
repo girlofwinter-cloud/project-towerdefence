@@ -20,7 +20,7 @@ import { tileHash, tileRand, decorFor, obstacleKind, treeFrame, groundPatches, a
 // Stil 1: ganzer Canvas (Feld + Rand). Zeichnet den Rand und verschiebt das Feld um FRAME_MARGIN;
 // render() selbst rechnet weiter in Feldkoordinaten (Eingabe: main.js zieht den Rand ab).
 export function renderView(ctx, state, ui) {
-  if (!paintedFor(state)) drawFramePlain(ctx, state);
+  if (!paintedFor(state, bgScaleOf(ctx))) drawFramePlain(ctx, state);
   ctx.save();
   ctx.translate(FRAME_MARGIN, FRAME_MARGIN);
   render(ctx, state, ui);
@@ -37,7 +37,7 @@ export function flagBoxes(state) {
 }
 // Zahl der kommenden bzw. laufenden Welle auf der Fahne (Entwurf Z.117: x 50, y 45, 30 px, Kontur 5)
 function drawFlagNumbers(ctx, state) {
-  if (!paintedFor(state)) return;
+  if (!paintedFor(state, bgScaleOf(ctx))) return;
   const n = String(Math.min(state.waveActive ? state.wave : state.wave + 1, MAX_WAVES));
   const k = TILE / PAINTED_STYLE.unit;
   for (const fl of flagBoxes(state)) {
@@ -63,24 +63,48 @@ function drawFramePlain(ctx, state) {
   ctx.fillRect(0, 0, VIEW_WIDTH, VIEW_HEIGHT);
 }
 
+// ---------- HiDPI: Maßstab der Hintergrund-Caches ----------
+// Maßstab Canvas-Einheit -> Geräte-px aus der aktuellen Transformation (main.js setzt sie je Frame), auf 1/100 gerundet.
+// Ohne getTransform (Node, Mock) gilt 1. Die Caches werden in genau diesem Maßstab gerastert (scharf bei jeder Pixeldichte).
+export function bgScaleOf(ctx) {
+  const m = typeof ctx.getTransform === 'function' ? ctx.getTransform() : null;
+  const s = m ? Math.hypot(m.a, m.b) : 1;
+  return Number.isFinite(s) && s > 0 ? Math.min(4, Math.max(0.25, Math.round(s * 100) / 100)) : 1;
+}
+// Schlüssel eines Hintergrund-Cache: Karte (bzw. Weg) x Maßstab
+export function bgCacheKey(id, scale) {
+  return `${id}@${scale}`;
+}
+
 // ---------- Gemalter Hintergrund (Stil 1, theme.painted) ----------
-// Je Karte einmal: SVG bauen, im Browser rastern; bis dahin (und in Node) gilt das alte Zeichnen als Rückfall.
-const paintedCache = new Map(); // mapId -> { status: 'loading' | 'ready' | 'failed', canvas }
+// Je Karte das SVG einmal bauen und im Browser im aktuellen Maßstab rastern; bis dahin (und in Node) gilt das alte
+// Zeichnen als Rückfall. Ändert sich der Maßstab (Fenstergröße, Monitor), wird neu gerastert; bis das neue Bild
+// fertig ist, bleibt das alte sichtbar. Je Karte wird nur das neueste Bild behalten.
+const paintedCache = new Map(); // mapId -> { status: 'loading' | 'ready' | 'failed', canvas, key, loading, svg }
 export function paintedStatus(mapId) {
   return paintedCache.get(mapId)?.status ?? (MAPS[mapId]?.theme?.painted ? 'none' : 'off');
 }
-function paintedFor(state) {
+function paintedFor(state, scale) {
   const id = state.mapId;
   if (!MAPS[id]?.theme?.painted) return null;
-  const entry = paintedCache.get(id);
-  if (entry) return entry.status === 'ready' ? entry.canvas : null;
-  if (!canRasterize()) return null;
-  const e = { status: 'loading', canvas: null };
-  paintedCache.set(id, e);
-  rasterizePainted(buildPaintedSvg(state))
-    .then((cv) => { e.canvas = cv; e.status = cv ? 'ready' : 'failed'; })
-    .catch(() => { e.status = 'failed'; });
-  return null;
+  let e = paintedCache.get(id);
+  if (!e) {
+    if (!canRasterize()) return null;
+    e = { status: 'loading', canvas: null, key: null, loading: null, svg: buildPaintedSvg(state) };
+    paintedCache.set(id, e);
+  }
+  const key = bgCacheKey(id, scale);
+  if (e.status !== 'failed' && e.key !== key && e.loading !== key) {
+    e.loading = key;
+    rasterizePainted(e.svg, scale)
+      .then((cv) => {
+        if (e.loading !== key) return; // inzwischen anderer Maßstab angefordert
+        e.loading = null;
+        if (cv) { e.canvas = cv; e.key = key; e.status = 'ready'; } else if (!e.canvas) e.status = 'failed';
+      })
+      .catch(() => { if (e.loading === key) e.loading = null; if (!e.canvas) e.status = 'failed'; });
+  }
+  return e.status === 'ready' ? e.canvas : null;
 }
 
 export function render(ctx, state, ui) {
@@ -127,6 +151,7 @@ const EXIT_DARK = '#1c1a20';
 // Cache: ein Offscreen-Canvas, wird nur bei geaendertem Weg neu gezeichnet.
 let bgCanvas = null;
 let bgKey = null;
+let bgScale = 1;
 
 // B-142: Rausch-Felder des gemalten Bodens, je Karte genau einmal berechnet (neues Spiel auf derselben Karte nutzt sie weiter)
 const mottleCache = new Map();
@@ -140,14 +165,14 @@ function mottleFor(mapId, P) {
   return mottleCache.get(mapId);
 }
 
-function makeCanvas() {
+function makeCanvas(w, h) {
   if (typeof document !== 'undefined') {
     const c = document.createElement('canvas');
-    c.width = WIDTH;
-    c.height = HEIGHT;
+    c.width = w;
+    c.height = h;
     return c;
   }
-  if (typeof OffscreenCanvas !== 'undefined') return new OffscreenCanvas(WIDTH, HEIGHT);
+  if (typeof OffscreenCanvas !== 'undefined') return new OffscreenCanvas(w, h);
   return null;
 }
 
@@ -159,20 +184,26 @@ function glowSpotsFor(state) {
 }
 
 function drawGround(ctx, state, reduced = false) {
-  const painted = paintedFor(state);
+  const scale = bgScaleOf(ctx);
+  const painted = paintedFor(state, scale);
   if (painted) {
-    ctx.drawImage(painted, -FRAME_MARGIN, -FRAME_MARGIN); // Bild enthält Feld und Rand
+    ctx.drawImage(painted, -FRAME_MARGIN, -FRAME_MARGIN, VIEW_WIDTH, VIEW_HEIGHT); // Bild enthält Feld und Rand (HiDPI: im Maßstab gerastert)
     if (!reduced && state.lava?.size) drawLavaGlow(ctx, glowSpotsFor(state), (typeof performance !== 'undefined' ? performance.now() : 0) / 1000);
     return;
   }
-  // Schluessel = Referenz auf den Weg (neuer Weg -> neue Punkte-Liste)
-  if (!bgCanvas || bgKey !== state.path.points) {
-    bgCanvas = bgCanvas || makeCanvas();
+  // Schluessel = Referenz auf den Weg (neuer Weg -> neue Punkte-Liste) und Maßstab (HiDPI)
+  if (!bgCanvas || bgKey !== state.path.points || bgScale !== scale) {
+    const w = Math.round(WIDTH * scale), h = Math.round(HEIGHT * scale);
+    if (bgCanvas && (bgCanvas.width !== w || bgCanvas.height !== h)) { bgCanvas.width = w; bgCanvas.height = h; }
+    bgCanvas = bgCanvas || makeCanvas(w, h);
     if (!bgCanvas) return paintBackground(ctx, state);
-    paintBackground(bgCanvas.getContext('2d'), state);
+    const c = bgCanvas.getContext('2d');
+    if (typeof c.setTransform === 'function') c.setTransform(scale, 0, 0, scale, 0, 0);
+    paintBackground(c, state);
     bgKey = state.path.points;
+    bgScale = scale;
   }
-  ctx.drawImage(bgCanvas, 0, 0);
+  ctx.drawImage(bgCanvas, 0, 0, WIDTH, HEIGHT);
 }
 
 function paintBackground(ctx, state) {

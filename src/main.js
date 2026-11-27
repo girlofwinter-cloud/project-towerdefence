@@ -7,21 +7,43 @@ import {
 import { renderView, drawTower, paintedStatus, flagBoxes } from './render.js';
 import { abilityView, overheatNote, startButtonView } from './hud.js';
 import { drawIcon } from './render-icons.js';
-import { buildTapStep, aimStep, fieldPoint } from './input.js';
+import { buildTapStep, aimStep, fieldPoint, canvasSize } from './input.js';
 import { createSoundTracker, collectSounds, loadSoundOn, saveSoundOn } from './sound-events.js';
 import { unlockAudio, setSoundOn, playSound, updateMusic } from './audio.js';
 import { loadProgress, saveProgress, recordResult, isUnlocked, mapProgress, starText, resultLines, startMap, mapAfterResult, MAP_ORDER } from './progress.js';
 
 const canvas = document.getElementById('game');
-canvas.width = VIEW_WIDTH; // Stil 1: Feld + Rand (Wald, Burg, Fahne)
+canvas.width = VIEW_WIDTH; // Stil 1: Feld + Rand (Wald, Burg, Fahne); HiDPI-Größe setzt fitCanvas()
 canvas.height = VIEW_HEIGHT;
 const ctx = canvas.getContext('2d');
-// Stil 1: Schrift der Stufenmarken früh laden (Canvas-Text löst das Laden selbst nicht aus)
-if (document.fonts && document.fonts.load) document.fonts.load('14px "Lilita One"').catch(() => {});
+
 // C1: Vollbild. Die Lage rechnet style.css (--u) aus diesen Maßen; hier nur die Zahlen aus config.js setzen.
 for (const [k, v] of Object.entries({ 'view-w': VIEW_WIDTH, 'view-h': VIEW_HEIGHT, 'field-w': VIEW_WIDTH - 2 * FRAME_MARGIN, 'field-h': VIEW_HEIGHT - 2 * FRAME_MARGIN, frame: FRAME_MARGIN })) {
   document.documentElement.style.setProperty(`--${k}`, String(v));
 }
+
+// ---------- HiDPI ----------
+// Die Anzeigegröße des Canvas legt allein style.css fest (Vollbild: --cw x --ch, kompakt: volle Breite, Zoom: 200 %).
+// Hier nur der Backing-Store = Anzeigegröße x Pixeldichte (höchstens VIEW_FIT.maxDpr, canvasSize in input.js);
+// frame() zeichnet mit setTransform(view.sx, ...) weiter in Canvas-Einheiten (VIEW_WIDTH x VIEW_HEIGHT).
+const view = { sx: 1, sy: 1 };
+function fitCanvas() {
+  const s = canvasSize(canvas.clientWidth, Infinity, window.devicePixelRatio || 1);
+  if (canvas.width !== s.width || canvas.height !== s.height) { canvas.width = s.width; canvas.height = s.height; }
+  view.sx = s.sx;
+  view.sy = s.sy;
+}
+// Wechsel der Pixeldichte (Fenster auf anderen Monitor, Browser-Zoom): Abfrage gilt nur für den aktuellen Wert, daher neu anmelden
+function watchDpr() {
+  const q = window.matchMedia(`(resolution: ${window.devicePixelRatio || 1}dppx)`);
+  q.addEventListener('change', () => { fitCanvas(); watchDpr(); }, { once: true });
+}
+window.addEventListener('resize', fitCanvas);
+if (typeof ResizeObserver === 'function') new ResizeObserver(fitCanvas).observe(canvas);
+fitCanvas();
+watchDpr();
+// Stil 1: Schrift der Stufenmarken früh laden (Canvas-Text löst das Laden selbst nicht aus)
+if (document.fonts && document.fonts.load) document.fonts.load('14px "Lilita One"').catch(() => {});
 // Unscharfer Hintergrund: einmal je Karte (und Fenstergröße) das fertige Bild klein in #backdrop kopieren, CSS macht die Unschärfe
 const backdrop = document.getElementById('backdrop');
 let backdropFor = null;
@@ -594,6 +616,7 @@ function frame(now) {
   // B-116/B-118: Musik der Karte laden/starten und je nach Spielstatus ein- oder ausblenden
   updateMusic({ status: state.status, paused: state.paused, mapId: state.mapId });
   ui.messageTtl -= dt;
+  ctx.setTransform(view.sx, 0, 0, view.sy, 0, 0); // HiDPI: Canvas-Einheiten (VIEW_WIDTH x VIEW_HEIGHT) -> Geräte-px
   renderView(ctx, state, ui);
   drawBackdrop();
   hudTimer -= dt;

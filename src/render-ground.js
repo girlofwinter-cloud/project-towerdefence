@@ -77,10 +77,14 @@ export function drawGroundTufts(ctx, ground, G = GROUND_STYLE) {
 // Liest den bisher gezeichneten Boden (getImageData), interpoliert das grobe Raster bilinear und schreibt zurück.
 // Nur beim Bau des Hintergrund-Cache; ohne Pixelzugriff (Mock, alte Browser) bleibt der Boden ungefleckt.
 export function drawMottle(ctx, field, P) {
-  const img = typeof ctx.getImageData === 'function' ? ctx.getImageData(0, 0, WIDTH, HEIGHT) : null;
+  // HiDPI: Cache kann größer als WIDTH x HEIGHT sein (Maßstab ps), das Raster wird dann mitgestreckt
+  const cw = ctx.canvas && ctx.canvas.width > 0 ? ctx.canvas.width : WIDTH;
+  const ch = ctx.canvas && ctx.canvas.height > 0 ? ctx.canvas.height : HEIGHT;
+  const img = typeof ctx.getImageData === 'function' ? ctx.getImageData(0, 0, cw, ch) : null;
   if (!img || !img.data) return false;
-  const d = img.data, w = img.width || WIDTH, h = img.height || HEIGHT;
-  const { cols, cell, dark, light } = field;
+  const d = img.data, w = img.width || cw, h = img.height || ch;
+  const { cols, dark, light } = field;
+  const cell = field.cell * (w / WIDTH);
   const [dr, dg, db] = P.dark, [lr, lg, lb] = P.light;
   for (let y = 0; y < h; y++) {
     const gy = y / cell, j = Math.floor(gy), fy = gy - j;
