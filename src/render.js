@@ -1,8 +1,8 @@
 // Zeichnet den Spielzustand auf ein Canvas. Keine Spiel-Logik hier!
-import { TILE, COLS, ROWS, WIDTH, HEIGHT, FRAME_MARGIN, VIEW_WIDTH, VIEW_HEIGHT, TOWER_TYPES, MAPS, MAX_WAVES, PAINTED_STYLE, ABILITIES, RANGE_STYLE, TREE_FRAME, GROUND_STYLE, LIGHT_STYLE, DECOR_STYLE, PAINT_STYLE, themed } from './config.js';
+import { TILE, COLS, ROWS, WIDTH, HEIGHT, FRAME_MARGIN, VIEW_WIDTH, VIEW_HEIGHT, TOWER_TYPES, MAPS, MAX_WAVES, PAINTED_STYLE, ABILITIES, RANGE_STYLE, TREE_FRAME, GROUND_STYLE, LIGHT_STYLE, DECOR_STYLE, PAINT_STYLE, SELECT_RING, themed } from './config.js';
 import { towerStats, enemyPath } from './game.js';
 import { disc, shd } from './draw-utils.js';
-import { buildPaintedSvg, buildPaintedScene, rasterizePainted, canRasterize } from './render-painted.js';
+import { buildPaintedSvg, buildPaintedScene, rasterizePainted, canRasterize, extentOf } from './render-painted.js';
 import { drawPathStyled } from './render-path.js';
 import { drawTowerFigure, drawTowerBadge, towerFootY } from './render-towers.js';
 import { recoilOffset } from './tower-fx.js';
@@ -20,7 +20,7 @@ import { tileHash, tileRand, decorFor, obstacleKind, treeFrame, groundPatches, a
 // Stil 1: ganzer Canvas (Feld + Rand). Zeichnet den Rand und verschiebt das Feld um FRAME_MARGIN;
 // render() selbst rechnet weiter in Feldkoordinaten (Eingabe: main.js zieht den Rand ab).
 export function renderView(ctx, state, ui) {
-  if (!paintedFor(state, bgScaleOf(ctx))) drawFramePlain(ctx, state);
+  if (!paintedFor(state, ctx)) drawFramePlain(ctx, state);
   ctx.save();
   ctx.translate(FRAME_MARGIN, FRAME_MARGIN);
   render(ctx, state, ui);
@@ -37,7 +37,7 @@ export function flagBoxes(state) {
 }
 // Zahl der kommenden bzw. laufenden Welle auf der Fahne (Entwurf Z.117: x 50, y 45, 30 px, Kontur 5)
 function drawFlagNumbers(ctx, state) {
-  if (!paintedFor(state, bgScaleOf(ctx))) return;
+  if (!paintedFor(state, ctx)) return;
   const n = String(Math.min(state.waveActive ? state.wave : state.wave + 1, MAX_WAVES));
   const k = TILE / PAINTED_STYLE.unit;
   for (const fl of flagBoxes(state)) {
@@ -45,7 +45,7 @@ function drawFlagNumbers(ctx, state) {
     ctx.scale(k, k);
     ctx.translate(fl.tx, fl.ty);
     ctx.scale(fl.s, fl.s);
-    ctx.font = '30px "Lilita One", sans-serif';
+    ctx.font = `${PAINTED_STYLE.flagNumber}px "Lilita One", sans-serif`;
     ctx.textAlign = 'center';
     ctx.lineJoin = 'round';
     ctx.lineWidth = 5;
@@ -77,34 +77,75 @@ export function bgCacheKey(id, scale) {
 }
 
 // ---------- Gemalter Hintergrund (Stil 1, theme.painted) ----------
-// Je Karte das SVG einmal bauen und im Browser im aktuellen Maßstab rastern; bis dahin (und in Node) gilt das alte
-// Zeichnen als Rückfall. Ändert sich der Maßstab (Fenstergröße, Monitor), wird neu gerastert; bis das neue Bild
-// fertig ist, bleibt das alte sichtbar. Je Karte wird nur das neueste Bild behalten.
-const paintedCache = new Map(); // mapId -> { status: 'loading' | 'ready' | 'failed', canvas, key, loading, svg }
+// Je Karte die Szene einmal bauen und im Browser genau in Geräte-px des Canvas rastern (plus Seitenzonen, C-Abnahme 1);
+// bis dahin (und in Node) gilt das alte Zeichnen als Rückfall. Ändert sich die Größe (Fenster, Monitor), wird erst nach
+// PAINTED_STYLE.rasterDelay ms Ruhe neu gerastert; bis das neue Bild fertig ist, bleibt das alte (skaliert) sichtbar.
+// Je Karte wird nur das neueste Bild behalten. Gleiche Größe: Ausschnitt 1:1 ohne Skalierung (schnell, scharf).
+const paintedCache = new Map(); // mapId -> { status, canvas, key, size, loading, wantKey, wantSince, scene }
 export function paintedStatus(mapId) {
   return paintedCache.get(mapId)?.status ?? (MAPS[mapId]?.theme?.painted ? 'none' : 'off');
 }
-function paintedFor(state, scale) {
+// Seitenzonen in Geräte-px je Seite (main.js meldet sie im Vollbild-Layout, sonst 0)
+let paintedExt = { l: 0, t: 0, r: 0, b: 0 };
+export function setPaintedExtent(ext) {
+  const e = extentOf(ext);
+  paintedExt = { l: Math.round(e.l), t: Math.round(e.t), r: Math.round(e.r), b: Math.round(e.b) };
+}
+// Fertiges Bild einer Karte samt Lage des Canvas darin (Geräte-px), für #backdrop in main.js; null solange keins da ist
+export function paintedImage(mapId) {
+  const e = paintedCache.get(mapId);
+  return e?.status === 'ready' ? { canvas: e.canvas, key: e.key, ...e.size } : null;
+}
+// Größe des Canvas in Geräte-px aus der aktuellen Transformation (1 je Canvas-Einheit ohne getTransform)
+export function deviceSizeOf(ctx) {
+  const s = bgScaleOf(ctx);
+  const m = typeof ctx.getTransform === 'function' ? ctx.getTransform() : null;
+  const sy = m ? Math.hypot(m.c, m.d) : s;
+  return { w: Math.round(VIEW_WIDTH * (m ? Math.hypot(m.a, m.b) : s)), h: Math.round(VIEW_HEIGHT * (Number.isFinite(sy) && sy > 0 ? sy : s)) };
+}
+const now = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
+function paintedFor(state, ctx) {
   const id = state.mapId;
   if (!MAPS[id]?.theme?.painted) return null;
   let e = paintedCache.get(id);
   if (!e) {
     if (!canRasterize()) return null;
-    e = { status: 'loading', canvas: null, key: null, loading: null, svg: buildPaintedSvg(state) };
+    e = { status: 'loading', canvas: null, key: null, size: null, loading: null, wantKey: null, wantSince: 0, scene: buildPaintedScene(state) };
     paintedCache.set(id, e);
   }
-  const key = bgCacheKey(id, scale);
+  const { w, h } = deviceSizeOf(ctx);
+  const x = paintedExt;
+  const key = `${bgCacheKey(id, `${w}x${h}`)}+${x.l},${x.t},${x.r},${x.b}`;
   if (e.status !== 'failed' && e.key !== key && e.loading !== key) {
-    e.loading = key;
-    rasterizePainted(e.svg, scale)
-      .then((cv) => {
-        if (e.loading !== key) return; // inzwischen anderer Maßstab angefordert
-        e.loading = null;
-        if (cv) { e.canvas = cv; e.key = key; e.status = 'ready'; } else if (!e.canvas) e.status = 'failed';
-      })
-      .catch(() => { if (e.loading === key) e.loading = null; if (!e.canvas) e.status = 'failed'; });
+    // Entprellen: erst rastern, wenn der Wunsch PAINTED_STYLE.rasterDelay ms besteht (ohne Bild sofort)
+    if (e.wantKey !== key) { e.wantKey = key; e.wantSince = now(); }
+    if (!e.canvas || now() - e.wantSince >= PAINTED_STYLE.rasterDelay) {
+      e.loading = key;
+      const size = { w, h, l: x.l, t: x.t, r: x.r, b: x.b };
+      const kx = VIEW_WIDTH / w, ky = VIEW_HEIGHT / h; // Geräte-px -> Spiel-px
+      const svg = buildPaintedSvg(state, { scene: e.scene, ext: { l: x.l * kx, t: x.t * ky, r: x.r * kx, b: x.b * ky } });
+      rasterizePainted(svg, { width: w + x.l + x.r, height: h + x.t + x.b })
+        .then((cv) => {
+          if (e.loading !== key) return; // inzwischen andere Größe angefordert
+          e.loading = null;
+          if (cv) { e.canvas = cv; e.key = key; e.size = size; e.status = 'ready'; } else if (!e.canvas) e.status = 'failed';
+        })
+        .catch(() => { if (e.loading === key) e.loading = null; if (!e.canvas) e.status = 'failed'; });
+    }
   }
-  return e.status === 'ready' ? e.canvas : null;
+  return e.status === 'ready' ? e : null;
+}
+// Bild zeichnen: passt die Größe, Ausschnitt 1:1 auf ganze Geräte-px (ohne Skalierung), sonst skaliert (Übergang)
+function drawPainted(ctx, e) {
+  const { w, h, l, t } = e.size;
+  const m = typeof ctx.getTransform === 'function' ? ctx.getTransform() : null;
+  const cur = deviceSizeOf(ctx);
+  if (m && m.b === 0 && m.c === 0 && cur.w === w && cur.h === h && typeof ctx.setTransform === 'function') {
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.drawImage(e.canvas, l, t, w, h, Math.round(m.e - FRAME_MARGIN * m.a), Math.round(m.f - FRAME_MARGIN * m.d), w, h);
+    ctx.restore();
+  } else ctx.drawImage(e.canvas, l, t, w, h, -FRAME_MARGIN, -FRAME_MARGIN, VIEW_WIDTH, VIEW_HEIGHT);
 }
 
 export function render(ctx, state, ui) {
@@ -185,9 +226,9 @@ function glowSpotsFor(state) {
 
 function drawGround(ctx, state, reduced = false) {
   const scale = bgScaleOf(ctx);
-  const painted = paintedFor(state, scale);
+  const painted = paintedFor(state, ctx);
   if (painted) {
-    ctx.drawImage(painted, -FRAME_MARGIN, -FRAME_MARGIN, VIEW_WIDTH, VIEW_HEIGHT); // Bild enthält Feld und Rand (HiDPI: im Maßstab gerastert)
+    drawPainted(ctx, painted); // Bild enthält Feld und Rand (HiDPI: in Geräte-px gerastert)
     if (!reduced && state.lava?.size) drawLavaGlow(ctx, glowSpotsFor(state), (typeof performance !== 'undefined' ? performance.now() : 0) / 1000);
     return;
   }
@@ -488,12 +529,21 @@ function drawFigures(ctx, state, ui) {
 export function drawTower(ctx, t, selected) {
   const def = TOWER_TYPES[t.type];
   // Rückstoß aus der Abklingzeit (game.js setzt cooldown beim Schuss auf das Intervall)
+  if (selected) drawSelectRing(ctx, t);
   drawTowerFigure(ctx, t, def ? recoilOffset(t.cooldown / def.rate) : 0);
-  if (selected) {
-    ctx.strokeStyle = '#fff';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(t.x - 18, t.y - 18, 36, 36);
-  }
+}
+
+// C-Abnahme 8: Auswahl als Bodenellipse unter dem Turm (Maße und Farben in SELECT_RING, config.js)
+export function drawSelectRing(ctx, t) {
+  const R = SELECT_RING;
+  ctx.beginPath();
+  ctx.ellipse(t.x, towerFootY(t), (R.width * TILE) / 2, (R.height * TILE) / 2, 0, 0, Math.PI * 2);
+  ctx.lineWidth = R.line + 2 * R.outline;
+  ctx.strokeStyle = R.outlineColor;
+  ctx.stroke();
+  ctx.lineWidth = R.line;
+  ctx.strokeStyle = R.color;
+  ctx.stroke();
 }
 
 const PROJECTILE_COLORS = { arrow: '#f5e6c8', cannon: '#222', frost: '#bdf0ff', sniper: '#e6d1ff', lightning: '#fff7a8' };

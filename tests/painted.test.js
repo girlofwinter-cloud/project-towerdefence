@@ -307,3 +307,35 @@ test('HiDPI: rasterizePainted rastert im Maßstab scale (Standard 1)', async () 
     URL.revokeObjectURL = saved.revoke;
   }
 });
+
+// C-Abnahme 1: Seitenzonen als gemalte Fortsetzung (gleiches Bild, größerer Ausschnitt)
+test('C-Abnahme 1: buildPaintedSvg mit ext malt die Seitenzonen weiter (Wald, Wege bis zum Rand), ohne ext unverändert', async () => {
+  const { extentOf } = await import('../src/render-painted.js');
+  assert.deepEqual(extentOf({ l: 10, t: -3, r: NaN }), { l: 10, t: 0, r: 0, b: 0 });
+  for (const id of MAP_IDS) {
+    const s = createGame({ mapId: id });
+    const plain = buildPaintedSvg(s);
+    assert.equal(buildPaintedSvg(s, { ext: { l: 0, t: 0, r: 0, b: 0 } }), plain, `${id}: ext 0 = ohne ext`);
+    const ext = { l: 130, t: 20, r: 130, b: 20 };
+    const a = buildPaintedSvg(s, { ext });
+    assert.equal(a, buildPaintedSvg(s, { ext }), `${id}: deterministisch`);
+    assert.match(a, new RegExp(`viewBox="-130 -20 ${VIEW_WIDTH + 260} ${VIEW_HEIGHT + 40}" preserveAspectRatio="none"`));
+    // Bäume in den Zonen: ganz außerhalb des Canvas, dicht (Abstand des Rasters <= 60 CSS-px bei 1280x800)
+    const k = TILE / PAINTED_STYLE.unit, MU = FRAME_MARGIN / k;
+    const treesOf = (svg) => [...svg.matchAll(/<g class="(?:pine|round|bare)"><g transform="translate\(([-\d.]+) ([-\d.]+)\)/g)].map((m) => m.slice(1).join(' '));
+    const old = new Set(treesOf(plain));
+    const added = treesOf(a).filter((t) => !old.has(t)).map((t) => t.split(' ').map(Number));
+    const FWU = COLS * PAINTED_STYLE.unit, FHU = ROWS * PAINTED_STYLE.unit;
+    for (const [x, y] of added) assert.ok(x <= -MU - 40 || x >= FWU + MU || y >= FHU + MU || y <= -MU - 60, `${id}: Zonenbaum ${x},${y} außerhalb des Canvas`);
+    assert.ok(added.length >= 40, `${id}: dichter Wald in den Zonen (${added.length})`);
+    assert.equal(treesOf(a).length, old.size + added.length, `${id}: Bäume im Canvas bleiben`);
+    assert.ok(PAINTED_STYLE.sideZone.step[0] * k * 1.25 <= 60, 'Baumabstand höchstens 60 px');
+    // Wege laufen bis über den Bildrand: ein Wegpunkt liegt weiter draußen als die Zone breit ist
+    const path = a.match(/<g class="path">.*?stroke-width="86"/)[0];
+    const xs = [...path.matchAll(/(-?[\d.]+) (-?[\d.]+)/g)].map((m) => Number(m[1]));
+    assert.ok(Math.min(...xs) < -MU - 130 / k || Math.max(...xs) > COLS * PAINTED_STYLE.unit + MU + 130 / k, `${id}: Weg reicht über die Zone hinaus`);
+    // Verläufe im Nutzerraum auf dem Canvas-Rechteck: das Bild im Canvas bleibt gleich
+    assert.match(a, /<radialGradient id="p-vig-field" gradientUnits="userSpaceOnUse"/);
+    checkVignette(a);
+  }
+});

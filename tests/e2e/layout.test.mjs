@@ -43,7 +43,7 @@ for (const [width, height] of [[1280, 800], [1366, 768], [1440, 900]]) {
       const c = document.getElementById('game').getBoundingClientRect();
       const inset = c.width * frame / view; // Feld = Canvas-Box, je Seite um den Rand eingerückt
       const field = { left: c.left + inset, top: c.top + inset, right: c.right - inset, bottom: c.bottom - inset };
-      const boxes = Object.fromEntries(['#hud-bar', '.top-buttons', '#abilities', '#start-wave', '#shop'].map((s) => {
+      const boxes = Object.fromEntries(['#hud-bar', '.top-buttons', '#abilities', '#start-wave', '#shop', '.map-pick'].map((s) => {
         const b = document.querySelector(s).getBoundingClientRect();
         return [s, { left: b.left, top: b.top, right: b.right, bottom: b.bottom }];
       }));
@@ -58,6 +58,10 @@ for (const [width, height] of [[1280, 800], [1366, 768], [1440, 900]]) {
       assert.ok(!overlaps, `${sel} schneidet das Feld: ${JSON.stringify(b)} / ${JSON.stringify(f)}`);
     }
     assert.ok(r.boxes['#start-wave'].top >= r.field.bottom, 'Wellenknopf unter der Feldunterkante');
+    // C-Abnahme 2/3: Fähigkeiten waagerecht links neben dem Wellenknopf, Kartenwahl oben zwischen Holzleiste und Knöpfen
+    const ab = r.boxes['#abilities'], sw = r.boxes['#start-wave'], mp = r.boxes['.map-pick'];
+    assert.ok(ab.right - ab.left > ab.bottom - ab.top && ab.right <= sw.left && ab.top >= r.field.bottom, `Fähigkeiten waagerecht unten links: ${JSON.stringify(ab)}`);
+    assert.ok(mp.left >= r.boxes['#hud-bar'].right && mp.right <= r.boxes['.top-buttons'].left && mp.bottom <= r.field.top, `Kartenwahl oben: ${JSON.stringify(mp)}`);
     assert.deepEqual(errors, []);
     await ctx.close();
   });
@@ -88,3 +92,28 @@ test('G5 Wellenfahne: Klick auf die Fahne im Rand startet Welle 1', async () => 
   assert.equal(await page.evaluate(() => window.__game().wave), 1);
   await ctx.close();
 });
+
+// C-Abnahme 1: Seitenzonen sind die scharfe Fortsetzung des Bildes; keine Naht an den Canvas-Kanten
+for (const [width, height] of [[1280, 800], [1366, 768]]) {
+  test(`C-Abnahme 1 ${width}x${height}: keine Naht an der Canvas-Kante (Spaltendifferenz < 12/255), kein Weichzeichner`, async () => {
+    const { ctx, page } = await openPage({ width, height });
+    await page.waitForFunction(() => window.__painted() === 'ready');
+    await page.addStyleTag({ content: '#shop { display: none !important; }' }); // Turmwahl liegt (bis Block D) über der rechten Kante
+    await page.waitForTimeout(400);
+    const edges = await page.evaluate(() => { const b = document.getElementById('game').getBoundingClientRect(); return [b.left, b.right]; });
+    assert.equal(await page.evaluate(() => getComputedStyle(document.getElementById('backdrop')).filter), 'none');
+    const png = (await page.screenshot()).toString('base64');
+    const diffs = await page.evaluate(async ([png, edges]) => {
+      const img = new Image(); img.src = 'data:image/png;base64,' + png; await img.decode();
+      const c = document.createElement('canvas'); c.width = img.width; c.height = img.height;
+      const x = c.getContext('2d'); x.drawImage(img, 0, 0);
+      return edges.map((e) => {
+        const ex = Math.round(e), a = x.getImageData(ex - 1, 0, 1, c.height).data, b = x.getImageData(ex, 0, 1, c.height).data;
+        let s = 0; for (let i = 0; i < a.length; i += 4) s += (Math.abs(a[i] - b[i]) + Math.abs(a[i + 1] - b[i + 1]) + Math.abs(a[i + 2] - b[i + 2])) / 3;
+        return s / (a.length / 4);
+      });
+    }, [png, edges]);
+    for (const d of diffs) assert.ok(d < 12, `Spaltendifferenz ${d.toFixed(2)} an ${edges.map(Math.round)}`);
+    await ctx.close();
+  });
+}

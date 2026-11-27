@@ -255,8 +255,18 @@ test('Turm-Zeichnung: Typen und Stufen unterscheiden sich, Auswahlrahmen bleibt'
   assert.equal(seen.size, Object.keys(TOWER_TYPES).length * 3);
   const plain = await recordTower('arrow', 1, 0, 0, false);
   const sel = await recordTower('arrow', 1, 0, 0, true);
-  assert.ok(!plain.calls.some((c) => c.startsWith('strokeRect')));
-  assert.ok(sel.calls.some((c) => c.startsWith('strokeRect:' + (sel.t.x - 18).toFixed(2))));
+  // C-Abnahme 8: Auswahl als gelbe Bodenellipse mit dunkler Kontur unter dem Turm (vorher weißes Quadrat)
+  const { SELECT_RING: R } = await import('../src/config.js');
+  const { towerFootY } = await import('../src/render-towers.js');
+  const ring = `ellipse:${sel.t.x.toFixed(2)},${towerFootY(sel.t).toFixed(2)},${(R.width * TILE / 2).toFixed(2)},${(R.height * TILE / 2).toFixed(2)}`;
+  assert.ok(!plain.calls.some((c) => c.startsWith(ring)), 'ohne Auswahl keine Ellipse');
+  const at = sel.calls.findIndex((c) => c.startsWith(ring));
+  assert.ok(at >= 0, 'Auswahl-Ellipse am Fußpunkt, 0,9 x 0,35 Kachel');
+  assert.ok(sel.calls.some((c, i) => i > at && c.startsWith('stroke:') && c.endsWith('|' + R.outlineColor)), 'Außenkontur');
+  assert.ok(sel.calls.some((c, i) => i > at && c.startsWith('stroke:') && c.endsWith('|' + R.color)), 'gelber Strich');
+  assert.ok(at === 1 && sel.calls[0].startsWith('beginPath') && sel.calls.length === plain.calls.length + 4, 'Ellipse zuerst, also unter dem Turm');
+  assert.ok(!sel.calls.some((c) => c.startsWith('strokeRect')), 'kein Quadrat mehr');
+  assert.ok(R.width === 0.9 && R.height === 0.35 && R.line === 3 && R.outline === 2 && R.color === '#ffe266');
 });
 
 test('Turm-Zeichnung: Rueckstoss zieht den beweglichen Teil direkt nach dem Schuss zurueck', async () => {
@@ -1880,4 +1890,15 @@ test('HiDPI: Rückfall-Hintergrund wird im Maßstab gerastert und bei Maßstabwe
     assert.equal(off.width, COLS * TILE * 1.5);
     assert.ok(off.m.counts.fillRect > builds, 'neuer Maßstab: neu gebaut');
   } finally { delete globalThis.document; }
+});
+
+test('C-Abnahme 1 / Leistung: setPaintedExtent rundet und prüft, deviceSizeOf liest die Größe in Geräte-px', async () => {
+  const { setPaintedExtent, deviceSizeOf, paintedImage } = await import('../src/render.js');
+  const { VIEW_WIDTH: VW, VIEW_HEIGHT: VH } = await import('../src/config.js');
+  assert.deepEqual(deviceSizeOf({}), { w: VW, h: VH }, 'ohne getTransform 1:1');
+  const tf = (a, d) => ({ getTransform: () => ({ a, b: 0, c: 0, d, e: 0, f: 0 }) });
+  assert.deepEqual(deviceSizeOf(tf(2182 / VW, 1600 / VH)), { w: 2182, h: 1600 });
+  setPaintedExtent({ l: 12.4, t: -5, r: NaN, b: 3.6 });
+  setPaintedExtent(null);
+  assert.equal(paintedImage('meadow'), null, 'in Node kein Bild');
 });

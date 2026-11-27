@@ -982,6 +982,9 @@ export const PAINT_STYLE = {
 
 // Stil 1 (docs/design/stil1-entwurf.dc.html): gemalter Hintergrund als SVG, einmal in den Hintergrund-Cache gerastert.
 // Formen und Farben stehen in render-painted.js (portiert aus dem Entwurf), hier nur Maße und Regeln. Nur Optik.
+// C-Abnahme 8: Auswahl eines Turms als Bodenellipse (Breite/Höhe in Kacheln, Strich und Außenkontur in px)
+export const SELECT_RING = { width: 0.9, height: 0.35, line: 3, outline: 2, color: '#ffe266', outlineColor: '#2b1a10' };
+
 export const PAINTED_STYLE = {
   unit: 57,                // Kachelgröße des Entwurfs in px; Formen werden mit TILE / unit skaliert
   seed: 42,                // feste Saat (je Karte kommt ein Hash der Karten-ID dazu)
@@ -993,13 +996,18 @@ export const PAINTED_STYLE = {
   river: [92, 76, 66],     // Fluss: Sand, Kontur, Wasser (Strichbreiten in Entwurfs-px, Z.66–68; schmaler als im Entwurf, Bauplätze frei)
   lakeRadius: [34, 28, 25], // See ohne gemalte Form: Hüllradius je Seekachel für Sand, Kontur, Wasser (px bei 1x)
   castleScale: 0.8,        // Burgtor am Ausgang (im Rand)
-  flagScale: 0.72,         // Wellenfahne am Eingang (im Rand)
+  flagScale: 0.73,         // Wellenfahne am Eingang (im Rand); größer geht nicht: Tuch reicht sonst ins Feld (höchstens (Rand - 2) / 94)
+  flagNumber: 35,          // C-Abnahme 10: Zahl auf der Wellenfahne (Entwurfs-px vor Fahnen-Maßstab; ca. 22 CSS-px bei 1280x800)
   flagTopGap: 64,          // Fahne: Mindestabstand der Spitze zur Canvas-Oberkante (Entwurfs-px); sonst kleiner (Zwei Fronten, Zeile 1)
   obstacleTree: 0.62,      // Baum auf Hindernis-Kachel
   obstacleRock: 1.2,       // Fels auf Hindernis-Kachel
   keepOut: 46,             // halbe Breite der freien Bahn für den Weg im Rand (Entwurfs-px)
   lava: [96, 60, 50, 26],  // Lavafluss: Glühen, Kruste, Fläche, Kern (Strichbreiten in Entwurfs-px; Kachel 57, Kruste ragt kaum über)
   lavaPool: [28, 18, 15, 8], // Lavatümpel: Radius je Lage wie oben (Spiel-px, Umriss aus render-lava.js poolOutline; Kruste ragt höchstens 15 % in Bauplätze)
+  // C-Abnahme 1: Seitenzonen neben dem Canvas = gleiche Malerei mit dichtem Wald (Raster und Versatz in Entwurfs-px;
+  // 48 Entwurfs-px sind bei 1280x800 rund 41 CSS-px), nach außen leicht dunkler (darken = Deckkraft am Fensterrand)
+  sideZone: { step: [48, 38], chance: 0.85, jitter: [16, 12], darken: 0.35, quantum: 32 },
+  rasterDelay: 150,        // ms: nach einer Größenänderung erst so lange warten, dann neu rastern (bis dahin altes Bild skaliert)
 };
 
 // Stil 1, Plan G9: Palette und Elemente des gemalten Hintergrunds. Basis = Wiese (Farben aus dem Entwurf);

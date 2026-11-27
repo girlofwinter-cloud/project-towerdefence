@@ -4,8 +4,8 @@ import {
   createGame, stepGame, togglePause, buildTower, upgradeTower, sellTower, setTargetMode, startWave,
   useAbility, abilityCooldownLeft, canBuild, towerAt, towerStats, upgradeCost, sellValue,
 } from './game.js';
-import { renderView, drawTower, paintedStatus, flagBoxes } from './render.js';
-import { abilityView, overheatNote, startButtonView } from './hud.js';
+import { renderView, drawTower, paintedStatus, paintedImage, setPaintedExtent, flagBoxes } from './render.js';
+import { abilityView, overheatNote, startButtonView, waveProgress } from './hud.js';
 import { drawIcon } from './render-icons.js';
 import { buildTapStep, aimStep, fieldPoint, canvasSize } from './input.js';
 import { createSoundTracker, collectSounds, loadSoundOn, saveSoundOn } from './sound-events.js';
@@ -32,7 +32,9 @@ function fitCanvas() {
   if (canvas.width !== s.width || canvas.height !== s.height) { canvas.width = s.width; canvas.height = s.height; }
   view.sx = s.sx;
   view.sy = s.sy;
+  afterFit();
 }
+let afterFit = () => {}; // misst die Seitenzonen (unten gesetzt, sobald #backdrop bereit ist)
 // Wechsel der Pixeldichte (Fenster auf anderen Monitor, Browser-Zoom): Abfrage gilt nur für den aktuellen Wert, daher neu anmelden
 function watchDpr() {
   const q = window.matchMedia(`(resolution: ${window.devicePixelRatio || 1}dppx)`);
@@ -44,19 +46,62 @@ fitCanvas();
 watchDpr();
 // Stil 1: Schrift der Stufenmarken früh laden (Canvas-Text löst das Laden selbst nicht aus)
 if (document.fonts && document.fonts.load) document.fonts.load('14px "Lilita One"').catch(() => {});
-// Unscharfer Hintergrund: einmal je Karte (und Fenstergröße) das fertige Bild klein in #backdrop kopieren, CSS macht die Unschärfe
+// C-Abnahme 1: Seitenzonen. Im Vollbild ist #backdrop dieselbe gemalte Fläche wie der Canvas (render.js rastert Canvas plus
+// Seitenzonen in einem Bild, der Canvas zeigt davon den Ausschnitt 1:1), daher keine Naht an der Canvas-Kante.
+// Kompakt (Handy) scrollt der Canvas: dort bleibt das unscharfe, verkleinerte Bild dahinter.
 const backdrop = document.getElementById('backdrop');
+const compactQuery = window.matchMedia('(max-width: 759.98px), (max-height: 519.98px)'); // = Kompakt-Schwelle in style.css
 let backdropFor = null;
-window.addEventListener('resize', () => { backdropFor = null; });
-function drawBackdrop() {
-  if (backdropFor === state.mapId || paintedStatus(state.mapId) !== 'ready') return;
-  backdropFor = state.mapId;
-  const w = 320, h = Math.round(w * window.innerHeight / window.innerWidth);
-  backdrop.width = w; backdrop.height = h;
-  const b = backdrop.getContext('2d');
-  const sc = Math.max(w / canvas.width, h / canvas.height);
-  b.drawImage(canvas, (w - canvas.width * sc) / 2, (h - canvas.height * sc) / 2, canvas.width * sc, canvas.height * sc);
+// Seitenzonen in Geräte-px messen und an render.js melden (auf PAINTED_STYLE.sideZone.quantum aufgerundet: seltener neu rastern)
+function measureExtent() {
+  if (compactQuery.matches) { setPaintedExtent(null); return; }
+  const r = canvas.getBoundingClientRect();
+  if (!(r.width > 0)) return;
+  const k = canvas.width / r.width, q = PAINTED_STYLE.sideZone.quantum;
+  const up = (css) => Math.max(0, Math.ceil((css * k) / q) * q);
+  setPaintedExtent({ l: up(r.left), t: up(r.top), r: up(window.innerWidth - r.right), b: up(window.innerHeight - r.bottom) });
 }
+function drawBackdrop() {
+  const img = paintedImage(state.mapId);
+  if (!img) return;
+  const compact = compactQuery.matches;
+  const key = `${img.key}|${compact}|${window.innerWidth}x${window.innerHeight}`;
+  if (backdropFor === key) return;
+  backdropFor = key;
+  const b = backdrop.getContext('2d');
+  if (compact) {
+    const w = 320, h = Math.round(w * window.innerHeight / window.innerWidth);
+    backdrop.removeAttribute('style');
+    backdrop.width = w; backdrop.height = h;
+    const sc = Math.max(w / canvas.width, h / canvas.height);
+    b.drawImage(canvas, (w - canvas.width * sc) / 2, (h - canvas.height * sc) / 2, canvas.width * sc, canvas.height * sc);
+    return;
+  }
+  const W = img.canvas.width, H = img.canvas.height;
+  backdrop.width = W; backdrop.height = H;
+  b.drawImage(img.canvas, 0, 0);
+  // Nach außen leicht dunkler: ab der Canvas-Kante von 0 bis sideZone.darken am Bildrand
+  const dark = PAINTED_STYLE.sideZone.darken;
+  const side = (x0, y0, x1, y1, rx, ry, rw, rh) => {
+    if (rw <= 0 || rh <= 0) return;
+    const g = b.createLinearGradient(x0, y0, x1, y1);
+    g.addColorStop(0, 'rgba(20,30,10,0)');
+    g.addColorStop(1, `rgba(20,30,10,${dark})`);
+    b.fillStyle = g;
+    b.fillRect(rx, ry, rw, rh);
+  };
+  const { l, t, r, w, h } = img;
+  side(l, 0, 0, 0, 0, 0, l, H);
+  side(l + w, 0, W, 0, l + w, 0, W - l - w, H);
+  side(0, t, 0, 0, l, 0, w, t);
+  side(0, t + h, 0, H, l, t + h, w, H - t - h);
+  // Lage: Canvas-Ausschnitt genau über dem Canvas (CSS-px je Geräte-px wie beim Canvas)
+  const cr = canvas.getBoundingClientRect(), k = cr.width / w;
+  Object.assign(backdrop.style, { left: `${cr.left - l * k}px`, top: `${cr.top - t * (cr.height / h)}px`, width: `${W * k}px`, height: `${H * (cr.height / h)}px` });
+}
+afterFit = measureExtent;
+measureExtent();
+compactQuery.addEventListener('change', measureExtent);
 
 const $ = (id) => document.getElementById(id);
 const ui = { hudDim: false, buildType: null, selectedTowerId: null, hover: null, pending: null, aiming: false, hoverPx: null, speed: SPEED_STEPS[0], message: '', messageKind: 'error', messageTtl: 0 };
@@ -506,6 +551,11 @@ function refreshUI() {
   $('start-label').textContent = sb.label;
   $('start-key').hidden = !sb.showKey;
   $('start-wave').classList.toggle('ready', sb.showKey && !state.waveActive);
+  // C-Abnahme 5: schmale Füllung unten im Knopf = Anteil besiegter Gegner der laufenden Welle
+  const wp = waveProgress(state, ui.wavePeak);
+  ui.wavePeak = wp.peak;
+  $('start-wave').classList.toggle('running', state.waveActive);
+  $('start-wave').style.setProperty('--wave-fill', wp.fill.toFixed(3));
 
   // Vorschau der nächsten Welle (nur solange keine Welle läuft)
   const showPreview = !state.waveActive && state.status === 'playing' && state.wave < MAX_WAVES;

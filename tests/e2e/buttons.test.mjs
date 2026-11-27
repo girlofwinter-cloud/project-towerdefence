@@ -46,11 +46,12 @@ test('Handy 390x844: Fähigkeits-, Zoom-, Pause- und Tempo-Knopf >= 44 px, keine
   await ctx.close();
 });
 
-test('Desktop 1280x800: runde Fähigkeitsknöpfe (56-72 px), Tastenkürzel sichtbar', async () => {
+// C-Abnahme 2 (Freigabe Mensch): Fähigkeiten waagerecht im unteren Band, daher 48–60 statt 56–72 px (48 bleibt Touch-tauglich)
+test('Desktop 1280x800: runde Fähigkeitsknöpfe (48-60 px), Tastenkürzel sichtbar', async () => {
   const { ctx, page } = await openPage({ width: 1280, height: 800 }, false);
   const hs = await heights(page, '.abilities button');
   assert.equal(hs.length, 3);
-  for (const h of hs) assert.ok(h >= 56 && h <= 72, `Knopfhöhe ${h} zwischen 56 und 72`);
+  for (const h of hs) assert.ok(h >= 48 && h <= 60, `Knopfhöhe ${h} zwischen 48 und 60`);
   assert.ok(await page.locator('.ability-btn[data-ability="meteor"] .key-badge').isVisible(), 'Kürzel Q sichtbar');
   // Nach dem Auslösen: Ladezustand im zugänglichen Namen und am Knopf
   await page.keyboard.press('q');

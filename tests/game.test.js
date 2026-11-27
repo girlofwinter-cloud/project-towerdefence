@@ -3326,3 +3326,23 @@ test('B-127: Nekromantin ist immun gegen Einfrieren und bekommt nur anteiligen R
   for (let i = 0; i < 200 && b.s.projectiles.length; i++) update(b.s, 0.01);
   assert.ok(Math.abs(before - b.e.dist - cfg('cannon').knockback * TILE * cfg('cannon').bossKnockbackFactor) < 1e-6);
 });
+
+test('C-Abnahme 5: waveProgress füllt den Wellenknopf mit dem Anteil besiegter Gegner der laufenden Welle', async () => {
+  const { waveProgress } = await import('../src/hud.js');
+  const s = createGame();
+  assert.deepEqual(waveProgress(s, 7), { peak: 0, fill: 0 }, 'ohne Welle leer, Merker zurückgesetzt');
+  startWave(s);
+  const total = s.spawnQueue.length;
+  let v = waveProgress(s, 0);
+  assert.deepEqual(v, { peak: total, fill: 0 }, 'Start: nichts besiegt');
+  spawnEnemy(s, 'tank');
+  s.spawnQueue.shift(); // ein Gegner aus der Warteschlange ist jetzt auf dem Feld: offen bleibt gleich
+  assert.equal(waveProgress(s, v.peak).fill, 0);
+  s.enemies.length = 0; // besiegt
+  v = waveProgress(s, v.peak);
+  assert.equal(v.peak, total);
+  assert.ok(Math.abs(v.fill - 1 / total) < 1e-9, 'ein Gegner von allen besiegt');
+  s.spawnQueue = [];
+  assert.equal(waveProgress(s, v.peak).fill, 1, 'alle besiegt');
+  assert.ok(waveProgress(s, NaN).fill === 0 && waveProgress({ waveActive: true }, 0).fill === 0, 'ungültige Werte');
+});

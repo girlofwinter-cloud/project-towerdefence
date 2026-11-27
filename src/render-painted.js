@@ -340,20 +340,23 @@ const DOTS = {
 };
 
 // Filter und Verläufe (Z.33–48, nur was der Hintergrund braucht); Vignette im Feld höchstens fieldVignette
-function defs(c) {
+// box: gemalte Fläche (Canvas plus Seitenzonen) in Entwurfs-px. Verläufe liegen im Nutzerraum auf dem Canvas-Rechteck
+// (wie objectBoundingBox des Canvas), damit Seitenzonen sie nahtlos fortsetzen, ohne das Bild im Canvas zu ändern.
+const ON_CANVAS = `gradientUnits="userSpaceOnUse" gradientTransform="translate(${f(-MU)} ${f(-MU)}) scale(${f(FW + 2 * MU)} ${f(FH + 2 * MU)})"`;
+function defs(c, box) {
   return '<defs>'
     // Wackel-Filter im Nutzerraum: schmale Formen (gerader Fluss) würden sonst vom Filterbereich abgeschnitten
-    + `<filter id="p-wob" filterUnits="userSpaceOnUse" x="${f(-MU - 40)}" y="${f(-MU - 40)}" width="${f(FW + 2 * MU + 80)}" height="${f(FH + 2 * MU + 80)}"><feTurbulence type="fractalNoise" baseFrequency="0.022" numOctaves="3" seed="4" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="14" xChannelSelector="R" yChannelSelector="G"/></filter>`
+    + `<filter id="p-wob" filterUnits="userSpaceOnUse" x="${f(box.x - 40)}" y="${f(box.y - 40)}" width="${f(box.w + 80)}" height="${f(box.h + 80)}"><feTurbulence type="fractalNoise" baseFrequency="0.022" numOctaves="3" seed="4" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="14" xChannelSelector="R" yChannelSelector="G"/></filter>`
     + `<filter id="p-mot"><feTurbulence type="fractalNoise" baseFrequency="0.011 0.016" numOctaves="4" seed="9"/><feColorMatrix values="0 0 0 0 ${c.mottle[0]}  0 0 0 0 ${c.mottle[1]}  0 0 0 0 ${c.mottle[2]}  1.9 0 0 0 -0.78"/></filter>`
     + `<filter id="p-lit"><feTurbulence type="fractalNoise" baseFrequency="0.014 0.02" numOctaves="4" seed="21"/><feColorMatrix values="0 0 0 0 ${c.lit[0]}  0 0 0 0 ${c.lit[1]}  0 0 0 0 ${c.lit[2]}  1.8 0 0 0 -0.8"/></filter>`
     + '<filter id="p-grain"><feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="2" seed="2"/><feColorMatrix values="0 0 0 0 0.2  0 0 0 0 0.12  0 0 0 0 0.05  0 0 0 0.6 -0.2"/></filter>'
-    + `<linearGradient id="p-gr" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${c.ground[0]}"/><stop offset=".55" stop-color="${c.ground[1]}"/><stop offset="1" stop-color="${c.ground[2]}"/></linearGradient>`
-    + `<radialGradient id="p-sun" cx="0.1" cy="0.05" r="0.85"><stop offset="0" stop-color="${c.sun[0]}" stop-opacity=".55"/><stop offset=".5" stop-color="${c.sun[1]}" stop-opacity=".12"/><stop offset="1" stop-color="${c.sun[1]}" stop-opacity="0"/></radialGradient>`
-    + `<radialGradient id="p-vig" cx="0.5" cy="0.5" r="0.75"><stop offset=".55" stop-color="${c.vignette}" stop-opacity="0"/><stop offset="1" stop-color="${c.vignette}" stop-opacity="${P.frameVignette}"/></radialGradient>`
-    + `<radialGradient id="p-vig-field" cx="0.5" cy="0.5" r="0.72"><stop offset=".5" stop-color="${c.vignette}" stop-opacity="0"/><stop offset="1" stop-color="${c.vignette}" stop-opacity="${P.fieldVignette}"/></radialGradient>`
+    + `<linearGradient id="p-gr" ${ON_CANVAS} x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${c.ground[0]}"/><stop offset=".55" stop-color="${c.ground[1]}"/><stop offset="1" stop-color="${c.ground[2]}"/></linearGradient>`
+    + `<radialGradient id="p-sun" ${ON_CANVAS} cx="0.1" cy="0.05" r="0.85"><stop offset="0" stop-color="${c.sun[0]}" stop-opacity=".55"/><stop offset=".5" stop-color="${c.sun[1]}" stop-opacity=".12"/><stop offset="1" stop-color="${c.sun[1]}" stop-opacity="0"/></radialGradient>`
+    + `<radialGradient id="p-vig" ${ON_CANVAS} cx="0.5" cy="0.5" r="0.75"><stop offset=".55" stop-color="${c.vignette}" stop-opacity="0"/><stop offset="1" stop-color="${c.vignette}" stop-opacity="${P.frameVignette}"/></radialGradient>`
+    + `<radialGradient id="p-vig-field" ${ON_CANVAS} cx="0.5" cy="0.5" r="0.72"><stop offset=".5" stop-color="${c.vignette}" stop-opacity="0"/><stop offset="1" stop-color="${c.vignette}" stop-opacity="${P.fieldVignette}"/></radialGradient>`
     // Maske der Rand-Vignette: weiß im Rand, schwarz im Feld, weich über die Feldkante (kein sichtbarer Kasten)
     + `<filter id="p-soft" x="-10%" y="-10%" width="120%" height="120%"><feGaussianBlur stdDeviation="10"/></filter>`
-    + `<mask id="p-ring" maskUnits="userSpaceOnUse" x="${f(-MU)}" y="${f(-MU)}" width="${f(FW + 2 * MU)}" height="${f(FH + 2 * MU)}"><rect x="${f(-MU)}" y="${f(-MU)}" width="${f(FW + 2 * MU)}" height="${f(FH + 2 * MU)}" fill="#fff"/><rect x="${-RING_INSET}" y="${-RING_INSET}" width="${FW + 2 * RING_INSET}" height="${FH + 2 * RING_INSET}" fill="#000" filter="url(#p-soft)"/></mask>`
+    + `<mask id="p-ring" maskUnits="userSpaceOnUse" x="${f(box.x)}" y="${f(box.y)}" width="${f(box.w)}" height="${f(box.h)}"><rect x="${f(box.x)}" y="${f(box.y)}" width="${f(box.w)}" height="${f(box.h)}" fill="#fff"/><rect x="${-RING_INSET}" y="${-RING_INSET}" width="${FW + 2 * RING_INSET}" height="${FH + 2 * RING_INSET}" fill="#000" filter="url(#p-soft)"/></mask>`
     + '<linearGradient id="p-wat" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6fcbe0"/><stop offset="1" stop-color="#2e86a8"/></linearGradient>'
     + `<linearGradient id="p-cliff" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="${c.cliff[2]}"/><stop offset="1" stop-color="${c.cliff[3]}"/></linearGradient>`
     + `<linearGradient id="p-stone" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="${c.stone[0]}"/><stop offset=".6" stop-color="${c.stone[1]}"/><stop offset="1" stop-color="${c.stone[2]}"/></linearGradient>`
@@ -362,13 +365,24 @@ function defs(c) {
 }
 
 // Komplettes SVG (Canvas-Größe VIEW_WIDTH x VIEW_HEIGHT, Feld ab FRAME_MARGIN). opts.scene: vorberechnete Szene.
+// opts.ext = { l, t, r, b }: Seitenzonen in Spiel-px (C-Abnahme 1). Das Bild reicht dann so weit über den Canvas hinaus,
+// gleiche Malerei: Boden, Licht und Vignette laufen weiter, Wege und Flüsse bis zum Bildrand, dichter Wald.
+// Der Canvas-Ausschnitt bleibt gleich (bis auf Bäume, die vorher an der Canvas-Kante abgeschnitten waren).
 export function buildPaintedSvg(state, opts = {}) {
   const sc = opts.scene || buildPaintedScene(state);
   const c = paletteFor(sc.mapId);
-  const all = `x="${f(-MU)}" y="${f(-MU)}" width="${f(FW + 2 * MU)}" height="${f(FH + 2 * MU)}"`;
+  const ex = extentOf(opts.ext);
+  const box = { x: -MU - ex.l / K, y: -MU - ex.t / K, w: FW + 2 * MU + (ex.l + ex.r) / K, h: FH + 2 * MU + (ex.t + ex.b) / K };
+  const all = `x="${f(box.x)}" y="${f(box.y)}" width="${f(box.w)}" height="${f(box.h)}"`;
+  const extended = ex.l + ex.t + ex.r + ex.b > 0;
+  const far = Math.max(ex.l, ex.t, ex.r, ex.b) / K + 60; // so weit laufen Wege und Flüsse über den Canvas hinaus
+  const reach = (pts) => (extended ? extendEnds(pts, far) : pts);
   const out = [];
-  out.push(`<svg xmlns="http://www.w3.org/2000/svg" width="${VIEW_WIDTH}" height="${VIEW_HEIGHT}" viewBox="0 0 ${VIEW_WIDTH} ${VIEW_HEIGHT}">`);
-  out.push(defs(c));
+  if (extended) {
+    const vw = VIEW_WIDTH + ex.l + ex.r, vh = VIEW_HEIGHT + ex.t + ex.b;
+    out.push(`<svg xmlns="http://www.w3.org/2000/svg" width="${f(vw)}" height="${f(vh)}" viewBox="${f(-ex.l)} ${f(-ex.t)} ${f(vw)} ${f(vh)}" preserveAspectRatio="none">`);
+  } else out.push(`<svg xmlns="http://www.w3.org/2000/svg" width="${VIEW_WIDTH}" height="${VIEW_HEIGHT}" viewBox="0 0 ${VIEW_WIDTH} ${VIEW_HEIGHT}">`);
+  out.push(defs(c, box));
   out.push(`<g transform="translate(${FRAME_MARGIN} ${FRAME_MARGIN}) scale(${f(K * 10000) / 10000})">`);
   // Boden (Z.50–52)
   out.push(`<rect id="ground" ${all} fill="url(#p-gr)"/>`, `<rect ${all} filter="url(#p-mot)" opacity="${c.mottleOpacity}"/>`, `<rect ${all} filter="url(#p-lit)" opacity="${c.litOpacity}"/>`);
@@ -376,7 +390,7 @@ export function buildPaintedSvg(state, opts = {}) {
   for (const cl of sc.cliffs) out.push(`<g class="cliff" filter="url(#p-wob)"><g transform="translate(${f(cl.dx)} ${f(cl.dy)})">${cl.shape.svg(c)}</g></g>`);
   // Fluss (Z.66–70)
   if (sc.river || sc.riverBezier) {
-    const d = sc.riverBezier ? bezierD(sc.riverBezier) : smoothOpen(sc.river);
+    const d = sc.riverBezier ? bezierReach(sc.riverBezier, extended ? far : 0) : smoothOpen(reach(sc.river));
     const [sand, rim, wat] = P.river;
     out.push(`<g id="river"><path d="${d}" fill="none" stroke="#e8d18a" stroke-width="${sand}" stroke-linecap="round" filter="url(#p-wob)"/>`
       + `<path d="${d}" fill="none" stroke="#2b1a10" stroke-width="${rim}" stroke-linecap="round" filter="url(#p-wob)"/>`
@@ -401,7 +415,7 @@ export function buildPaintedSvg(state, opts = {}) {
   }
   // Lava (Plan G9): gleiche Formsprache wie Fluss und See, Farben glühend (Glühen, Kruste, Fläche, Kern, Glutstriche, Schollen)
   if (sc.lava) {
-    const L = c.lava, d = smoothOpen(sc.lava.river), [glow, crust, body, core] = P.lava;
+    const L = c.lava, d = smoothOpen(reach(sc.lava.river)), [glow, crust, body, core] = P.lava;
     const pool = (i, fill, extra = '') => sc.lava.pools.map((ring) => `<path d="${smoothClosed(ring[i])}" fill="${fill}"${extra}/>`).join('');
     out.push(`<g id="lava"><g opacity=".35">${sc.lava.river.length > 1 ? `<path d="${d}" fill="none" stroke="${L.glow}" stroke-width="${glow}" stroke-linecap="round" filter="url(#p-wob)"/>` : ''}${pool(0, L.glow, ' filter="url(#p-wob)"')}</g>`
       + `<g filter="url(#p-wob)">${sc.lava.river.length > 1 ? `<path d="${d}" fill="none" stroke="${L.crust}" stroke-width="${crust}" stroke-linecap="round"/><path d="${d}" fill="none" stroke="${L.body}" stroke-width="${body}" stroke-linecap="round"/><path d="${d}" fill="none" stroke="${L.core}" stroke-width="${core}" stroke-linecap="round"/>` : ''}`
@@ -416,7 +430,7 @@ export function buildPaintedSvg(state, opts = {}) {
   // Alle Wege als EIN Pfad mit mehreren Teilstücken: jede Schicht wird für alle Wege gemeinsam gemalt,
   // so fließen Wege an Kreuzungen und Zusammenläufen ineinander, statt dass Rand/Fuge des einen den anderen überdeckt.
   if (sc.paths.length) {
-    const d = sc.paths.map((pts) => 'M ' + pts.map((p) => `${f(p[0])} ${f(p[1])}`).join(' L ')).join(' ');
+    const d = sc.paths.map((pts) => 'M ' + reach(pts).map((p) => `${f(p[0])} ${f(p[1])}`).join(' L ')).join(' ');
     out.push(`<g class="path"><g filter="url(#p-wob)">`
       + `<path d="${d}" fill="none" stroke="${groove}" stroke-width="86" stroke-linejoin="round"/>`
       + `<path d="${d}" fill="none" stroke="${rim}" stroke-width="72" stroke-linejoin="round"/>`
@@ -442,7 +456,8 @@ export function buildPaintedSvg(state, opts = {}) {
   out.push(`<rect id="vignette-frame" ${all} fill="url(#p-vig)" mask="url(#p-ring)"/>`);
   out.push(`<rect ${all} filter="url(#p-grain)" opacity="${c.grainOpacity}"/>`);
   // Felsen und Bäume (Z.102–104), nach Fußpunkt sortiert
-  const figs = [...sc.rocks.map((r) => [r, ROCK]), ...sc.trees.map((t) => [t, TREE_SHAPES[t.kind]])].sort((a, b) => a[0].y - b[0].y);
+  const zoneTrees = extended ? sideTrees(sc, box, far, reach) : [];
+  const figs = [...sc.rocks.map((r) => [r, ROCK]), ...sc.trees.map((t) => [t, TREE_SHAPES[t.kind]]), ...zoneTrees.map((t) => [t, TREE_SHAPES[t.kind]])].sort((a, b) => a[0].y - b[0].y);
   for (const [t, shape] of figs) out.push(`<g class="${t.kind}">${place(t, shape, c)}</g>`);
   // Burgtor mit Rauch (Z.116, Z.120f) und Wellenfahne ohne Zahl (Z.117)
   for (const c of sc.castles) {
@@ -452,6 +467,70 @@ export function buildPaintedSvg(state, opts = {}) {
   for (const fl of sc.flags) out.push(`<g class="flag" transform="translate(${fl.tx} ${fl.ty}) scale(${fl.s})">${FLAG.svg}</g>`);
   out.push('</g></svg>');
   return out.join('');
+}
+
+// ---------- Seitenzonen (C-Abnahme 1) ----------
+// Seitenzonen in Spiel-px, ungültige Werte = 0
+export function extentOf(ext) {
+  const v = (n) => (Number.isFinite(n) && n > 0 ? n : 0);
+  return { l: v(ext?.l), t: v(ext?.t), r: v(ext?.r), b: v(ext?.b) };
+}
+const CANVAS_BOX = [-MU, -MU, FW + MU, FH + MU];
+const CANVAS_PAD = [-MU - 4, -MU - 4, FW + MU + 4, FH + MU + 4];
+const outsideCanvas = ([x, y]) => x < CANVAS_BOX[0] + 1 || y < CANVAS_BOX[1] + 1 || x > CANVAS_BOX[2] - 1 || y > CANVAS_BOX[3] - 1;
+// Linienenden außerhalb des Canvas um far (Entwurfs-px) in Laufrichtung verlängern (Wege, Fluss- und Lavaenden)
+function extendEnds(pts, far) {
+  if (!pts || pts.length < 2) return pts;
+  const out = pts.map((p) => [...p]);
+  const push = (a, b) => {
+    const d = Math.hypot(a[0] - b[0], a[1] - b[1]) || 1;
+    return [a[0] + ((a[0] - b[0]) / d) * far, a[1] + ((a[1] - b[1]) / d) * far];
+  };
+  if (outsideCanvas(out[0])) out.unshift(push(out[0], out[1]));
+  if (outsideCanvas(out.at(-1))) out.push(push(out.at(-1), out.at(-2)));
+  return out;
+}
+// Gemalter Fluss (Bézier) mit geraden Verlängerungen an Enden außerhalb des Canvas
+function bezierReach(b, far) {
+  const d = bezierD(b);
+  if (!far) return d;
+  const ends = extendEnds([b[0], b[1]], far), tail = extendEnds([b.at(-2), b.at(-1)], far);
+  const head = ends.length > 2 ? `M ${f(ends[0][0])} ${f(ends[0][1])} L ${b[0][0]} ${b[0][1]}` : `M ${b[0][0]} ${b[0][1]}`;
+  return head + d.slice(d.indexOf(' C')) + (tail.length > 2 ? ` L ${f(tail.at(-1)[0])} ${f(tail.at(-1)[1])}` : '');
+}
+// Zufall je Platz (Karte, Spalte, Zeile): gleiche Bäume bei jeder Fenstergröße
+function hash01(mapId, i, j) {
+  let h = P.seed * 7919;
+  for (const ch of String(mapId)) h = (h * 31 + ch.charCodeAt(0)) % 2147483647;
+  h = (h ^ Math.imul(i + 1000, 73856093) ^ Math.imul(j + 1000, 19349663)) >>> 0;
+  h = Math.imul(h ^ (h >>> 15), 2246822519) >>> 0;
+  h = Math.imul(h ^ (h >>> 13), 3266489917) >>> 0;
+  return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+}
+// Dichter Wald in den Seitenzonen: Raster P.sideZone.step, Bäume ganz außerhalb des Canvas, Wege, Flüsse, Burg und Fahne frei
+function sideTrees(sc, box, far, reach) {
+  const pal = paletteFor(sc.mapId);
+  const keep = [...sc.flags.map((l) => l.box), ...sc.castles.map((l) => l.box)];
+  const corridor = (pts, half) => { for (const [x, y] of riverSamplesOf(pts)) if (outsideCanvas([x, y])) keep.push([x - half, y - half, x + half, y + half]); };
+  for (const pts of sc.paths) corridor(reach(pts), P.keepOut);
+  if (sc.river) corridor(reach(sc.river), 50);
+  if (sc.riverBezier) corridor(extendEnds(riverSamples(sc.riverBezier, 30), far), 50);
+  if (sc.lava) corridor(reach(sc.lava.river), 44);
+  const ZONE = P.sideZone, [sx, sy] = ZONE.step;
+  const trees = [];
+  for (let j = Math.floor(box.y / sy); j * sy <= box.y + box.h + 100; j++) {
+    for (let i = Math.floor(box.x / sx) - 1; i * sx <= box.x + box.w + sx; i++) {
+      const r = (k) => hash01(sc.mapId, i * 5 + k, j);
+      if (r(0) >= ZONE.chance) continue;
+      const s = P.treeScale[0] + r(1) * (P.treeScale[1] - P.treeScale[0]);
+      const kind = r(2) < pal.pineShare ? 'pine' : pal.leafy;
+      const x = i * sx + (j % 2 ? sx / 2 : 0) + (r(3) - 0.5) * ZONE.jitter[0], y = j * sy + (r(4) - 0.5) * ZONE.jitter[1];
+      const t = figure(kind, TREE_SHAPES[kind], x, y, s);
+      if (overlap(t.box, CANVAS_PAD) || keep.some((k) => overlap(k, t.box))) continue; // Pad: Maßstab der Figur ist gerundet
+      trees.push(t);
+    }
+  }
+  return trees;
 }
 
 // Entwurfs-px (Feld ab 0,0) -> Spiel-px im Feld (Tests, Kachelprüfung)
@@ -466,6 +545,7 @@ export function canRasterize() {
   return typeof Image !== 'undefined' && typeof Blob !== 'undefined' && typeof document !== 'undefined' && typeof URL?.createObjectURL === 'function';
 }
 
+// scale: Zahl (Maßstab) oder { width, height } (genaue Größe in Geräte-px, Seitenzonen inklusive)
 export async function rasterizePainted(svg, scale = 1) {
   if (!canRasterize()) return null;
   const url = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' }));
@@ -474,8 +554,9 @@ export async function rasterizePainted(svg, scale = 1) {
     img.src = url;
     await img.decode();
     const cv = document.createElement('canvas');
-    cv.width = Math.max(1, Math.round(VIEW_WIDTH * scale));
-    cv.height = Math.max(1, Math.round(VIEW_HEIGHT * scale));
+    const exact = typeof scale === 'object' && scale;
+    cv.width = Math.max(1, Math.round(exact ? exact.width : VIEW_WIDTH * scale));
+    cv.height = Math.max(1, Math.round(exact ? exact.height : VIEW_HEIGHT * scale));
     cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
     return cv;
   } finally {
