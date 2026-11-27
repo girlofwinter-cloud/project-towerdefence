@@ -420,6 +420,7 @@ function lavaStep(state, dt) {
   if (!state.hotPath || !state.hotPath.size || !state.enemies.length) return;
   let hit = false;
   for (const e of state.enemies) {
+    if (isFlying(e)) continue; // Fledermäuse fliegen über die Lava und nehmen keinen Schaden
     const col = Math.floor(e.x / TILE);
     const row = Math.floor(e.y / TILE);
     if (!state.hotPath.has(`${col},${row}`)) continue;

@@ -3221,6 +3221,13 @@ describe('B-167 Fledermaus: Flieger, die Kanone und Frost nicht treffen', () => 
     assert.ok(useAbility(s, 'freeze').ok);
     assert.ok(bat.slowUntil > s.time, 'Kälteschock');
   });
+
+  test('Fledermaus nimmt keinen Lava-Schaden, Goblin auf derselben Kachel schon', () => {
+    const hot = [10, 8]; // Wegkachel neben dem Lavatümpel der Vulkan-Karte
+    const bat = lavaBurn('bat', ...hot, 1, 1 / 60);
+    assert.equal(bat.lost, 0, 'Fledermaus verliert keine HP');
+    assert.ok(lavaBurn('grunt', ...hot, 1, 1 / 60).lost > 0, 'Goblin verliert HP');
+  });
 });
 
 // ---------- B-169: Panzerkäfer (Schale) ----------
