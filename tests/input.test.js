@@ -252,44 +252,7 @@ function findFree(s) {
   throw new Error('kein freies Feld');
 }
 
-// ---------- C6 Handy: Wischen und Zoom (viewport.js), Umrechnung mit Versatz, Backing-Store-Obergrenze ----------
-import { clampScroll, scrollEdges, gestureKind, dragScroll } from '../src/viewport.js';
-import { VIEWPORT } from '../src/config.js';
-
-test('clampScroll: Wisch-Position bleibt zwischen 0 und Inhalt minus Sichtbreite', () => {
-  assert.equal(clampScroll(-30, 1009, 390), 0);
-  assert.equal(clampScroll(200, 1009, 390), 200);
-  assert.equal(clampScroll(5000, 1009, 390), 619);
-  assert.equal(clampScroll(50, 300, 390), 0, 'Inhalt schmaler als Sicht: nicht wischbar');
-  assert.equal(clampScroll(NaN, 1009, 390), 0);
-});
-
-test('scrollEdges: Schattenkanten nur, wo weiter gewischt werden kann', () => {
-  assert.deepEqual(scrollEdges(0, 1009, 390), { canLeft: false, canRight: true });
-  assert.deepEqual(scrollEdges(300, 1009, 390), { canLeft: true, canRight: true });
-  assert.deepEqual(scrollEdges(619, 1009, 390), { canLeft: true, canRight: false });
-  assert.deepEqual(scrollEdges(0, 390, 390), { canLeft: false, canRight: false });
-});
-
-test('gestureKind: kleine Bewegung ist ein Tipp, ab tapSlop (Finger oder Feld-Verschiebung) Wischen', () => {
-  const s = VIEWPORT.tapSlop;
-  assert.equal(gestureKind(0, 0), 'tap');
-  assert.equal(gestureKind(s - 1, 0), 'tap');
-  assert.equal(gestureKind(s, 0), 'swipe');
-  assert.equal(gestureKind(0, -s), 'swipe', 'senkrecht zählt ebenfalls');
-  assert.equal(gestureKind(s * 0.6, s * 0.6), 'tap', 'Betrag der Bewegung (Hypotenuse) unter der Schwelle');
-  assert.equal(gestureKind(s * 0.8, s * 0.8), 'swipe');
-  assert.equal(gestureKind(2, 1, -s), 'swipe', 'Feld hat sich verschoben, auch wenn der Finger kaum wanderte');
-  assert.equal(gestureKind(2, 1, s - 1), 'tap');
-});
-
-test('dragScroll: Mausziehen nach links schiebt die Ansicht nach rechts, begrenzt', () => {
-  assert.equal(dragScroll(100, -50, 1009, 390), 150);
-  assert.equal(dragScroll(100, 50, 1009, 390), 50);
-  assert.equal(dragScroll(100, 500, 1009, 390), 0);
-  assert.equal(dragScroll(600, -500, 1009, 390), 619);
-});
-
+// ---------- C6 Handy: Umrechnung mit Versatz, Backing-Store-Obergrenze ----------
 test('fieldPoint mit gewischtem Feld: Rechteck links außerhalb des Fensters trifft dieselbe Kachel', () => {
   // Canvas 1009 CSS-px breit, um 400 px gewischt: linke Kante bei -400, oben 56 - Rand (abgeschnitten)
   const k = 1009 / VIEW_WIDTH;

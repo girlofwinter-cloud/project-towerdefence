@@ -11,8 +11,6 @@ export const VIEW_WIDTH = WIDTH + 2 * FRAME_MARGIN;   // Canvas = Feld + 2 * Ran
 export const VIEW_HEIGHT = HEIGHT + 2 * FRAME_MARGIN;
 // HiDPI (nur Optik): Backing-Store des Canvas = Anzeigegröße (style.css, Vollbild) x Pixeldichte, diese höchstens maxDpr
 export const VIEW_FIT = { maxDpr: 2, maxSide: 4096 }; // maxSide: Obergrenze des Backing-Store je Seite in Geräte-px (Handy-Nahansicht)
-// C6 Handy: Wischen über das Feld (viewport.js). tapSlop: ab so vielen CSS-px Bewegung (oder Feld-Verschiebung) ist es Wischen, kein Tipp.
-export const VIEWPORT = { tapSlop: 10 };
 
 export const START_GOLD = 140;
 export const START_LIVES = 10;
