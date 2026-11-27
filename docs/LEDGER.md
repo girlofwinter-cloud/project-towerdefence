@@ -58,3 +58,9 @@ Anhängen ohne die Datei zu lesen: `cat >> docs/LEDGER.md <<'EOF' … EOF`. Übe
 - Stufe-3-Fähigkeiten (Mehrfachschuss, Gewitter, Brandfläche, Eisboden, Markieren) mit neuen Endstufen-Figuren und Effekten; Elite-Gegner ab Welle 10 (Schild/Heilung), Nekromantin mit Phase 2, Boss-Leiste, Welle 20 mit 2 Ogern + Nekromantin.
 - Balancing am Ende: HP-Zuwachs spät 1,12, Fledermäuse bis 9 (20 HP, Vulkan 0,9), kein Extra in Welle 8; vom Menschen freigegebene Test-Änderungen: Nekromantin Welle 15+20, Vulkan-Fenster 1-7, Welle-10-Fledermäuse 4, drei Stufe-3-Optik-Tests, ELITE.from 10.
 - Zwei developer + designer parallel, Tester/Reviewer einmal über den Block; unit 633, balance 20, e2e 98 grün.
+
+### 2026-11-27 – Stufe 3 entschärft, Spiel mit Aufrüsten als Maßstab
+- Spieltest: Endstufen zu stark (4 Endstufen in Welle 10, 860 Gold übrig); Simulation hat Aufrüsten nie gemessen.
+- Stufe 3: Schaden 1,9x statt 2,25x (LEVEL_DAMAGE), Schritt 2->3 kostet 2x Baupreis; HP-Zuwachs ab Welle 11 1,16; perfektes Spiel rüstet auf; neuer Test gegen übermächtige Stufe 3.
+- Freigegebene Test-Änderungen: Kanonen-Mix darf ab Welle 15 verlieren (Wiese, Zangenangriff, Vulkan), Zwei Fronten ab 13, Kanone zuerst (fork) ab 14, hpScale-Vergleich mit der Mitte; Vollbild-e2e wartet. unit 633, balance 21, e2e 98 grün.
+- Nachtrag: Max (2->3) kostet 3x Baupreis (Wunsch des Menschen), dafür Spätphase 1,14 statt 1,16; perfektes Spiel je Karte eigene Turmzahl vor dem Aufrüsten.

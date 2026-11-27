@@ -36,10 +36,11 @@ test('Eiswelt (B-125): einfache Strategien ohne Fähigkeiten verlieren erst in d
 });
 
 // B-046/B-125: Zangenangriff (fork): der Kanonen-Mix schafft Welle 20 weiter (dt 1/30 und 1/60).
-test('Zangenangriff (B-125): Kanonen-Mix gewinnt Welle 20 (dt 1/30, 1/60)', () => {
+// 27.11. (Entscheidung des Menschen): Maßstab ist jetzt das Spiel mit Aufrüsten; der Kanonen-Mix (viele Türme, kaum Stufe 3, ohne Fähigkeiten) darf verlieren, aber nicht vor Welle 15.
+test('Zangenangriff (B-125): Kanonen-Mix hält bis Welle 15 (dt 1/30, 1/60)', () => {
   for (const dt of [1 / 30, 1 / 60]) {
     const s = mapRun('cannon', dt, 'fork');
-    assert.equal(s.status, 'won', `dt=${dt}: Status ${s.status} in Welle ${s.wave}`);
+    assert.ok(s.status === 'won' || s.wave >= 15, `dt=${dt}: verloren schon in Welle ${s.wave}`);
   }
 });
 
@@ -49,7 +50,8 @@ test('Zangenangriff (B-125): Strategie Kanone zuerst verliert erst in der Spätp
   for (const dt of [1 / 30, 1 / 60]) {
     const { state, lost } = strategyRun(MIX_ARROW, dt, 'fork');
     assert.equal(state.status, 'lost', `dt=${dt}: ${state.status} mit ${state.lives} Leben`);
-    assert.ok(state.wave >= 15, `dt=${dt}: verloren schon in Welle ${state.wave}`);
+    assert.ok(state.wave >= 14, // 27.11.: 15 -> 14 (Entscheidung des Menschen, härtere Spätphase)
+      `dt=${dt}: verloren schon in Welle ${state.wave}`);
     assert.equal(lost.slice(0, 9).reduce((a, b) => a + b, 0), 0, `dt=${dt}: Leben vor Welle 10 verloren`);
   }
 });

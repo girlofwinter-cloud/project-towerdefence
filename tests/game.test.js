@@ -11,7 +11,7 @@ import { TOWER_TYPES, MAX_WAVES, START_GOLD, START_LIVES, LOW_LIVES, WAYPOINTS, 
 import { run, freeTileNearPath, mockCtx, recordEnemy, enemyExtent } from './helpers.js';
 
 import { useAbility, abilityCooldownLeft } from '../src/game.js';
-import { ABILITIES, WIDTH, HEIGHT } from '../src/config.js';
+import { ABILITIES, WIDTH, HEIGHT, LEVEL_DAMAGE } from '../src/config.js';
 import { LAVA } from '../src/config.js';
 import { sellValue } from '../src/game.js';
 import { meteorLife } from '../src/game.js';
@@ -267,7 +267,7 @@ test('Schwierigkeit: hpScale(1) == 1, Faktor pro Welle wächst bis Welle 10 und 
   const f = (w) => hpScale(w) / hpScale(w - 1);
   assert.ok(f(5) > 1, 'Welle 5 zäher als 4');
   assert.ok(f(10) > f(5), 'mittlere Wellen steiler als frühe');
-  assert.ok(f(11) > 1 && f(11) < f(5), 'späte Wellen flacher, aber weiter steigend');
+  assert.ok(f(11) > 1 && f(11) < f(10), 'späte Wellen flacher als die Mitte, aber weiter steigend'); // 27.11.: Vergleich mit der Mitte statt mit früh (Entscheidung des Menschen)
   for (let w = 1; w <= MAX_WAVES; w++) assert.ok(Number.isFinite(hpScale(w)) && hpScale(w) >= 1);
 });
 
@@ -1040,8 +1040,10 @@ test('Eiswelt: Slowfaktor in (0,1), Upgrade-Stufen und Kanonen-Splash skalieren 
   assert.ok(1 - f.slow > 0 && 1 - f.slow < 1);
   const c1 = towerStats({ type: 'cannon', level: 1 }, mods);
   const c3 = towerStats({ type: 'cannon', level: 3 }, mods);
-  assert.ok(Math.abs(c3.damage - TOWER_TYPES.cannon.damage * MAPS.ice.modifiers.towerDamage.cannon * 2.25) < 1e-9);
-  assert.ok(Math.abs(c3.damage / c1.damage - 2.25) < 1e-9);
+  // 27.11. (Entscheidung des Menschen): Stufe 3 = LEVEL_DAMAGE[3] statt 2,25
+  assert.ok(LEVEL_DAMAGE[3] > LEVEL_DAMAGE[2] && LEVEL_DAMAGE[3] < 2.25);
+  assert.ok(Math.abs(c3.damage - TOWER_TYPES.cannon.damage * MAPS.ice.modifiers.towerDamage.cannon * LEVEL_DAMAGE[3]) < 1e-9);
+  assert.ok(Math.abs(c3.damage / c1.damage - LEVEL_DAMAGE[3]) < 1e-9);
   // Splash: Nachbar des Ziels verliert den skalierten Schaden
   const s = createGame({ mapId: 'ice' });
   spawnEnemy(s, 'grunt', 1); spawnEnemy(s, 'grunt', 1);

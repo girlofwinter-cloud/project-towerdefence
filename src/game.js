@@ -4,7 +4,7 @@ import {
   MAPS, DEFAULT_MAP_ID, LANE_ASYNC, TOWER_TYPES, ABILITIES, WIDTH, HEIGHT, ENEMY_TYPES, LAVA, FX_STYLE, AUTO_WAVE_DELAY, earlyStartBonus, waveFor, waveBonus, hpScale, meteorDamage, isBoss,
 } from './config.js';
 import { buildPath, pointAt, pathTiles } from './path.js';
-import { ELITE, UPGRADE_COST_FACTOR } from './config.js'; // B-179: Elite-Gegner, Aufrüstkosten
+import { ELITE, UPGRADE_COST_FACTOR, LEVEL_DAMAGE } from './config.js'; // B-179: Elite-Gegner, Aufrüstkosten
 import { MASTER_FX } from './config.js'; // B-173/B-174: Lebensdauer reiner Darstellungs-Ereignisse
 
 // Map-Modifikatoren mit Standardwerten (1 = unverändert); unbekannte Karte = Standardkarte.
@@ -81,7 +81,7 @@ export function towerStats(tower, modifiers) {
   return {
     ...base,
     ...(base.slow ? { slow: base.slow * slowMod } : {}),
-    damage: base.damage * Math.pow(1.5, lvl) * dmgMod,
+    damage: base.damage * (LEVEL_DAMAGE[tower.level] ?? Math.pow(1.5, lvl)) * dmgMod,
     range: base.range * Math.pow(1.1, lvl),
     // B-030: überhitzter Turm (neben Lava) schießt langsamer
     rate: base.rate * Math.pow(0.92, lvl) * (tower.overheated ? LAVA.overheat : 1),

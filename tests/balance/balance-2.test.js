@@ -23,11 +23,11 @@ import { rankedSpots, playDt, MIX_CANNON, MIX_ARROW, playTracked, strategyCache,
 // B-125 (Spätphase schwerer, vom Menschen freigegeben): Früher mussten beide robusten Reihenfolgen Welle 20 mit Reserve
 // gewinnen. Jetzt gilt: Welle 1-9 bleiben unverändert (kein Lebensverlust), der Kanonen-Mix schafft die Wiese weiter
 // (robust gegen den Zeitschritt), der Pfeil-Mix ohne Fähigkeiten scheitert erst in der Spätphase (ab Welle 15).
-test('Schwierigkeit (B-125): Kanonen-Mix gewinnt die Wiese, Pfeil-Mix verliert erst in der Spätphase (dt 1/20, 1/30, 1/60, 1/120)', () => {
+// 27.11. (Entscheidung des Menschen): Maßstab ist jetzt das Spiel mit Aufrüsten; der Kanonen-Mix (viele Türme, kaum Stufe 3, ohne Fähigkeiten) darf verlieren, aber nicht vor Welle 15.
+test('Schwierigkeit (B-125): Kanonen-Mix hält auf der Wiese bis Welle 15, Pfeil-Mix verliert erst in der Spätphase (dt 1/20, 1/30, 1/60, 1/120)', () => {
   for (const dt of [1 / 30, 1 / 60, 1 / 20, 1 / 120]) {
     const s = strategyRun(MIX_CANNON, dt).state;
-    assert.equal(s.status, 'won', `Kanonen-Mix dt=${dt}: Status ${s.status} in Welle ${s.wave}`);
-    assert.ok(s.lives >= 2, `Kanonen-Mix dt=${dt}: nur ${s.lives} Leben übrig`);
+    assert.ok(s.status === 'won' || s.wave >= 15, `Kanonen-Mix dt=${dt}: verloren schon in Welle ${s.wave}`);
   }
   for (const dt of [1 / 30, 1 / 60, 1 / 120]) {
     const { state, lost } = strategyRun(MIX_ARROW, dt);
@@ -40,12 +40,12 @@ test('Schwierigkeit (B-125): Kanonen-Mix gewinnt die Wiese, Pfeil-Mix verliert e
 // Balancing (B-030, gemessen per Strategie-Simulation): Wer Türme nicht neben die Lava stellt,
 // gewinnt mit dem Kanonen-Mix mit 4 Leben (ein Boss bricht durch). Die Platzwahl nur nach Abdeckung (viele beste Plätze
 // liegen neben Lava) verliert mit allen Mischungen, ebenso nur Pfeiltürme.
-test('Vulkan: Kanonen-Mix auf Plätzen ohne Überhitzung gewinnt Welle 20 mit 1 bis 7 Leben (dt 1/30, 1/60)', () => {
+// 27.11. (Entscheidung des Menschen): Maßstab ist jetzt das Spiel mit Aufrüsten; der Kanonen-Mix (viele Türme, kaum Stufe 3, ohne Fähigkeiten) darf verlieren, aber nicht vor Welle 15 und nie mit vollen Leben.
+test('Vulkan: Kanonen-Mix auf Plätzen ohne Überhitzung hält bis Welle 15, gewinnt höchstens knapp (dt 1/30, 1/60)', () => {
   for (const dt of [1 / 30, 1 / 60]) {
     const s = strategyRun(MIX_CANNON, dt, 'volcano', true).state;
-    assert.equal(s.status, 'won', `dt=${dt}: Status ${s.status} in Welle ${s.wave}`);
-    assert.ok(s.lives >= 1 && s.lives <= 7, // 27.11.: Fenster 1-4 -> 1-7 (Entscheidung des Menschen, mehr Fledermäuse)
-      `dt=${dt}: ${s.lives} Leben`);
+    assert.ok(s.status === 'won' || s.wave >= 15, `dt=${dt}: verloren schon in Welle ${s.wave}`);
+    assert.ok(s.status !== 'won' || s.lives <= 7, `dt=${dt}: ${s.lives} Leben`);
   }
 });
 
