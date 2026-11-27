@@ -894,6 +894,18 @@ export const FIGURE_STYLE = {
   squash: 0.05,     // Stauchung feststehender Türme direkt nach dem Schuss (Anteil der Höhe)
   recoil: { arrow: 0, cannon: 4, frost: 0, sniper: 3, lightning: 0 }, // Rückstoß drehender Teile in Entwurfs-px
   shotGlow: { frost: 'rgba(216,247,255,0.85)', lightning: 'rgba(255,246,168,0.9)', edge: 'rgba(255,255,255,0)', r: 26 }, // Aufleuchten beim Schuss
+  // B-173/B-174: Stufe 3 ist ein eigenes Gebäude (Box 80 x 140, docs/design/elemente/Tuerme-*.md)
+  towerScale3: { arrow: 1, cannon: 1, frost: 1, sniper: 1, lightning: 1 },
+  // Ruhe-Animation des benannten Teils der Stufe-3-Figur (Entwurfs-px, Sekunden); bei reduced motion aus
+  idle: {
+    arrow: { part: 'banners', period: 2, skew: 3, top: 62 },              // Wimpel: skewX 0 <-> 3 Grad um die Oberkante
+    cannon: { part: 'smoke', period: 1.6, rise: 8 },                      // Rauch steigt und verblasst
+    frost: { part: 'crystal', period: 3, squeeze: 0.25, bobPeriod: 2.4, bob: 3, at: [40, 9] }, // Kristall dreht und schwebt
+    sniper: { part: 'glow', period: 1.4, grow: 0.3, fade: 0.4, at: [40, 30] }, // Linsenschein pulsiert
+    lightning: { part: 'cloud', period: 2.4, bob: 3, spark: 'spark', sparkPeriod: 0.9, sparkOn: [[0, 0.27], [0.4, 0.63]] },
+  },
+  // Mündungsfeuer der Stufe 3 (Mörser x 1,4; Fernrohr wie Stufe 1/2)
+  flash3: { cannon: [19.6, 8.4, 6, 0.4, '#ffe266', 2.5], sniper: [11, 4, 5, 0.2, '#fff6a8', 2] },
   // Shop-Vorschau (48x48): Skalierung und Verschiebung nach unten in px
   icon: { arrow: { scale: 0.58, dy: 10 }, cannon: { scale: 0.59, dy: 10 }, frost: { scale: 0.57, dy: 10 }, sniper: { scale: 0.53, dy: 11 }, lightning: { scale: 0.54, dy: 11 } },
   // Gegner
@@ -905,6 +917,42 @@ export const FIGURE_STYLE = {
   // Lebensbalken (Z.113), nur bei Schaden: Breite = share x Figurbreite (mind. minW), über der Figur
   hp: { back: '#2b1a10', good: '#74d048', mid: '#f2c14e', low: '#e5481f', h: 12, inner: 6, pad: 3, gap: 4, minW: 34, share: 0.71, r: 6 },
   outline: '#2b1a10',
+};
+
+// B-173/B-174: Optik der Stufe-3-Fähigkeiten und des Aufstiegs (nur Darstellung, keine Spielwerte).
+// Maße in Spiel-px (Kachel 40), Zeiten in Sekunden. Bauvorlagen: docs/design/elemente/Effekte-*.md
+export const MASTER_FX = {
+  maxParticles: 120, // Obergrenze aller Stufe-3-Teilchen zusammen je Bild (Funken, Flämmchen, Glanz, Spuren)
+  ink: '#2b1a10',
+  ascend: {
+    width: 1.25, core: 0.4, grow: 0.36, swapAt: 0.42, ring: 0.7, sparks: 6, sparkRise: 110, sparkR: 6, sparkSpread: 0.7, sparkLife: 0.7,
+    text: 'Stufe 3!', textLife: 1.2, textRise: 16, textLift: 1.2, life: 1.8, fadeFrom: 0.9,
+    colors: ['#ffe27a', '#fff3d2', 'rgba(255,243,210,0)'], coreColor: 'rgba(255,255,255,0.55)', ringColor: '#ffe27a', ringW: 4, ringFlat: 0.33,
+    font: '30px "Lilita One", "Trebuchet MS", sans-serif', textInk: 6,
+  },
+  multishot: { main: '#ffe27a', glow: 'rgba(255,243,210,0.35)', side: '#fff3d2', w: [4, 9, 2.5], trailShare: 0.14, trailMin: 18, star: [11, 8], starLife: 0.25, maxTrails: 24, muzzle: [40, 48] },
+  storm: {
+    tele: 0.35, teleColor: '#ffe266', teleW: 2.5, teleDash: [7, 5], flat: 0.36, cloud: '#4a4458', cloudLift: 40, puffs: [[-16, 0, 14], [0, -6, 18], [16, 0, 12]], cloudInk: 2.5,
+    bolt: '#fff6a8', boltW: [8, 5, 1.6], kinks: 6, kinkAmp: 12, branches: 2, branchLen: [20, 30], flicker: [0.1, 0.05, 0.1], reducedFlash: 0.15,
+    light: 1.2, ring: 0.65, ringFrom: 0.3, ringTo: 1.35, ringW: 3, soot: 0.3, sootR: 0.8, sootLife: 1.0, cloudLife: 1.8, life: 1.8, maxStrikes: 6,
+    link: 0.15, linkDash: [4, 4], linkW: 2, electric: '#8fb8ff',
+  },
+  burn: {
+    soot: 'rgba(43,26,16,0.45)', flames: 5, flameH: 18, flicker: [0.27, 0.35, 0.42], embers: 3, emberRise: 26, emberR: 2, fadeIn: 0.1, fadeOut: 0.35, maxPatches: 4,
+    glow: ['rgba(255,194,58,0.55)', 'rgba(255,122,31,0)'], flame: '#ff7a1f', core: '#ffc23a', ember: '#ffe58a', inkW: 2,
+    ring: 0.4, ringFrom: 0.3, ringTo: 1.3, ringW: 5, enemyFlame: 10, enemyFlameH: 12,
+  },
+  iceFloor: {
+    fill: 'rgba(232,251,255,0.85)', edge: '#3b8fcb', inner: 'rgba(143,216,242,0.45)', ry: 0.36, grow: 0.35, overshoot: 1.05, shrinkTo: 0.85, fadeOut: 0.7, glints: 3, twinkle: 1.2, maxPerTower: 3,
+    edgeW: 2.5, crackW: 1.5, cracks: 4, innerShare: 0.68, innerShift: 6, glintR: [3.5, 5], glint: '#ffffff',
+    rime: 'rgba(143,216,242,0.8)', rimeLine: '#e8fbff', rimeShare: 0.6, rimeRy: 4, rimeTicks: 3, rimeTick: 4,
+  },
+  mark: {
+    color: '#ff4f6e', aim: 0.6, aimDash: [4, 4], aimW: 1.6, traceLife: 0.2, ring: 18, tick: 9, spin: 3, popFrom: 1.6, pop: 0.2, fadeOut: 0.2, tag: true,
+    inkW: 6, lineW: 3, arrow: [18, 11], arrowGap: 6, trace: '#ffffff', traceW: 2.5, traceGlow: 'rgba(255,243,210,0.4)', traceGlowW: 7,
+    tagSize: [46, 20], tagR: 9, tagText: '#ff9e8f', tagFont: '14px "Lilita One", "Trebuchet MS", sans-serif', tagLife: 1, tagTypes: ['tank', 'boss'],
+  },
+  bolt3: { width: 1.5, branch: 0.4 }, // Kettenblitz der Sturmspule: Breite x 1,5, je Segment ein Ast (Anteil der Segmentlänge)
 };
 
 // Weg im Flat-Pop-Stil (B-071). Maße in px bei 1x. Gesamtbreite in Kachelmitte = TILE, der wellige

@@ -51,10 +51,11 @@ export function infoOnLeft(centerX, boundsLeft, boundsRight) {
 // Treffer-Box der Turmfigur in Feld-px (Stil 1: die Türme ragen über ihre Kachel nach oben).
 // Gleiche Lage wie drawTowerFigure (render-towers.js): Fuß unter der Kachelmitte, Box der Figur, seitlich eingerückt.
 export function towerHitBox(t) {
-  const f = towerFigure(t.type, Math.min(3, Math.max(1, Math.round(t.level) || 1)), FIGURE_STYLE.trim);
+  const level = Math.min(3, Math.max(1, Math.round(t.level) || 1));
+  const f = towerFigure(t.type, level, FIGURE_STYLE.trim);
   const half = TILE / 2;
   if (!f) return { left: t.x - half, right: t.x + half, top: t.y - half, bottom: t.y + half };
-  const k = (FIGURE_STYLE.towerScale[t.type] ?? 1) * (TILE / FIGURE_STYLE.unit);
+  const k = ((level >= 3 ? FIGURE_STYLE.towerScale3 : FIGURE_STYLE.towerScale)[t.type] ?? 1) * (TILE / FIGURE_STYLE.unit); // Stufe 3: eigenes Gebäude
   const foot = t.y + FIGURE_STYLE.towerFoot * (TILE / FIGURE_STYLE.unit);
   const left = t.x + (f.box[0] - f.w / 2) * k;
   const right = t.x + (f.box[2] - f.w / 2) * k;

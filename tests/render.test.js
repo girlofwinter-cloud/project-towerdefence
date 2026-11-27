@@ -349,6 +349,10 @@ async function outlineExtent(type, level, cooldown, angle) {
 const TOWER_PLAN = { arrow: [1.05, 1.75], cannon: [1.26, 1.45], frost: [1.05, 1.6], sniper: [1.17, 1.9], lightning: [1.05, 1.8] };
 const POSE = { cannon: -Math.PI / 2 + 0.56, sniper: 0 };
 const SIDE = { arrow: 0.15, cannon: 0.5, frost: 0.15, sniper: 0.5, lightning: 0.15 }; // Überhang je Seite (drehende Teile samt Mündungsfeuer mehr)
+// B-173/B-174: Stufe 3 ist ein eigenes Gebäude (Box 80 x 140 Entwurfs-px, docs/design/elemente/Tuerme-*.md);
+// Schatten, Flügelspitzen und Lichthof reichen bis 80 Entwurfs-px (0,2 Kachel je Seite); der Mörser ist länger als das Rohr
+const TOWER_PLAN3 = { arrow: [1.4, 2.5], cannon: [1.4, 2.1], frost: [1.15, 2.3], sniper: [1.4, 2.5], lightning: [1.4, 2.5] };
+const SIDE3 = { arrow: 0.25, cannon: 0.7, frost: 0.25, sniper: 0.5, lightning: 0.25 };
 
 test('Stil 1 Türme: Größe wie im Plan, Fußpunkt 0,39 Kachel unter der Mitte, seitlich begrenzt, alle Stufen/Winkel/Rückstoß', async () => {
   const { FIGURE_STYLE } = await import('../src/config.js');
@@ -358,7 +362,8 @@ test('Stil 1 Türme: Größe wie im Plan, Fußpunkt 0,39 Kachel unter der Mitte,
     for (let level = 1; level <= 3; level++) {
       const { B, t } = await outlineExtent(type, level, 0, POSE[type] ?? 0);
       const w = (B.maxX - B.minX) / TILE, h = (B.maxY - B.minY) / TILE;
-      const [pw, ph] = TOWER_PLAN[type];
+      const [pw, ph] = (level >= 3 ? TOWER_PLAN3 : TOWER_PLAN)[type];
+      const side = (level >= 3 ? SIDE3 : SIDE)[type];
       assert.ok(Math.abs(w - pw) <= 0.2, `${type} L${level}: Breite ${w.toFixed(2)} statt ${pw}`);
       assert.ok(Math.abs(h - ph) <= 0.2, `${type} L${level}: Höhe ${h.toFixed(2)} statt ${ph}`);
       for (const angle of [0, Math.PI / 4, Math.PI / 2, Math.PI, -Math.PI / 2, 5.5]) {
@@ -366,7 +371,7 @@ test('Stil 1 Türme: Größe wie im Plan, Fußpunkt 0,39 Kachel unter der Mitte,
           const r = await outlineExtent(type, level, frac * TOWER_TYPES[type].rate, angle);
           const tag = `${type} L${level} a=${angle.toFixed(2)} f=${frac}`;
           assert.ok(r.B.maxY <= t.y + foot + 0.02 * TILE && r.B.maxY >= t.y + foot - 0.2 * TILE, `${tag}: Fuß ${(r.B.maxY - t.y).toFixed(1)}`);
-          assert.ok(r.B.minX >= r.x0 - SIDE[type] * TILE && r.B.maxX <= r.x0 + TILE + SIDE[type] * TILE, `${tag}: x ${(r.B.minX - r.x0).toFixed(1)}..${(r.B.maxX - r.x0).toFixed(1)}`);
+          assert.ok(r.B.minX >= r.x0 - side * TILE && r.B.maxX <= r.x0 + TILE + side * TILE, `${tag}: x ${(r.B.minX - r.x0).toFixed(1)}..${(r.B.maxX - r.x0).toFixed(1)}`);
         }
       }
     }
@@ -612,7 +617,7 @@ test('Stil-Helfer: rr mit winzigem w/h und grossem Radius bleibt endlich und aus
   }
 });
 
-test('Stil 1: Türme Stufe 1-3 unterscheiden sich (Goldband ab Stufe 2, Stufe 3 zwei Bänder), alle Typen', async () => {
+test('Stil 1: Türme Stufe 1-3 unterscheiden sich (Goldband auf Stufe 2, Stufe 3 eigenes Gebäude), alle Typen', async () => {
   const { drawTower } = await import('../src/render.js');
   const { FIGURE_STYLE } = await import('../src/config.js');
   const draw = (type, level) => {
@@ -630,7 +635,12 @@ test('Stil 1: Türme Stufe 1-3 unterscheiden sich (Goldband ab Stufe 2, Stufe 3 
   for (const type of Object.keys(TOWER_TYPES)) {
     const [l1, l2, l3] = [1, 2, 3].map((level) => draw(type, level));
     assert.ok(l2.total > l1.total && l3.total > l2.total, `${type}: mehr Zeichenoperationen je Stufe`);
-    assert.deepEqual([l1.gold, l2.gold, l3.gold], [0, 1, 2], `${type}: Goldbänder je Stufe`);
+    assert.deepEqual([l1.gold, l2.gold], [0, 1], `${type}: Goldbänder je Stufe`);
+    // B-173/B-174: Stufe 3 hat keine Goldbänder, sondern eine eigene Figur (Box 80 x 140 statt Stufe 2 mit Band)
+    const { towerFigure } = await import('../src/figures.js');
+    const f2 = towerFigure(type, 2, FIGURE_STYLE.trim), f3 = towerFigure(type, 3, FIGURE_STYLE.trim);
+    assert.deepEqual([f3.w, f3.h], [80, 140], `${type}: Box Stufe 3`);
+    assert.ok(f3.h > f2.h, `${type}: Stufe 3 höher als Stufe 2`);
   }
 });
 

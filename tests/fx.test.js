@@ -370,10 +370,11 @@ test('Stil 1 Sprites: je Typ x Stufe x Pixeldichte genau einmal gebaut, danach n
     const before = spriteStats.builds;
     const first = frame(1);
     const built = spriteStats.builds - before;
-    // Türme: 5 Typen x 3 Stufen, Kanone und Scharfschütze mit Teil vor dem drehenden Rohr (+2 x 3);
+    // Türme Stufe 1/2: 5 Typen x 2, Kanone und Scharfschütze mit Teil vor dem drehenden Rohr (+2 x 2);
+    // Stufe 3 (B-173/B-174): feste Teile vor und hinter dem bewegten Teil je ein Sprite (Pfeil, Kanone, Scharfschütze 2; Frost, Blitz 1);
     // Gegner: 13 Typen x 2, Glutling ohne Eis-Fassung nur 1 (B-167 bis B-170)
-    assert.equal(built, 15 + 6 + 25, 'jede Figur genau ein Sprite');
-    assert.ok(first.drawImage >= 15 + 6 + 25);
+    assert.equal(built, 10 + 4 + 8 + 25, 'jede Figur genau ein Sprite');
+    assert.ok(first.drawImage >= 10 + 4 + 8 + 25);
     frame(1);
     frame(1);
     assert.equal(spriteStats.builds - before, built, 'zweiter Frame baut nichts neu');
