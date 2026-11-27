@@ -17,6 +17,48 @@ Erledigte Einträge (`fertig`) liegen in `docs/archiv/BACKLOG-fertig.md`. Beim A
 
 ---
 
+### B-160: Tokens im Code anlegen (src/theme.js und CSS-Variablen)
+- Status: vorschlag
+- Aufwand: S
+- Idee: Erst nach dem Merge des Stil-1-Umbaus. Neue Datei `src/theme.js` (kein DOM, in Node importierbar) mit allen Farb-Tokens des Design-Systems "Gemalt und warm" (`docs/design/README.md`) unter camelCase-Namen, dazu `THEME_SIZE` für Konturen, Rundungen und Knopfgrößen. `scripts/theme-css.mjs` (ohne Abhängigkeiten) schreibt daraus den `:root`-Block in `style.css` (Kommentar "generiert aus src/theme.js"). Bestehende 10 Variablen (`--ink`, `--cream` …) behalten ihre Namen. Noch kein Umbau der Nutzer. Konzept: `docs/design/token-einfuehrung.md`.
+- Akzeptanzkriterien:
+  - `src/theme.js` enthält jeden Farb-Token aus dem Design-System (100 Stück, Stand 2026-11-27) mit gleichem Wert.
+  - Neuer Test in `tests/render.test.js`: jeder Eintrag aus `THEME` steht als `--<kebab-name>` mit gleichem Wert im `:root`-Block von `style.css` und umgekehrt.
+  - Spiel sieht pixelgleich aus (Screenshot `#game` und HUD vorher/nachher bei 1280x800 identisch), `npm test` grün.
+
+### B-161: Verstreute Farbwerte auf Tokens umstellen
+- Status: vorschlag
+- Aufwand: M
+- Idee: Nach B-160. Alle Farbliterale der Stil-1-Optik durch Tokens ersetzen: `style.css` (78 Literale → `var(--…)`), `src/figures.js` (187, davon Kontur 84×), `src/svg-figure.js` (Verläufe), `src/render-painted.js` (50), `src/config.js` Stil-1-Blöcke (`FIGURE_STYLE`, `PAINTED_PALETTE`, `MAPS.*.theme.painted`, `LAVA_STYLE`), `index.html` und `src/main.js` (Inline-SVG über Klassen bzw. `style="fill:var(--…)"`). Bestand je Datei: `docs/design/token-einfuehrung.md`. Reine Optik, keine Logik.
+- Akzeptanzkriterien:
+  - `grep -cE "#[0-9a-fA-F]{6}"` in `src/figures.js`, `src/render-painted.js`, `src/svg-figure.js`, `index.html`, `src/main.js` ergibt 0; in `style.css` nur noch im generierten `:root`-Block.
+  - Screenshots vorher/nachher pixelgleich: Wiese mit allen 5 Türmen auf Stufe 1–3 und allen Gegnertypen, jede Karte im Startbild, HUD in allen Zuständen (bzw. Styleguide-Seite, falls B-164 schon da ist).
+  - `npm test` und `npm run test:e2e` grün.
+
+### B-162: Alte Stile vor Stil 1 entfernen und Doppelwerte vereinheitlichen
+- Status: vorschlag
+- Aufwand: M
+- Idee: Nach B-161. Prüfen, welche Blöcke in `src/config.js` nach dem Stil-1-Umbau nicht mehr gelesen werden (`STYLE`, `ICON`, `PATH_STYLE`, `GROUND_STYLE`, `DECOR_STYLE`, `TREE_FRAME`, `ACCENT_STYLE`, `WATER_STYLE`, `SHOP_CARD`, `MAPS.*.theme.decor/path/grass`, Konstanten in `src/render.js` wie `GRASS_COLORS`, `GATE_WOOD`) und mit ihrem Zeichencode entfernen. Doppelte Schreibweisen einer Rolle (Gold `#f2c14e`/`#f4c542`, Holz `#c88a4c`/`#c58f55`/`#b97a3e`) auf einen Token bringen; wo sich dadurch sichtbar etwas ändert, dem Menschen eine Liste mit Vorher/Nachher vorlegen.
+- Akzeptanzkriterien:
+  - Kein entfernter Block wird noch importiert (`grep`), Tests, die nur alte Stile prüfen, sind mit dem Menschen abgestimmt (Teständerung).
+  - Verschiedene Hexwerte in `src/config.js` sinken von 319 auf höchstens 200.
+  - `npm test` und `npm run test:e2e` grün.
+
+### B-163: Kontrast der Info-Meldung
+- Status: vorschlag
+- Aufwand: S
+- Idee: Die grüne Meldung (`#message.info`, cream auf `#4f8a34`) erreicht 3,8:1, unter 4,5:1 für Text. Vorschlag: Fläche auf `#3f7a2c` (ca. 5,0:1) abdunkeln oder Schrift mit `text-shadow 0 2px 0 ink` wie im Pause-Banner. Gefunden beim Anlegen des Design-Systems.
+- Akzeptanzkriterien:
+  - Kontrast cream zu Meldungsfläche ≥ 4,5:1 (gemessen), Token `message-info` im Design-System nachgezogen.
+
+### B-164: Styleguide-Seite mit allen Bauteilen
+- Status: vorschlag
+- Aufwand: M
+- Idee: Nach dem Merge des Stil-1-Umbaus. Testseite `styleguide.html` zeigt alle Türme in allen Stufen, alle Gegner (normal, eingefroren, beschädigt, Sonderzustand), Effekte zu fünf festen Zeitpunkten, alle Knöpfe und HUD-Teile in allen Zuständen und alle Karten, mit dem echten Zeichencode und eingefrorener Zeit. Die Zellen kommen aus `styleguideCatalog()` (liest `config.js`), neue Typen erscheinen von selbst. Der designer prüft künftig per Screenshot dieser Seite statt per nachgespielter Partie. Bauvorlage: `docs/design/elemente/Seite-Styleguide.md`.
+- Akzeptanzkriterien:
+  - Alle Punkte unter "Messbare Abnahme" in der Bauvorlage erfüllt (u. a. 15 Turm-Zellen, ≥ 40 Gegner-Zellen, 5 Karten, deterministische Screenshots mit `?t=0.5`).
+  - Neue Tests: Katalog-Test in `tests/render.test.js`, `tests/e2e/styleguide.test.mjs`.
+
 ### B-128: Magier stärker machen
 - Status: vorschlag
 - Aufwand: M
