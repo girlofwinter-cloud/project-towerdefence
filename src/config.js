@@ -890,6 +890,7 @@ export const FIGURE_STYLE = {
   badge: { colors: ['#d7dde0', '#f2c14e', '#ff8a3d'], r: 11, line: 2.5, dx: -9, dy: -15, ink: '#2b1a10', font: '14px "Lilita One", "Trebuchet MS", sans-serif', textDy: 0.5 },
   trim: { color: '#f2c14e', ink: '#2b1a10', width: 3, edge: 5 }, // Goldband ab Stufe 2 (Stufe 3: zwei Bänder)
   cannonTilt: 1.25, // größte Neigung des Kanonenrohrs aus der Senkrechten (rad)
+  cannonTilt3: 0.5, // Mörser der Mörserfestung (Stufe 3): längeres Rohr, neigt sich weniger, ragt nicht weit zur Seite
   muzzle: 0.55,     // Mündungsfeuer, solange der Rückstoß-Anteil darüber liegt
   squash: 0.05,     // Stauchung feststehender Türme direkt nach dem Schuss (Anteil der Höhe)
   recoil: { arrow: 0, cannon: 4, frost: 0, sniper: 3, lightning: 0 }, // Rückstoß drehender Teile in Entwurfs-px

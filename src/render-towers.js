@@ -26,13 +26,13 @@ export function towerFootY(t) {
 }
 
 // Neigung des Kanonenrohrs aus der Senkrechten: zeigt zur Seite des Ziels, nie nach unten (Mörser)
-export function cannonTilt(angle) {
-  if (!Number.isFinite(angle)) return 0.56; // wie im Entwurf (32 Grad)
+export function cannonTilt(angle, max = S.cannonTilt) {
+  if (!Number.isFinite(angle)) return Math.min(0.56, max); // wie im Entwurf (32 Grad), höchstens max
   let n = (angle + Math.PI / 2) % TWO_PI;
   if (n > Math.PI) n -= TWO_PI;
   if (n <= -Math.PI) n += TWO_PI;
   const m = Math.sign(n) * Math.min(Math.abs(n), Math.PI - Math.abs(n));
-  return Math.max(-S.cannonTilt, Math.min(S.cannonTilt, m));
+  return Math.max(-max, Math.min(max, m));
 }
 
 // Spiegelung der Figur (Scharfschütze blickt nach links)
@@ -148,7 +148,7 @@ export function drawTowerFigure(ctx, t, shot, time, reduced = false, level = t.l
     ctx.save();
     ctx.translate(px, py);
     if (t.type === 'cannon') {
-      ctx.rotate(cannonTilt(t.angle));
+      ctx.rotate(cannonTilt(t.angle, lv >= 3 ? S.cannonTilt3 : S.cannonTilt));
       ctx.translate(0, rec); // Rohr zeigt nach oben: Rückstoß nach unten
     } else {
       ctx.rotate(flip < 0 ? Math.PI - a : a); // in der gespiegelten Figur

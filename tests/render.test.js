@@ -350,9 +350,9 @@ const TOWER_PLAN = { arrow: [1.05, 1.75], cannon: [1.26, 1.45], frost: [1.05, 1.
 const POSE = { cannon: -Math.PI / 2 + 0.56, sniper: 0 };
 const SIDE = { arrow: 0.15, cannon: 0.5, frost: 0.15, sniper: 0.5, lightning: 0.15 }; // Überhang je Seite (drehende Teile samt Mündungsfeuer mehr)
 // B-173/B-174: Stufe 3 ist ein eigenes Gebäude (Box 80 x 140 Entwurfs-px, docs/design/elemente/Tuerme-*.md);
-// Schatten, Flügelspitzen und Lichthof reichen bis 80 Entwurfs-px (0,2 Kachel je Seite); der Mörser ist länger als das Rohr
+// Schatten, Flügelspitzen und Lichthof reichen bis 80 Entwurfs-px (0,2 Kachel je Seite); der Mörser neigt sich nur bis cannonTilt3
 const TOWER_PLAN3 = { arrow: [1.4, 2.5], cannon: [1.4, 2.1], frost: [1.15, 2.3], sniper: [1.4, 2.5], lightning: [1.4, 2.5] };
-const SIDE3 = { arrow: 0.25, cannon: 0.7, frost: 0.25, sniper: 0.5, lightning: 0.25 };
+const SIDE3 = { arrow: 0.25, cannon: 0.35, frost: 0.25, sniper: 0.5, lightning: 0.25 };
 
 test('Stil 1 Türme: Größe wie im Plan, Fußpunkt 0,39 Kachel unter der Mitte, seitlich begrenzt, alle Stufen/Winkel/Rückstoß', async () => {
   const { FIGURE_STYLE } = await import('../src/config.js');
@@ -675,6 +675,17 @@ test('Stil 1: Kanone und Scharfschütze drehen zum Ziel, feste Türme stauchen s
   assert.ok(cannonTilt(0) > 1 && cannonTilt(Math.PI) < -1);
   assert.ok(Math.abs(cannonTilt(Math.PI / 4) - Math.PI / 4) < 1e-9 && Math.abs(cannonTilt(-Math.PI / 4) - Math.PI / 4) < 1e-9);
   for (let a = -7; a < 7; a += 0.37) assert.ok(Math.abs(cannonTilt(a)) <= 1.25 + 1e-9);
+  // Mörserfestung (Stufe 3): Mörser neigt sich höchstens cannonTilt3, auch ohne gültigen Winkel
+  const { FIGURE_STYLE } = await import('../src/config.js');
+  const max3 = FIGURE_STYLE.cannonTilt3;
+  assert.ok(max3 > 0 && max3 < FIGURE_STYLE.cannonTilt);
+  for (const a of [-7, -2, 0, 0.7, Math.PI, 5.5, NaN]) assert.ok(Math.abs(cannonTilt(a, max3)) <= max3 + 1e-9, `a=${a}`);
+  assert.equal(cannonTilt(0, max3), max3);
+  const l3 = { type: 'cannon', x: 100, y: 100, level: 3, cooldown: 0.3, angle: 0 };
+  const logs = [];
+  const m = mockCtx();
+  drawTower(new Proxy(m.ctx, { get: (t, k) => (k === 'rotate' ? (r) => logs.push(r) : t[k]), set: (t, k, v) => { t[k] = v; return true; } }), l3, false);
+  assert.deepEqual(logs, [max3], 'Stufe 3 dreht den Mörser höchstens um cannonTilt3');
 });
 
 // ---------- Weg im Flat-Pop-Stil (B-071) ----------
