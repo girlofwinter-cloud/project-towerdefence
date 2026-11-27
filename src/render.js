@@ -196,6 +196,7 @@ export function render(ctx, state, ui) {
 }
 
 // ---------- Hintergrund (Gelaende, Weg, Dekoration) ----------
+// Nur Rückfall (Node, während des Ladens, bei Rasterfehler): im Browser zeichnet der gemalte Hintergrund (paintedFor).
 // Rein visuelle Konstanten (Balancing-Zahlen stehen in config.js).
 const GRASS_COLORS = ['#4d9c41', '#51a145']; // Schachbrett-Grundton
 const GRASS_SHIFT = 0.07; // max. Helligkeitsversatz pro Kachel (Deckkraft)

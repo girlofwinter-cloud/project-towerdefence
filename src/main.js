@@ -641,7 +641,7 @@ function keepFocus() {
 window.addEventListener('keydown', (ev) => {
   if (startScreen.handleKey(ev)) return; // C5: Startbildschirm offen
   if (fieldKey(ev)) return;
-  const key = ev.key.toLowerCase();
+  const key = String(ev.key ?? '').toLowerCase(); // manche Ereignisse (Autofill) haben kein key
   // Enter/Leertaste auf einem Ringknopf löst den Knopf aus (nicht den Wellenstart)
   if ((key === ' ' || key === 'enter') && ev.target.closest?.('.ring')) return;
   const type = Object.keys(TOWER_TYPES).find((t) => TOWER_TYPES[t].key === key);
