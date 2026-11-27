@@ -359,17 +359,21 @@ canvas.addEventListener('pointermove', (ev) => {
   const hr = $('hud-bar').getBoundingClientRect();
   const pad = HUD_BAR.dimPad;
   ui.hudDim = ev.clientX >= hr.left - pad && ev.clientX <= hr.right + pad && ev.clientY >= hr.top - pad && ev.clientY <= hr.bottom + pad;
-  canvas.classList.toggle('over-flag', overFlag(ev));
+  const flag = overFlag(ev);
+  canvas.classList.toggle('over-flag', flag);
   ui.hoverPx = pointFromEvent(ev);
-  ui.hover = inField ? { col, row, ok: canBuild(state, col, row).ok } : null;
+  ui.hover = inField && !flag ? { col, row, ok: canBuild(state, col, row).ok } : null; // über der Fahne kein Bau-Rahmen
 });
 // Bei Touch feuert pointerleave direkt nach dem Loslassen: dort die Vorschau behalten.
 canvas.addEventListener('pointerleave', (ev) => { if (ev.pointerType === 'mouse') { ui.hover = null; ui.hudDim = false; } });
-// G5/C3: Klick auf die Wellenfahne im Rand startet die Welle (Box in Entwurfs-px, ±8 Spiel-px Spielraum)
+// G5/C3: Klick auf die Wellenfahne startet die Welle (im Rand: Box in Entwurfs-px plus flagHitPad; im Feld: Fahnen-Kacheln)
 function overFlag(ev) {
+  // Fahnen-Kacheln im Feld (Tuch ragt hinein, nicht bebaubar) zählen ganz als Fahne
+  const t = tileFromEvent(ev);
+  if (t.inField && state.flagTiles?.has(`${t.col},${t.row}`)) return true;
   const p = pointFromEvent(ev);
   const K = TILE / PAINTED_STYLE.unit, pad = PAINTED_STYLE.flagHitPad;
-  return !tileFromEvent(ev).inField && flagBoxes(state).some((f) => p.x >= f.box[0] * K - pad && p.x <= f.box[2] * K + pad && p.y >= f.box[1] * K - pad && p.y <= f.box[3] * K + pad);
+  return !t.inField && flagBoxes(state).some((f) => p.x >= f.box[0] * K - pad && p.x <= f.box[2] * K + pad && p.y >= f.box[1] * K - pad && p.y <= f.box[3] * K + pad);
 }
 canvas.addEventListener('click', (ev) => {
   if (!ui.aiming && !ui.buildType && overFlag(ev)) { doStartWave(); return; }

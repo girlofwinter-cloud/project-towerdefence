@@ -3346,3 +3346,33 @@ test('C-Abnahme 5: waveProgress füllt den Wellenknopf mit dem Anteil besiegter 
   assert.equal(waveProgress(s, v.peak).fill, 1, 'alle besiegt');
   assert.ok(waveProgress(s, NaN).fill === 0 && waveProgress({ waveActive: true }, 0).fill === 0, 'ungültige Werte');
 });
+
+// Entscheidung 2026-11-27: große Wellenfahne ragt ins Feld; ihre Kacheln sind nicht bebaubar, die Nachbarn schon.
+// Wiese: Fahne steht unter dem Weg über dem Fluss (0,3), dort ist ohnehin Wasser (kein Bauplatz geht verloren).
+test('Fahnen-Kacheln: canBuild lehnt ab ("Hier steht die Fahne"), Nachbarkacheln bleiben bebaubar, alle Karten', () => {
+  for (const id of Object.keys(MAPS)) {
+    const s = createGame({ mapId: id });
+    const tiles = MAPS[id].flagTiles;
+    assert.ok(tiles.length >= 1, `${id}: Fahnen-Kachel vorhanden`);
+    assert.equal(s.flagTiles.size, tiles.length);
+    for (const [c, r] of tiles) {
+      assert.ok(c >= 0 && c < COLS && r >= 0 && r < ROWS, `${id}: ${c},${r} im Feld`);
+      assert.ok(!s.blocked.has(`${c},${r}`) && !s.obstacles.has(`${c},${r}`), `${id}: Fahne nicht auf Weg oder Hindernis`);
+      const want = s.water.has(`${c},${r}`) ? 'Hier ist Wasser' : 'Hier steht die Fahne';
+      assert.deepEqual(canBuild(s, c, r), { ok: false, reason: want }, `${id}: ${c},${r}`);
+      const g0 = s.gold;
+      assert.equal(buildTower(s, 'arrow', c, r).ok, false);
+      assert.equal(s.gold, g0, 'kein Gold abgezogen');
+    }
+  }
+  assert.deepEqual(MAPS.meadow.flagTiles, [[0, 3]]);
+  assert.ok(createGame({ mapId: 'meadow' }).water.has('0,3'), 'Wiese: Fahnen-Kachel ist Wasser');
+  // Zangenangriff: Fahne oben über dem Weg auf (0,0); Nachbarn rechts und unten bleiben bebaubar
+  const f = createGame({ mapId: 'fork' });
+  assert.deepEqual(MAPS.fork.flagTiles, [[0, 0], [0, 10]]);
+  for (const [c, r] of [[0, 1], [1, 0], [0, 11], [1, 10]]) assert.ok(canBuild(f, c, r).ok, `fork ${c},${r}`);
+  // Zwei Fronten: zwei Eingänge, zwei Fahnen-Kacheln
+  assert.equal(createGame({ mapId: 'twin' }).flagTiles.size, 2);
+  // Override ohne flagTiles: alles wie früher
+  assert.ok(canBuild(createGame({ mapId: 'fork', flagTiles: undefined }), 0, 0).ok);
+});

@@ -81,6 +81,7 @@ export const MAPS = {
     ],
     // B-103: wenige Hindernisse (Art aus obstacleKind in decor.js): Fels, Baum
     obstacles: [[8, 1], [12, 12]],
+    flagTiles: [[0, 3]], // Wellenfahne am Eingang ragt hierüber ins Feld: nicht bebaubar, Klick startet die Welle (Test: flagTilesOf)
     // B-104: Wasser ist nicht bebaubar (canBuild), Brücken sind Weg-Kacheln (nur Optik, Gegner laufen normal)
     river: MEADOW_RIVER,
     lake: MEADOW_LAKE,
@@ -112,6 +113,7 @@ export const MAPS = {
     // (dunkler als der Schnee), Eiskristalle und Eisfelsen als Streu-Deko, kühles Licht.
     // B-103: wenige Hindernisse: Fels, zwei Tannen
     obstacles: [[2, 2], [9, 12], [16, 12]],
+    flagTiles: [[0, 10]], // Wellenfahne am Eingang ragt hierüber ins Feld: nicht bebaubar, Klick startet die Welle (Test: flagTilesOf)
     theme: {
       grass: ['#cfe6f2', '#d9edf6'], blade: '#9cc3d8',
       treeFrame: {
@@ -200,6 +202,7 @@ export const MAPS = {
     modifiers: { towerDamage: { cannon: 0.92 } },
     // B-103: wenige Hindernisse: Baum, Fels, Baum, Baum
     obstacles: [[10, 1], [11, 2], [15, 11], [1, 6]],
+    flagTiles: [[0, 0], [0, 10]], // Wellenfahne am Eingang ragt hierüber ins Feld: nicht bebaubar, Klick startet die Welle (Test: flagTilesOf)
     // B-072: Zangenangriff im Flat-Pop-Stil (STIL.md Hochland/Herbst): Herbstbäume, Felsgruppen, Laubhaufen.
     theme: {
       treeFrame: {
@@ -306,6 +309,7 @@ export const MAPS = {
     modifiers: { enemySpeed: 0.9 },
     // B-103: wenige Hindernisse: Baum, Fels, Baum
     obstacles: [[1, 6], [6, 1], [12, 12]],
+    flagTiles: [[0, 2], [0, 10]], // Wellenfahne am Eingang ragt hierüber ins Feld: nicht bebaubar, Klick startet die Welle (Test: flagTilesOf)
     // Spätsommer im Flat-Pop-Stil: gemischter Baumrahmen, warmes Gras, Pilze, Baumstümpfe und Wegweiser.
     theme: {
       treeFrame: {
@@ -376,6 +380,7 @@ export const MAPS = {
     lava: [...withoutBridges(VOLCANO_LAVA_RIVER, VOLCANO_BRIDGES), ...VOLCANO_LAVA_POOLS],
     // B-103: wenige Hindernisse (verkohlter Baum oder Fels)
     obstacles: [[1, 8], [7, 1], [18, 8]],
+    flagTiles: [[0, 9]], // Wellenfahne am Eingang ragt hierüber ins Feld: nicht bebaubar, Klick startet die Welle (Test: flagTilesOf)
     // Flat-Pop-Vulkan (STIL.md): dunkles Vulkangestein, verkohlte Bäume und Felsbrocken als Rahmen, Asche und Glutsteine
     // als Streu-Deko, warmes Licht von der Lava.
     theme: {
@@ -1004,7 +1009,8 @@ export const PAINTED_STYLE = {
   river: [92, 76, 66],     // Fluss: Sand, Kontur, Wasser (Strichbreiten in Entwurfs-px, Z.66–68; schmaler als im Entwurf, Bauplätze frei)
   lakeRadius: [34, 28, 25], // See ohne gemalte Form: Hüllradius je Seekachel für Sand, Kontur, Wasser (px bei 1x)
   castleScale: 0.8,        // Burgtor am Ausgang (im Rand)
-  flagScale: 0.73,         // Wellenfahne am Eingang (im Rand); größer geht nicht: Tuch reicht sonst ins Feld (höchstens (Rand - 2) / 94)
+  flagScale: 0.9125,       // Wellenfahne am Eingang (1,25 x 0,73): das Tuch ragt ins Feld, dort ist nicht bebaubar (MAPS.<id>.flagTiles)
+  flagLift: 30,            // Fahne: Fuß so weit über (bzw. Spitze so weit unter) der Wegmitte (Entwurfs-px); Tuch liegt so in einer Kachelzeile
   flagNumber: 35,          // C-Abnahme 10: Zahl auf der Wellenfahne (Entwurfs-px vor Fahnen-Maßstab; ca. 22 CSS-px bei 1280x800)
   flagHitPad: 8,           // Klickfläche der Fahne: Spielraum um die Box (Spiel-px)
   flagTopGap: 64,          // Fahne: Mindestabstand der Spitze zur Canvas-Oberkante (Entwurfs-px); sonst kleiner (Zwei Fronten, Zeile 1)

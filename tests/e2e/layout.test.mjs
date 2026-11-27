@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 import { createServer } from '../../scripts/serve.mjs';
 import { enterGame } from './tile.mjs';
-import { TILE, FRAME_MARGIN, VIEW_WIDTH, PAINTED_STYLE } from '../../src/config.js';
+import { TILE, FRAME_MARGIN, VIEW_WIDTH, PAINTED_STYLE, MAPS } from '../../src/config.js';
 import { createGame } from '../../src/game.js';
 import { flagBoxes } from '../../src/render.js';
 
@@ -92,6 +92,22 @@ test('G5 Wellenfahne: Klick auf die Fahne im Rand startet Welle 1', async () => 
   assert.equal(await page.evaluate(() => document.getElementById('game').classList.contains('over-flag')), true, 'Hand-Zeiger über der Fahne');
   await page.mouse.click(box.x + cx * s, box.y + cy * s);
   assert.equal(await page.evaluate(() => window.__game().wave), 1);
+  await ctx.close();
+});
+
+// Entscheidung 2026-11-27: große Fahne ragt ins Feld; Klick auf die Fahnen-Kachel startet die Welle (statt Bau-Ring)
+test('Große Wellenfahne: Klick auf die Fahnen-Kachel im Feld startet Welle 1, kein Turm', async () => {
+  const { ctx, page } = await openPage({ width: 1280, height: 800 });
+  const mapId = await page.evaluate(() => window.__game().mapId);
+  const [c, r] = MAPS[mapId].flagTiles[0];
+  const box = await page.locator('#game').boundingBox();
+  const s = box.width / VIEW_WIDTH;
+  const x = box.x + (FRAME_MARGIN + (c + 0.5) * TILE) * s, y = box.y + (FRAME_MARGIN + (r + 0.5) * TILE) * s;
+  await page.mouse.move(x, y);
+  assert.equal(await page.evaluate(() => document.getElementById('game').classList.contains('over-flag')), true, 'Hand-Zeiger über der Fahnen-Kachel');
+  await page.mouse.click(x, y);
+  assert.equal(await page.evaluate(() => window.__game().wave), 1);
+  assert.equal(await page.evaluate(() => window.__game().towers.length), 0);
   await ctx.close();
 });
 

@@ -44,6 +44,7 @@ export function createGame({ mapId, ...overrides } = {}) {
     obstacles: new Set((MAPS[id].obstacles || []).map(([c, r]) => `${c},${r}`)), // Bäume/Felsen (kein Weg)
     water: new Set((MAPS[id].water || []).map(([c, r]) => `${c},${r}`)), // B-104: Fluss und See (nicht bebaubar)
     lava: new Set((MAPS[id].lava || []).map(([c, r]) => `${c},${r}`)), // B-030: Lavafluss und Lavatümpel (nicht bebaubar)
+    flagTiles: new Set((MAPS[id].flagTiles || []).map(([c, r]) => `${c},${r}`)), // Wellenfahne ragt ins Feld (nicht bebaubar)
     ...overrides,
   };
   // Alle Wege: Hauptweg (state.path, auch per override) plus extraPaths; ohne extraPaths genau ein Weg.
@@ -103,6 +104,7 @@ export function canBuild(state, col, row) {
   if (state.obstacles && state.obstacles.has(`${col},${row}`)) return { ok: false, reason: 'Hier wächst ein Baum oder liegt ein Fels' };
   if (state.water && state.water.has(`${col},${row}`)) return { ok: false, reason: 'Hier ist Wasser' };
   if (state.lava && state.lava.has(`${col},${row}`)) return { ok: false, reason: 'Hier ist Lava' };
+  if (state.flagTiles && state.flagTiles.has(`${col},${row}`)) return { ok: false, reason: 'Hier steht die Fahne' };
   if (towerAt(state, col, row)) return { ok: false, reason: 'Hier steht schon ein Turm' };
   return { ok: true };
 }

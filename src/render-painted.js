@@ -47,7 +47,8 @@ const BARE = { w: 72, h: 90, svg: (c) => `<ellipse cx="42" cy="86" rx="24" ry="5
   + `<path d="M35 70 V60" stroke="${c.pine[3]}" stroke-width="2" stroke-linecap="round" opacity=".7"/>` };
 const TREE_SHAPES = { pine: PINE, round: ROUND, bare: BARE };
 const CASTLE = { w: 104, h: 130, top: -18, left: 10, right: 96, base: 122, svg: '<ellipse cx="54" cy="122" rx="44" ry="8" fill="rgba(20,30,40,.4)"/><path d="M10 122 V50 H30 V36 H40 V50 H58 V122 Z" fill="url(#p-stone)" stroke="#2b1a10" stroke-width="4" stroke-linejoin="round"/><path d="M22 122 V90 a14 16 0 0 1 28 0 V122" fill="#33211a" stroke="#2b1a10" stroke-width="3"/><path d="M12 62 H56 M12 78 H20 M40 78 H56" stroke="#6b5a48" stroke-width="2"/><path d="M56 122 V30 H72 V20 H80 V30 H96 V122 Z" fill="url(#p-stone)" stroke="#2b1a10" stroke-width="4" stroke-linejoin="round"/><path d="M70 30 L84 -4 L98 30 Z" fill="#c4452f" stroke="#2b1a10" stroke-width="3.5" stroke-linejoin="round"/><rect x="76" y="48" width="8" height="18" rx="4" fill="#33211a"/><path d="M84 -4 V-18" stroke="#2b1a10" stroke-width="3"/><path d="M84 -18 L104 -12 L84 -6 Z" fill="#3a7bd5" stroke="#2b1a10" stroke-width="2.5" stroke-linejoin="round"/>' };
-const FLAG = { w: 110, h: 120, top: 0, left: 0, right: 94, base: 117, svg: '<ellipse cx="16" cy="112" rx="18" ry="5" fill="rgba(20,30,40,.4)"/><path d="M16 112 V6" stroke="#2b1a10" stroke-width="9" stroke-linecap="round"/><path d="M16 112 V6" stroke="#a9703d" stroke-width="4" stroke-linecap="round"/><circle cx="16" cy="6" r="6" fill="#f2c14e" stroke="#2b1a10" stroke-width="3"/><path d="M18 14 H92 L80 34 L92 54 H18 Z" fill="#c4452f" stroke="#2b1a10" stroke-width="4" stroke-linejoin="round"/><path d="M22 18 H86" stroke="#ea7a5a" stroke-width="3" stroke-linecap="round"/>' };
+// parts: Tuch und Mast samt Kontur (für die gesperrten Fahnen-Kacheln im Feld)
+const FLAG = { w: 110, h: 120, top: 0, left: 0, right: 94, base: 117, parts: [[16, 12, 94, 56], [7.5, -3, 24.5, 116.5]], svg: '<ellipse cx="16" cy="112" rx="18" ry="5" fill="rgba(20,30,40,.4)"/><path d="M16 112 V6" stroke="#2b1a10" stroke-width="9" stroke-linecap="round"/><path d="M16 112 V6" stroke="#a9703d" stroke-width="4" stroke-linecap="round"/><circle cx="16" cy="6" r="6" fill="#f2c14e" stroke="#2b1a10" stroke-width="3"/><path d="M18 14 H92 L80 34 L92 54 H18 Z" fill="#c4452f" stroke="#2b1a10" stroke-width="4" stroke-linejoin="round"/><path d="M22 18 H86" stroke="#ea7a5a" stroke-width="3" stroke-linecap="round"/>' };
 // Klippen-Plateaus (Z.54–58 oben, Z.60–64 Mitte unten): Umriss im Entwurf, ohne Verschiebung; Farben: Plateau, Wand (p-cliff), Rillen
 const CLIFF_TOP = { box: [395, -20, 730, 108], svg: (c) => `<path d="M395 -20 H730 V52 Q700 70 640 62 Q560 74 500 60 Q430 70 395 52 Z" fill="${c.cliff[0]}" stroke="${OL}" stroke-width="4" stroke-linejoin="round"/><path d="M395 52 Q430 70 500 60 Q560 74 640 62 Q700 70 730 52 V92 Q690 108 640 98 Q560 110 500 98 Q430 108 395 92 Z" fill="url(#p-cliff)" stroke="${OL}" stroke-width="4" stroke-linejoin="round"/><path d="M430 66 V92 M480 64 V98 M560 70 V104 M620 66 V96 M690 62 V94" stroke="${c.cliff[4]}" stroke-width="3" stroke-linecap="round" opacity=".7"/>` };
 const CLIFF_LOW = { box: [568, 610, 770, 730], svg: (c) => `<path d="M575 628 Q640 610 740 622 Q770 640 760 668 Q720 692 650 688 Q590 692 568 664 Z" fill="${c.cliff[1]}" stroke="${OL}" stroke-width="4" stroke-linejoin="round"/><path d="M568 664 Q590 692 650 688 Q720 692 760 668 V706 Q720 730 650 724 Q590 730 568 700 Z" fill="url(#p-cliff)" stroke="${OL}" stroke-width="4" stroke-linejoin="round"/><path d="M600 692 V716 M650 690 V722 M705 688 V716" stroke="${c.cliff[4]}" stroke-width="3" stroke-linecap="round" opacity=".7"/>` };
@@ -90,14 +91,15 @@ function edgeOf(p) {
   return { side, x: Math.min(Math.max(x, 0), FW), y: Math.min(Math.max(y, 0), FH) };
 }
 
-// Fahne (Eingang) bzw. Burgtor (Ausgang) ganz im Rand neben dem Kantenpunkt
-function landmark(kind, shape, s, edge) {
+// Fahne (Eingang) bzw. Burgtor (Ausgang) im Rand neben dem Kantenpunkt (die Fahne ragt mit dem Tuch ins Feld).
+// below: Fahne an einem seitlichen Eingang unter statt über dem Weg
+function landmark(kind, shape, s, edge, below = false) {
   const side = edge.side === 'left' || edge.side === 'right';
   let base; // Fußlinie
   if (kind === 'castle') base = side ? edge.y + 30 : edge.side === 'top' ? -4 : FH + MU;
-  else base = side ? edge.y - 22 : edge.side === 'top' ? -4 : FH + MU;
-  // Fahne an einem Eingang nahe der Oberkante: kleiner, damit oben Abstand zum Canvas-Rand bleibt (flagTopGap)
-  if (kind === 'flag' && side) s = Math.min(s, (base + MU - P.flagTopGap) / (shape.base - shape.top));
+  else base = side ? edge.y - P.flagLift : edge.side === 'top' ? -4 : FH + MU;
+  // Unter dem Weg: Spitze flagLift unter der Wegmitte
+  if (kind === 'flag' && side && below) base = edge.y + P.flagLift + (shape.base - shape.top) * s;
   const w = (shape.right - shape.left) * s;
   let x0; // linke Kante der sichtbaren Form
   if (edge.side === 'left') x0 = -MU + 2;
@@ -109,6 +111,39 @@ function landmark(kind, shape, s, edge) {
   return { kind, tx: f(tx), ty: f(ty), s, box };
 }
 
+// Gezeichnete Teile der Fahne (Tuch und Mast samt Kontur) als Rechtecke in Entwurfs-px; ohne Schatten
+function flagParts(fl) {
+  const at = ([x0, y0, x1, y1]) => [fl.tx + x0 * fl.s, fl.ty + y0 * fl.s, fl.tx + x1 * fl.s, fl.ty + y1 * fl.s];
+  return FLAG.parts.map(at);
+}
+
+// Fahne am Eingang: über oder unter dem Weg, je nachdem, wo das Tuch weniger Bauplätze verdeckt (gleich viele: oben).
+// Oben nur, wenn sie dort mit Abstand flagTopGap zur Canvas-Oberkante passt (Zwei Fronten: Eingang in Zeile 1).
+// free(c, r): Kachel wäre ohne Fahne bebaubar
+function flagAt(edge, free) {
+  const above = landmark('flag', FLAG, P.flagScale, edge);
+  const below = landmark('flag', FLAG, P.flagScale, edge, true);
+  if (edge.side !== 'left' && edge.side !== 'right') return above;
+  const cost = (fl) => flagTilesOf({ flags: [fl] }).filter(([c, r]) => free(c, r)).length;
+  const fits = above.box[1] >= -MU + P.flagTopGap;
+  return fits && cost(above) <= cost(below) ? above : below;
+}
+
+// Feldkacheln, die eine Fahne überdeckt (dort kann man nicht bauen; MAPS.<id>.flagTiles muss dazu passen, Test)
+export function flagTilesOf(scene) {
+  const out = new Set();
+  for (const fl of scene.flags) {
+    for (const [x0, y0, x1, y1] of flagParts(fl)) {
+      for (let r = Math.max(0, Math.floor(y0 / U)); r <= Math.min(ROWS - 1, Math.floor(y1 / U)); r++) {
+        for (let c = Math.max(0, Math.floor(x0 / U)); c <= Math.min(COLS - 1, Math.floor(x1 / U)); c++) {
+          if (Math.min(x1, (c + 1) * U) > Math.max(x0, c * U) && Math.min(y1, (r + 1) * U) > Math.max(y0, r * U)) out.add(`${c},${r}`);
+        }
+      }
+    }
+  }
+  return [...out].map((k) => k.split(',').map(Number)).sort((a, b) => a[1] - b[1] || a[0] - b[0]);
+}
+
 // Szene einer Karte: alle Teile mit Lage (Entwurfs-px, Feld ab 0,0) und Begrenzungsrahmen (box).
 // state: Spielzustand oder Kartendaten { mapId, path|paths, blocked, obstacles, water }.
 export function buildPaintedScene(state) {
@@ -118,6 +153,7 @@ export function buildPaintedScene(state) {
   const paths = state.paths || (state.path ? [state.path] : []);
   const blocked = state.blocked || new Set();
   const obstacles = state.obstacles || new Set();
+  const flagTiles = state.flagTiles || new Set(); // Fahnen-Kacheln: dort keine Tupfen (Fahne steht darüber)
   const water = state.water || new Set();
   const lavaTiles = state.lava || new Set();
   const pal = paletteFor(mapId);
@@ -177,7 +213,7 @@ export function buildPaintedScene(state) {
     if (pts.length < 2) continue;
     const start = edgeOf(pts[0]);
     const end = edgeOf(pts[pts.length - 1]);
-    scene.flags.push(landmark('flag', FLAG, P.flagScale, start));
+    scene.flags.push(flagAt(start, (c, r) => ![blocked, obstacles, water, lavaTiles].some((set) => set.has(`${c},${r}`))));
     // Mehrere Wege mit gemeinsamem Ausgang (Zangenangriff, Zwei Fronten): eine Burg
     const castle = landmark('castle', CASTLE, P.castleScale, end);
     if (!scene.castles.some((c) => c.tx === castle.tx && c.ty === castle.ty)) scene.castles.push(castle);
@@ -251,7 +287,7 @@ export function buildPaintedScene(state) {
         }
         continue;
       }
-      if (blocked.has(key) || water.has(key) || lavaTiles.has(key)) continue;
+      if (blocked.has(key) || water.has(key) || lavaTiles.has(key) || flagTiles.has(key)) continue;
       // Tupfen der Karte (Blumen, Eiskristalle, Laub, Glut) nur auf freien Kacheln
       if (v < pal.dotChance) scene.flowers.push({ kind: pal.dotKind, x: f(cx(c) + jx * 1.6), y: f(cy(r) + jy * 2), c, r, colors: [0, 1, 2].map((i) => pal.dots[(i + Math.floor(v * 100)) % pal.dots.length]) });
     }
