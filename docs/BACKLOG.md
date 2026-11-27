@@ -55,7 +55,7 @@ Zwei developer parallel (je eigene Sitzung, eigener Unter-Branch von `agent/stuf
 - Spur O, designer (sofort, parallel): Skizzen Stufe 3 (B-172), Entwurf Nekromantin (B-180), dazu Effekt-Skizzen für die Stufe-3-Fähigkeiten (Mehrfachschuss, Gewitter, Brandfläche, Eisboden, Markierung) und das Elite-Abzeichen (B-179). Umsetzung der Optik (B-173, B-174, Optik B-180) nach den Logik-Schritten.
 
 ### B-172: Stufe 3 als eigene Gestalt: Skizzen für alle fünf Türme (Design)
-- Status: entwurf
+- Status: fertig (Skizzen + Bauvorlagen in docs/design/elemente/, 27.11.)
 - Aufwand: S
 - Idee: Der `designer` skizziert für jeden Turm die Stufe 3 als eigene Gestalt (keine Feinarbeit, nur zum Vorstellen) in der Bauteil-Bibliothek in Claude Design und schreibt dazu je eine Bauvorlage für den `developer`. Vorschläge:
   - Pfeil → "Adlerhorst": höher, mit Wimpel und Adlerkopf; die Pfeile ziehen eine helle Spur.
@@ -69,7 +69,7 @@ Zwei developer parallel (je eigene Sitzung, eigener Unter-Branch von `agent/stuf
   - Je Turm eine Fläche "Stufe 1/2/3 nebeneinander" in Claude Design. Die Farben kommen aus `docs/design/system/`.
 
 ### B-173: Stufe 3: Pfeil, Kanone und Frost umsetzen (nur Optik)
-- Status: entwurf
+- Status: offen
 - Aufwand: M
 - Idee: Die Bauvorlagen aus B-172 in `render-towers.js`, `tower-fx.js` und `render-fx.js` umsetzen, einschließlich der Optik der Stufe-3-Fähigkeiten aus B-175/B-176 (die Logik dazu kommt von dort).
 - Akzeptanzkriterien:
@@ -78,7 +78,7 @@ Zwei developer parallel (je eigene Sitzung, eigener Unter-Branch von `agent/stuf
   - Tests in `tests/render.test.js` bzw. `tests/fx.test.js` laufen; `npm test` und `npm run test:e2e` sind grün.
 
 ### B-174: Stufe 3: Scharfschütze und Blitz umsetzen, dazu der Aufstiegs-Effekt (nur Optik)
-- Status: entwurf
+- Status: offen
 - Aufwand: M
 - Idee: Wie B-173 für die übrigen zwei Türme, dazu die Lichtsäule beim Aufwerten auf Stufe 3 (auch für Pfeil, Kanone, Frost), auf Wunsch mit einem eigenen Klang (Datei wählt der Mensch).
 - Akzeptanzkriterien: wie B-173. Mit 20 Türmen der Stufe 3 bleibt die Bildrate auf dem Handy-Testprofil stabil.
@@ -139,4 +139,12 @@ Zwei developer parallel (je eigene Sitzung, eigener Unter-Branch von `agent/stuf
   - Tests: Phasenwechsel genau einmal bei der Schwelle, Beschwörungstakt der zweiten Phase, Schild-Dauer.
   - Gemeinsam mit B-179 messen: perfektes Spiel gewinnt weiter auf jeder Karte.
   - Optik nach Design-System „Gemalt und warm“; Screenshot Desktop und Handy.
-- Entscheidungen des Menschen (27.11.): Boss-Leiste gilt für alle Bosse (auch Oger-König); die 14 neuen Tokens des designers (necro-*, boss-bar, boss-shield, bolt, cloud, soot, mark, elite-ring) sind freigegeben. Auf dem Handy quer darf die Boss-Leiste (240 × 32, oben mittig, nicht anklickbar) als Ausnahme über Feldkacheln liegen. Stufe 3 der Türme wird eine komplette Verwandlung (neues Gebäude): Entwürfe Adlerhorst (Marmor/Gold), Mörserfestung (Basalt/Lava), Eiszitadelle (Eispalast), Falkenauge (Ziegel-Leuchtturm), Sturmspule (Eisen-Dreibein mit Gewitterwolke) am 27.11. freigegeben.
+- Entscheidungen des Menschen (27.11.): Boss-Leiste gilt für alle Bosse (auch Oger-König); die 14 neuen Tokens des designers (necro-*, boss-bar, boss-shield, bolt, cloud, soot, mark, elite-ring) sind freigegeben. Auf dem Handy quer darf die Boss-Leiste (240 × 32, oben mittig, nicht anklickbar) als Ausnahme über Feldkacheln liegen. Stufe 3 der Türme wird eine komplette Verwandlung (neues Gebäude): Entwürfe Adlerhorst (Marmor/Gold), Mörserfestung (Basalt/Lava), Eiszitadelle (Eispalast), Falkenauge (Ziegel-Leuchtturm), Sturmspule (Eisen-Dreibein mit Gewitterwolke) am 27.11. freigegeben. Weitere 13 Tokens (marble-a/-b/-c, ice-deep, brick-a/-b/-line, darkwood-a/-b, iron-a/-b, copper-a, electric) freigegeben.
+
+### B-181: Stufe 2 sichtbar wachsen lassen (nur Optik)
+- Status: entwurf
+- Aufwand: M
+- Idee: Heute ist Stufe 2 nur Stufe 1 plus Goldband. Stufe 1 → 2 soll sichtbar wachsen (gleicher Grundkörper, etwas höher, mehr Details), damit der Sprung zur komplett neuen Endstufe (B-173/B-174) als Steigerung wirkt. Erst Skizze durch den designer, dann Umsetzung. Nach dem Block Stufe 3/Gegner.
+- Akzeptanzkriterien:
+  - Je Turm ein eigener `l2`-Eintrag in `src/figures.js`; Stufe 2 auf 1280x800 sichtbar höher als Stufe 1, Fuß bleibt auf der Kachel.
+  - Werte aus dem Design-System, Screenshot Desktop und Handy.
