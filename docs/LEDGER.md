@@ -53,3 +53,8 @@ Anhängen ohne die Datei zu lesen: `cat >> docs/LEDGER.md <<'EOF' … EOF`. Übe
 ### 2026-11-27 – Live-Umgebung auf Cloudflare Pages
 - Neue Adresse https://towerdefence.pages.dev/ ohne GitHub-Namen (Mensch hat Cloudflare eingerichtet).
 - docs/LERNEN.md angepasst; GitHub Pages/pages.yml abschalten macht der Mensch.
+
+### 2026-11-27 – Stufe 3 als Verwandlung, fordernde Gegner, Nekromantin als Endboss (B-173 bis B-176, B-179, B-180)
+- Stufe-3-Fähigkeiten (Mehrfachschuss, Gewitter, Brandfläche, Eisboden, Markieren) mit neuen Endstufen-Figuren und Effekten; Elite-Gegner ab Welle 10 (Schild/Heilung), Nekromantin mit Phase 2, Boss-Leiste, Welle 20 mit 2 Ogern + Nekromantin.
+- Balancing am Ende: HP-Zuwachs spät 1,12, Fledermäuse bis 9 (20 HP, Vulkan 0,9), kein Extra in Welle 8; vom Menschen freigegebene Test-Änderungen: Nekromantin Welle 15+20, Vulkan-Fenster 1-7, Welle-10-Fledermäuse 4, drei Stufe-3-Optik-Tests, ELITE.from 10.
+- Zwei developer + designer parallel, Tester/Reviewer einmal über den Block; unit 633, balance 20, e2e 98 grün.

@@ -5,10 +5,12 @@ import {
   K_NONE, K_SMOKE, K_ICE, K_SPARK, K_FLASH, K_COIN, K_DUST, K_ROCK, K_SUMMON, coinHop, coinSpin, meteorPhase,
   T_ARROW, T_CANNON, T_FROST, T_SNIPER,
 } from './fx-system.js';
-import { BOSS_ENTRY, FX_STYLE, STYLE, WIDTH, HEIGHT, TILE, FIGURE_STYLE } from './config.js';
+import { BOSS_ENTRY, FX_STYLE, STYLE, WIDTH, HEIGHT, TILE, FIGURE_STYLE, MASTER_FX } from './config.js';
 import { outlineOf, starPath, zigPath } from './draw-utils.js';
 import { enemyFigure } from './figures.js';
 import { drawElements } from './svg-figure.js';
+import { drawNecroPhase, drawSummonSpot, drawSummonSkull } from './render-necro.js';
+import { drawEliteGone } from './render-elite.js';
 
 // Ein gemeinsamer Partikelzustand fuer das Spiel (wird bei Neustart/Zeitsprung von syncFx geleert).
 const fx = createFx();
@@ -321,6 +323,7 @@ export function drawParticles(ctx, under = false) {
 
 // Effekte aus dem Spielzustand, die unter den Figuren liegen: Lichthof und Rauch der Explosion (Z.131f)
 export function drawEffectUnder(ctx, e) {
+  if (e && e.kind === 'summon') { drawSummonSpot(ctx, e); return; } // B-180: Bodenfleck der Beschwörung
   if (!e || e.kind !== 'explosion') return;
   if (e.meteor) { drawMeteorUnder(ctx, e); return; }
   const a = e.ttl / e.max;
@@ -388,6 +391,14 @@ export function drawEffectOver(ctx, e, reducedMotion = false) {
     drawExplosionStars(ctx, e, a);
   } else if (e.kind === 'shellBreak') {
     drawShellBreak(ctx, e, reducedMotion);
+  } else if (e.kind === 'eliteBreak') {
+    drawShellBreak(ctx, e, reducedMotion, FX_STYLE.eliteBreak); // B-179: Elite-Schild bricht
+  } else if (e.kind === 'eliteGone') {
+    drawEliteGone(ctx, e, reducedMotion); // B-179: Abzeichen fliegt weg
+  } else if (e.kind === 'phase2') {
+    drawNecroPhase(ctx, e, reducedMotion); // B-180: Druckwelle und „Zweite Phase!“
+  } else if (e.kind === 'summon') {
+    drawSummonSkull(ctx, e, reducedMotion);
   } else if (e.kind === 'coin') {
     const ty = e.y - CT.lift + (reducedMotion ? 0 : a * CT.rise);
     ctx.save();
@@ -452,8 +463,7 @@ function drawDodge(ctx, e, reducedMotion) {
 
 // B-169: letzte Schicht der Schale bricht. Dreieck-Splitter fliegen nach oben weg und fallen (deterministisch je Index),
 // dazu ein heller Ring. reducedMotion: Splitter bleiben am Ort und verblassen in reducedLife, Ring wächst nicht.
-function drawShellBreak(ctx, e, reducedMotion) {
-  const c = FX_STYLE.shellBreak;
+function drawShellBreak(ctx, e, reducedMotion, c = FX_STYLE.shellBreak) {
   const age = ageOf(e);
   const ox = e.x, oy = e.y + (FIGURE_STYLE.enemyFoot + c.originDy) * U;
   const life = reducedMotion ? c.reducedLife : c.life;
@@ -510,10 +520,21 @@ function drawBolt(ctx, e, a) {
     const n = Math.max(2, Math.round(Math.hypot(q.x - p.x, q.y - p.y) / (BO.step * U)));
     zigPath(ctx, p.x, p.y, q.x, q.y, n, BO.amp * U, i === 1, sign);
   }
+  // B-174 Sturmspule: dicker und je Segment ein Ast
+  const big = e.master ? MASTER_FX.bolt3.width : 1;
+  if (e.master) {
+    for (let i = 1; i < pts.length; i++) {
+      const p = pts[i - 1], q = pts[i];
+      const mx = (p.x + q.x) / 2, my = (p.y + q.y) / 2, dx = q.x - p.x, dy = q.y - p.y;
+      const s = MASTER_FX.bolt3.branch * sign * (i % 2 ? 1 : -1);
+      ctx.moveTo(mx, my);
+      ctx.lineTo(mx + dx * 0.35 - dy * s, my + dy * 0.35 + dx * s);
+    }
+  }
   ctx.globalAlpha = a > 1 ? 1 : a > 0 ? a : 0;
   for (const [color, w] of BOLT_LAYERS) {
     ctx.strokeStyle = color;
-    ctx.lineWidth = w * U;
+    ctx.lineWidth = w * U * big;
     ctx.stroke();
   }
   ctx.globalAlpha = 1;

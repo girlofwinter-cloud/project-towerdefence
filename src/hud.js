@@ -1,5 +1,5 @@
 // Reine Darstellungs-Helfer fürs HUD (kein DOM).
-import { START_LIVES, MAX_WAVES } from './config.js';
+import { START_LIVES, MAX_WAVES, ENEMY_TYPES, BOSS_BAR, isBoss } from './config.js';
 import { earlyStartPreview } from './game.js';
 
 // Herzreihe als Liste: true = verbleibendes Leben, false = verlorenes (nie negativ, gekappt).
@@ -83,4 +83,37 @@ export function waveProgress(state, peak = 0) {
   const open = (state.spawnQueue?.length || 0) + (state.enemies?.length || 0);
   const top = Math.max(Number.isFinite(peak) ? peak : 0, open);
   return { peak: top, fill: top > 0 ? Math.min(1, Math.max(0, 1 - open / top)) : 0 };
+}
+
+// B-180: Boss-Leisten (nur Anzeige). Eine Ansicht je lebendem Boss, die Nekromantin zuerst; mehr als max Bosse
+// zählen in der letzten Leiste zusammen. Ansicht: { name, frac 0..1, phase (0 = ohne Phasen, 1, 2), shielded }.
+export function bossBarViews(state, max = BOSS_BAR.maxBars) {
+  const time = Number.isFinite(state?.time) ? state.time : 0;
+  const bosses = (state?.enemies || []).filter((e) => e && isBoss(e) && e.hp > 0);
+  bosses.sort((a, b) => (b.type === 'necro') - (a.type === 'necro'));
+  const view = (list) => {
+    const hp = list.reduce((s, e) => s + (Number.isFinite(e.hp) ? e.hp : 0), 0);
+    const maxHp = list.reduce((s, e) => s + (Number.isFinite(e.maxHp) ? e.maxHp : 0), 0);
+    const one = list.length === 1;
+    const def = ENEMY_TYPES[list[0].type];
+    const same = list.every((e) => e.type === list[0].type);
+    return {
+      name: one ? def.name : `${same ? def.name : 'Bosse'} ×${list.length}`,
+      frac: maxHp > 0 ? Math.max(0, Math.min(1, hp / maxHp)) : 0,
+      phase: one && def.phase2 ? (list[0].phase === 2 ? 2 : 1) : 0,
+      shielded: list.some((e) => e.shieldUntil > time),
+    };
+  };
+  const n = Math.max(1, max);
+  if (bosses.length <= n) return bosses.map((e) => view([e]));
+  return [...bosses.slice(0, n - 1).map((e) => view([e])), view(bosses.slice(n - 1))];
+}
+
+// B-180: Lage der Boss-Leiste auf dem Desktop: mittig in der Lücke zwischen HUD-Leiste (rechter Rand) und runden
+// Knöpfen (linker Rand), Breite BOSS_BAR.width; ist die Lücke schmaler als width + gapPad, Breite = Lücke - gapPad.
+export function bossBarPlacement(hudRight, buttonsLeft, width = BOSS_BAR.width, pad = BOSS_BAR.gapPad) {
+  const gap = buttonsLeft - hudRight;
+  if (!Number.isFinite(gap)) return null;
+  const w = Math.max(0, gap < width + pad ? gap - pad : width);
+  return { left: hudRight + (gap - w) / 2, width: w };
 }

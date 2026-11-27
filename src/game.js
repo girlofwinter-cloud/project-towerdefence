@@ -4,6 +4,8 @@ import {
   MAPS, DEFAULT_MAP_ID, LANE_ASYNC, TOWER_TYPES, ABILITIES, WIDTH, HEIGHT, ENEMY_TYPES, LAVA, FX_STYLE, AUTO_WAVE_DELAY, earlyStartBonus, waveFor, waveBonus, hpScale, meteorDamage, isBoss,
 } from './config.js';
 import { buildPath, pointAt, pathTiles } from './path.js';
+import { ELITE, UPGRADE_COST_FACTOR } from './config.js'; // B-179: Elite-Gegner, Aufrüstkosten
+import { MASTER_FX } from './config.js'; // B-173/B-174: Lebensdauer reiner Darstellungs-Ereignisse
 
 // Map-Modifikatoren mit Standardwerten (1 = unverändert); unbekannte Karte = Standardkarte.
 export function mapModifiers(mapId) {
@@ -29,6 +31,7 @@ export function createGame({ mapId, ...overrides } = {}) {
     enemies: [],
     projectiles: [],
     effects: [],
+    grounds: [], // B-176: Bodenflächen der Stufe 3 (Brand und Eis): { kind, x, y, r, until, ... }
     status: 'playing', // 'playing' | 'won' | 'lost'
     paused: false, // Pause: update() ändert nichts, Bauen bleibt erlaubt
     kills: 0,
@@ -85,9 +88,21 @@ export function towerStats(tower, modifiers) {
   };
 }
 
+// B-175/B-176: Stufe-3-Fähigkeit des Turms (TOWER_TYPES[typ].master) oder null, solange er darunter liegt.
+export function masterOf(tower) {
+  return tower.level >= MAX_LEVEL ? TOWER_TYPES[tower.type]?.master || null : null;
+}
+
+// B-175: Text der Stufe-3-Fähigkeit für die Turm-Info; auf Stufe 2 als Vorschau, auf Stufe 1 leer.
+export function masterInfo(tower) {
+  const m = TOWER_TYPES[tower.type]?.master;
+  if (!m || tower.level < MAX_LEVEL - 1) return '';
+  return tower.level >= MAX_LEVEL ? `Stufe 3: ${m.text}` : `Auf Stufe 3: ${m.text}`;
+}
+
 export function upgradeCost(tower) {
   if (tower.level >= MAX_LEVEL) return null;
-  return Math.round(TOWER_TYPES[tower.type].cost * 0.75 * tower.level);
+  return Math.round(TOWER_TYPES[tower.type].cost * UPGRADE_COST_FACTOR[tower.level] * tower.level);
 }
 
 export function sellValue(tower) {
@@ -147,6 +162,10 @@ export function upgradeTower(state, id) {
   state.gold -= cost;
   tower.level += 1;
   tower.invested += cost;
+  // B-174: Lichtsäule beim Aufstieg auf Stufe 3 (nur Darstellung)
+  // Gewitter: erster Einschlag erst nach einem vollen Takt (mit Ankündigung)
+  if (tower.level === MAX_LEVEL && masterOf(tower)?.stormEvery) tower.stormAt = state.time + masterOf(tower).stormEvery;
+  if (tower.level === MAX_LEVEL) state.effects.push({ kind: 'ascend', towerId: tower.id, x: tower.x, y: tower.y, ttl: MASTER_FX.ascend.life, max: MASTER_FX.ascend.life });
   return { ok: true, tower };
 }
 
@@ -255,7 +274,7 @@ export function planLanes(state, list, wave) {
   return out.sort((a, b) => a.at - b.at);
 }
 
-export function spawnEnemy(state, type, wave = state.wave, lane = null) {
+export function spawnEnemy(state, type, wave = state.wave, lane = null, elite = null) {
   const def = ENEMY_TYPES[type];
   const hp = Math.round(def.hp * hpScale(Math.max(1, wave)));
   const paths = state.paths || [state.path];
@@ -286,8 +305,17 @@ export function spawnEnemy(state, type, wave = state.wave, lane = null) {
   };
   if (def.summonInterval) enemy.summonAt = state.time + def.summonInterval; // B-127: nächste Beschwörung
   if (def.shellHits) enemy.shell = def.shellHits; // B-169: Schichten der Schale (Panzerkäfer)
+  if (elite && ELITE[elite]) makeElite(enemy, elite);
   state.enemies.push(enemy);
   return enemy;
+}
+
+// B-179: Elite-Eigenschaft anwenden (enemy.elite = Eigenschaft, Flag fürs Abzeichen). Werte in ELITE (config.js).
+function makeElite(enemy, trait) {
+  enemy.elite = trait;
+  enemy.reward = Math.round(enemy.reward * ELITE.rewardFactor);
+  if (trait === 'swift') enemy.speed *= ELITE.swift.speed;
+  else if (trait === 'shield') enemy.ward = ELITE.shield.wardShare * enemy.maxHp;
 }
 
 // ---------- Update-Schleife ----------
@@ -369,8 +397,10 @@ export function update(state, dt) {
   if (state.status !== 'playing') return;
   lavaStep(state, dt);
   healStep(state);
+  regenStep(state, dt);
   wardStep(state);
   summonStep(state);
+  groundsStep(state, dt);
   towersStep(state, dt);
   projectilesStep(state, dt);
   effectsStep(state, dt);
@@ -389,7 +419,7 @@ function spawnStep(state, dt) {
   state.waveTime += dt;
   while (state.spawnQueue.length && state.spawnQueue[0].at <= state.waveTime) {
     const next = state.spawnQueue.shift();
-    spawnEnemy(state, next.type, next.wave ?? state.wave, next.lane ?? null); // HP-Skalierung der eigenen Welle, B-124: geplante Seite
+    spawnEnemy(state, next.type, next.wave ?? state.wave, next.lane ?? null, next.elite ?? null); // HP-Skalierung der eigenen Welle, B-124: geplante Seite, B-179: Elite
   }
 }
 
@@ -456,6 +486,15 @@ function healStep(state) {
   }
 }
 
+// B-179: Selbstheilung der Elite-Gegner mit regen: healPerSec * maxHp pro Sekunde (Rate mal dt), nie über maxHp.
+function regenStep(state, dt) {
+  const rate = ELITE.regen.healPerSec * dt;
+  for (const e of state.enemies) {
+    if (e.elite !== 'regen' || e.hp <= 0 || e.hp >= e.maxHp) continue;
+    e.hp = Math.min(e.maxHp, e.hp + e.maxHp * rate);
+  }
+}
+
 // B-127: Beschwörung. Jeder lebende Beschwörer (summonInterval) ruft alle summonInterval Sekunden Spielzeit
 // summonCount Gegner vom Typ summonType auf seinem eigenen Weg summonBehind Kacheln hinter sich herbei (nie vor
 // den Wegstart), damit Türme zuerst den Beschwörer treffen. Sie bekommen die HP-Skalierung der Welle des Beschwörers und zählen fürs Wellenende.
@@ -466,17 +505,18 @@ function summonStep(state) {
     const s = list[i];
     if (!(s.summonAt <= state.time) || s.hp <= 0) continue;
     const def = ENEMY_TYPES[s.type];
-    s.summonAt += def.summonInterval;
-    if (s.summonAt <= state.time) s.summonAt = state.time + def.summonInterval; // nach großem dt nicht aufholen
+    const phase = s.phase === 2 ? def.phase2 : def; // B-180: zweite Phase beschwört schneller und mehr
+    s.summonAt += phase.summonInterval;
+    if (s.summonAt <= state.time) s.summonAt = state.time + phase.summonInterval; // nach großem dt nicht aufholen
     const path = enemyPath(state, s);
-    for (let k = 0; k < def.summonCount; k++) {
+    for (let k = 0; k < phase.summonCount; k++) {
       const m = spawnEnemy(state, def.summonType, s.wave ?? state.wave, s.lane);
       m.summoned = true; // beschworen, nicht aus der Spawn-Liste
       m.dist = Math.max(0, s.dist - (def.summonBehind + k * def.summonSpacing) * TILE);
       const p = pointAt(path, m.dist);
       m.x = p.x;
       m.y = p.y;
-      state.effects.push({ kind: 'summon', x: p.x, y: p.y, ttl: FX_STYLE.summon.life, max: FX_STYLE.summon.life });
+      state.effects.push({ kind: 'summon', x: p.x, y: p.y, ttl: FX_STYLE.summon.life, max: FX_STYLE.summon.life, p2: s.phase === 2 }); // p2: nur Optik (Farbe)
     }
   }
 }
@@ -551,12 +591,27 @@ export function chainTargets(enemies, first, chainCount, chainRange) {
   return chain;
 }
 
+// B-175 Gewitter: Gegner in Reichweite (Pixel) mit den meisten Nachbarn im Umkreis radius (Pixel, sich selbst mitgezählt);
+// seine Position ist das Zentrum des Einschlags. Gleichstand: erster in Listenreihenfolge. Ohne Gegner null. Rein.
+export function densestCluster(enemies, tower, range, radius) {
+  const inRange = enemies.filter((e) => e.hp > 0 && Math.hypot(e.x - tower.x, e.y - tower.y) <= range);
+  let best = null;
+  let bestCount = 0;
+  for (const e of inRange) {
+    const count = inRange.filter((o) => Math.hypot(o.x - e.x, o.y - e.y) <= radius).length;
+    if (count > bestCount) { best = e; bestCount = count; }
+  }
+  return best ? { x: best.x, y: best.y } : null;
+}
+
 function findTarget(state, tower, range) {
   return pickTarget(state.enemies, tower, range, tower.targetMode);
 }
 
 function towersStep(state, dt) {
   for (const tower of state.towers) {
+    const master = masterOf(tower);
+    if (master?.stormEvery) stormStep(state, tower, master);
     tower.cooldown -= dt;
     if (tower.cooldown > 0) continue;
     const stats = towerStats(tower, state.modifiers);
@@ -569,6 +624,7 @@ function towersStep(state, dt) {
       continue;
     }
     tower.angle = Math.atan2(target.y - tower.y, target.x - tower.x);
+    tower.aimId = target.id; // B-174: Zielstrahl des Falkenauges (nur Darstellung)
     tower.cooldown = stats.rate;
     if (sp.warmupStep) {
       if (tower.focusId === target.id) tower.focusStacks = (tower.focusStacks || 0) + 1;
@@ -579,29 +635,78 @@ function towersStep(state, dt) {
       lightningStrike(state, tower, stats, target);
       continue;
     }
-    const breaker = sp.bonusMinHp !== undefined && (ENEMY_TYPES[target.type]?.hp ?? 0) >= sp.bonusMinHp;
-    state.projectiles.push({
-      id: state.nextId++,
-      towerType: tower.type,
-      x: tower.x,
-      y: tower.y,
-      targetId: target.id,
-      tx: target.x,
-      ty: target.y,
-      speed: stats.projectileSpeed * TILE,
-      damage: breaker ? stats.damage * sp.bonusDamage : stats.damage,
-      ignoreArmor: breaker && !!sp.ignoreArmor,
-      towerId: tower.id,
-      knockback: sp.knockback ? sp.knockback * TILE : 0,
-      bossKnockbackFactor: sp.bossKnockbackFactor ?? 1,
-      knockbackCooldown: sp.knockbackCooldown || 0,
-      freezeEvery: sp.freezeEvery || 0,
-      freezeDuration: sp.freezeDuration || 0,
-      splash: stats.splash ? stats.splash * TILE : 0,
-      slow: stats.slow || 0,
-      slowDuration: stats.slowDuration || 0,
-    });
+    shoot(state, tower, stats, target, 1);
+    // B-175 Mehrfachschuss: weitere, verschiedene Ziele nach derselben Zielregel, mit geringerem Schaden
+    if (master?.multiTargets) {
+      const taken = [target];
+      for (let i = 1; i < master.multiTargets; i++) {
+        const extra = pickTarget(state.enemies.filter((e) => !taken.includes(e)), tower, stats.range * TILE, tower.targetMode);
+        if (!extra) break;
+        taken.push(extra);
+        shoot(state, tower, stats, extra, master.extraDamage);
+      }
+    }
   }
+}
+
+// Geschoss eines Turms auf target; factor skaliert den Schaden (Nebenziele beim Mehrfachschuss).
+function shoot(state, tower, stats, target, factor) {
+  const sp = stats.special || {};
+  const breaker = sp.bonusMinHp !== undefined && (ENEMY_TYPES[target.type]?.hp ?? 0) >= sp.bonusMinHp;
+  state.projectiles.push({
+    id: state.nextId++,
+    towerType: tower.type,
+    x: tower.x,
+    y: tower.y,
+    targetId: target.id,
+    tx: target.x,
+    ty: target.y,
+    speed: stats.projectileSpeed * TILE,
+    damage: (breaker ? stats.damage * sp.bonusDamage : stats.damage) * factor,
+    ignoreArmor: breaker && !!sp.ignoreArmor,
+    towerId: tower.id,
+    knockback: sp.knockback ? sp.knockback * TILE : 0,
+    bossKnockbackFactor: sp.bossKnockbackFactor ?? 1,
+    knockbackCooldown: sp.knockbackCooldown || 0,
+    freezeEvery: sp.freezeEvery || 0,
+    freezeDuration: sp.freezeDuration || 0,
+    splash: stats.splash ? stats.splash * TILE : 0,
+    slow: stats.slow || 0,
+    slowDuration: stats.slowDuration || 0,
+    master: masterOf(tower), // B-176: Stufe-3-Fähigkeit beim Treffer (Brandfläche, Eisboden, Markieren)
+    side: factor !== 1, // B-173: Nebenziel des Mehrfachschusses (nur Darstellung)
+  });
+}
+
+// B-175 Gewitter: Takt je Turm (tower.stormAt); ohne Gegner in Reichweite wartet der Einschlag.
+// Flächenschaden wie Splash (ohne Rüstung), trifft auch Flieger. Effekt 'storm' für die Optik.
+function stormStep(state, tower, master) {
+  if (state.time < (tower.stormAt ?? 0)) {
+    // B-174: Ankündigung kurz vor dem Einschlag am dann dichtesten Pulk (nur Darstellung, ändert nichts am Takt)
+    const tele = MASTER_FX.storm.tele;
+    if (!tower.stormWarned && state.time >= tower.stormAt - tele) {
+      const s = towerStats(tower, state.modifiers);
+      const c = densestCluster(state.enemies, tower, s.range * TILE, master.stormRadius * TILE);
+      if (c) {
+        tower.stormWarned = true;
+        state.effects.push({ kind: 'stormWarn', x: c.x, y: c.y, r: master.stormRadius * TILE, ttl: tele, max: tele });
+      }
+    }
+    return;
+  }
+  const stats = towerStats(tower, state.modifiers);
+  const radius = master.stormRadius * TILE;
+  const center = densestCluster(state.enemies, tower, stats.range * TILE, radius);
+  if (!center) return;
+  tower.stormAt = state.time + master.stormEvery;
+  tower.stormWarned = false;
+  const dmg = stats.damage * master.stormDamage;
+  for (const e of state.enemies) {
+    // Irrlichter weichen Flächenschaden aus (wie bei Splash und Brandfläche)
+    if (e.hp > 0 && !isDodger(e) && Math.hypot(e.x - center.x, e.y - center.y) <= radius) damage(state, e, { damage: dmg });
+  }
+  const life = MASTER_FX.storm.life; // Wolke, Druckring und Rußfleck bleiben länger als der Blitz
+  state.effects.push({ kind: 'storm', x: center.x, y: center.y, r: radius, towerId: tower.id, fromX: tower.x, fromY: tower.y, ttl: life, max: life });
 }
 
 // Blitzturm: trifft sofort; Schaden sinkt je Sprung um chainFalloff, Rüstung wie bei Direkttreffern.
@@ -612,7 +717,7 @@ function lightningStrike(state, tower, stats, target) {
     points.push({ x: e.x, y: e.y });
     damage(state, e, { damage: stats.damage * Math.pow(stats.chainFalloff, i) }, true);
   });
-  state.effects.push({ kind: 'bolt', points, ttl: stats.boltDuration, max: stats.boltDuration });
+  state.effects.push({ kind: 'bolt', points, master: !!masterOf(tower), ttl: stats.boltDuration, max: stats.boltDuration });
 }
 
 function projectilesStep(state, dt) {
@@ -666,13 +771,51 @@ function hit(state, p, target) {
     }
     if (p.knockback && target && !isDodger(target) && !isFlying(target)) knockBack(state, target, p); // B-167/B-168: Flieger und Irrlicht nie zurückwerfen
     state.effects.push({ kind: 'explosion', x: p.tx, y: p.ty, r: p.splash, ttl: 0.3, max: 0.3 });
+    const m = p.master;
+    if (m?.burnDuration) addGround(state, { kind: 'fire', x: p.tx, y: p.ty, r: p.splash, until: state.time + m.burnDuration, dps: p.damage * m.burnShare });
   } else if (target && !dodged) {
     damage(state, target, p, true);
+    if (p.master?.multiTargets) {
+      // B-173: Treffer-Stern des Mehrfachschusses (nur Darstellung)
+      const life = MASTER_FX.multishot.starLife;
+      state.effects.push({ kind: 'multiHit', x: target.x, y: target.y, main: !p.side, ttl: life, max: life });
+    }
     const tower = p.freezeEvery ? state.towers.find((t) => t.id === p.towerId) : null;
     if (tower) {
       tower.hitCount = (tower.hitCount || 0) + 1;
       // B-170: Treffer zählt auch bei Glutlingen, eingefroren werden sie aber nicht
       if (tower.hitCount % p.freezeEvery === 0 && !isBoss(target) && !isSlowImmune(target)) target.frozenUntil = state.time + p.freezeDuration;
+    }
+    const m = p.master;
+    if (m?.iceDuration) addGround(state, { kind: 'ice', x: p.tx, y: p.ty, r: m.iceRadius * TILE, until: state.time + m.iceDuration, slow: p.slow, linger: m.iceLinger, towerId: p.towerId });
+    if (m?.markDuration) {
+      if (!(state.time < (target.markedUntil || 0))) target.markedAt = state.time; // B-174: erstes Markieren (Aufploppen), nur Darstellung
+      target.markedUntil = state.time + m.markDuration;
+      target.markBonus = m.markBonus;
+    }
+  }
+}
+
+function addGround(state, g) {
+  g.born = state.time; // B-173: Beginn für Ein- und Ausblenden (nur Darstellung)
+  (state.grounds ||= []).push(g);
+}
+
+// B-176: Bodenflächen wirken auf Bodengegner darin. Brand: Schaden über Zeit (ohne Rüstung, zählt nicht gegen die Schale,
+// Irrlicht ausgenommen wie beim Splash). Eis: Verlangsamung wie der Frost, nie stärker als 1 - slow (kein Stapeln).
+function groundsStep(state, dt) {
+  if (!state.grounds?.length) return;
+  state.grounds = state.grounds.filter((g) => state.time < g.until);
+  for (const g of state.grounds) {
+    for (const e of state.enemies) {
+      if (e.hp <= 0 || isFlying(e) || Math.hypot(e.x - g.x, e.y - g.y) > g.r) continue;
+      if (g.kind === 'fire') {
+        if (!isDodger(e)) damage(state, e, { damage: g.dps * dt, dot: true });
+      } else if (g.kind === 'ice' && !isSlowImmune(e)) {
+        const f = 1 - g.slow;
+        e.slowFactor = state.time < e.slowUntil ? Math.min(e.slowFactor, f) : f;
+        e.slowUntil = Math.max(e.slowUntil || 0, state.time + g.linger);
+      }
     }
   }
 }
@@ -692,20 +835,41 @@ function knockBack(state, e, p) {
 // und Scharfschütze. Kanonen-Splash trifft immer mit vollem Schaden. Der Frost-Slow
 // wirkt unabhängig von der Rüstung unverändert.
 function damage(state, enemy, p, direct = false) {
+  if (enemy.shieldUntil > state.time) return; // B-180: Schild beim Phasenwechsel, unverwundbar
   // B-169: Solange die Schale hält, nimmt jeder Treffer (nicht Lava) eine Schicht und macht 0 Schaden (vor Rüstung und Schild).
-  const shelled = enemy.shell > 0 && !p.lava && crackShell(state, enemy);
+  const shelled = enemy.shell > 0 && !p.lava && !p.dot && crackShell(state, enemy);
   let dmg = shelled ? 0 : direct ? p.damage * (p.ignoreArmor ? 1 : 1 - (enemy.armor || 0)) : p.damage;
+  if (!p.lava && state.time < (enemy.markedUntil || 0)) dmg *= 1 + enemy.markBonus; // B-176: markiert (Falkenauge)
   // B-126: Der Schild des Magiers schluckt den Schaden (nach der Rüstung) zuerst, der Rest geht auf die HP.
   if (enemy.ward > 0) {
     const absorbed = Math.min(enemy.ward, dmg);
     enemy.ward -= absorbed;
     dmg -= absorbed;
+    // B-179: nur Optik, der Elite-Schild bricht (Splitter)
+    // (nur einmal je Gegner, auch wenn ein Magier den Schild später nachfüllt)
+    if (enemy.elite === 'shield' && !(enemy.ward > 0) && !enemy.eliteShieldBroken) {
+      enemy.eliteShieldBroken = true;
+      state.effects.push({ kind: 'eliteBreak', x: enemy.x, y: enemy.y, ttl: FX_STYLE.eliteBreak.life, max: FX_STYLE.eliteBreak.life });
+    }
   }
   enemy.hp -= dmg;
+  phaseCheck(state, enemy);
   if (p.slow && !isSlowImmune(enemy)) { // B-170: Glutlinge ignorieren den Frost-Slow, der Schaden wirkt
     enemy.slowFactor = 1 - p.slow;
     enemy.slowUntil = state.time + p.slowDuration;
   }
+}
+
+// B-180: Phasenwechsel der Nekromantin (ENEMY_TYPES[type].phase2), genau einmal, sobald die HP auf phase2.at * maxHp
+// fallen und sie noch lebt: schnellerer Beschwörungstakt ab jetzt, Schild für shieldDuration Sekunden und das
+// Logik-Ereignis 'phase2' in state.effects (für die spätere Optik; ttl = Schilddauer, id = Gegner).
+function phaseCheck(state, enemy) {
+  const p2 = ENEMY_TYPES[enemy.type]?.phase2;
+  if (!p2 || enemy.phase === 2 || enemy.hp <= 0 || enemy.hp > p2.at * enemy.maxHp) return;
+  enemy.phase = 2;
+  enemy.shieldUntil = state.time + p2.shieldDuration;
+  enemy.summonAt = state.time + p2.summonInterval;
+  state.effects.push({ kind: 'phase2', id: enemy.id, x: enemy.x, y: enemy.y, ttl: p2.shieldDuration, max: p2.shieldDuration });
 }
 
 // B-170: immun gegen Frost-Slow und Einfrieren (Merkmal slowImmune des Gegnertyps)
@@ -732,6 +896,8 @@ function removeDead(state) {
       state.gold += e.reward;
       state.kills += 1;
       state.effects.push({ kind: 'coin', x: e.x, y: e.y, text: `+${e.reward}`, ttl: 0.8, max: 0.8 });
+      // B-179: nur Optik, das Elite-Abzeichen fliegt weg
+      if (e.elite) state.effects.push({ kind: 'eliteGone', type: e.type, elite: e.elite, x: e.x, y: e.y, ttl: FX_STYLE.eliteGone.life, max: FX_STYLE.eliteGone.life });
     }
   }
   state.enemies = alive;

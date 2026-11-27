@@ -31,9 +31,34 @@ const TOWER_SVG = {
   },
 };
 
-// Goldbänder (Stufe 2: erstes, Stufe 3: beide), mit dunkler Kante darunter
+// B-173/B-174: Stufe 3 als eigenes Gebäude (Bauvorlagen docs/design/elemente/Tuerme-*.md), Box 80 x 140.
+// <g data-part="..."> außer "turn" sind Teile mit Ruhe-Animation (FIGURE_STYLE.idle), trim: [] = keine Goldbänder.
+const TOWER_SVG3 = {
+  arrow: {
+    w: 80, h: 140, trim: [],
+    svg: `<ellipse cx="40" cy="134" rx="32" ry="7" fill="rgba(30,20,50,.35)"/><path d="M10 134 L14 118 H66 L70 134 Z" fill="url(#s3-marble)" stroke="#2b1a10" stroke-width="3" stroke-linejoin="round"/><path d="M18 118 L24 58 H56 L62 118 Z" fill="url(#s3-marble)" stroke="#2b1a10" stroke-width="3" stroke-linejoin="round"/><path d="M21 104 H59 M23 84 H57" fill="none" stroke="#2b1a10" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 104 H59 M23 84 H57" fill="none" stroke="#f2c14e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M33 134 V124 a7 8 0 0 1 14 0 V134" fill="#3a2a1e" stroke="#2b1a10" stroke-width="2.5" stroke-linejoin="round"/><g data-part="banners"><path d="M26 62 H35 V96 L30.5 90 L26 96 Z" fill="#3a7bd5" stroke="#2b1a10" stroke-width="2.5" stroke-linejoin="round"/><path d="M45 62 H54 V96 L49.5 90 L45 96 Z" fill="#3a7bd5" stroke="#2b1a10" stroke-width="2.5" stroke-linejoin="round"/><path d="M28 70 L30.5 74 L33 70 M47 70 L49.5 74 L52 70" fill="none" stroke="#f2c14e" stroke-width="2" stroke-linecap="round"/></g><path d="M40 24 Q28 20 18 10 Q10 3 3 1 Q8 8 7 12 Q12 12 12 16 Q18 16 18 21 Q26 26 40 30 Z" fill="url(#s3-gold)" stroke="#2b1a10" stroke-width="2.5" stroke-linejoin="round"/><path d="M40 24 Q52 20 62 10 Q70 3 77 1 Q72 8 73 12 Q68 12 68 16 Q62 16 62 21 Q54 26 40 30 Z" fill="url(#s3-gold)" stroke="#2b1a10" stroke-width="2.5" stroke-linejoin="round"/><path d="M14 8 L20 16 M66 8 L60 16 M24 16 L28 22 M56 16 L52 22" stroke="#b9851d" stroke-width="2" stroke-linecap="round"/><ellipse cx="40" cy="26" rx="7" ry="9" fill="url(#s3-gold)" stroke="#2b1a10" stroke-width="2.5" stroke-linejoin="round"/><circle cx="40" cy="12" r="6.5" fill="#fff3d2" stroke="#2b1a10" stroke-width="2.5" stroke-linejoin="round"/><path d="M45 11 L52 14 L45 17 Z" fill="#f2c14e" stroke="#2b1a10" stroke-width="2" stroke-linejoin="round"/><circle cx="41.5" cy="10.5" r="1.4" fill="#2b1a10"/><rect x="10" y="48" width="60" height="11" rx="3" fill="url(#s3-gold)" stroke="#2b1a10" stroke-width="3" stroke-linejoin="round"/><path d="M24 46 Q40 36 56 46" fill="none" stroke="#2b1a10" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M24 46 Q40 36 56 46" fill="none" stroke="#8a5326" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><path d="M40 48 L26 38" fill="none" stroke="#2b1a10" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/><path d="M40 48 L26 38" fill="none" stroke="#c88a4c" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><circle cx="26" cy="38" r="3" fill="#f2c14e" stroke="#2b1a10" stroke-width="1.5" stroke-linejoin="round"/><path d="M40 48 L40 34" fill="none" stroke="#2b1a10" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/><path d="M40 48 L40 34" fill="none" stroke="#c88a4c" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><circle cx="40" cy="34" r="3" fill="#f2c14e" stroke="#2b1a10" stroke-width="1.5" stroke-linejoin="round"/><path d="M40 48 L54 38" fill="none" stroke="#2b1a10" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/><path d="M40 48 L54 38" fill="none" stroke="#c88a4c" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><circle cx="54" cy="38" r="3" fill="#f2c14e" stroke="#2b1a10" stroke-width="1.5" stroke-linejoin="round"/><path d="M22 62 L19 116" stroke="#ffffff" stroke-width="3" opacity=".6" stroke-linecap="round"/>`,
+  },
+  cannon: {
+    w: 80, h: 140, pivot: [40,80], muzzle: [40,26], trim: [],
+    svg: `<ellipse cx="40" cy="130" rx="38" ry="9" fill="#ff7a1f" opacity=".35"/><ellipse cx="40" cy="134" rx="34" ry="7" fill="rgba(30,20,50,.35)"/><path d="M4 134 L8 104 H72 L76 134 Z" fill="url(#s3-basalt)" stroke="#2b1a10" stroke-width="3" stroke-linejoin="round"/><path d="M14 104 L18 82 H62 L66 104 Z" fill="url(#s3-basalt)" stroke="#2b1a10" stroke-width="3" stroke-linejoin="round"/><path d="M12 130 L20 120 L16 112 M68 130 L60 120 L66 110 M22 100 L28 92 M58 100 L52 90" fill="none" stroke="#ff7a1f" stroke-width="5" opacity=".55" stroke-linecap="round"/><path d="M12 130 L20 120 L16 112 M68 130 L60 120 L66 110 M22 100 L28 92 M58 100 L52 90" fill="none" stroke="#ffc23a" stroke-width="2" stroke-linecap="round"/><path d="M29 134 V121 a11 11 0 0 1 22 0 V134" fill="url(#s3-lava)" stroke="#2b1a10" stroke-width="3" stroke-linejoin="round"/><path d="M34 134 V125 M40 134 V122 M46 134 V125" stroke="#2b1a10" stroke-width="2"/><rect x="5" y="80" width="11" height="24" fill="url(#s3-basalt)" stroke="#2b1a10" stroke-width="2.5" stroke-linejoin="round"/><rect x="64" y="80" width="11" height="24" fill="url(#s3-basalt)" stroke="#2b1a10" stroke-width="2.5" stroke-linejoin="round"/><ellipse cx="10.5" cy="80" rx="5.5" ry="2" fill="#ffc23a" stroke="#2b1a10" stroke-width="1.5" stroke-linejoin="round"/><ellipse cx="69.5" cy="80" rx="5.5" ry="2" fill="#ffc23a" stroke="#2b1a10" stroke-width="1.5" stroke-linejoin="round"/><g data-part="smoke"><circle cx="10" cy="71" r="5" fill="#8a7560" opacity=".75" stroke="#2b1a10" stroke-width="1.5" stroke-linejoin="round"/><circle cx="7" cy="62" r="4" fill="#8a7560" opacity=".6" stroke="#2b1a10" stroke-width="1.5" stroke-linejoin="round"/><circle cx="70" cy="71" r="5" fill="#8a7560" opacity=".75" stroke="#2b1a10" stroke-width="1.5" stroke-linejoin="round"/><circle cx="73" cy="62" r="4" fill="#8a7560" opacity=".6" stroke="#2b1a10" stroke-width="1.5" stroke-linejoin="round"/></g><g data-part="turn"><path d="M24 80 L27 34 H53 L56 80 Z" fill="#3a2d44" stroke="#2b1a10" stroke-width="3" stroke-linejoin="round"/><rect x="22" y="26" width="36" height="13" rx="5" fill="#5d4a66" stroke="#2b1a10" stroke-width="3" stroke-linejoin="round"/><ellipse cx="40" cy="29" rx="13" ry="3.5" fill="#ffc23a" stroke="#2b1a10" stroke-width="2" stroke-linejoin="round"/><path d="M26 52 H54 M25 66 H55" stroke="#b9851d" stroke-width="3"/><path d="M31 41 V76" stroke="#a48fb8" stroke-width="3" opacity=".6" stroke-linecap="round"/></g><circle cx="40" cy="80" r="11" fill="url(#s3-basalt)" stroke="#2b1a10" stroke-width="3" stroke-linejoin="round"/><circle cx="40" cy="80" r="4" fill="#ffc23a" stroke="#2b1a10" stroke-width="2" stroke-linejoin="round"/><circle cx="20" cy="114" r="2.2" fill="#b9851d" stroke="#2b1a10" stroke-width="1" stroke-linejoin="round"/><circle cx="60" cy="114" r="2.2" fill="#b9851d" stroke="#2b1a10" stroke-width="1" stroke-linejoin="round"/><circle cx="26" cy="94" r="2.2" fill="#b9851d" stroke="#2b1a10" stroke-width="1" stroke-linejoin="round"/><circle cx="54" cy="94" r="2.2" fill="#b9851d" stroke="#2b1a10" stroke-width="1" stroke-linejoin="round"/>`,
+  },
+  frost: {
+    w: 80, h: 140, glow: [40,40], trim: [],
+    svg: `<circle cx="40" cy="40" r="40" fill="url(#s1-iceglow)" opacity=".7"/><ellipse cx="40" cy="134" rx="34" ry="7" fill="rgba(30,20,50,.35)"/><ellipse cx="40" cy="130" rx="38" ry="9" fill="#e8fbff" stroke="#3b8fcb" stroke-width="2"/><path d="M10 129 L18 132 M62 132 L71 128 M28 134 L34 131" stroke="#3b8fcb" stroke-width="1.5" stroke-linecap="round"/><path d="M8 130 L11 72 L17 56 L23 72 L26 130 Z" fill="url(#s3-ice)" stroke="#2b1a10" stroke-width="3" stroke-linejoin="round"/><path d="M72 130 L69 72 L63 56 L57 72 L54 130 Z" fill="url(#s3-ice)" stroke="#2b1a10" stroke-width="3" stroke-linejoin="round"/><path d="M14 64 L12 124 M66 64 L68 124" stroke="#ffffff" stroke-width="2" opacity=".7" stroke-linecap="round"/><path d="M20 130 L22 96 L27 86 L31 96 L32 130 Z" fill="url(#s3-ice)" stroke="#2b1a10" stroke-width="3" stroke-linejoin="round"/><path d="M60 130 L58 96 L53 86 L49 96 L48 130 Z" fill="url(#s3-ice)" stroke="#2b1a10" stroke-width="3" stroke-linejoin="round"/><path d="M24 130 L26 90 L40 78 L54 90 L56 130 Z" fill="url(#s3-ice)" stroke="#2b1a10" stroke-width="3" stroke-linejoin="round"/><path d="M31 92 L40 22 L49 92 Z" fill="url(#s3-ice)" stroke="#2b1a10" stroke-width="3" stroke-linejoin="round"/><path d="M40 26 L37 88" stroke="#ffffff" stroke-width="2.5" opacity=".85" stroke-linecap="round"/><path d="M34 130 V118 a6 7 0 0 1 12 0 V130" fill="#1f5d96" stroke="#2b1a10" stroke-width="2.5" stroke-linejoin="round"/><path d="M40 98 V110 M35 101 L45 107 M45 101 L35 107" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/><g data-part="crystal"><path d="M40 0 L47 9 L40 18 L33 9 Z" fill="url(#s3-ice)" stroke="#2b1a10" stroke-width="2.5" stroke-linejoin="round"/><path d="M40 2 L38 9 L40 16" stroke="#ffffff" stroke-width="1.5" fill="none"/></g>`,
+  },
+  sniper: {
+    w: 80, h: 140, pivot: [40,30], muzzle: [79,30], trim: [],
+    svg: `<ellipse cx="40" cy="134" rx="26" ry="6" fill="rgba(30,20,50,.35)"/><path d="M22 134 L26 56 H54 L58 134 Z" fill="url(#s3-brick)" stroke="#2b1a10" stroke-width="3" stroke-linejoin="round"/><path d="M24 120 H56 M25 106 H55 M25 92 H55 M26 78 H54 M26 66 H54 M34 120 V106 M46 106 V92 M36 92 V78 M44 78 V66 M32 134 V120 M48 134 V120" stroke="#5a2016" stroke-width="1.5"/><rect x="36" y="94" width="8" height="12" rx="4" fill="#ffe27a" stroke="#2b1a10" stroke-width="2" stroke-linejoin="round"/><path d="M34 134 V125 a6 6 0 0 1 12 0 V134" fill="#3a2414" stroke="#2b1a10" stroke-width="2.5" stroke-linejoin="round"/><path d="M18 46 V38 M28 46 V38 M52 46 V38 M62 46 V38 M16 38 H64" stroke="#3a2414" stroke-width="3" stroke-linecap="round"/><path d="M16 38 L6 34 L16 30 Z" fill="#fff3d2" stroke="#2b1a10" stroke-width="2" stroke-linejoin="round"/><path d="M64 38 L74 34 L64 30 Z" fill="#fff3d2" stroke="#2b1a10" stroke-width="2" stroke-linejoin="round"/><rect x="14" y="46" width="52" height="10" rx="2" fill="url(#s3-darkwood)" stroke="#2b1a10" stroke-width="3" stroke-linejoin="round"/><g data-part="glow"><circle cx="40" cy="30" r="20" fill="#ff4f6e" opacity=".25"/></g><g data-part="turn"><rect x="50" y="26" width="29" height="8" rx="3" fill="url(#s3-brass)" stroke="#2b1a10" stroke-width="2.5" stroke-linejoin="round"/><circle cx="40" cy="30" r="14" fill="url(#s3-brass)" stroke="#2b1a10" stroke-width="3" stroke-linejoin="round"/><circle cx="40" cy="30" r="8.5" fill="#ff4f6e" stroke="#2b1a10" stroke-width="2.5" stroke-linejoin="round"/><circle cx="37" cy="27" r="2.5" fill="#ffffff"/></g><path d="M28 18 L40 8 L52 18 Z" fill="url(#s3-darkwood)" stroke="#2b1a10" stroke-width="2.5" stroke-linejoin="round"/><path d="M36 8 Q40 0 44 6 L48 6 L44 9 Q40 11 36 8 Z" fill="#5a3a22" stroke="#2b1a10" stroke-width="1.8" stroke-linejoin="round"/><circle cx="42" cy="4.5" r="0.9" fill="#ffe27a"/>`,
+  },
+  lightning: {
+    w: 80, h: 140, glow: [40,32], trim: [],
+    svg: `<circle cx="40" cy="34" r="30" fill="#8fb8ff" opacity=".3"/><ellipse cx="40" cy="134" rx="32" ry="7" fill="rgba(30,20,50,.35)"/><path d="M40 132 L40 78" fill="none" stroke="#2b1a10" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M40 132 L40 78" fill="none" stroke="#3a3346" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 132 L32 76 M72 132 L48 76" fill="none" stroke="#2b1a10" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 132 L32 76 M72 132 L48 76" fill="none" stroke="#5d5470" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/><path d="M18 110 H62" fill="none" stroke="#2b1a10" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/><path d="M18 110 H62" fill="none" stroke="#5d5470" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><rect x="3" y="128" width="12" height="6" rx="2" fill="#3a3346" stroke="#2b1a10" stroke-width="2" stroke-linejoin="round"/><rect x="65" y="128" width="12" height="6" rx="2" fill="#3a3346" stroke="#2b1a10" stroke-width="2" stroke-linejoin="round"/><rect x="34" y="128" width="12" height="6" rx="2" fill="#3a3346" stroke="#2b1a10" stroke-width="2" stroke-linejoin="round"/><ellipse cx="40" cy="78" rx="17" ry="5" fill="#3a3346" stroke="#2b1a10" stroke-width="2.5" stroke-linejoin="round"/><path d="M29 78 L36 38 H44 L51 78 Z" fill="url(#s3-copper)" stroke="#2b1a10" stroke-width="3" stroke-linejoin="round"/><path d="M30 72 Q40 76 50 72 M31.5 64 Q40 68 48.5 64 M33 56 Q40 60 47 56 M34.5 48 Q40 51 45.5 48" fill="none" stroke="#7a3f1e" stroke-width="2.5"/><ellipse cx="40" cy="58" rx="20" ry="5" fill="none" stroke="#2b1a10" stroke-width="4.5"/><ellipse cx="40" cy="58" rx="20" ry="5" fill="none" stroke="#f2c14e" stroke-width="2"/><ellipse cx="40" cy="44" rx="15" ry="4" fill="none" stroke="#2b1a10" stroke-width="4"/><ellipse cx="40" cy="44" rx="15" ry="4" fill="none" stroke="#f2c14e" stroke-width="1.8"/><circle cx="40" cy="32" r="9" fill="url(#s1-orb)" stroke="#2b1a10" stroke-width="3" stroke-linejoin="round"/><g data-part="cloud"><path d="M20 19 Q18 9 28 9 Q32 1 42 5 Q52 1 56 9 Q64 9 62 19 Z" fill="#4a4458" stroke="#2b1a10" stroke-width="2.5" stroke-linejoin="round"/></g><g data-part="spark"><path d="M40 19 L36 23 L42 25 L39 30" fill="none" stroke="#fff6a8" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M31 34 L22 38 L26 42 L16 46 M49 34 L58 38 L54 42 L64 46" fill="none" stroke="#8fb8ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></g>`,
+  },
+};
+
+// Goldbänder (Stufe 2: erstes, Stufe 3: beide, sofern vorhanden; leere Liste = keine), mit dunkler Kante darunter
 function trimSvg(paths, level, color, ink, width, edge) {
-  const n = level >= 3 ? 2 : level >= 2 ? 1 : 0;
+  const n = Math.min(paths.length, level >= 3 ? 2 : level >= 2 ? 1 : 0);
   let s = '';
   for (let i = 0; i < n; i++) s += `<path d="${paths[i]}" stroke="${ink}" stroke-width="${edge}" stroke-linecap="round"/><path d="${paths[i]}" stroke="${color}" stroke-width="${width}" stroke-linecap="round"/>`;
   return s;
@@ -46,7 +71,7 @@ export function towerFigure(type, level, trim) {
   const key = `${type}:${level}`;
   let f = towerCache.get(key);
   if (f) return f;
-  const T = TOWER_SVG[type];
+  const T = level >= 3 && Object.hasOwn(TOWER_SVG3, type) ? TOWER_SVG3[type] : Object.hasOwn(TOWER_SVG, type) ? TOWER_SVG[type] : null;
   if (!T) return null;
   const extra = trimSvg(T.trim, level, trim.color, trim.ink, trim.width, trim.edge);
   // Bänder gehören zum Sockel: vor dem drehenden Teil einfügen (bei festen Türmen ans Ende)
@@ -56,7 +81,14 @@ export function towerFigure(type, level, trim) {
   const back = gi < 0 ? parsed.all : parsed.groups.slice(0, gi).flatMap((g) => g.els);
   const turn = gi < 0 ? [] : parsed.groups[gi].els;
   const front = gi < 0 ? [] : parsed.groups.slice(gi + 1).flatMap((g) => g.els);
-  f = { type, level, w: T.w, h: T.h, back, turn, front, box: pad(boxOf(parsed.all), 2), pivot: T.pivot || null, muzzle: T.muzzle || null, flash: T.flash || null, glow: T.glow || null };
+  // Ebenen in Zeichenreihenfolge: 'main' = fest (Sprite), 'turn' = drehend, sonst Teil mit Ruhe-Animation (Stufe 3)
+  const layers = [];
+  for (const g of parsed.groups) {
+    const last = layers[layers.length - 1];
+    if (g.name === 'main' && last?.name === 'main') last.els = last.els.concat(g.els);
+    else layers.push({ name: g.name, els: g.els });
+  }
+  f = { type, level, w: T.w, h: T.h, back, turn, front, layers, box: pad(boxOf(parsed.all), 2), pivot: T.pivot || null, muzzle: T.muzzle || null, flash: T.flash || null, glow: T.glow || null };
   towerCache.set(key, f);
   return f;
 }
@@ -104,6 +136,16 @@ const CRACK_1 = `<path d="M20 14 L23 20 L19 25 M38 20 L35 26 L39 31" fill="none"
 const CRACK_2 = `<path d="M28 9 L25 16 L30 22 L26 30 M10 26 L16 27 L14 32 M44 14 L40 17 L45 22" fill="none" stroke="#2b1a10" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M40 11 Q46 13 48 20 L42 19 L41 14 Z" fill="#7a4a24" stroke="#2b1a10" stroke-width="2" stroke-linejoin="round"/>`;
 const BEETLE_SOFT = `<path d="M11 34 Q10 16 28 14 Q46 16 45 34 Q28 39 11 34 Z" fill="#e9a98c" stroke="#2b1a10" stroke-width="3" stroke-linejoin="round"/><path d="M14 28 Q28 23 42 28 M15 22 Q28 17 41 22" fill="none" stroke="#b8705a" stroke-width="2" stroke-linecap="round"/>`;
 
+// B-180: Nekromantin als Endboss (SVG aus der Bauvorlage docs/design/elemente/Gegner-Nekromantin.md)
+const NECRO_GLOW = '#7dff9a'; // necro-glow (Phase 1)
+const NECRO_GLOW_2 = '#ff5fd0'; // necro-glow-2 (Phase 2)
+const NECRO_SVG = `<ellipse cx="38" cy="88" rx="22" ry="5" fill="rgba(20,30,40,.4)"/><g data-part="cloak"><path d="M16 40 Q8 64 5 86 Q15 80 22 88 Q30 80 38 88 Q46 80 54 88 Q62 80 71 86 Q68 64 60 40 Z" fill="#2a1c40" stroke="#2b1a10" stroke-width="3" stroke-linejoin="round"/></g><path d="M25 42 Q23 64 25 86 H51 Q53 64 51 42 Z" fill="#5b3d8a" stroke="#2b1a10" stroke-width="3" stroke-linejoin="round"/><path d="M38 62 V86" stroke="#7dff9a" stroke-width="2" opacity=".8"/><path d="M25 56 H51 V62 H25 Z" fill="#3d2a5c" stroke="#2b1a10" stroke-width="2.5" stroke-linejoin="round"/><circle cx="38" cy="59" r="3" fill="#7dff9a" stroke="#2b1a10" stroke-width="1.5"/><path d="M50 42 Q60 44 62 52 L56 55 Q52 50 50 50 Z" fill="#5b3d8a" stroke="#2b1a10" stroke-width="2.5" stroke-linejoin="round"/><path d="M26 42 Q16 44 14 52 L20 55 Q24 50 26 50 Z" fill="#5b3d8a" stroke="#2b1a10" stroke-width="2.5" stroke-linejoin="round"/><circle cx="16" cy="54" r="4" fill="#a8c8a0" stroke="#2b1a10" stroke-width="2"/><circle cx="14" cy="47" r="4" fill="#7dff9a" opacity=".55"/><path d="M18 42 L23 28 L30 38 L38 32 L46 38 L53 28 L58 42 Z" fill="#3d2a5c" stroke="#2b1a10" stroke-width="2.5" stroke-linejoin="round"/><path d="M24 32 Q24 10 38 8 Q52 10 52 32 Q46 36 38 36 Q30 36 24 32 Z" fill="#3d2a5c" stroke="#2b1a10" stroke-width="3" stroke-linejoin="round"/><path d="M38 8 Q46 2 52 7 Q45 7 43 11" fill="#3d2a5c" stroke="#2b1a10" stroke-width="2.5" stroke-linejoin="round"/><ellipse cx="38" cy="25" rx="9" ry="8" fill="#1a1226"/><circle cx="33" cy="24.5" r="5" fill="#7dff9a" opacity=".3"/><circle cx="43" cy="24.5" r="5" fill="#7dff9a" opacity=".3"/><path d="M31 24 L35 25.5 M45 24 L41 25.5" stroke="#7dff9a" stroke-width="3" stroke-linecap="round"/><path d="M62 88 L64 14" stroke="#2b1a10" stroke-width="6" stroke-linecap="round"/><path d="M62 88 L64 14" stroke="#8a5326" stroke-width="3" stroke-linecap="round"/><circle cx="62" cy="52" r="4.5" fill="#a8c8a0" stroke="#2b1a10" stroke-width="2"/><circle cx="64" cy="10" r="12" fill="#7dff9a" opacity=".3"/><path d="M64 17 Q54 14 55 4 Q59 10 64 11 Q69 10 73 4 Q74 14 64 17 Z" fill="#8a5326" stroke="#2b1a10" stroke-width="2.5" stroke-linejoin="round"/><circle cx="64" cy="9" r="5" fill="#7dff9a" stroke="#2b1a10" stroke-width="2"/><circle cx="62.5" cy="7.5" r="1.8" fill="#ffffff"/><circle cx="64" cy="22" r="4.5" fill="#f2e9d8" stroke="#2b1a10" stroke-width="2"/><circle cx="62.4" cy="21.6" r="1.2" fill="#2b1a10"/><circle cx="65.6" cy="21.6" r="1.2" fill="#2b1a10"/>`;
+// Verlangsamt: Reif am Saum statt Eisblock (Boss ist immun gegen Einfrieren); Eisfarbe wie ICE_SHELL
+const NECRO_RIME = `<path d="M7 84 L10 77 L14 82 L19 76 L23 83 L28 77 L33 83 L38 77 L43 83 L48 77 L53 83 L57 76 L62 82 L66 77 L69 84 Q38 90 7 84 Z" fill="#dff7ff" fill-opacity=".75" stroke="#2b1a10" stroke-width="2" stroke-linejoin="round"/><path d="M14 82 L19 78 M38 79 L43 83 M57 78 L62 82" stroke="#fff" stroke-width="2" stroke-linecap="round"/>`;
+// Phase 2: gleiche Figur, Leuchten magenta (Zeichen zusätzlich: kreisende Schädel in render-necro.js)
+const NECRO_PHASE2 = { w: 76, h: 92, big: 'necroScale', svg: NECRO_SVG.replaceAll(NECRO_GLOW, NECRO_GLOW_2) };
+export const NECRO_VARIANT_P2 = 2;
+
 const ENEMY_SVG = {
   grunt: { w: 46, h: 50, svg: goblinSvg() },
   runner: {
@@ -142,12 +184,10 @@ const ENEMY_SVG = {
       front: `<path d="M19 25 H29" stroke="#2b1a10" stroke-width="2" stroke-linecap="round"/>`,
       weapon: `<path d="M38 24 L46 10" stroke="#2b1a10" stroke-width="6" stroke-linecap="round"/><path d="M38 24 L46 10" stroke="#f2e9d8" stroke-width="3" stroke-linecap="round"/>` }),
   },
-  // Nekromantin: lila Robe, Kapuze, Totenkopfstab (Größe über FIGURE_STYLE.necroScale)
-  necro: {
-    w: 46, h: 50, big: 'necroScale',
-    svg: goblinSvg({ legs: '#3d2a5c', body: '#5b3d8a', belt: '#7dff9a', ears: null, head: '#a8c8a0', front: hood('#3d2a5c'),
-      weapon: staff(`<circle cx="45" cy="5" r="5.5" fill="#f2e9d8" stroke="#2b1a10" stroke-width="2.5"/><circle cx="43" cy="5" r="1.4" fill="#2b1a10"/><circle cx="47" cy="5" r="1.4" fill="#2b1a10"/>`) }),
-  },
+  // Nekromantin (B-180, Bauvorlage Gegner-Nekromantin): Umhang (<g data-part="cloak">, weht live), Robe, Kapuze,
+  // Leuchtstab mit Totenkopf. Farben: necro-cloak #2a1c40, necro-robe #5b3d8a, necro-robe-dark #3d2a5c, necro-face #1a1226,
+  // necro-skin #a8c8a0, necro-glow #7dff9a (Phase 2: NECRO_PHASE2 mit necro-glow-2). Größe über FIGURE_STYLE.necroScale.
+  necro: { w: 76, h: 92, big: 'necroScale', svg: NECRO_SVG },
   // Glutling (B-170): Flamme mit Gesicht, Bodenglühen; Lodern, Funken und Dampf in render-enemies.js. Nie mit Eis.
   ember: {
     w: 42, h: 52,
@@ -190,6 +230,7 @@ export function shellStage(n) {
 function variantDef(type, variant) {
   if (type === 'bat' && Object.hasOwn(BAT_FRAMES, variant)) return BAT_FRAMES[variant];
   if (type === 'beetle' && Object.hasOwn(BEETLE_SHELL, variant)) return BEETLE_SHELL[variant];
+  if (type === 'necro' && variant === NECRO_VARIANT_P2) return NECRO_PHASE2;
   return null;
 }
 
@@ -205,9 +246,17 @@ function withIce(f, shell) {
   const box = pad([Math.min(f.box[0], tx(b[0])), Math.min(f.box[1], ty(b[1])), Math.max(f.box[2], tx(b[2])), Math.max(f.box[3], ty(b[3]))], 1);
   return { ...f, box, glow, shell: sh, ice };
 }
-function build(def) {
-  const parsed = parseFigure(def.svg);
-  return { w: def.w, h: def.h, big: def.big || null, els: parsed.all, box: pad(boxOf(parsed.all), 2) };
+function build(def, extra = '') {
+  const parsed = parseFigure(def.svg + extra);
+  const f = { w: def.w, h: def.h, big: def.big || null, els: parsed.all, box: pad(boxOf(parsed.all), 2) };
+  // B-180: Umhang (<g data-part="cloak">) weht live: back = davor (Schatten), cloak, front = Rest (Sprite)
+  const ci = parsed.groups.findIndex((g) => g.name === 'cloak');
+  if (ci >= 0) {
+    f.back = parsed.groups.slice(0, ci).flatMap((g) => g.els);
+    f.cloak = parsed.groups[ci].els;
+    f.front = parsed.groups.slice(ci + 1).flatMap((g) => g.els);
+  }
+  return f;
 }
 // Figur eines Gegnertyps; frozen: eingefrorene Fassung (Goblin eigener Entwurf, sonst mit Eis-Überzug, Glutling nie).
 // variant: Zusatzbild (Fledermaus 1 = Flügel oben, Panzerkäfer = Schalen-Stufe), sonst Grundbild
@@ -221,6 +270,7 @@ export function enemyFigure(type, frozen, variant) {
   if (f) return f;
   const def = alt || base;
   if (!ice) f = build(def);
+  else if (type === 'necro') f = build(def, NECRO_RIME); // B-180: nie Eisblock, nur Reif am Saum
   else if (type === 'grunt') f = withIce(build(ICED), false); // eigener Entwurf (54 x 56)
   else f = withIce(build(def), true);
   enemyCache.set(key, f);

@@ -17,6 +17,10 @@
   --hl: #ffe266;           /* Auswahl, Fokus */
   --muted: #e8d3a8;
   --bad: #ff6b5a;
+  --necro-glow-2: #ff5fd0; /* B-180: Phase 2 der Nekromantin */
+  --boss-bar: #d0384a;     /* B-180: Füllung der Boss-Leiste */
+  --boss-shield: #bff6ff;  /* B-180: Schild beim Phasenwechsel */
+  --ice-b: #8fd8f2;
   --display: 'Lilita One', 'Trebuchet MS', sans-serif;
   /* C1 Lage, nur CSS (kein Warten auf resize): --u = CSS-px je Spiel-px. --view-w/-h, --field-w/-h, --frame setzt main.js einmal aus config.js.
      Seitenzonen mindestens --side-min breit (Fähigkeiten, Türme), Bänder oben/unten mindestens --band-min hoch (HUD, Wellenknopf). */
@@ -121,6 +125,42 @@ canvas#game.over-flag { cursor: pointer; } /* Maus über der Wellenfahne */
   position: absolute; z-index: 12; right: var(--fr); top: max(4px, calc((var(--fy) - 48px) / 2));
   display: flex; gap: 8px; align-items: center;
 }
+/* B-180: Boss-Leiste (Bauvorlage HUD-Bossleiste). Desktop: mittig zwischen HUD und Knöpfen (main.js setzt --bb-left/--bb-w). */
+#boss-bars { position: absolute; z-index: 11; top: 6px; left: var(--bb-left, calc(50% - 136px)); width: var(--bb-w, 272px);
+  display: flex; flex-direction: column; gap: 6px; pointer-events: none; }
+#boss-bars[hidden], .boss-bar[hidden] { display: none; }
+.boss-bar { position: relative; width: 100%; height: 44px; flex: none; animation: bb-in .3s ease-out; container-type: inline-size; }
+@keyframes bb-in { from { transform: translateY(-60px); } }
+.bb-skull { position: absolute; left: 5px; top: 2px; width: 34px; height: 34px; }
+.bb-name { position: absolute; left: 46px; top: 1px; font: 15px/20px var(--display); color: var(--cream); white-space: nowrap;
+  text-shadow: -2px 0 var(--ink), 2px 0 var(--ink), 0 -2px var(--ink), 0 2px var(--ink); }
+.bb-phase { position: absolute; right: 8px; top: 2px; font: 13px/18px var(--display); color: var(--muted);
+  text-shadow: -2px 0 var(--ink), 2px 0 var(--ink), 0 -2px var(--ink), 0 2px var(--ink); }
+.boss-bar.p2 .bb-phase { color: var(--necro-glow-2); }
+.bb-shield-ico { position: absolute; right: -10px; top: -12px; width: 26px; height: 28px; display: none; }
+.boss-bar.shielded .bb-shield-ico { display: block; }
+.boss-bar.shielded .bb-phase { visibility: hidden; }
+.bb-track { position: absolute; left: 46px; right: 18px; bottom: 6px; height: 12px; border-radius: 6px; background: var(--ink); overflow: hidden; }
+.bb-fill, .bb-trail { position: absolute; left: 2px; top: 2px; bottom: 2px; width: calc((100% - 4px) * var(--f, 1)); border-radius: 4px; }
+.bb-fill { background: linear-gradient(#f0606e, var(--boss-bar) 50%, #8a1f30); transition: width .25s; }
+.bb-trail { background: var(--cream); transition: width .4s ease-in .15s; }
+.boss-bar.p2 .bb-fill { background: linear-gradient(#ff8ae0, var(--necro-glow-2) 50%, #a02a8a); }
+.bb-shield { position: absolute; inset: 2px; border-radius: 4px; background: repeating-linear-gradient(45deg, var(--boss-shield) 0 5px, var(--ice-b) 5px 10px); display: none; }
+.boss-bar.shielded .bb-shield { display: block; animation: bb-pulse 1s ease-in-out infinite alternate; }
+@keyframes bb-pulse { to { opacity: .55; } }
+.bb-notch { position: absolute; left: calc(50% - 1px); top: 0; bottom: 0; width: 2px; background: rgba(255,243,210,.85); }
+/* schmale Leiste (z. B. 1280x720): kleinere Schrift, damit Name und Phase sich nicht überdecken */
+@container (max-width: 230px) { .bb-name { font-size: 13px; } .bb-phase { font-size: 11px; } }
+@media (prefers-reduced-motion: reduce) { .boss-bar, .boss-bar.shielded .bb-shield { animation: none; } .bb-fill, .bb-trail { transition: none; } }
+/* Kompakt (Handy quer und hoch): nur Schädel und Balken, 32 hoch */
+@media (max-height: 519.98px) and (orientation: landscape), (max-width: 759.98px) {
+  .boss-bar { height: 32px; }
+  .bb-skull { left: 5px; top: 2px; width: 24px; height: 24px; }
+  .bb-name, .bb-phase { display: none; }
+  .bb-track { left: 36px; right: 8px; height: 10px; }
+  .bb-shield-ico { width: 20px; height: 22px; right: -8px; top: -10px; }
+}
+
 #sound .ic-off, #sound[aria-pressed="false"] .ic-on { display: none; }
 #fullscreen[hidden] { display: none; }
 #fullscreen .ic-exit, #fullscreen[aria-pressed="true"] .ic-enter { display: none; }
@@ -309,6 +349,7 @@ body:has(#tower-info:not([hidden])) #app { padding-bottom: calc(var(--tower-info
 .hud { align-self: stretch; justify-content: space-around; }
 .top-buttons { position: static; order: 3; justify-content: center; }
 .map-pick { position: static; order: 3; align-self: center; }
+#boss-bars { position: relative; order: 1; left: 0; top: 0; width: auto; margin: 0 12px; } /* B-180: unter der HUD-Leiste */
 /* C-Abnahme 11: bis Block E Feld und Leisten senkrecht mittig statt Leerraum unten */
 #app { justify-content: center; min-height: 100vh; min-height: 100dvh; }
 }
@@ -440,6 +481,9 @@ body.on-start .top-buttons { z-index: 41; } /* Ton und Hilfe bleiben erreichbar 
   .hud-ico { width: 22px; height: 22px; } #gold, #wave, #lives { min-width: 0; }
   /* Oben rechts: Tempo und Pause (48), Ton kompakt darunter (44) */
   .top-buttons { right: var(--safe-r); top: var(--safe-t); display: grid; grid-template-columns: 48px 48px; gap: 8px; justify-items: end; }
+  /* B-180: Boss-Leiste oben mittig über dem Feld (freigegebene Ausnahme), 240 x 32, nicht anklickbar */
+  #boss-bars { left: 50%; top: 6px; width: auto; transform: translateX(-50%); flex-direction: row; opacity: .9; } /* zwei Bosse: nebeneinander */
+  .boss-bar { width: 240px; }
   .help { display: none; }
   #speed { grid-area: 1 / 1; } #pause { grid-area: 1 / 2; }
   #sound { grid-area: 2 / 2; width: 44px; height: 44px; } #sound > svg { width: 32px; height: 32px; }

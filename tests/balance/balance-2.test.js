@@ -40,11 +40,12 @@ test('Schwierigkeit (B-125): Kanonen-Mix gewinnt die Wiese, Pfeil-Mix verliert e
 // Balancing (B-030, gemessen per Strategie-Simulation): Wer Türme nicht neben die Lava stellt,
 // gewinnt mit dem Kanonen-Mix mit 4 Leben (ein Boss bricht durch). Die Platzwahl nur nach Abdeckung (viele beste Plätze
 // liegen neben Lava) verliert mit allen Mischungen, ebenso nur Pfeiltürme.
-test('Vulkan: Kanonen-Mix auf Plätzen ohne Überhitzung gewinnt Welle 20 mit 1 bis 4 Leben (dt 1/30, 1/60)', () => {
+test('Vulkan: Kanonen-Mix auf Plätzen ohne Überhitzung gewinnt Welle 20 mit 1 bis 7 Leben (dt 1/30, 1/60)', () => {
   for (const dt of [1 / 30, 1 / 60]) {
     const s = strategyRun(MIX_CANNON, dt, 'volcano', true).state;
     assert.equal(s.status, 'won', `dt=${dt}: Status ${s.status} in Welle ${s.wave}`);
-    assert.ok(s.lives >= 1 && s.lives <= 4, `dt=${dt}: ${s.lives} Leben`);
+    assert.ok(s.lives >= 1 && s.lives <= 7, // 27.11.: Fenster 1-4 -> 1-7 (Entscheidung des Menschen, mehr Fledermäuse)
+      `dt=${dt}: ${s.lives} Leben`);
   }
 });
 

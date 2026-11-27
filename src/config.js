@@ -17,8 +17,12 @@ export const START_LIVES = 10;
 // Ab dieser Lebensanzahl (oder weniger) warnt das HUD in Rot.
 export const LOW_LIVES = 3;
 export const MAX_WAVES = 20;
+// HP-Zuwachs je Welle: früh (bis 5), Mitte (6-10), spät (ab 11)
+export const HP_GROWTH = { early: 1.15, mid: 1.26, late: 1.12 }; // late 1.11 -> 1.12 (Balancing 27.11.)
 export const SELL_RATIO = 0.7;
 export const MAX_LEVEL = 3;
+// Aufrüstkosten: Anteil der Baukosten je aktueller Stufe (Stufe 1→2, 2→3), mal Stufe
+export const UPGRADE_COST_FACTOR = { 1: 0.75, 2: 0.75 };
 // Zielregeln der Türme (Reihenfolge = Umschalt-Reihenfolge) mit deutschen Anzeigenamen
 export const TARGET_MODES = ['first', 'last', 'strong', 'close'];
 export const TARGET_MODE_NAMES = { first: 'Erster', last: 'Letzter', strong: 'Stärkster', close: 'Nächster' };
@@ -379,6 +383,7 @@ export const MAPS = {
     // Perfektes Spiel (10 von 10 Leben) gelingt mit kühlen Plätzen und dem Scharfschützen als drittem Turm (Test in game.test.js).
     // Nicht ahnungslos ändern.
     modifiers: { enemySpeed: 1.15 },
+    newEnemyScale: { bat: 0.9 }, // etwas weniger Fledermäuse (Balancing 27.11.)
     lavaRiver: VOLCANO_LAVA_RIVER,
     lavaPools: VOLCANO_LAVA_POOLS,
     bridges: VOLCANO_BRIDGES,
@@ -475,6 +480,8 @@ export const TOWER_TYPES = {
     hitsAir: true, // B-167: trifft Flieger
     // Aufwärmen: Schussabstand sinkt je Folgeschuss auf dasselbe Ziel um warmupStep (Anteil), höchstens um warmupMax.
     special: { warmupStep: 0.05, warmupMax: 0.25 },
+    // B-175 Stufe 3 "Adlerhorst", Mehrfachschuss: bis zu multiTargets Ziele zugleich, Nebenziele mit extraDamage (Anteil).
+    master: { name: 'Adlerhorst', multiTargets: 3, extraDamage: 0.6 },
   },
   cannon: {
     name: 'Kanone',
@@ -491,6 +498,9 @@ export const TOWER_TYPES = {
     // Rückstoß: das getroffene Ziel wird knockback Kacheln auf seinem Weg zurückgeworfen (Boss nur Faktor bossKnockbackFactor),
     // danach knockbackCooldown Sekunden Schutzzeit.
     special: { knockback: 0.5, bossKnockbackFactor: 0.5, knockbackCooldown: 6 },
+    // B-176 Stufe 3 "Mörserfestung", Brandfläche: die Explosion hinterlässt burnDuration Sekunden brennenden Boden
+    // (Radius = Splash), Schaden je Sekunde burnShare (Anteil des Treffers); zählt nicht als Treffer gegen die Schale.
+    master: { name: 'Mörserfestung', burnDuration: 2, burnShare: 0.15 },
   },
   frost: {
     name: 'Frostturm',
@@ -507,6 +517,9 @@ export const TOWER_TYPES = {
     hitsAir: false,
     // Einfrieren: jeder freezeEvery-te Treffer des Turms stoppt das Ziel für freezeDuration Sekunden (Boss immun).
     special: { freezeEvery: 5, freezeDuration: 0.6 },
+    // B-176 Stufe 3 "Eiszitadelle", Eisboden: am Treffpunkt iceDuration Sekunden eine Eisfläche (Radius iceRadius Kacheln),
+    // die Bodengegner darauf wie der Frost verlangsamt; die Wirkung hält iceLinger Sekunden nach (nicht Glutling/Flieger).
+    master: { name: 'Eiszitadelle', iceDuration: 3, iceRadius: 0.8, iceLinger: 0.25 },
   },
   sniper: {
     name: 'Scharfschütze',
@@ -521,6 +534,8 @@ export const TOWER_TYPES = {
     hitsAir: true,
     // Rüstungsbrecher: gegen Gegner, deren Basis-HP (ENEMY_TYPES[type].hp, ohne Wellen-Skalierung) >= bonusMinHp ist, Faktor bonusDamage auf den Schaden; ignoriert dabei Rüstung.
     special: { bonusMinHp: 300, bonusDamage: 1.5, ignoreArmor: true },
+    // B-176 Stufe 3 "Falkenauge", Markieren: das getroffene Ziel nimmt markDuration Sekunden lang markBonus (Anteil) mehr Schaden von allen Türmen.
+    master: { name: 'Falkenauge', markDuration: 3, markBonus: 0.25 },
   },
   lightning: {
     name: 'Blitzturm',
@@ -540,6 +555,9 @@ export const TOWER_TYPES = {
     description: 'Kettenblitz trifft sofort und verfehlt nie. Ideal gegen schnelle Flitzer und Schwärme.',
     hitsAir: true,
     special: {},
+    // B-175 Stufe 3 "Sturmspule", Gewitter: alle stormEvery Sekunden ein Einschlag in den dichtesten Pulk in Reichweite;
+    // Flächenschaden stormDamage (Anteil des Turmschadens) im Umkreis stormRadius (Kacheln), trifft auch Flieger.
+    master: { name: 'Sturmspule', stormEvery: 3, stormRadius: 1.2, stormDamage: 2 },
   },
 };
 
@@ -553,6 +571,15 @@ const SPECIAL_TEXTS = {
   lightning: (s, d) => `Kettenblitz: Springt auf bis zu ${d.chainCount} weitere Gegner im Umkreis von ${num(d.chainRange)} Kacheln, jeder Sprung mit ${pct(d.chainFalloff)} des vorigen Schadens.`,
   sniper: (s) => `Rüstungsbrecher: Gegen zähe Gegner (ab ${s.bonusMinHp} Basis-HP) ${pct(s.bonusDamage - 1)} mehr Schaden, Rüstung wird ignoriert.`,
 };
+// B-175: Stufe-3-Fähigkeiten (master.text), ebenfalls aus den Werten gebaut.
+const MASTER_TEXTS = {
+  arrow: (m) => `${m.name}, Mehrfachschuss: Schießt zugleich auf bis zu ${m.multiTargets} Ziele, die Nebenziele mit ${pct(m.extraDamage)} Schaden.`,
+  cannon: (m) => `${m.name}, Brandfläche: Die Explosion lässt den Boden ${num(m.burnDuration)} s brennen (${pct(m.burnShare)} des Treffers je Sekunde).`,
+  frost: (m) => `${m.name}, Eisboden: Am Treffpunkt bleibt ${num(m.iceDuration)} s eine Eisfläche, die Gegner darauf verlangsamt (nicht Glutlinge und Flieger).`,
+  sniper: (m) => `${m.name}, Markieren: Das Ziel nimmt ${num(m.markDuration)} s lang ${pct(m.markBonus)} mehr Schaden von allen Türmen.`,
+  lightning: (m) => `${m.name}, Gewitter: Alle ${num(m.stormEvery)} s schlägt ein Blitz in den dichtesten Gegnerpulk ein (${pct(m.stormDamage)} des Turmschadens im Umkreis von ${num(m.stormRadius)} Kacheln, auch Flieger).`,
+};
+for (const [type, build] of Object.entries(MASTER_TEXTS)) TOWER_TYPES[type].master.text = build(TOWER_TYPES[type].master);
 // B-167: dazu je Turm ein Satz, ob er Flieger trifft (Tooltip und Turm-Info).
 const airText = (d) => (d.hitsAir ? 'Trifft Flieger.' : 'Trifft keine Flieger.');
 for (const [type, build] of Object.entries(SPECIAL_TEXTS)) {
@@ -601,6 +628,8 @@ export const LAVA = { dps: 7.5, overheat: 1.5 };
 // boss: true = Boss (immun gegen Einfrieren, nur anteiliger Rückstoß, Boss-Auftritt und Boss-Sound).
 // Nekromantin (B-127): beschwört alle summonInterval Sekunden (Spielzeit) summonCount Gegner vom Typ summonType,
 //   summonBehind Kacheln hinter sich auf ihrem Weg (nie vor den Wegstart), jeweils summonSpacing Kacheln versetzt.
+//   B-180 (vorläufige Werte): phase2 = zweite Phase, sobald die HP auf at * maxHp oder darunter fallen (genau einmal):
+//   beschwört dann alle summonInterval Sekunden summonCount Gegner und ist shieldDuration Sekunden lang unverwundbar.
 export const ENEMY_TYPES = {
   grunt: { name: 'Goblin', hp: 40, speed: 1.4, reward: 4, leak: 1, radius: 11, color: '#6fbf4a' },
   runner: { name: 'Flitzer', hp: 25, speed: 2.6, reward: 3, leak: 1, radius: 9, color: '#f2c14e' },
@@ -610,7 +639,8 @@ export const ENEMY_TYPES = {
   shielded: { name: 'Schildträger', hp: 90, speed: 1.0, reward: 12, leak: 2, radius: 13, color: '#6f86a8', armor: 0.5 },
   mage: { name: 'Magier', hp: 55, speed: 1.1, reward: 6, leak: 1, radius: 11, color: '#d9c3a0', wardRadius: 1.5, wardInterval: 5, wardShare: 0.05 },
   necro: { name: 'Nekromantin', hp: 1000, speed: 0.6, reward: 75, leak: 6, radius: 18, color: '#3d4a5c', boss: true,
-    summonInterval: 8, summonCount: 2, summonType: 'skeleton', summonBehind: 0.6, summonSpacing: 0.3 },
+    summonInterval: 8, summonCount: 2, summonType: 'skeleton', summonBehind: 0.6, summonSpacing: 0.3,
+    phase2: { at: 0.5, summonInterval: 5, summonCount: 3, shieldDuration: 2 } },
   skeleton: { name: 'Skelett', hp: 18, speed: 0.9, reward: 1, leak: 1, radius: 10, color: '#e6e0cf' },
   // Glutling (B-170): slowImmune = immun gegen Frost-Slow und Einfrieren (Frost-Schaden wirkt normal);
   //   chillFactor = Anteil der Kälteschock-Verlangsamung, der trotzdem wirkt (0,5 = halbe Wirkung).
@@ -619,7 +649,7 @@ export const ENEMY_TYPES = {
   //   (fester Zähler je Irrlicht, kein Zufall). Kein Schaden von Explosionen, die anderen galten; nie Rückstoß.
   wisp: { name: 'Irrlicht', hp: 60, speed: 1.5, reward: 6, leak: 1, radius: 10, color: '#bff0ff', dodgeBelow: 11, dodgeEvery: 3 },
   // Fledermaus (B-167): flying = Flieger, nur Türme mit hitsAir zielen auf sie; Kanonen-Splash trifft sie nicht.
-  bat: { name: 'Fledermaus', hp: 30, speed: 1.8, reward: 3, leak: 1, radius: 9, color: '#5d4a66', flying: true },
+  bat: { name: 'Fledermaus', hp: 20, speed: 1.8, reward: 3, leak: 1, radius: 9, color: '#5d4a66', flying: true },
   // Panzerkäfer (B-169): shellHits = Schichten der Schale; jeder Treffer (nicht Lava) nimmt eine Schicht und macht 0 Schaden.
   beetle: { name: 'Panzerkäfer', hp: 120, speed: 1.0, reward: 10, leak: 2, radius: 12, color: '#2f7a3d', shellHits: 5 },
 };
@@ -661,7 +691,7 @@ export function hpScale(wave) {
   const early = Math.min(wave, 5) - 1;
   const mid = Math.max(Math.min(wave, 10) - 5, 0);
   const late = Math.max(wave - 10, 0);
-  return Math.pow(1.15, early) * Math.pow(1.26, mid) * Math.pow(1.11, late);
+  return Math.pow(HP_GROWTH.early, early) * Math.pow(HP_GROWTH.mid, mid) * Math.pow(HP_GROWTH.late, late);
 }
 
 // Spätphase (B-013): ab dieser Welle laufen Heiler in der Troll-Gruppe mit, ab der Welle danach kommen
@@ -670,13 +700,15 @@ const LATE_WAVE = 14;
 
 // B-127: In dieser Welle kommt die Nekromantin statt des Oger-Königs (gleiche Anzahl)
 export const NECRO_WAVE = 15;
+// Letzte Welle: Oger-König UND Nekromantin (Wunsch des Menschen); Anzahl Nekromantinnen dort (vorläufig)
+export const FINAL_WAVE_NECROS = 1;
 
 // B-171: Die neuen Gegner in den Wellen. from = erste Welle, count = Anzahl in Welle from, perWave = Zuwachs je Welle
 // danach (abgerundet), max = Obergrenze, gap = Sekunden zwischen zwei Gegnern der Gruppe.
 // Fledermäuse kommen als Schwarm nach den Flitzern, Glutlinge danach, Panzerkäfer zwischen den Trollen,
 // Irrlichter mit großen Abständen am Ende (vor den Bossen).
 export const NEW_ENEMY_WAVES = {
-  bat: { from: 6, count: 2, perWave: 0.25, max: 5, gap: 0.3 },
+  bat: { from: 6, count: 2, perWave: 0.5, max: 9, gap: 0.3 }, // mehr Fledermäuse (Wunsch des Menschen 27.11.)
   ember: { from: 8, count: 2, perWave: 0.25, max: 5, gap: 0.6 },
   beetle: { from: 11, count: 3, perWave: 0.25, max: 5, gap: 1.0, offset: 0.5 }, // offset: Sekunden nach dem ersten Troll
   wisp: { from: 10, count: 1, perWave: 0.2, max: 3, gap: 1.5 },
@@ -692,12 +724,52 @@ export function newEnemyCount(type, wave, mapId) {
   return scale === 1 ? n : scale <= 0 ? 0 : Math.max(1, Math.floor(n * scale));
 }
 
-// Erzeugt die Spawn-Liste einer Welle: [{ type, at }] (at = Sekunden nach Wellenstart).
+// B-179 (vorläufige Werte, Balancing folgt): gemischtere Mitte. Zusätzliche Gegner je Welle zu den normalen Gruppen
+// (Trolle, Heiler, Schildträger; nur Typen, die in der Welle ohnehin schon vorkommen). Wellen 5 und 10 bleiben gleich.
+export const WAVE_EXTRAS = {
+  6: { tank: 1 },
+  7: { healer: 1 },
+  9: { shielded: 1 },
+  11: { healer: 1 },
+  12: { shielded: 1 },
+};
+
+// B-179: Elite-Gegner ab Welle `from`: count in Welle from, danach +1 je `every` Wellen, höchstens max. Gewählt werden
+// gleichmäßig verteilte Gegner der Typen `types` (feste Auswahl, kein Zufall); die Eigenschaft wechselt reihum (traits).
+// swift: Tempo mal speed; shield: einmaliger Schild (wie der Magier-Schild) von wardShare * maxHp;
+// regen: heilt healPerSec * maxHp pro Sekunde. Elite-Gegner bringen rewardFactor mal so viel Gold. Flag enemy.elite fürs Abzeichen.
+export const ELITE = {
+  from: 10, count: 1, every: 3, max: 3,
+  types: ['grunt', 'runner', 'tank', 'shielded'],
+  traits: ['shield', 'regen'], // 'swift' (Werte unten) zu stark gegen Zwei Fronten, Balancing 27.11.
+  swift: { speed: 1.35 },
+  shield: { wardShare: 0.3 },
+  regen: { healPerSec: 0.03 },
+  rewardFactor: 1.5,
+};
+
+// B-179: Anzahl der Elite-Gegner in Welle `wave` (0 vor ELITE.from)
+export function eliteCount(wave) {
+  if (wave < ELITE.from) return 0;
+  return Math.min(ELITE.max, ELITE.count + Math.floor((wave - ELITE.from) / ELITE.every));
+}
+
+// B-179: markiert eliteCount(wave) Einträge der Spawn-Liste (gleichmäßig verteilt unter ELITE.types) mit elite = Eigenschaft.
+function markElites(list, wave) {
+  const n = eliteCount(wave);
+  const pool = list.filter((e) => ELITE.types.includes(e.type));
+  const k = Math.min(n, pool.length);
+  for (let i = 0; i < k; i++) pool[Math.floor(((i + 0.5) * pool.length) / k)].elite = ELITE.traits[(wave + i) % ELITE.traits.length];
+}
+
+// Erzeugt die Spawn-Liste einer Welle: [{ type, at, elite? }] (at = Sekunden nach Wellenstart).
 // mapId (B-171) nur für die kartenabhängige Anzahl der neuen Gegner.
 export function waveFor(wave, mapId) {
   const list = [];
   let t = 0;
+  const extras = WAVE_EXTRAS[wave] || {};
   const add = (type, count, gap) => {
+    if (!(count > 0)) return;
     for (let i = 0; i < count; i++) {
       list.push({ type, at: t });
       t += gap;
@@ -716,15 +788,15 @@ export function waveFor(wave, mapId) {
   extra('bat');
   extra('ember');
   const tankStart = t;
-  if (wave >= 5) add('tank', Math.floor(wave / 2) + 1 + lateTanks, 1.0);
+  if (wave >= 5) add('tank', Math.floor(wave / 2) + 1 + lateTanks + (extras.tank || 0), 1.0);
   // B-171: Panzerkäfer laufen zwischen den Trollen mit (verlängern die Welle nicht)
   const beetles = newEnemyCount('beetle', wave, mapId);
   for (let i = 0; i < beetles; i++) list.push({ type: 'beetle', at: tankStart + NEW_ENEMY_WAVES.beetle.offset + i * NEW_ENEMY_WAVES.beetle.gap });
   if (beetles) list.sort((a, b) => a.at - b.at);
-  if (wave >= 9) add('shielded', 1 + Math.floor((wave - 9) / 2), 1.0);
+  add('shielded', (wave >= 9 ? 1 + Math.floor((wave - 9) / 2) : 0) + (extras.shielded || 0), 1.0);
   // B-126: Magier laufen kurz nach der Troll-Gruppe
   if (wave >= 8) add('mage', 1 + Math.floor((wave - 8) / 4), 1.5);
-  if (wave >= 7 && wave < LATE_WAVE) add('healer', 1 + Math.floor((wave - 7) / 4), 1.2);
+  if (wave < LATE_WAVE) add('healer', (wave >= 7 ? 1 + Math.floor((wave - 7) / 4) : 0) + (extras.healer || 0), 1.2);
   // Spätphase: Heiler laufen mitten in der Troll-Gruppe mit, statt ihr als letzte Gruppe hinterherzulaufen
   if (wave >= LATE_WAVE) {
     const healers = 2 + Math.floor((wave - LATE_WAVE) / 3);
@@ -733,7 +805,11 @@ export function waveFor(wave, mapId) {
   }
   extra('wisp');
   // B-127: Bosse in jeder 5. Welle; in Welle NECRO_WAVE kommt die Nekromantin statt des Oger-Königs
-  if (wave % 5 === 0) add(wave === NECRO_WAVE ? 'necro' : 'boss', Math.floor(wave / 10) + 1, 3);
+  // Letzte Welle: die Nekromantinnen ersetzen ebenso viele Oger-Könige
+  const finalNecros = wave === MAX_WAVES ? FINAL_WAVE_NECROS : 0;
+  if (wave % 5 === 0) add(wave === NECRO_WAVE ? 'necro' : 'boss', Math.floor(wave / 10) + 1 - finalNecros, 3);
+  add('necro', finalNecros, 3);
+  markElites(list, wave);
   return list;
 }
 
@@ -814,10 +890,23 @@ export const FIGURE_STYLE = {
   badge: { colors: ['#d7dde0', '#f2c14e', '#ff8a3d'], r: 11, line: 2.5, dx: -9, dy: -15, ink: '#2b1a10', font: '14px "Lilita One", "Trebuchet MS", sans-serif', textDy: 0.5 },
   trim: { color: '#f2c14e', ink: '#2b1a10', width: 3, edge: 5 }, // Goldband ab Stufe 2 (Stufe 3: zwei Bänder)
   cannonTilt: 1.25, // größte Neigung des Kanonenrohrs aus der Senkrechten (rad)
+  cannonTilt3: 0.5, // Mörser der Mörserfestung (Stufe 3): längeres Rohr, neigt sich weniger, ragt nicht weit zur Seite
   muzzle: 0.55,     // Mündungsfeuer, solange der Rückstoß-Anteil darüber liegt
   squash: 0.05,     // Stauchung feststehender Türme direkt nach dem Schuss (Anteil der Höhe)
   recoil: { arrow: 0, cannon: 4, frost: 0, sniper: 3, lightning: 0 }, // Rückstoß drehender Teile in Entwurfs-px
   shotGlow: { frost: 'rgba(216,247,255,0.85)', lightning: 'rgba(255,246,168,0.9)', edge: 'rgba(255,255,255,0)', r: 26 }, // Aufleuchten beim Schuss
+  // B-173/B-174: Stufe 3 ist ein eigenes Gebäude (Box 80 x 140, docs/design/elemente/Tuerme-*.md)
+  towerScale3: { arrow: 1, cannon: 1, frost: 1, sniper: 1, lightning: 1 },
+  // Ruhe-Animation des benannten Teils der Stufe-3-Figur (Entwurfs-px, Sekunden); bei reduced motion aus
+  idle: {
+    arrow: { part: 'banners', period: 2, skew: 3, top: 62 },              // Wimpel: skewX 0 <-> 3 Grad um die Oberkante
+    cannon: { part: 'smoke', period: 1.6, rise: 8 },                      // Rauch steigt und verblasst
+    frost: { part: 'crystal', period: 3, squeeze: 0.25, bobPeriod: 2.4, bob: 3, at: [40, 9] }, // Kristall dreht und schwebt
+    sniper: { part: 'glow', period: 1.4, grow: 0.3, fade: 0.4, at: [40, 30] }, // Linsenschein pulsiert
+    lightning: { part: 'cloud', period: 2.4, bob: 3, spark: 'spark', sparkPeriod: 0.9, sparkOn: [[0, 0.27], [0.4, 0.63]] },
+  },
+  // Mündungsfeuer der Stufe 3 (Mörser x 1,4; Fernrohr wie Stufe 1/2)
+  flash3: { cannon: [19.6, 8.4, 6, 0.4, '#ffe266', 2.5], sniper: [11, 4, 5, 0.2, '#fff6a8', 2] },
   // Shop-Vorschau (48x48): Skalierung und Verschiebung nach unten in px
   icon: { arrow: { scale: 0.58, dy: 10 }, cannon: { scale: 0.59, dy: 10 }, frost: { scale: 0.57, dy: 10 }, sniper: { scale: 0.53, dy: 11 }, lightning: { scale: 0.54, dy: 11 } },
   // Gegner
@@ -825,10 +914,46 @@ export const FIGURE_STYLE = {
   sway: 0.05,        // Schwanken beim Laufen (rad)
   tilt: 0.35,        // Anteil der Neigung auf senkrechten Wegstücken (aufrechte Figuren kippen nur leicht)
   bossScale: 1.3,    // Oger-König = Troll x 1,3 mit Krone
-  necroScale: 1.5,   // Nekromantin auf Goblin-Basis
+  necroScale: 1.56,  // Nekromantin (B-180): sichtbar höchste Figur, auch an den Konturen über dem Oger-König
   // Lebensbalken (Z.113), nur bei Schaden: Breite = share x Figurbreite (mind. minW), über der Figur
   hp: { back: '#2b1a10', good: '#74d048', mid: '#f2c14e', low: '#e5481f', h: 12, inner: 6, pad: 3, gap: 4, minW: 34, share: 0.71, r: 6 },
   outline: '#2b1a10',
+};
+
+// B-173/B-174: Optik der Stufe-3-Fähigkeiten und des Aufstiegs (nur Darstellung, keine Spielwerte).
+// Maße in Spiel-px (Kachel 40), Zeiten in Sekunden. Bauvorlagen: docs/design/elemente/Effekte-*.md
+export const MASTER_FX = {
+  maxParticles: 120, // Obergrenze aller Stufe-3-Teilchen zusammen je Bild (Funken, Flämmchen, Glanz, Spuren)
+  ink: '#2b1a10',
+  ascend: {
+    width: 1.25, core: 0.4, grow: 0.36, swapAt: 0.42, ring: 0.7, sparks: 6, sparkRise: 110, sparkR: 6, sparkSpread: 0.7, sparkLife: 0.7,
+    text: 'Stufe 3!', textLife: 1.2, textRise: 16, textLift: 1.2, life: 1.8, fadeFrom: 0.9,
+    colors: ['#ffe27a', '#fff3d2', 'rgba(255,243,210,0)'], coreColor: 'rgba(255,255,255,0.55)', ringColor: '#ffe27a', ringW: 4, ringFlat: 0.33,
+    font: '30px "Lilita One", "Trebuchet MS", sans-serif', textInk: 6,
+  },
+  multishot: { main: '#ffe27a', glow: 'rgba(255,243,210,0.35)', side: '#fff3d2', w: [4, 9, 2.5], trailShare: 0.14, trailMin: 18, star: [11, 8], starLife: 0.25, maxTrails: 24, muzzle: [40, 48] },
+  storm: {
+    tele: 0.35, teleColor: '#ffe266', teleW: 2.5, teleDash: [7, 5], flat: 0.36, cloud: '#4a4458', cloudLift: 40, puffs: [[-16, 0, 14], [0, -6, 18], [16, 0, 12]], cloudInk: 2.5,
+    bolt: '#fff6a8', boltW: [8, 5, 1.6], kinks: 6, kinkAmp: 12, branches: 2, branchLen: [20, 30], flicker: [0.1, 0.05, 0.1], reducedFlash: 0.15,
+    light: 1.2, ring: 0.65, ringFrom: 0.3, ringTo: 1.35, ringW: 3, soot: 0.3, sootR: 0.8, sootLife: 1.0, cloudLife: 1.8, life: 1.8, maxStrikes: 6,
+    link: 0.15, linkDash: [4, 4], linkW: 2, electric: '#8fb8ff',
+  },
+  burn: {
+    soot: 'rgba(43,26,16,0.45)', flames: 5, flameH: 18, flicker: [0.27, 0.35, 0.42], embers: 3, emberRise: 26, emberR: 2, fadeIn: 0.1, fadeOut: 0.35, maxPatches: 4,
+    glow: ['rgba(255,194,58,0.55)', 'rgba(255,122,31,0)'], flame: '#ff7a1f', core: '#ffc23a', ember: '#ffe58a', inkW: 2,
+    ring: 0.4, ringFrom: 0.3, ringTo: 1.3, ringW: 5, enemyFlame: 10, enemyFlameH: 12,
+  },
+  iceFloor: {
+    fill: 'rgba(232,251,255,0.85)', edge: '#3b8fcb', inner: 'rgba(143,216,242,0.45)', ry: 0.36, grow: 0.35, overshoot: 1.05, shrinkTo: 0.85, fadeOut: 0.7, glints: 3, twinkle: 1.2, maxPerTower: 3,
+    edgeW: 2.5, crackW: 1.5, cracks: 4, innerShare: 0.68, innerShift: 6, glintR: [3.5, 5], glint: '#ffffff',
+    rime: 'rgba(143,216,242,0.8)', rimeLine: '#e8fbff', rimeShare: 0.6, rimeRy: 4, rimeTicks: 3, rimeTick: 4,
+  },
+  mark: {
+    color: '#ff4f6e', aim: 0.6, aimDash: [4, 4], aimW: 1.6, traceLife: 0.2, ring: 18, tick: 9, spin: 3, popFrom: 1.6, pop: 0.2, fadeOut: 0.2, tag: true,
+    inkW: 6, lineW: 3, arrow: [18, 11], arrowGap: 6, trace: '#ffffff', traceW: 2.5, traceGlow: 'rgba(255,243,210,0.4)', traceGlowW: 7,
+    tagSize: [46, 20], tagR: 9, tagText: '#ff9e8f', tagFont: '14px "Lilita One", "Trebuchet MS", sans-serif', tagLife: 1, tagTypes: ['tank', 'boss'],
+  },
+  bolt3: { width: 1.5, branch: 0.4 }, // Kettenblitz der Sturmspule: Breite x 1,5, je Segment ein Ast (Anteil der Segmentlänge)
 };
 
 // Weg im Flat-Pop-Stil (B-071). Maße in px bei 1x. Gesamtbreite in Kachelmitte = TILE, der wellige
@@ -1281,7 +1406,40 @@ export const ENEMY_STYLE = {
     steamRgb: '244,241,234', steamAlpha: 0.75, steamPuffs: [[-8, -26], [0, -32], [8, -24]],
     steamR: [3, 8], steamRise: 16, steamLife: 0.5, steamInk: 'rgba(43,26,16,0.5)', steamLine: 1.5,
   },
+  // B-180 Nekromantin (Bauvorlage Gegner-Nekromantin). Maße in Entwurfs-px (mal TILE/57 und necroScale), Zeiten in s.
+  // glow = necro-glow #7dff9a, glow2 = necro-glow-2 #ff5fd0, shield = boss-shield #bff6ff, skull wie Skelett
+  necro: {
+    glow: '#7dff9a', glow2: '#ff5fd0', ink: '#2b1a10', skull: '#f2e9d8',
+    // Boden-Aura: Lichtfleck (rx in Kacheln, ry = rx * flat) und Runenring (Radien, flach, 5 Spitzen), Drehung je Umdrehung
+    spotRx: 1.6, flat: 0.3, spotAlpha: 0.22, ringOuter: 84, ringInner: 64, ringAlpha: 0.6, ringWidth: 2.5,
+    spikes: 5, spikeLen: 12, spikeHalf: 5, auraTurn: 8, auraTurn2: 4,
+    orb: [64, 10], orbR: 12, orbAlpha: 0.3, orbPulse: 0.3, orbHz: 1 / 1.4,       // Leuchtschein der Stabkugel pulsiert
+    cloakTop: 40, cloakSkew: -4, cloakPeriod: 2, cloakPeriod2: 1,                 // Umhang: skewX 0 -> -4 Grad um die Oberkante
+    skullOrbit: 62, skullR: 7, skullTurn: 3, head: [38, 25],                      // Phase 2: zwei Schädel kreisen um den Kopf
+    shieldR: 0.8, shieldAlpha: 0.18, shieldLine: 4, shieldInk: 7, shieldColor: '#bff6ff', // Schild-Kugel r = 0,8 x Figurhöhe
+    waveWidth: 5, waveFrom: 0.3, waveTo: 1.3, waveLife: 0.6,                      // Druckwelle beim Phasenwechsel
+    text: 'Zweite Phase!', font: '26px "Lilita One", "Trebuchet MS", sans-serif', textLine: 6, textLife: 1.2, textGap: 10,
+    summonRx: 16, summonRy: 6, summonRise: 8, summonAlpha: 0.55, summonSkullR: 4.5, // Beschwörung: Bodenfleck + Schädel steigt
+  },
+  // B-179 Elite-Abzeichen (Bauvorlage Gegner-Elite): Goldstern mit Zeichen, gestrichelter Fußring. Box 20 x 20 Entwurfs-px.
+  elite: {
+    gold: '#f2c14e', cream: '#fff3d2', ink: '#2b1a10', ring: 'rgba(242,193,78,0.9)', // elite-ring
+    shield: '#bff6ff', healA: '#a8e070', healB: '#3a8a3c',                             // boss-shield, ab-repair-a/-b
+    // 8-zackiger Stern (R 9,5 / r 7,6) als Punktliste in der 20er-Box
+    star: [10, 0.5, 12.9, 3, 16.7, 3.3, 17, 7.1, 19.5, 10, 17, 12.9, 16.7, 16.7, 12.9, 17, 10, 19.5, 7.1, 17, 3.3, 16.7, 3, 12.9, 0.5, 10, 3, 7.1, 3.3, 3.3, 7.1, 3],
+    size: 20, minPx: 14, dx: 0.28, lift: 0.55, starLine: 2, innerR: 6.2, innerLine: 1.2, glyphLine: 2,
+    ringPad: 4, ringFlat: 0.3, ringDash: [6, 4], ringWidth: 2.5, ringPulse: [0.5, 0.9], ringPeriod: 2,
+    // Eigenschaftszeichen an der Figur (Spiel-px, Zeiten in s)
+    dashes: 3, dashLen: 8, dashGap: 6, dashRun: 10, dashPeriod: 0.5, dashWidth: 2.5,
+    arcR: 0.62, arcSpan: 1.2, arcWidth: 3, arcInk: 5, arcPulse: [0.55, 1], arcPeriod: 1.2,
+    plus: 3, plusSize: 4, plusRise: 14, plusPeriod: 1.5, plusWidth: 2.5, plusInk: 5,
+  },
 };
+
+// B-180 Boss-Lebensleiste (Bauvorlage HUD-Bossleiste, nur Anzeige): höchstens maxBars Leisten, weitere Bosse
+// zählen in der letzten Leiste zusammen. Breite und Abstand in CSS-px (Desktop, mittig zwischen HUD und Knöpfen),
+// fadeAfter = Sekunden, die die leere Leiste nach dem Tod noch steht.
+export const BOSS_BAR = { maxBars: 2, width: 272, gapPad: 8, top: 6, fadeAfter: 1 };
 
 // Auftritt des Bosses (B-067, nur Darstellung): Bodenschlag-Ring plus leichtes Wackeln.
 // Bei prefers-reduced-motion entfällt das Wackeln, der Ring wächst nicht.
@@ -1338,6 +1496,14 @@ export const FX_STYLE = {
     shardSpeed: [60, 110], shardAngle: [-160, -20], gravity: 260, spin: 8, fadeFrom: 0.6, reducedLife: 0.3,
     shardInk: '#2b1a10', shardLine: 1.5, originDy: -22, flash: '#fff3c9', flashR: [10, 26], flashLife: 0.2, flashLine: 2,
   },
+  // B-179: Elite-Schild bricht: Splitter wie bei der Schale, in Schildfarben (boss-shield, ice-b, weiß), Ursprung vor der Brust
+  eliteBreak: {
+    life: 0.45, shards: 6, shardColors: ['#bff6ff', '#8fd8f2', '#ffffff'], shardSize: [3, 5],
+    shardSpeed: [60, 100], shardAngle: [-160, -20], gravity: 260, spin: 8, fadeFrom: 0.6, reducedLife: 0.3,
+    shardInk: '#2b1a10', shardLine: 1.5, originDy: -24, flash: '#bff6ff', flashR: [8, 20], flashLife: 0.15, flashLine: 2,
+  },
+  // B-179: Elite-Abzeichen beim Tod: fliegt rise Entwurfs-px hoch und blendet aus (life in s Spielzeit)
+  eliteGone: { life: 0.3, rise: 12 },
   coin: { color: '#f4c542', dark: '#b07a14', shine: '#fff3c9', hop: 12, bounce: 0.3, split: 0.55, end: 0.85, spins: 1.5, minWidth: 0.3, fadeFrom: 0.6, drift: 20,
     edgeWidth: 1, inner: 0.72, shineMin: 0.6, shineOffset: 0.3, shineR: 0.22 }, // Rand, Innenfläche und Glanz relativ zur Größe
   coinText: { color: '#f4c542', outline: '#3b2415', outlineWidth: 3, rise: 10, lift: 20, font: 'bold 13px system-ui, sans-serif' }, // lift: Start über dem Gegner in px

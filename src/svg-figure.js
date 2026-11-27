@@ -13,6 +13,16 @@ export const GRADIENTS = {
   's1-boom': { type: 'radial', cx: 0.5, cy: 0.5, r: 0.5, stops: [[0, '#fffbd0'], [0.45, '#ffc93c'], [1, '#e5481f']] },
   's1-glow': { type: 'radial', cx: 0.5, cy: 0.5, r: 0.5, stops: [[0, 'rgba(255,246,168,0.9)'], [1, 'rgba(255,246,168,0)']] },
   's1-iceglow': { type: 'radial', cx: 0.5, cy: 0.5, r: 0.5, stops: [[0, 'rgba(216,247,255,0.95)'], [1, 'rgba(127,208,255,0)']] },
+  // B-173/B-174: Stufe 3 (docs/design/elemente/Tuerme-*.md)
+  's3-marble': { type: 'linear', x1: 0, y1: 0, x2: 1, y2: 0, stops: [[0, '#fbf7ef'], [0.6, '#e2d9c8'], [1, '#b8ab95']] },
+  's3-gold': { type: 'linear', x1: 0, y1: 0, x2: 1, y2: 1, stops: [[0, '#ffe27a'], [0.5, '#f2c14e'], [1, '#b9851d']] },
+  's3-basalt': { type: 'linear', x1: 0, y1: 0, x2: 1, y2: 0, stops: [[0, '#4a3a38'], [1, '#2d1f20']] },
+  's3-lava': { type: 'radial', cx: 0.5, cy: 0.7, r: 0.7, stops: [[0, '#ffe58a'], [0.5, '#ffc23a'], [1, '#ff7a1f']] },
+  's3-ice': { type: 'linear', x1: 0, y1: 0, x2: 1, y2: 1, stops: [[0, '#e8fbff'], [0.5, '#8fd8f2'], [1, '#1f5d96']] },
+  's3-brick': { type: 'linear', x1: 0, y1: 0, x2: 1, y2: 0, stops: [[0, '#c0563c'], [1, '#8a3424']] },
+  's3-darkwood': { type: 'linear', x1: 0, y1: 0, x2: 1, y2: 0, stops: [[0, '#6b4a2e'], [1, '#3a2414']] },
+  's3-brass': { type: 'linear', x1: 0, y1: 0, x2: 1, y2: 1, stops: [[0, '#ffe27a'], [0.55, '#d79a2b'], [1, '#8a5a1e']] },
+  's3-copper': { type: 'linear', x1: 0, y1: 0, x2: 1, y2: 0, stops: [[0, '#e8a070'], [0.55, '#c9794a'], [1, '#7a3f1e']] },
 };
 
 // Farbe mit Deckkraft: #rgb/#rrggbb/rgba(...) -> rgba(...) (einmal beim Laden)

@@ -370,10 +370,11 @@ test('Stil 1 Sprites: je Typ x Stufe x Pixeldichte genau einmal gebaut, danach n
     const before = spriteStats.builds;
     const first = frame(1);
     const built = spriteStats.builds - before;
-    // Türme: 5 Typen x 3 Stufen, Kanone und Scharfschütze mit Teil vor dem drehenden Rohr (+2 x 3);
+    // Türme Stufe 1/2: 5 Typen x 2, Kanone und Scharfschütze mit Teil vor dem drehenden Rohr (+2 x 2);
+    // Stufe 3 (B-173/B-174): feste Teile vor und hinter dem bewegten Teil je ein Sprite (Pfeil, Kanone, Scharfschütze 2; Frost, Blitz 1);
     // Gegner: 13 Typen x 2, Glutling ohne Eis-Fassung nur 1 (B-167 bis B-170)
-    assert.equal(built, 15 + 6 + 25, 'jede Figur genau ein Sprite');
-    assert.ok(first.drawImage >= 15 + 6 + 25);
+    assert.equal(built, 10 + 4 + 8 + 25, 'jede Figur genau ein Sprite');
+    assert.ok(first.drawImage >= 10 + 4 + 8 + 25);
     frame(1);
     frame(1);
     assert.equal(spriteStats.builds - before, built, 'zweiter Frame baut nichts neu');
@@ -1521,4 +1522,380 @@ test('B-170 Glutling: nie Eis, Dampf beim Kälteschock, Funken mit Obergrenze, r
   }
   assert.ok(seen > 0, 'Funken sichtbar');
   for (const time of [NaN, Infinity, -2]) for (const slowUntil of [NaN, undefined, 99]) assert.equal((await recordEnemy({ type: 'ember', slowUntil }, time)).depth, 0);
+});
+
+// ---------- B-180: Nekromantin als Endboss (Optik) ----------
+
+test('B-180 Nekromantin: Phase-2-Variante magenta statt grün, Box höher als der Oger-König, Umhang als eigener Teil', async () => {
+  const { enemyFigure, NECRO_VARIANT_P2 } = await import('../src/figures.js');
+  const { FIGURE_STYLE: S, ENEMY_STYLE } = await import('../src/config.js');
+  const N = ENEMY_STYLE.necro;
+  const p1 = await recordEnemy({ type: 'necro' });
+  const p2 = await recordEnemy({ type: 'necro', phase: 2 });
+  assert.ok(p1.print.includes(N.glow) && !p1.print.includes(N.glow2), 'Phase 1 grün');
+  assert.ok(p2.print.includes(N.glow2) && !p2.print.includes(N.glow), 'Phase 2 magenta, kein Grün');
+  assert.ok(!p2.print.includes('rgba(125,255,154,'), 'Phase 2: auch kein halbdurchsichtiges Grün');
+  const f = enemyFigure('necro', false), boss = enemyFigure('boss', false);
+  assert.ok(f.h * S.necroScale > boss.h * S.bossScale, 'Nekromantin höher als der Oger-König (Box)');
+  assert.ok((await figureSize('necro')).h > (await figureSize('boss')).h, 'Nekromantin höher als der Oger-König (Konturen)');
+  assert.ok(f.cloak.length > 0 && f.front.length > 0 && f.back.length > 0, 'Umhang getrennt (weht live)');
+  assert.notEqual(enemyFigure('necro', false, NECRO_VARIANT_P2), f, 'Variante eigenes Bild');
+  // verlangsamt: Reif am Saum statt Eisblock (kein Lichthof, kein Kristall wie bei anderen Typen)
+  const slow = enemyFigure('necro', true);
+  assert.ok(!slow.glow && !slow.shell, 'nie Eisblock');
+  assert.ok(slow.els.length > f.els.length, 'Reif kommt dazu');
+});
+
+test('B-180 Nekromantin: Umhang und Kugel bewegen sich, reduced motion steht', async () => {
+  const live = (r) => r.calls.filter((c) => c.startsWith('arc:') || c.startsWith('transform:')).join('\n');
+  assert.notEqual(live(await recordEnemy({ type: 'necro' }, 0.3)), live(await recordEnemy({ type: 'necro' }, 0.9)), 'Kugelschein pulsiert');
+  assert.ok((await recordEnemy({ type: 'necro' }, 0.5)).print.includes('transform:'), 'Umhang weht (skewX)');
+  assert.ok(!(await recordEnemy({ type: 'necro' }, 0.5, undefined, true)).print.includes('transform:'), 'reduced: Umhang steht');
+  const r1 = await recordEnemy({ type: 'necro' }, 0.3, undefined, true), r2 = await recordEnemy({ type: 'necro' }, 0.9, undefined, true);
+  assert.equal(live(r1).replace(/transform:.*/g, ''), live(r2).replace(/transform:.*/g, ''), 'reduced: Kugel pulsiert nicht');
+});
+
+test('B-180 Nekromantin: Aura nur bei der Nekromantin, dreht (Phase 2 schneller), reduced ohne Drehung, ausgewogen', async () => {
+  const { drawNecroAura, necroAuraAngle } = await import('../src/render-necro.js');
+  const { ENEMY_STYLE } = await import('../src/config.js');
+  const N = ENEMY_STYLE.necro;
+  for (const type of ALL_ENEMIES) {
+    const m = mockCtx();
+    drawNecroAura(m.ctx, { type, x: 100, y: 100 }, 1);
+    assert.equal((m.counts.ellipse || 0) > 0, type === 'necro', `${type}: Aura`);
+    assert.equal(m.depth, 0);
+    assert.equal(m.props.globalAlpha, undefined);
+  }
+  const e = { type: 'necro' };
+  assert.ok(Math.abs(necroAuraAngle(e, N.auraTurn / 4) - Math.PI / 2) < 1e-9, 'eine Umdrehung in auraTurn s');
+  assert.ok(Math.abs(necroAuraAngle({ phase: 2 }, N.auraTurn2 / 4) - Math.PI / 2) < 1e-9, 'Phase 2: auraTurn2');
+  assert.equal(necroAuraAngle(e, 3, true), 0, 'reduced: keine Drehung');
+  assert.equal(necroAuraAngle(e, NaN), 0);
+  const m = mockCtx();
+  drawNecroAura(m.ctx, { type: 'necro', x: NaN, y: 1 }, 1);
+  assert.equal(m.counts.ellipse || 0, 0, 'kaputte Lage: nichts');
+});
+
+test('B-180 Nekromantin: kreisende Schädel nur in Phase 2, Schild-Kugel nur solange der Schild hält, ausgewogen', async () => {
+  const { skullOffsets } = await import('../src/render-necro.js');
+  const { ENEMY_STYLE } = await import('../src/config.js');
+  const N = ENEMY_STYLE.necro;
+  const skulls = (r) => r.calls.filter((c) => c.startsWith('arc:') && c.includes('|' + N.skull + '|')).length;
+  const base = await recordEnemy({ type: 'necro' });
+  const p2 = await recordEnemy({ type: 'necro', phase: 2 }, 1.3);
+  assert.equal(skulls(p2), skulls(base) + 2, 'zwei Schädel kreisen');
+  assert.notDeepEqual(skullOffsets(0.2), skullOffsets(1.1), 'Schädel bewegen sich');
+  const still = skullOffsets(5, true);
+  assert.ok(still[0][0] > 0 && still[1][0] < 0 && still.every((s) => s[2] && Math.abs(s[1]) < 1e-9), 'reduced: stehen links und rechts');
+  const on = await recordEnemy({ type: 'necro', phase: 2, shieldUntil: 5 }, 4);
+  const off = await recordEnemy({ type: 'necro', phase: 2, shieldUntil: 5 }, 5.5);
+  assert.ok(on.print.includes('|' + N.shieldColor) && !off.print.includes('|' + N.shieldColor), 'Schild nur bis shieldUntil');
+  for (const r of [on, off, p2]) { assert.equal(r.depth, 0); assert.equal(r.props.globalAlpha, undefined); }
+});
+
+test('B-180 Phasenwechsel: ein Ereignis ergibt genau einen Effekt (Druckwelle, Schrift), Wackeln, Beschwörungs-Fleck', async () => {
+  const { drawEffectOver, drawEffectUnder } = await import('../src/render-fx.js');
+  const { ENEMY_STYLE } = await import('../src/config.js');
+  const N = ENEMY_STYLE.necro;
+  const ev = { kind: 'phase2', id: 1, x: 100, y: 100, ttl: 2, max: 2 };
+  // Zeichnet alle Effekte einer Liste wie render.js; zählt Schriften und Ringe
+  const frame = (effects, reduced = false) => {
+    const m = mockCtx();
+    const out = { texts: [], rings: [] };
+    const ctx = new Proxy(m.ctx, {
+      get: (t, k) => (k === 'fillText' ? (txt) => out.texts.push(txt) : k === 'arc' ? (...a) => out.rings.push(a[2]) : t[k]),
+      set: (t, k, v) => { t[k] = v; return true; },
+    });
+    for (const e of effects) drawEffectOver(ctx, e, reduced);
+    assert.equal(m.depth, 0);
+    return out;
+  };
+  const list = [{ kind: 'coin', x: 1, y: 1, ttl: 1, max: 1, text: '+1' }, ev];
+  const at = (age, reduced) => frame([{ ...ev, ttl: ev.max - age }], reduced);
+  assert.deepEqual(frame(list).texts.filter((t) => t === N.text), [N.text], 'genau eine Schrift „Zweite Phase!“');
+  assert.equal(at(0.05).rings.length, 1, 'Druckwelle am Anfang');
+  assert.equal(at(N.waveLife + 0.05).rings.length, 0, 'Druckwelle nach waveLife vorbei');
+  assert.deepEqual(at(N.textLife + 0.05).texts, [], 'Schrift nach textLife vorbei');
+  assert.ok(at(0.5 * N.waveLife).rings[0] > at(0.05).rings[0], 'Druckwelle wächst');
+  assert.equal(at(0.5 * N.waveLife, true).rings[0], at(0.05, true).rings[0], 'reduced: wächst nicht');
+  // Wackeln wie beim Boss-Auftritt, reduced ohne
+  for (const reduced of [false, true]) {
+    const f = createFx();
+    syncFx(f, { time: 1, effects: [{ ...ev }], enemies: [], projectiles: [] }, reduced);
+    assert.equal(shakeAmplitude(1, f.shakeStart, f.shakeStrength) > 0, !reduced, `Wackeln reduced=${reduced}`);
+  }
+  // Beschwörung: Bodenfleck (grün, Phase 2 magenta) unter den Figuren, Schädel darüber
+  const spot = (p2) => { const m = mockCtx(); drawEffectUnder(m.ctx, { kind: 'summon', x: 50, y: 50, ttl: 0.3, max: 0.6, p2 }); assert.equal(m.depth, 0); return m.props.fillStyle; };
+  assert.ok(spot(false).startsWith('rgba(125,255,154,') && spot(true).startsWith('rgba(255,95,208,'), 'Fleck in Phasenfarbe');
+  const skull = mockCtx();
+  drawEffectOver(skull.ctx, { kind: 'summon', x: 50, y: 50, ttl: 0.3, max: 0.6 });
+  assert.ok(skull.counts.arc > 0 && skull.depth === 0, 'Schädel steigt auf');
+});
+
+// ---------- B-179: Elite-Abzeichen ----------
+
+test('B-179 Elite: Goldstern und Fußring nur mit elite, je Eigenschaft eigenes Zeichen, Bosse nie, unbekannt crasht nicht', async () => {
+  const { ENEMY_STYLE } = await import('../src/config.js');
+  const E = ENEMY_STYLE.elite;
+  const plain = await recordEnemy({ type: 'grunt' });
+  assert.ok(!plain.print.includes('|' + E.gold + '|'), 'ohne elite kein Stern');
+  const prints = {};
+  for (const trait of ['shield', 'regen', 'swift', 'unbekannt']) {
+    const r = await recordEnemy({ type: 'grunt', elite: trait, ward: 3 }, 0.7);
+    assert.ok(r.print.includes('fill:|' + E.gold + '|'), `${trait}: Goldstern`);
+    assert.ok(r.calls.some((c) => c.startsWith('ellipse:') && c.includes('|' + E.ring.slice(0, E.ring.lastIndexOf(',')))), `${trait}: Fußring`);
+    assert.equal(r.depth, 0, `${trait}: save/restore`);
+    // globalAlpha setzt hier die Schild-Blase (B-126, save/restore), das Abzeichen selbst nutzt Farben mit Alpha
+    prints[trait] = r.calls.filter((c) => !c.startsWith('ellipse:')).join('\n');
+  }
+  const keys = Object.keys(prints);
+  for (let i = 0; i < keys.length; i++) for (let j = i + 1; j < keys.length; j++) assert.notEqual(prints[keys[i]], prints[keys[j]], `${keys[i]} == ${keys[j]}`);
+  assert.ok(prints.shield.includes('|' + E.shield + '|'), 'Schild-Zeichen gefüllt');
+  for (const type of ['boss', 'necro']) {
+    const r = await recordEnemy({ type, elite: 'shield' });
+    assert.ok(!r.print.includes(E.ring.slice(0, E.ring.lastIndexOf(','))), `${type}: kein Elite-Abzeichen (Fußring)`); // Gold allein zeigt auch die Krone
+  }
+});
+
+test('B-179 Elite: Abzeichen mindestens minPx, über der Figur, reduced motion und eingefroren ohne Versatz', async () => {
+  const { eliteBadgeSize, eliteGlyph } = await import('../src/render-elite.js');
+  const { ENEMY_STYLE } = await import('../src/config.js');
+  const E = ENEMY_STYLE.elite;
+  assert.ok(eliteBadgeSize(1) >= E.minPx && eliteBadgeSize(0.1) === E.minPx && eliteBadgeSize(2) > eliteBadgeSize(1));
+  assert.equal(eliteBadgeSize(NaN), eliteBadgeSize(1));
+  assert.deepEqual(['swift', 'shield', 'regen', 'x', undefined].map(eliteGlyph), ['fast', 'shield', 'heal', null, null]);
+  // Stern liegt oberhalb der Figur-Oberkante (Teile davon), Fußpunkt-Ring am Boden
+  for (const trait of ['swift', 'regen']) {
+    const still = new Set();
+    for (const time of [0, 0.3, 0.7]) still.add((await recordEnemy({ type: 'grunt', elite: trait }, time, undefined, true)).calls.filter((c) => !c.startsWith('translate:') && !c.startsWith('rotate:') && !c.startsWith('scale:')).filter((c) => c.includes(E.cream) || c.includes(E.healA) || c.includes(E.ring)).join('\n'));
+    assert.equal(still.size, 1, `${trait}: reduced ohne Versatz`);
+    const moving = new Set();
+    for (const time of [0, 0.2, 0.45]) moving.add((await recordEnemy({ type: 'grunt', elite: trait }, time)).calls.filter((c) => c.includes(E.cream) || c.includes(E.healA)).join('\n'));
+    assert.ok(moving.size > 1, `${trait}: Zeichen bewegen sich`);
+  }
+});
+
+// ---------- B-173/B-174: Stufe 3 (Ruhe-Animation, Spuren, Teilchen-Obergrenze, Effekte) ----------
+
+test('Stufe 3 Hilfen: idlePose ruht bei reduced motion, bewegt sich sonst; shownLevel; trailTail; Budget', async () => {
+  const { idlePose, shownLevel, trailTail, createBudget, takeBudget, resetBudget } = await import('../src/tower-fx.js');
+  const { FIGURE_STYLE } = await import('../src/config.js');
+  for (const [type, cfg] of Object.entries(FIGURE_STYLE.idle)) {
+    const rest = { ...idlePose(cfg, 0.7, true) };
+    assert.deepEqual([rest.dx, rest.dy, rest.sx, rest.sy, rest.skew, rest.alpha, rest.spark], [0, 0, 1, 1, 0, 1, true], `${type}: Grundstellung`);
+    assert.deepEqual({ ...idlePose(cfg, NaN, false) }, rest, `${type}: ungültige Zeit`);
+    const moved = [0.3, 0.7, 1.1].some((t) => { const p = idlePose(cfg, t, false); return p.dx || p.dy || p.sx !== 1 || p.skew || p.alpha !== 1; });
+    assert.ok(moved, `${type}: bewegt sich`);
+    for (let t = 0; t < 6; t += 0.13) {
+      const p = idlePose(cfg, t, false);
+      assert.ok(p.alpha >= 0 && p.alpha <= 1 && p.sx > 0 && Math.abs(p.dy) <= 8 + 1e-9 && Math.abs(p.skew) <= 0.06, `${type} t=${t}`);
+    }
+  }
+  const sparks = new Set([0.1, 0.3, 0.5, 0.8].map((t) => idlePose(FIGURE_STYLE.idle.lightning, t, false).spark));
+  assert.equal(sparks.size, 2, 'Funke blinkt');
+  assert.equal(shownLevel(3, 0.1, 0.42), 2);
+  assert.equal(shownLevel(3, 0.5, 0.42), 3);
+  assert.equal(shownLevel(3, undefined, 0.42), 3);
+  assert.equal(shownLevel(2, 0.1, 0.42), 2);
+  // Spur: 14 % der Strecke, mindestens 18 px, nie hinter den Start
+  const [x] = trailTail(0, 0, 100, 0, 300, 0, 0.14, 18);
+  assert.ok(Math.abs(x - (100 - 42)) < 1e-9);
+  assert.deepEqual(trailTail(0, 0, 10, 0, 20, 0, 0.14, 18), [0, 0]);
+  assert.equal(trailTail(5, 5, 5, 5, 9, 9, 0.14, 18), null);
+  const b = createBudget(10);
+  assert.equal(takeBudget(b, 6), 6);
+  assert.equal(takeBudget(b, 6), 4);
+  assert.equal(takeBudget(b, 1), 0);
+  resetBudget(b);
+  assert.equal(takeBudget(b, NaN), 0);
+  assert.equal(b.left, 10);
+});
+
+// Szene mit allen Stufe-3-Effekten; time = Spielzeit
+function masterScene(time = 10) {
+  const s = createGame();
+  s.time = time;
+  const tower = (id, type, x, y) => ({ id, type, x, y, level: 3, cooldown: 0.3, angle: 0.4, col: 0, row: 0 });
+  s.towers = [tower(1, 'arrow', 100, 300), tower(2, 'sniper', 200, 300), tower(3, 'lightning', 300, 300)];
+  s.towers[1].aimId = 11;
+  s.enemies = [
+    { id: 11, type: 'grunt', x: 150, y: 200, dist: 0, hp: 5, maxHp: 10, slowUntil: 0, markedUntil: time + 2, markedAt: time - 0.05, markBonus: 0.25 },
+    { id: 12, type: 'tank', x: 250, y: 200, dist: 0, hp: 5, maxHp: 10, slowUntil: 0, markedUntil: time + 0.1, markedAt: time - 0.1, markBonus: 0.25 },
+    { id: 13, type: 'bat', x: 400, y: 200, dist: 0, hp: 5, maxHp: 10, slowUntil: 0 },
+    { id: 14, type: 'ember', x: 410, y: 200, dist: 0, hp: 5, maxHp: 10, slowUntil: 0 },
+    { id: 15, type: 'grunt', x: 420, y: 200, dist: 0, hp: 5, maxHp: 10, slowUntil: 0 },
+  ];
+  s.grounds = [
+    { kind: 'fire', x: 150, y: 200, r: 30, born: time - 0.2, until: time + 1.8 },
+    { kind: 'ice', x: 410, y: 200, r: 32, born: time - 0.1, until: time + 2.9, towerId: 9 },
+  ];
+  s.projectiles = [
+    { x: 130, y: 250, tx: 150, ty: 200, towerId: 1, towerType: 'arrow', master: TOWER_TYPES.arrow.master, side: false },
+    { x: 140, y: 250, tx: 250, ty: 200, towerId: 1, towerType: 'arrow', master: TOWER_TYPES.arrow.master, side: true },
+    { x: 180, y: 240, tx: 150, ty: 200, towerId: 2, towerType: 'sniper', master: TOWER_TYPES.sniper.master },
+  ];
+  s.effects = [
+    { kind: 'ascend', towerId: 1, x: 100, y: 300, ttl: 1.5, max: 1.8 },
+    { kind: 'storm', towerId: 3, x: 300, y: 200, r: 48, ttl: 1.75, max: 1.8 },
+    { kind: 'stormWarn', x: 300, y: 200, r: 48, ttl: 0.2, max: 0.35 },
+    { kind: 'multiHit', x: 150, y: 200, main: true, ttl: 0.1, max: 0.25 },
+  ];
+  return s;
+}
+
+test('Stufe 3 Effekte: Unter/Über/Spuren zeichnen ausgewogen, auch reduziert und im ganzen render()', async () => {
+  const { beginMasterFx, drawMasterUnder, drawMasterOver, drawMasterTrails, masterBudgetLeft } = await import('../src/render-master.js');
+  const { render } = await import('../src/render.js');
+  const { MASTER_FX } = await import('../src/config.js');
+  for (const reduced of [false, true]) {
+    const s = masterScene();
+    const counts = {};
+    const m = mockCtx(counts);
+    beginMasterFx(s);
+    drawMasterUnder(m.ctx, s, reduced);
+    drawMasterTrails(m.ctx, s, reduced);
+    drawMasterOver(m.ctx, s, reduced);
+    assert.equal(m.depth, 0, 'save/restore ausgewogen');
+    assert.ok(counts.ellipse > 4 && counts.stroke > 10, 'zeichnet etwas');
+    assert.ok(masterBudgetLeft() >= 0 && masterBudgetLeft() < MASTER_FX.maxParticles);
+    const r = mockCtx();
+    render(r.ctx, s, { reducedMotion: reduced });
+    assert.equal(r.depth, 0);
+  }
+});
+
+test('Stufe 3 Effekte: kaputte Werte (NaN-Radius, fehlender Turm) werfen nicht', async () => {
+  const { beginMasterFx, drawMasterUnder, drawMasterOver, drawMasterTrails } = await import('../src/render-master.js');
+  const s = masterScene();
+  s.effects.push({ kind: 'storm', x: NaN, y: 1, r: NaN, ttl: NaN, max: 1 }, { kind: 'stormWarn', x: 1, y: 1, r: -3, ttl: 0.1, max: 0.35 },
+    { kind: 'ascend', towerId: 999, ttl: 1, max: 1.8 }, { kind: 'multiHit', x: undefined, y: 3, ttl: 0.1, max: 0.25 });
+  s.grounds.push({ kind: 'fire', x: 1, y: 1, r: NaN }, { kind: 'ice', x: 5, y: 5, r: 20 }, null);
+  s.projectiles.push({ x: 1, y: 1, towerId: 999, master: TOWER_TYPES.arrow.master }, { x: NaN, y: 1, towerId: 1, master: TOWER_TYPES.arrow.master });
+  s.enemies.push({ id: 99, type: 'unbekannt', x: 5, y: 5, hp: 1, maxHp: 2, markedUntil: s.time + 1 });
+  const m = mockCtx();
+  beginMasterFx(s);
+  drawMasterUnder(m.ctx, s, false);
+  drawMasterTrails(m.ctx, s, false);
+  drawMasterOver(m.ctx, s, false);
+  assert.equal(m.depth, 0);
+});
+
+// Zeichnet nur einen Durchgang der Szene und liefert die Aufrufe mit aktueller Füll- und Strichfarbe
+async function colorCalls(s, reduced, pass) {
+  const mod = await import('../src/render-master.js');
+  const calls = [];
+  const m = mockCtx();
+  const ctx = new Proxy(m.ctx, {
+    get: (t, k) => (typeof t[k] === 'function' ? (...a) => { calls.push([k, m.props.fillStyle, m.props.strokeStyle, ...a]); return t[k](...a); } : t[k]),
+    set: (t, k, v) => { t[k] = v; return true; },
+  });
+  mod.beginMasterFx(s);
+  mod[pass](ctx, s, reduced);
+  assert.equal(m.depth, 0);
+  return calls;
+}
+
+test('Stufe 3 Effekte: Teilchen-Obergrenze hält auch bei vielen Aufstiegen', async () => {
+  const { MASTER_FX } = await import('../src/config.js');
+  const { masterBudgetLeft } = await import('../src/render-master.js');
+  const s = masterScene();
+  s.towers = [];
+  s.effects = [];
+  for (let i = 0; i < 40; i++) {
+    s.towers.push({ id: 100 + i, type: 'arrow', x: 20 + (i % 20) * 40, y: 100 + Math.floor(i / 20) * 200, level: 3, cooldown: 0 });
+    s.effects.push({ kind: 'ascend', towerId: 100 + i, x: 0, y: 0, ttl: 1.4, max: 1.8 }); // Alter 0,4: alle Funken sichtbar
+  }
+  const calls = await colorCalls(s, false, 'drawMasterOver');
+  const sparks = calls.filter(([k, fill]) => k === 'fill' && fill === MASTER_FX.ascend.ringColor).length;
+  assert.ok(sparks > 0 && sparks <= MASTER_FX.maxParticles, `Funken ${sparks}`);
+  assert.equal(masterBudgetLeft(), 0, 'Obergrenze ausgeschöpft, nicht überschritten');
+});
+
+test('Stufe 3 Effekte: reduced motion ohne Säule, ohne Stern, ohne Funken; Brandfläche höchstens maxPatches', async () => {
+  const { MASTER_FX } = await import('../src/config.js');
+  const s = masterScene();
+  const full = await colorCalls(s, false, 'drawMasterOver');
+  const calm = await colorCalls(s, true, 'drawMasterOver');
+  const rects = (c) => c.filter(([k]) => k === 'fillRect').length;
+  assert.ok(rects(full) >= 2, 'Säule und Kern');
+  assert.equal(rects(calm), 0, 'reduziert: keine Säule');
+  assert.ok(calm.some(([k, , , t]) => k === 'fillText' && t === MASTER_FX.ascend.text), 'Text bleibt');
+  const star = (c) => c.filter(([k, fill]) => k === 'fill' && fill === MASTER_FX.multishot.main).length;
+  assert.ok(star(full) >= 1);
+  assert.equal(star(calm), 0);
+  const embers = (c) => c.filter(([k, fill]) => k === 'fill' && fill === MASTER_FX.burn.ember).length;
+  assert.ok(embers(await colorCalls(s, false, 'drawMasterUnder')) > 0);
+  assert.equal(embers(await colorCalls(s, true, 'drawMasterUnder')), 0);
+  const many = masterScene();
+  many.effects = []; // Rußfleck des Gewitters hat dieselbe Farbe
+  for (let i = 0; i < 8; i++) many.grounds.push({ kind: 'fire', x: 50 + i * 60, y: 400, r: 30, born: many.time - 0.5, until: many.time + 1 });
+  const soot = (await colorCalls(many, true, 'drawMasterUnder')).filter(([k, fill]) => k === 'fill' && fill === MASTER_FX.burn.soot).length;
+  assert.equal(soot, MASTER_FX.burn.maxPatches);
+});
+
+test('Stufe 3 Effekte: Reif nur an Bodengegnern (nicht Fledermaus, Glutling, eingefroren); Marke nur solange markiert', async () => {
+  const { MASTER_FX } = await import('../src/config.js');
+  const rimeAt = (calls) => calls.filter(([k, fill]) => k === 'fill' && fill === MASTER_FX.iceFloor.rime).length;
+  const s = masterScene();
+  assert.equal(rimeAt(await colorCalls(s, false, 'drawMasterUnder')), 1, 'nur der Goblin auf dem Eis');
+  s.enemies[4].frozenUntil = s.time + 1;
+  assert.equal(rimeAt(await colorCalls(s, false, 'drawMasterUnder')), 0, 'eingefroren: Eisblock statt Reif');
+  const marks = (calls) => calls.filter(([k, , stroke]) => k === 'stroke' && stroke === MASTER_FX.mark.color).length;
+  const s2 = masterScene();
+  assert.ok(marks(await colorCalls(s2, false, 'drawMasterOver')) >= 3, 'zwei Marken und der Zielstrahl');
+  for (const e of s2.enemies) e.markedUntil = 0;
+  assert.equal(marks(await colorCalls(s2, false, 'drawMasterOver')), 1, 'nur noch der Zielstrahl');
+  s2.towers[1].level = 2;
+  assert.equal(marks(await colorCalls(s2, false, 'drawMasterOver')), 0, 'Zielstrahl nur auf Stufe 3');
+});
+
+test('B-179 Elite: Schild bricht mit Splittern, Abzeichen fliegt beim Tod weg (Ereignisse genau einmal, Zeichnung ausgewogen)', async () => {
+  const { spawnEnemy, useAbility } = await import('../src/game.js');
+  const { drawEffectOver } = await import('../src/render-fx.js');
+  const { FX_STYLE, ENEMY_STYLE } = await import('../src/config.js');
+  const s = createGame();
+  s.status = 'playing';
+  const e = spawnEnemy(s, 'grunt', 10, null, 'shield');
+  const plain = spawnEnemy(s, 'grunt', 10);
+  e.dist = plain.dist = 3 * TILE;
+  update(s, 1 / 60);
+  assert.ok(e.ward > 0);
+  useAbility(s, 'meteor', e.x, e.y);
+  for (let i = 0; i < 180; i++) update(s, 1 / 60);
+  assert.ok(e.hp <= 0 && plain.hp <= 0, 'Meteor trifft beide');
+  // Effekte laufen nach ttl ab; daher jeden neuen Effekt beim Entstehen zählen
+  const s2 = createGame();
+  s2.status = 'playing';
+  const seen = { eliteBreak: 0, eliteGone: 0 };
+  const known = new Set();
+  const a = spawnEnemy(s2, 'grunt', 10, null, 'shield');
+  const b = spawnEnemy(s2, 'grunt', 10);
+  a.dist = b.dist = 3 * TILE;
+  update(s2, 1 / 60);
+  useAbility(s2, 'meteor', a.x, a.y);
+  for (let i = 0; i < 180; i++) {
+    update(s2, 1 / 60);
+    for (const fx of s2.effects) if (!known.has(fx)) { known.add(fx); if (fx.kind in seen) seen[fx.kind]++; }
+  }
+  assert.deepEqual(seen, { eliteBreak: 1, eliteGone: 1 }, 'je ein Ereignis, nur für den Elite-Gegner');
+  // Zeichnung: Abzeichen (Goldstern) steigt und blendet aus, reduced steigt nicht; Splitter in Schildfarben
+  const draw = (fx, reduced = false) => {
+    const m = mockCtx();
+    const ys = [];
+    const ctx = new Proxy(m.ctx, { get: (t, k) => (k === 'translate' ? (x, y) => ys.push(y) : t[k]), set: (t, k, v) => { t[k] = v; return true; } });
+    drawEffectOver(ctx, fx, reduced);
+    assert.equal(m.depth, 0);
+    return { ys, props: m.props, counts: m.counts };
+  };
+  const L = FX_STYLE.eliteGone.life;
+  const gone = (ttl, reduced) => draw({ kind: 'eliteGone', type: 'grunt', elite: 'shield', x: 100, y: 100, ttl, max: L }, reduced).ys[0];
+  assert.ok(gone(0.1 * L) < gone(0.9 * L), 'Abzeichen steigt');
+  assert.equal(gone(0.1 * L, true), gone(0.9 * L, true), 'reduced: steigt nicht');
+  assert.equal(draw({ kind: 'eliteGone', type: 'unbekannt', x: 1, y: 1, ttl: 0.1, max: L }).counts.fill > 0, true, 'unbekannter Typ crasht nicht');
+  const br = mockCtx();
+  const fills = [];
+  const bctx = new Proxy(br.ctx, { get: (t, k) => (k === 'fill' ? () => fills.push(br.props.fillStyle) : t[k]), set: (t, k, v) => { t[k] = v; return true; } });
+  drawEffectOver(bctx, { kind: 'eliteBreak', x: 100, y: 100, ttl: 0.3, max: FX_STYLE.eliteBreak.life });
+  assert.equal(br.depth, 0);
+  assert.ok(fills.length === FX_STYLE.eliteBreak.shards && fills.includes(ENEMY_STYLE.elite.shield), 'Splitter in Schildfarbe');
 });
