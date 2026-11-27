@@ -4,6 +4,7 @@ import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 import { createServer } from '../../scripts/serve.mjs';
+import { enterGame } from './tile.mjs';
 import { TILE, FRAME_MARGIN, VIEW_WIDTH, PAINTED_STYLE } from '../../src/config.js';
 import { createGame } from '../../src/game.js';
 import { flagBoxes } from '../../src/render.js';
@@ -32,6 +33,7 @@ async function openPage(viewport) {
   page.on('pageerror', (e) => errors.push(e.message));
   page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
   await page.goto(url);
+  await enterGame(page);
   await page.waitForSelector('#abilities .ability-btn');
   return { ctx, page, errors };
 }

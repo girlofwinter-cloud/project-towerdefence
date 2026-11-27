@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 import { createServer } from '../../scripts/serve.mjs';
 import { COLS, ROWS, VIEW_WIDTH, VIEW_HEIGHT } from '../../src/config.js';
-import { tileCenter } from './tile.mjs';
+import { tileCenter, enterGame } from './tile.mjs';
 
 const require = createRequire(import.meta.url);
 const { chromium } = require('playwright');
@@ -81,6 +81,7 @@ test('HiDPI im Vollbild: Canvas = Bühne, Klick auf die Fahne startet Welle 1 (1
   const p = await browser.newPage({ viewport: { width: 1366, height: 768 }, deviceScaleFactor: 2 });
   try {
     await p.goto(`http://localhost:${server.address().port}/`);
+    await enterGame(p);
     await p.waitForSelector('#abilities .ability-btn');
     const m = await p.evaluate(() => {
       const c = document.getElementById('game'), r = c.getBoundingClientRect(), st = c.closest('.stage').getBoundingClientRect();

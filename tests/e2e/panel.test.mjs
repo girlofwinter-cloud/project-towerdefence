@@ -5,7 +5,7 @@ import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 import { createServer } from '../../scripts/serve.mjs';
-import { tileCenter } from './tile.mjs';
+import { tileCenter, enterGame } from './tile.mjs';
 
 const require = createRequire(import.meta.url);
 const { chromium } = require('playwright');
@@ -68,6 +68,7 @@ async function openMobileWithTower(viewport) {
   const ctx = await browser.newContext({ viewport, hasTouch: true, isMobile: true });
   const page = await ctx.newPage();
   await page.goto(url);
+  await enterGame(page);
   await page.waitForSelector('#shop .tower-btn');
   await page.locator('.tower-btn[data-type="arrow"]').tap();
   const box = await page.locator('#game').boundingBox();
@@ -143,6 +144,7 @@ test('Shop-Karten: Farben aus SHOP_CARD, zu teure Karte mit eigenem Rahmen und P
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
   const page = await ctx.newPage();
   await page.goto(url);
+  await enterGame(page);
   await page.waitForSelector('#shop .tower-btn');
   await page.evaluate(() => { window.__game().gold = 60; });
   await page.waitForSelector('.tower-btn[data-type="sniper"].poor');

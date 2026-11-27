@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 import { createServer } from '../../scripts/serve.mjs';
 import { TOWER_TYPES, VIEW_WIDTH, VIEW_HEIGHT } from '../../src/config.js';
-import { tileCenter } from './tile.mjs';
+import { tileCenter, enterGame } from './tile.mjs';
 
 const require = createRequire(import.meta.url);
 const { chromium } = require('playwright');
@@ -22,6 +22,7 @@ before(async () => {
   page.on('pageerror', (e) => errors.push(e.message));
   page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
   await page.goto(url);
+  await enterGame(page);
 });
 
 after(async () => {
@@ -96,6 +97,7 @@ test('Handy: Bauen per Touch in zwei Schritten, Zoom vergrößert das Spielfeld'
   const mErrors = [];
   m.on('pageerror', (e) => mErrors.push(e.message));
   await m.goto(url);
+  await enterGame(m);
   try {
     await m.locator('.tower-btn[data-type="arrow"]').tap();
     const box = await m.locator('#game').boundingBox();

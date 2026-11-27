@@ -4,6 +4,7 @@ import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 import { createServer } from '../../scripts/serve.mjs';
+import { enterGame } from './tile.mjs';
 import { TEST_TOOLS, PROGRESS_KEY } from '../../src/config.js';
 
 const require = createRequire(import.meta.url);
@@ -29,6 +30,7 @@ after(async () => {
 
 test('Normale Seite hat kein Test-Panel', async () => {
   await page.goto(url);
+  await enterGame(page);
   await page.waitForSelector('#shop .tower-btn');
   assert.equal(await page.locator('#test-panel').count(), 0);
 });

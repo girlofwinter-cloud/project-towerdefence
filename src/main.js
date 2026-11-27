@@ -10,7 +10,8 @@ import { drawIcon } from './render-icons.js';
 import { buildTapStep, aimStep, fieldPoint, canvasSize } from './input.js';
 import { createSoundTracker, collectSounds, loadSoundOn, saveSoundOn } from './sound-events.js';
 import { unlockAudio, setSoundOn, playSound, updateMusic } from './audio.js';
-import { loadProgress, saveProgress, recordResult, isUnlocked, mapProgress, starText, resultLines, startMap, mapAfterResult, MAP_ORDER } from './progress.js';
+import { loadProgress, saveProgress, recordResult, isUnlocked, mapProgress, starText, resultLines, startMap, mapAfterResult, starsFor, MAP_ORDER } from './progress.js';
+import { mountStartScreen, endView, starsHtml, STAR_COUNT } from './screens.js';
 
 const canvas = document.getElementById('game');
 canvas.width = VIEW_WIDTH; // Stil 1: Feld + Rand (Wald, Burg, Fahne); HiDPI-Größe setzt fitCanvas()
@@ -367,6 +368,21 @@ if (typeof ResizeObserver === 'function') {
   }).observe(towerInfo);
 }
 $('restart').addEventListener('click', restart);
+// ---------- C5: Startbildschirm (screens.js) ----------
+// Bei jedem Laden (außer Testseite) und über "Karten" am Spielende. Wahl = Karte merken und neu starten.
+const startScreen = mountStartScreen($('start-screen'), {
+  getProgress: () => progress,
+  allOpen: TEST_MODE,
+  currentMap: () => (TEST_MODE ? state.mapId : startMap(progress)),
+  onPick: (id) => {
+    mapId = id;
+    progress.lastMap = id;
+    saveProgress(getStorage(), progress);
+    restart();
+  },
+});
+$('to-maps').addEventListener('click', () => startScreen.show(true));
+if (!TEST_MODE) startScreen.show();
 $('zoom').addEventListener('click', toggleZoom);
 $('sound').addEventListener('click', toggleSound);
 
@@ -465,6 +481,7 @@ function restart() {
 }
 
 window.addEventListener('keydown', (ev) => {
+  if (startScreen.handleKey(ev)) return; // C5: Startbildschirm offen
   const key = ev.key.toLowerCase();
   const type = Object.keys(TOWER_TYPES).find((t) => TOWER_TYPES[t].key === key);
   const ability = Object.keys(ABILITIES).find((a) => ABILITIES[a].key === key);
@@ -568,9 +585,14 @@ function refreshUI() {
 
   const over = $('overlay');
   over.hidden = state.status === 'playing';
-  // B-096: Trophäe bzw. Totenkopf vor dem Text (nur Schmuck, alt leer)
-  if (state.status === 'won') setHtml($('overlay-title'), `${iconHtml('trophy', 'result')} Gewonnen!`);
-  if (state.status === 'lost') setHtml($('overlay-title'), `${iconHtml('skull', 'result')} Verloren`);
+  // C5: Plakette mit Band (Titel) und erreichten Sternen dieses Spiels
+  if (state.status !== 'playing') {
+    const end = endView(state.status, starsFor(state.status, state.lives));
+    $('overlay-title').textContent = end.title;
+    $('end-ribbon-band').setAttribute('fill', end.ribbon);
+    setHtml($('end-stars'), end.showStars ? starsHtml(end.stars, 52) : '');
+    $('end-stars').setAttribute('aria-label', end.showStars ? `${end.stars} von ${STAR_COUNT} Sternen` : '');
+  }
   $('overlay-stats').textContent = `Welle ${state.wave} · ${state.kills} Gegner besiegt`;
   if (state.status !== 'playing' && !resultSaved) saveResult();
   renderResultLines($('overlay-progress'), resultText);
