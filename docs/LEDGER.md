@@ -49,3 +49,7 @@ Anhängen ohne die Datei zu lesen: `cat >> docs/LEDGER.md <<'EOF' … EOF`. Übe
 - Chromes Vollbild-Hinweis blieb ~15 s im laufenden Spiel stehen.
 - Handy: Vollbild jetzt schon beim Tippen auf eine Karte (`fullscreen.enter`, schaltet nur ein); Knopf bleibt.
 - Test in tests/fullscreen.test.js; e2e 91/91 grün.
+
+### 2026-11-27 – Live-Umgebung auf Cloudflare Pages
+- Neue Adresse https://towerdefence.pages.dev/ ohne GitHub-Namen (Mensch hat Cloudflare eingerichtet).
+- docs/LERNEN.md angepasst; GitHub Pages/pages.yml abschalten macht der Mensch.
