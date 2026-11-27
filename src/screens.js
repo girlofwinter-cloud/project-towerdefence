@@ -1,7 +1,7 @@
 // Startbildschirm mit Kartenkarten und Spielende-Plakette (Stil 1, C5).
 // Reine Funktionen (mapCards, endView, starSvg) sind in Node testbar; mountStartScreen braucht das DOM
 // und wird nur von main.js aufgerufen. Fortschritt wird hier nur gelesen, nie gespeichert.
-import { MAPS, MAX_WAVES, STAR_LIVES_SHARE, VIEW_WIDTH, VIEW_HEIGHT, FRAME_MARGIN } from './config.js';
+import { MAPS, MAX_WAVES, STAR_LIVES_SHARE, VIEW_WIDTH, VIEW_HEIGHT, FRAME_MARGIN, SCREENS } from './config.js';
 import { MAP_ORDER, mapProgress, isUnlocked } from './progress.js';
 import { createGame } from './game.js';
 import { buildPaintedSvg, rasterizePainted, paletteFor } from './render-painted.js';
@@ -92,7 +92,7 @@ export function mountStartScreen(root, opts) {
       btn.setAttribute('aria-label', card.label);
       btn.disabled = !card.open;
       btn.classList.toggle('current', card.id === current);
-      btn.innerHTML = '<canvas class="map-thumb" width="344" height="240"></canvas>'
+      btn.innerHTML = `<canvas class="map-thumb" width="${SCREENS.thumb.width}" height="${SCREENS.thumb.height}"></canvas>`
         + (card.open ? '' : LOCK_SVG)
         + `<span class="map-name">${card.name}</span><span class="map-stars">${starsHtml(card.stars, 24)}</span><span class="map-best">${card.line}</span>`;
       paintThumb(btn.querySelector('canvas'), card.id);

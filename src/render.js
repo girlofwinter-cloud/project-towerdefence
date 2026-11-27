@@ -80,8 +80,22 @@ export function bgCacheKey(id, scale) {
 // Je Karte die Szene einmal bauen und im Browser genau in Geräte-px des Canvas rastern (plus Seitenzonen, C-Abnahme 1);
 // bis dahin (und in Node) gilt das alte Zeichnen als Rückfall. Ändert sich die Größe (Fenster, Monitor), wird erst nach
 // PAINTED_STYLE.rasterDelay ms Ruhe neu gerastert; bis das neue Bild fertig ist, bleibt das alte (skaliert) sichtbar.
-// Je Karte wird nur das neueste Bild behalten. Gleiche Größe: Ausschnitt 1:1 ohne Skalierung (schnell, scharf).
-const paintedCache = new Map(); // mapId -> { status, canvas, key, size, loading, wantKey, wantSince, scene }
+// Nur die aktuelle Karte wird behalten (neuestes Bild); beim Kartenwechsel werden die Raster der anderen freigegeben.
+// Gleiche Größe: Ausschnitt 1:1 ohne Skalierung (schnell, scharf).
+const paintedCache = new Map(); // mapId -> { status, canvas, key, size, loading, wantKey, wantSince, scene, failedKey }
+// Karten im Cache (Tests: nach einem Kartenwechsel nur noch die aktuelle)
+export function paintedCacheIds() {
+  return [...paintedCache.keys()];
+}
+// Raster aller anderen Karten freigeben (Canvas auf 0x0, damit der Browser den Speicher sofort abgibt)
+function releasePaintedExcept(id) {
+  for (const [k, e] of paintedCache) {
+    if (k === id) continue;
+    if (e.canvas) { e.canvas.width = 0; e.canvas.height = 0; }
+    e.loading = null; // laufende Rasterung verwerfen
+    paintedCache.delete(k);
+  }
+}
 export function paintedStatus(mapId) {
   return paintedCache.get(mapId)?.status ?? (MAPS[mapId]?.theme?.painted ? 'none' : 'off');
 }
@@ -110,13 +124,15 @@ function paintedFor(state, ctx) {
   let e = paintedCache.get(id);
   if (!e) {
     if (!canRasterize()) return null;
-    e = { status: 'loading', canvas: null, key: null, size: null, loading: null, wantKey: null, wantSince: 0, scene: buildPaintedScene(state) };
+    releasePaintedExcept(id);
+    e = { status: 'loading', canvas: null, key: null, size: null, loading: null, wantKey: null, wantSince: 0, scene: buildPaintedScene(state), failedKey: null };
     paintedCache.set(id, e);
   }
   const { w, h } = deviceSizeOf(ctx);
   const x = paintedExt;
   const key = `${bgCacheKey(id, `${w}x${h}`)}+${x.l},${x.t},${x.r},${x.b}`;
-  if (e.status !== 'failed' && e.key !== key && e.loading !== key) {
+  // failedKey: diese Größe ist schon einmal gescheitert, nicht jedes Frame neu versuchen (erst wieder bei anderer Größe)
+  if (e.status !== 'failed' && e.key !== key && e.loading !== key && e.failedKey !== key) {
     // Entprellen: erst rastern, wenn der Wunsch PAINTED_STYLE.rasterDelay ms besteht (ohne Bild sofort)
     if (e.wantKey !== key) { e.wantKey = key; e.wantSince = now(); }
     if (!e.canvas || now() - e.wantSince >= PAINTED_STYLE.rasterDelay) {
@@ -128,9 +144,9 @@ function paintedFor(state, ctx) {
         .then((cv) => {
           if (e.loading !== key) return; // inzwischen andere Größe angefordert
           e.loading = null;
-          if (cv) { e.canvas = cv; e.key = key; e.size = size; e.status = 'ready'; } else if (!e.canvas) e.status = 'failed';
+          if (cv) { e.canvas = cv; e.key = key; e.size = size; e.status = 'ready'; e.failedKey = null; } else { e.failedKey = key; if (!e.canvas) e.status = 'failed'; }
         })
-        .catch(() => { if (e.loading === key) e.loading = null; if (!e.canvas) e.status = 'failed'; });
+        .catch(() => { if (e.loading !== key) return; e.loading = null; e.failedKey = key; if (!e.canvas) e.status = 'failed'; });
     }
   }
   return e.status === 'ready' ? e : null;
@@ -180,6 +196,7 @@ export function render(ctx, state, ui) {
 }
 
 // ---------- Hintergrund (Gelaende, Weg, Dekoration) ----------
+// Nur Rückfall (Node, während des Ladens, bei Rasterfehler): im Browser zeichnet der gemalte Hintergrund (paintedFor).
 // Rein visuelle Konstanten (Balancing-Zahlen stehen in config.js).
 const GRASS_COLORS = ['#4d9c41', '#51a145']; // Schachbrett-Grundton
 const GRASS_SHIFT = 0.07; // max. Helligkeitsversatz pro Kachel (Deckkraft)

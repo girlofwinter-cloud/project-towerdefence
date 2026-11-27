@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createGame, canBuild } from '../src/game.js';
 import { TILE, COLS, ROWS, WIDTH, HEIGHT, MAPS, FRAME_MARGIN, VIEW_WIDTH, VIEW_HEIGHT, PAINTED_STYLE, PAINTED_PALETTE } from '../src/config.js';
-import { buildPaintedScene, buildPaintedSvg, paintedWaterAt, toGame, paletteFor } from '../src/render-painted.js';
+import { buildPaintedScene, buildPaintedSvg, paintedWaterAt, toGame, paletteFor, flagTilesOf } from '../src/render-painted.js';
 import { mockCtx } from './helpers.js';
 
 const meadow = () => createGame({ mapId: 'meadow' });
@@ -60,33 +60,48 @@ function checkNothingOnBuildable(id) {
   assert.equal(sc.rocks.length + sc.trees.filter((t) => inField(t.x * TILE / PAINTED_STYLE.unit, t.y * TILE / PAINTED_STYLE.unit - 1)).length, s.obstacles.size, id);
 }
 
-test('Stil 1 (alle Karten): Burg am Ausgang, Fahne an jedem Eingang, beide und Klippen ganz im Rand', () => {
+// Entscheidung 2026-11-27: Fahne 1,25x größer, darf ins Feld ragen, aber nur über die gesperrten Fahnen-Kacheln
+// Liefert die erste Feldkachel unter Tuch oder Mast, die keine Fahnen-Kachel ist (null = alles gut)
+const flagOk = (s, el) => {
+  const bad = flagTilesOf({ flags: [el] }).find(([c, r]) => !s.flagTiles.has(`${c},${r}`));
+  return bad ? bad.join(',') : null;
+};
+test('Stil 1 (alle Karten): Burg am Ausgang, Fahne an jedem Eingang; Burg und Klippen ganz im Rand, Fahne ragt höchstens über die Fahnen-Kacheln ins Feld', () => {
   for (const id of MAP_IDS) {
     const s = createGame({ mapId: id });
     const sc = buildPaintedScene(s);
     const paths = s.paths || [s.path];
     assert.equal(sc.flags.length, paths.length, `${id}: eine Fahne je Eingang`);
     assert.equal(sc.castles.length, 1, `${id}: eine Burg am gemeinsamen Ausgang`);
-    for (const el of [...sc.castles, ...sc.flags, ...sc.cliffs]) {
+    for (const el of [...sc.castles, ...sc.cliffs]) {
       const [x0, y0, x1, y1] = toGame(el.box);
       assert.ok(x1 <= 0 || x0 >= WIDTH || y1 <= 0 || y0 >= HEIGHT, `${id}: ${el.kind} ragt ins Feld (${x0},${y0},${x1},${y1})`);
       assert.ok(x0 >= -FRAME_MARGIN - 1 && x1 <= WIDTH + FRAME_MARGIN + 1, `${id}: ${el.kind} im Canvas`);
     }
-    // Fahne neben ihrem Eingang (alle Eingänge liegen links)
+    // Fahnen-Kacheln der Karte = genau die Feldkacheln unter Tuch und Mast; höchstens eine Kachel je Eingang
+    assert.deepEqual(flagTilesOf(sc), MAPS[id].flagTiles, `${id}: MAPS.flagTiles passt zur Fahne`);
+    assert.ok(MAPS[id].flagTiles.length <= paths.length, `${id}: höchstens eine Fahnen-Kachel je Eingang`);
+    for (const fl of sc.flags) {
+      assert.equal(flagOk(s, fl), null, `${id}: Fahne ragt über eine bebaubare Kachel`);
+      const [x0, , x1] = toGame(fl.box);
+      assert.ok(x0 >= -FRAME_MARGIN - 1 && x1 <= TILE, `${id}: Fahne im Canvas, höchstens eine Spalte im Feld`);
+    }
+    // Fahne neben ihrem Eingang (alle Eingänge liegen links, Mast im Rand)
     paths.forEach((p, i) => {
       const y = p.points[0].y, fl = toGame(sc.flags[i].box);
-      assert.ok(fl[2] <= 0 && fl[1] < y && fl[3] > y - TILE, `${id}: Fahne ${i} am Eingang`);
+      assert.ok(fl[0] < 0 && fl[1] < y + 2 * TILE && fl[3] > y - 2 * TILE, `${id}: Fahne ${i} am Eingang`);
     });
     const end = paths[0].points.at(-1), castle = toGame(sc.castles[0].box);
     assert.ok(castle[0] >= WIDTH && castle[1] < end.y && castle[3] > end.y, `${id}: Burg rechts am Ausgang`);
   }
 });
 
-test('Stil 1: Burg, Fahne und Klippen der Wiese liegen ganz im Rand, Randbäume mit Stamm im Rand', () => {
+test('Stil 1: Burg und Klippen der Wiese liegen ganz im Rand, Fahne ragt nur über ihre Kachel ins Feld', () => {
   const sc = buildPaintedScene(meadow());
   assert.equal(sc.castles.length, 1);
   assert.equal(sc.flags.length, 1);
-  for (const el of [...sc.castles, ...sc.flags, ...sc.cliffs]) {
+  assert.equal(flagOk(meadow(), sc.flags[0]), null, 'Fahne nur über der Fahnen-Kachel');
+  for (const el of [...sc.castles, ...sc.cliffs]) {
     const [x0, y0, x1, y1] = toGame(el.box);
     assert.ok(x1 <= 0 || x0 >= WIDTH || y1 <= 0 || y0 >= HEIGHT, `${el.kind} ragt ins Feld (${x0},${y0},${x1},${y1})`);
   }
@@ -94,7 +109,8 @@ test('Stil 1: Burg, Fahne und Klippen der Wiese liegen ganz im Rand, Randbäume 
   const s = meadow();
   const [first, last] = [s.path.points[0], s.path.points.at(-1)];
   const flag = toGame(sc.flags[0].box), castle = toGame(sc.castles[0].box);
-  assert.ok(flag[2] <= 0 && flag[1] < first.y && flag[3] > first.y - TILE, 'Fahne links am Eingang');
+  // Unter dem Weg: dort verdeckt das Tuch nur Wasser (0,3), über dem Weg wäre es der Bauplatz (0,0)
+  assert.ok(flag[0] < 0 && flag[1] > first.y && flag[1] < first.y + TILE, 'Fahne links am Eingang, unter dem Weg');
   assert.ok(castle[0] >= WIDTH && castle[1] < last.y && castle[3] > last.y, 'Burg rechts am Ausgang');
   assert.ok(castle[2] <= WIDTH + FRAME_MARGIN && flag[0] >= -FRAME_MARGIN, 'im Canvas');
 });
@@ -255,8 +271,9 @@ test('Stil 1 (G9): Lava des Vulkans folgt den Lavakacheln, Kruste ragt höchsten
   for (const t of sc.trees) for (const [px, py] of line) assert.ok(!(t.x > px - 30 && t.x < px + 30 && Math.abs(t.y - py) < 30), `Baum in der Lava bei ${t.x},${t.y}`);
 });
 
-test('Stil 1 (G9): Bauplatzzahl je Karte unverändert (gemalter Hintergrund ändert keine Kacheln)', () => {
-  const expected = { meadow: 226, ice: 233, fork: 221, twin: 196, volcano: 212 };
+// Seit der großen Fahne (2026-11-27) je Eingang eine Fahnen-Kachel weniger, außer Wiese (Fahne über Wasser); vorher 226/233/221/196/212
+test('Stil 1 (G9): Bauplatzzahl je Karte (gemalter Hintergrund ändert keine Kacheln, nur die Fahnen-Kacheln fallen weg)', () => {
+  const expected = { meadow: 226, ice: 232, fork: 219, twin: 194, volcano: 211 };
   for (const id of MAP_IDS) assert.equal(buildableOf(createGame({ mapId: id })).length, expected[id], id);
 });
 
@@ -265,11 +282,14 @@ test('Stil 1 (alle Karten): Fahne mit Abstand zur Canvas-Oberkante (Zwei Fronten
   for (const id of MAP_IDS) {
     for (const fl of buildPaintedScene(createGame({ mapId: id })).flags) {
       assert.ok(fl.box[1] >= -MU + PAINTED_STYLE.flagTopGap - 1e-9, `${id}: Fahne oben bei ${fl.box[1].toFixed(1)}`);
-      assert.ok(fl.s >= 0.55, `${id}: Fahne nicht zu klein (${fl.s})`);
+      assert.equal(fl.s, PAINTED_STYLE.flagScale, `${id}: Fahne in voller Größe (${fl.s})`);
     }
   }
-  const twin = buildPaintedScene(createGame({ mapId: 'twin' })).flags;
-  assert.ok(twin.some((fl) => fl.s < PAINTED_STYLE.flagScale) && twin.some((fl) => fl.s === PAINTED_STYLE.flagScale), 'nur die obere Fahne verkleinert');
+  // Zwei Fronten: oben ist über dem Weg kein Platz, die obere Fahne steht unter dem Weg (volle Größe statt verkleinert)
+  const twinState = createGame({ mapId: 'twin' });
+  const [top, low] = buildPaintedScene(twinState).flags.map((fl) => toGame(fl.box));
+  assert.ok(top[1] > twinState.paths[0].points[0].y, 'obere Fahne unter dem Weg');
+  assert.ok(low[3] < twinState.paths[1].points[0].y, 'untere Fahne über dem Weg');
 });
 
 test('Stil 1: mehrere Wege werden als ein Weg gemalt (jede Schicht genau einmal, alle Wege als Teilstücke)', () => {
@@ -338,4 +358,76 @@ test('C-Abnahme 1: buildPaintedSvg mit ext malt die Seitenzonen weiter (Wald, We
     assert.match(a, /<radialGradient id="p-vig-field" gradientUnits="userSpaceOnUse"/);
     checkVignette(a);
   }
+});
+
+// Browser-Attrappe für die Rasterung: decode() löst auf oder scheitert (fail()), Canvas-Größen bleiben prüfbar
+async function withRasterMock(fn) {
+  const saved = { Image: globalThis.Image, document: globalThis.document, create: URL.createObjectURL, revoke: URL.revokeObjectURL };
+  const mock = { fail: false, decodes: 0, canvases: [] };
+  const Img = class { decode() { mock.decodes++; return mock.fail ? Promise.reject(new Error('kaputt')) : Promise.resolve(); } };
+  globalThis.Image = Img;
+  // Nur Raster-Canvas (bekommen ein Image) zählen; andere Offscreen-Canvas (Rückfall-Zeichnen) bekommen den Mock-Kontext
+  globalThis.document = { createElement: () => {
+    const cv = { width: 0, height: 0 };
+    const c = mockCtx().ctx;
+    c.drawImage = (img) => { if (img instanceof Img && !mock.canvases.includes(cv)) mock.canvases.push(cv); };
+    cv.getContext = () => c;
+    return cv;
+  } };
+  URL.createObjectURL = () => 'blob:x';
+  URL.revokeObjectURL = () => {};
+  try {
+    await fn(mock);
+  } finally {
+    if (saved.Image === undefined) delete globalThis.Image; else globalThis.Image = saved.Image;
+    if (saved.document === undefined) delete globalThis.document; else globalThis.document = saved.document;
+    URL.createObjectURL = saved.create;
+    URL.revokeObjectURL = saved.revoke;
+  }
+}
+const settle = () => new Promise((r) => setTimeout(r, 0));
+
+test('Reviewer A1: Cache hält nach Kartenwechsel Wiese -> Eis -> Vulkan nur die aktuelle Karte, alte Raster freigegeben', async () => {
+  const { renderView, paintedCacheIds, paintedStatus } = await import('../src/render.js?cache-release');
+  await withRasterMock(async (mock) => {
+    for (const id of ['meadow', 'ice', 'volcano']) {
+      renderView(mockCtx().ctx, createGame({ mapId: id }), {});
+      await settle();
+      assert.equal(paintedStatus(id), 'ready', `${id} gerastert`);
+      assert.deepEqual(paintedCacheIds(), [id], `${id}: nur die aktuelle Karte im Cache`);
+    }
+    assert.equal(mock.canvases.length, 3);
+    for (const cv of mock.canvases.slice(0, 2)) assert.deepEqual([cv.width, cv.height], [0, 0], 'Raster der alten Karte freigegeben');
+    assert.ok(mock.canvases[2].width > 0, 'aktuelles Raster bleibt');
+  });
+});
+
+test('Reviewer A2: gescheitertes Neu-Rastern bei vorhandenem Bild wird nicht jedes Frame wiederholt', async () => {
+  const { renderView, paintedStatus, setPaintedExtent } = await import('../src/render.js?cache-fail');
+  await withRasterMock(async (mock) => {
+    const s = createGame({ mapId: 'meadow' });
+    setPaintedExtent(null);
+    renderView(mockCtx().ctx, s, {});
+    await settle();
+    assert.equal(paintedStatus('meadow'), 'ready');
+    // Andere Größe (Seitenzonen) und erzwungener Fehler; Entprellzeit abwarten
+    mock.fail = true;
+    setPaintedExtent({ l: 10, t: 0, r: 10, b: 0 });
+    renderView(mockCtx().ctx, s, {});
+    await new Promise((r) => setTimeout(r, PAINTED_STYLE.rasterDelay + 20));
+    renderView(mockCtx().ctx, s, {});
+    await settle();
+    const after = mock.decodes;
+    for (let i = 0; i < 5; i++) { renderView(mockCtx().ctx, s, {}); await settle(); }
+    assert.equal(mock.decodes, after, 'kein neuer Versuch für denselben Schlüssel');
+    assert.equal(paintedStatus('meadow'), 'ready', 'altes Bild bleibt');
+    // Neue Größe: wieder ein Versuch
+    mock.fail = false;
+    setPaintedExtent({ l: 20, t: 0, r: 20, b: 0 });
+    renderView(mockCtx().ctx, s, {});
+    await new Promise((r) => setTimeout(r, PAINTED_STYLE.rasterDelay + 20));
+    renderView(mockCtx().ctx, s, {});
+    await settle();
+    assert.equal(mock.decodes, after + 1, 'neue Größe wird wieder gerastert');
+  });
 });
