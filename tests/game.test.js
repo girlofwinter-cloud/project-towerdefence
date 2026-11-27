@@ -163,9 +163,9 @@ test('Wellen: jede 5. Welle hat einen Boss, Wellen werden größer', () => {
   for (let w = 1; w <= MAX_WAVES; w++) {
     const hasBoss = waveFor(w).some((e) => isBoss(e));
     assert.equal(hasBoss, w % 5 === 0, `Welle ${w}`);
-    // B-127: Wellen 5, 10, 20 Oger-König, Welle 15 Nekromantin
+    // B-127: Wellen 5, 10, 20 Oger-König, Welle 15 Nekromantin; letzte Welle (20) zusätzlich Nekromantin
     assert.equal(waveFor(w).some((e) => e.type === 'boss'), w % 5 === 0 && w !== NECRO_WAVE, `Oger-König Welle ${w}`);
-    assert.equal(waveFor(w).some((e) => e.type === 'necro'), w === NECRO_WAVE, `Nekromantin Welle ${w}`);
+    assert.equal(waveFor(w).some((e) => e.type === 'necro'), w === NECRO_WAVE || w === MAX_WAVES, `Nekromantin Welle ${w}`);
   }
   assert.ok(waveFor(10).length > waveFor(1).length);
 });
@@ -245,7 +245,7 @@ test('waveSummary: Summe entspricht waveFor für alle Wellen, Boss nur jede 5. W
     const s = waveSummary(w);
     assert.equal(Object.values(s).reduce((a, b) => a + b, 0), waveFor(w).length, `Welle ${w}`);
     assert.equal('boss' in s, w % 5 === 0 && w !== NECRO_WAVE, `Boss in Welle ${w}`);
-    assert.equal('necro' in s, w === NECRO_WAVE, `Nekromantin in Welle ${w}`);
+    assert.equal('necro' in s, w === NECRO_WAVE || w === MAX_WAVES, `Nekromantin in Welle ${w}`);
   }
 });
 

@@ -695,6 +695,8 @@ const LATE_WAVE = 14;
 
 // B-127: In dieser Welle kommt die Nekromantin statt des Oger-Königs (gleiche Anzahl)
 export const NECRO_WAVE = 15;
+// Letzte Welle: Oger-König UND Nekromantin (Wunsch des Menschen); Anzahl Nekromantinnen dort (vorläufig)
+export const FINAL_WAVE_NECROS = 1;
 
 // B-171: Die neuen Gegner in den Wellen. from = erste Welle, count = Anzahl in Welle from, perWave = Zuwachs je Welle
 // danach (abgerundet), max = Obergrenze, gap = Sekunden zwischen zwei Gegnern der Gruppe.
@@ -800,6 +802,7 @@ export function waveFor(wave, mapId) {
   extra('wisp');
   // B-127: Bosse in jeder 5. Welle; in Welle NECRO_WAVE kommt die Nekromantin statt des Oger-Königs
   if (wave % 5 === 0) add(wave === NECRO_WAVE ? 'necro' : 'boss', Math.floor(wave / 10) + 1, 3);
+  if (wave === MAX_WAVES) add('necro', FINAL_WAVE_NECROS, 3);
   markElites(list, wave);
   return list;
 }
