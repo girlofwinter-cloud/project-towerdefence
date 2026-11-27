@@ -1,0 +1,4 @@
+# Cloudflare Pages: Browser fragt bei jedem Aufruf nach, ob es eine neue Version gibt
+# (unverändert -> kurze 304-Antwort). Verhindert, dass nach einem Update alte und neue Dateien gemischt werden.
+/*
+  Cache-Control: no-cache
