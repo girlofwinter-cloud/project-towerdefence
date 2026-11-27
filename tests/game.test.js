@@ -3381,3 +3381,147 @@ describe('Tester: Randfälle neue Gegner', () => {
     }
   });
 });
+
+// --- B-179: Elite-Gegner und gemischtere Mitte ---
+import { ELITE, eliteCount, WAVE_EXTRAS } from '../src/config.js';
+
+test('B-179: Elite-Gegner erst ab ELITE.from, Anzahl wächst bis ELITE.max, nur erlaubte Typen und Eigenschaften', () => {
+  const traits = new Set();
+  for (let w = 1; w <= MAX_WAVES; w++) {
+    const elites = waveFor(w).filter((e) => e.elite);
+    assert.equal(elites.length, eliteCount(w), `Welle ${w}`);
+    assert.equal(elites.length > 0, w >= ELITE.from, `Welle ${w}: Elite`);
+    assert.ok(eliteCount(w) <= ELITE.max);
+    for (const e of elites) {
+      assert.ok(ELITE.types.includes(e.type), `Welle ${w}: ${e.type}`);
+      assert.ok(ELITE.traits.includes(e.elite), `Welle ${w}: ${e.elite}`);
+      traits.add(e.elite);
+    }
+  }
+  assert.equal(ELITE.from, 8);
+  assert.ok(eliteCount(20) > eliteCount(8));
+  assert.deepEqual([...traits].sort(), [...ELITE.traits].sort(), 'alle Eigenschaften kommen vor');
+  assert.deepEqual(waveFor(12), waveFor(12), 'feste Auswahl, kein Zufall');
+});
+
+test('B-179: Elite-Eigenschaften: schneller, Schild, Selbstheilung, mehr Gold, Flag fürs Abzeichen', () => {
+  const s = createGame();
+  const plain = spawnEnemy(s, 'tank', 10);
+  const swift = spawnEnemy(s, 'tank', 10, null, 'swift');
+  const shield = spawnEnemy(s, 'tank', 10, null, 'shield');
+  const regen = spawnEnemy(s, 'tank', 10, null, 'regen');
+  assert.equal(plain.elite, undefined);
+  assert.equal(swift.elite, 'swift');
+  assert.ok(Math.abs(swift.speed - plain.speed * ELITE.swift.speed) < 1e-9);
+  assert.equal(shield.ward, ELITE.shield.wardShare * shield.maxHp);
+  assert.equal(plain.ward, 0);
+  for (const e of [swift, shield, regen]) assert.equal(e.reward, Math.round(plain.reward * ELITE.rewardFactor));
+  // Selbstheilung: healPerSec * maxHp pro Sekunde, nie über maxHp; normale Gegner heilen nicht
+  regen.hp = regen.maxHp / 2;
+  plain.hp = plain.maxHp / 2;
+  for (let i = 0; i < 60; i++) update(s, 1 / 60);
+  assert.ok(Math.abs(regen.hp - (regen.maxHp / 2 + regen.maxHp * ELITE.regen.healPerSec)) < 1e-6, `regen ${regen.hp}`);
+  assert.equal(plain.hp, plain.maxHp / 2);
+  regen.hp = regen.maxHp - 0.001;
+  update(s, 1);
+  assert.equal(regen.hp, regen.maxHp);
+  assert.equal(spawnEnemy(s, 'grunt', 10, null, 'unbekannt').elite, undefined, 'unbekannte Eigenschaft wird ignoriert');
+});
+
+test('B-179: Elite-Markierung läuft über startWave und Spawn-Liste bis zum Gegner', () => {
+  const s = createGame();
+  s.wave = 11;
+  startWave(s);
+  const want = s.spawnQueue.filter((e) => e.elite).map((e) => e.elite);
+  assert.equal(want.length, eliteCount(12));
+  const seen = [];
+  for (let k = 0; k < 200 * 60 && s.spawnQueue.length; k++) {
+    update(s, 1 / 60);
+    for (const e of s.enemies) if (e.elite && !seen.includes(e)) seen.push(e);
+    s.lives = START_LIVES; // Leben spielen hier keine Rolle
+  }
+  assert.deepEqual(seen.map((e) => e.elite), want);
+});
+
+test('B-179: gemischtere Mitte (WAVE_EXTRAS nur Wellen 6-12, nicht 5 und 10), Welle 5 unverändert', () => {
+  for (const w of Object.keys(WAVE_EXTRAS).map(Number)) assert.ok(w >= 6 && w <= 12 && w !== 10, `Welle ${w}`);
+  assert.equal(waveSummary(6).tank, Math.floor(6 / 2) + 1 + WAVE_EXTRAS[6].tank);
+  assert.equal(waveSummary(9).shielded, 1 + WAVE_EXTRAS[9].shielded);
+  assert.equal(waveSummary(7).healer, 1 + WAVE_EXTRAS[7].healer);
+  // Welle 5 bleibt wie bisher (Wunsch des Menschen): normale Abstände in der Goblin-Gruppe
+  const grunts = waveFor(5).filter((e) => e.type === 'grunt');
+  assert.ok(Math.abs(grunts[1].at - grunts[0].at - Math.max(0.3, 0.9 - 5 * 0.04)) < 1e-9);
+});
+
+// --- B-180: Nekromantin Phase 2 ---
+const P2 = ENEMY_TYPES.necro.phase2;
+// Direkttreffer mit festem Schaden (sofortiges Geschoss), ein kurzer Schritt
+function shootNecro(s, e, dmg) {
+  s.projectiles.push({ x: e.x, y: e.y, targetId: e.id, speed: 1e6, damage: dmg, splash: 0 });
+  update(s, 1e-3);
+}
+
+test('B-180: Phasenwechsel genau einmal, sobald die HP auf phase2.at * maxHp fallen, mit Ereignis phase2', () => {
+  const s = createGame();
+  const n = spawnEnemy(s, 'necro', 10);
+  const limit = P2.at * n.maxHp;
+  shootNecro(s, n, n.maxHp - limit - 1); // knapp über der Schwelle
+  assert.equal(n.phase, undefined);
+  assert.equal(s.effects.filter((fx) => fx.kind === 'phase2').length, 0);
+  shootNecro(s, n, 2); // über die Schwelle
+  assert.equal(n.phase, 2);
+  const ev = s.effects.filter((fx) => fx.kind === 'phase2');
+  assert.equal(ev.length, 1);
+  assert.equal(ev[0].id, n.id);
+  assert.equal(ev[0].max, P2.shieldDuration);
+  // nach dem Schild: weiterer Schaden, Heilung über die Schwelle und erneuter Fall lösen keinen zweiten Wechsel aus
+  for (let t = 0; t < P2.shieldDuration + 0.1; t += 0.05) update(s, 0.05);
+  s.enemies = s.enemies.filter((e) => e === n); // Beschworene stören hier nicht
+  n.hp = n.maxHp;
+  shootNecro(s, n, n.maxHp * 0.6);
+  assert.equal(n.phase, 2);
+  assert.ok(n.hp < limit, 'Schaden wirkt wieder');
+  assert.equal(s.effects.filter((fx) => fx.kind === 'phase2').length, 0, 'kein zweites Ereignis');
+  // Wer mit einem Treffer stirbt, wechselt nicht mehr die Phase
+  const d = createGame();
+  const m = spawnEnemy(d, 'necro', 10);
+  shootNecro(d, m, m.maxHp + 1);
+  assert.equal(d.effects.filter((fx) => fx.kind === 'phase2').length, 0);
+  // Andere Bosse haben keine zweite Phase
+  const o = spawnEnemy(d, 'boss', 10);
+  shootNecro(d, o, o.maxHp * 0.6);
+  assert.equal(o.phase, undefined);
+});
+
+test('B-180: Schild beim Phasenwechsel hält genau shieldDuration Sekunden', () => {
+  const s = createGame();
+  const n = spawnEnemy(s, 'necro', 10);
+  shootNecro(s, n, n.maxHp * (1 - P2.at) + 1);
+  const hp = n.hp;
+  const t0 = n.shieldUntil - P2.shieldDuration;
+  while (s.time < t0 + P2.shieldDuration - 0.05) {
+    shootNecro(s, n, 50);
+    update(s, 0.04);
+  }
+  assert.equal(n.hp, hp, 'im Schild kein Schaden');
+  while (s.time < t0 + P2.shieldDuration + 0.01) update(s, 0.01);
+  shootNecro(s, n, 50);
+  assert.ok(Math.abs(n.hp - (hp - 50)) < 1e-9, 'nach dem Schild wieder Schaden');
+});
+
+test('B-180: zweite Phase beschwört im Takt phase2.summonInterval je phase2.summonCount Skelette', () => {
+  assert.ok(P2.summonInterval < ENEMY_TYPES.necro.summonInterval && P2.summonCount > ENEMY_TYPES.necro.summonCount);
+  const s = createGame();
+  const n = spawnEnemy(s, 'necro', 10);
+  n.dist = 8 * TILE; // Platz hinter ihr für die Beschworenen
+  shootNecro(s, n, n.maxHp * (1 - P2.at) + 1);
+  const t0 = s.time;
+  const skeletons = () => s.enemies.filter((e) => e.type === 'skeleton').length;
+  const step = 0.01;
+  while (s.time < t0 + P2.summonInterval - 0.05) update(s, step);
+  assert.equal(skeletons(), 0, 'vor phase2.summonInterval keine Beschwörung');
+  while (s.time < t0 + P2.summonInterval + 0.05) update(s, step);
+  assert.equal(skeletons(), P2.summonCount);
+  while (s.time < t0 + 2 * P2.summonInterval + 0.05) update(s, step);
+  assert.equal(skeletons(), 2 * P2.summonCount);
+});

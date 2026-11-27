@@ -4,6 +4,7 @@ import {
   MAPS, DEFAULT_MAP_ID, LANE_ASYNC, TOWER_TYPES, ABILITIES, WIDTH, HEIGHT, ENEMY_TYPES, LAVA, FX_STYLE, AUTO_WAVE_DELAY, earlyStartBonus, waveFor, waveBonus, hpScale, meteorDamage, isBoss,
 } from './config.js';
 import { buildPath, pointAt, pathTiles } from './path.js';
+import { ELITE } from './config.js'; // B-179: Elite-Gegner
 
 // Map-Modifikatoren mit Standardwerten (1 = unverändert); unbekannte Karte = Standardkarte.
 export function mapModifiers(mapId) {
@@ -268,7 +269,7 @@ export function planLanes(state, list, wave) {
   return out.sort((a, b) => a.at - b.at);
 }
 
-export function spawnEnemy(state, type, wave = state.wave, lane = null) {
+export function spawnEnemy(state, type, wave = state.wave, lane = null, elite = null) {
   const def = ENEMY_TYPES[type];
   const hp = Math.round(def.hp * hpScale(Math.max(1, wave)));
   const paths = state.paths || [state.path];
@@ -299,8 +300,17 @@ export function spawnEnemy(state, type, wave = state.wave, lane = null) {
   };
   if (def.summonInterval) enemy.summonAt = state.time + def.summonInterval; // B-127: nächste Beschwörung
   if (def.shellHits) enemy.shell = def.shellHits; // B-169: Schichten der Schale (Panzerkäfer)
+  if (elite && ELITE[elite]) makeElite(enemy, elite);
   state.enemies.push(enemy);
   return enemy;
+}
+
+// B-179: Elite-Eigenschaft anwenden (enemy.elite = Eigenschaft, Flag fürs Abzeichen). Werte in ELITE (config.js).
+function makeElite(enemy, trait) {
+  enemy.elite = trait;
+  enemy.reward = Math.round(enemy.reward * ELITE.rewardFactor);
+  if (trait === 'swift') enemy.speed *= ELITE.swift.speed;
+  else if (trait === 'shield') enemy.ward = ELITE.shield.wardShare * enemy.maxHp;
 }
 
 // ---------- Update-Schleife ----------
@@ -382,6 +392,7 @@ export function update(state, dt) {
   if (state.status !== 'playing') return;
   lavaStep(state, dt);
   healStep(state);
+  regenStep(state, dt);
   wardStep(state);
   summonStep(state);
   groundsStep(state, dt);
@@ -403,7 +414,7 @@ function spawnStep(state, dt) {
   state.waveTime += dt;
   while (state.spawnQueue.length && state.spawnQueue[0].at <= state.waveTime) {
     const next = state.spawnQueue.shift();
-    spawnEnemy(state, next.type, next.wave ?? state.wave, next.lane ?? null); // HP-Skalierung der eigenen Welle, B-124: geplante Seite
+    spawnEnemy(state, next.type, next.wave ?? state.wave, next.lane ?? null, next.elite ?? null); // HP-Skalierung der eigenen Welle, B-124: geplante Seite, B-179: Elite
   }
 }
 
@@ -470,6 +481,15 @@ function healStep(state) {
   }
 }
 
+// B-179: Selbstheilung der Elite-Gegner mit regen: healPerSec * maxHp pro Sekunde (Rate mal dt), nie über maxHp.
+function regenStep(state, dt) {
+  const rate = ELITE.regen.healPerSec * dt;
+  for (const e of state.enemies) {
+    if (e.elite !== 'regen' || e.hp <= 0 || e.hp >= e.maxHp) continue;
+    e.hp = Math.min(e.maxHp, e.hp + e.maxHp * rate);
+  }
+}
+
 // B-127: Beschwörung. Jeder lebende Beschwörer (summonInterval) ruft alle summonInterval Sekunden Spielzeit
 // summonCount Gegner vom Typ summonType auf seinem eigenen Weg summonBehind Kacheln hinter sich herbei (nie vor
 // den Wegstart), damit Türme zuerst den Beschwörer treffen. Sie bekommen die HP-Skalierung der Welle des Beschwörers und zählen fürs Wellenende.
@@ -480,10 +500,11 @@ function summonStep(state) {
     const s = list[i];
     if (!(s.summonAt <= state.time) || s.hp <= 0) continue;
     const def = ENEMY_TYPES[s.type];
-    s.summonAt += def.summonInterval;
-    if (s.summonAt <= state.time) s.summonAt = state.time + def.summonInterval; // nach großem dt nicht aufholen
+    const phase = s.phase === 2 ? def.phase2 : def; // B-180: zweite Phase beschwört schneller und mehr
+    s.summonAt += phase.summonInterval;
+    if (s.summonAt <= state.time) s.summonAt = state.time + phase.summonInterval; // nach großem dt nicht aufholen
     const path = enemyPath(state, s);
-    for (let k = 0; k < def.summonCount; k++) {
+    for (let k = 0; k < phase.summonCount; k++) {
       const m = spawnEnemy(state, def.summonType, s.wave ?? state.wave, s.lane);
       m.summoned = true; // beschworen, nicht aus der Spawn-Liste
       m.dist = Math.max(0, s.dist - (def.summonBehind + k * def.summonSpacing) * TILE);
@@ -782,6 +803,7 @@ function knockBack(state, e, p) {
 // und Scharfschütze. Kanonen-Splash trifft immer mit vollem Schaden. Der Frost-Slow
 // wirkt unabhängig von der Rüstung unverändert.
 function damage(state, enemy, p, direct = false) {
+  if (enemy.shieldUntil > state.time) return; // B-180: Schild beim Phasenwechsel, unverwundbar
   // B-169: Solange die Schale hält, nimmt jeder Treffer (nicht Lava) eine Schicht und macht 0 Schaden (vor Rüstung und Schild).
   const shelled = enemy.shell > 0 && !p.lava && !p.dot && crackShell(state, enemy);
   let dmg = shelled ? 0 : direct ? p.damage * (p.ignoreArmor ? 1 : 1 - (enemy.armor || 0)) : p.damage;
@@ -793,10 +815,23 @@ function damage(state, enemy, p, direct = false) {
     dmg -= absorbed;
   }
   enemy.hp -= dmg;
+  phaseCheck(state, enemy);
   if (p.slow && !isSlowImmune(enemy)) { // B-170: Glutlinge ignorieren den Frost-Slow, der Schaden wirkt
     enemy.slowFactor = 1 - p.slow;
     enemy.slowUntil = state.time + p.slowDuration;
   }
+}
+
+// B-180: Phasenwechsel der Nekromantin (ENEMY_TYPES[type].phase2), genau einmal, sobald die HP auf phase2.at * maxHp
+// fallen und sie noch lebt: schnellerer Beschwörungstakt ab jetzt, Schild für shieldDuration Sekunden und das
+// Logik-Ereignis 'phase2' in state.effects (für die spätere Optik; ttl = Schilddauer, id = Gegner).
+function phaseCheck(state, enemy) {
+  const p2 = ENEMY_TYPES[enemy.type]?.phase2;
+  if (!p2 || enemy.phase === 2 || enemy.hp <= 0 || enemy.hp > p2.at * enemy.maxHp) return;
+  enemy.phase = 2;
+  enemy.shieldUntil = state.time + p2.shieldDuration;
+  enemy.summonAt = state.time + p2.summonInterval;
+  state.effects.push({ kind: 'phase2', id: enemy.id, x: enemy.x, y: enemy.y, ttl: p2.shieldDuration, max: p2.shieldDuration });
 }
 
 // B-170: immun gegen Frost-Slow und Einfrieren (Merkmal slowImmune des Gegnertyps)
