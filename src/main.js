@@ -1,5 +1,5 @@
 // Verbindet Spiel-Logik, Rendering und Bedienung (DOM, Maus, Tastatur).
-import { TILE, FRAME_MARGIN, VIEW_WIDTH, VIEW_HEIGHT, PAINTED_STYLE, FIGURE_STYLE, SHOP_CARD, TOWER_TYPES, ENEMY_TYPES, MAX_WAVES, MAPS, SPEED_STEPS, TARGET_MODES, TARGET_MODE_NAMES, MAX_SUBSTEP, LOW_LIVES, ABILITIES, ICON, COIN_BURST, waveSummary, meteorText } from './config.js';
+import { TILE, FRAME_MARGIN, VIEW_WIDTH, VIEW_HEIGHT, PAINTED_STYLE, FIGURE_STYLE, SHOP_CARD, TOWER_TYPES, ENEMY_TYPES, MAX_WAVES, MAPS, SPEED_STEPS, TARGET_MODES, TARGET_MODE_NAMES, MAX_SUBSTEP, LOW_LIVES, ABILITIES, ICON, VIEW_FIT, COIN_BURST, waveSummary, meteorText } from './config.js';
 import {
   createGame, stepGame, togglePause, buildTower, upgradeTower, sellTower, setTargetMode, startWave,
   useAbility, abilityCooldownLeft, canBuild, towerAt, towerStats, upgradeCost, sellValue,
@@ -12,6 +12,7 @@ import { createSoundTracker, collectSounds, loadSoundOn, saveSoundOn } from './s
 import { unlockAudio, setSoundOn, playSound, updateMusic } from './audio.js';
 import { loadProgress, saveProgress, recordResult, isUnlocked, mapProgress, starText, resultLines, startMap, mapAfterResult, starsFor, MAP_ORDER } from './progress.js';
 import { mountStartScreen, endView, starsHtml, STAR_COUNT } from './screens.js';
+import { mountViewport } from './viewport.js';
 
 const canvas = document.getElementById('game');
 canvas.width = VIEW_WIDTH; // Stil 1: Feld + Rand (Wald, Burg, Fahne); HiDPI-Größe setzt fitCanvas()
@@ -24,12 +25,13 @@ for (const [k, v] of Object.entries({ 'view-w': VIEW_WIDTH, 'view-h': VIEW_HEIGH
 }
 
 // ---------- HiDPI ----------
-// Die Anzeigegröße des Canvas legt allein style.css fest (Vollbild: --cw x --ch, kompakt: volle Breite, Zoom: 200 %).
-// Hier nur der Backing-Store = Anzeigegröße x Pixeldichte (höchstens VIEW_FIT.maxDpr, canvasSize in input.js);
+// Die Anzeigegröße des Canvas legt allein style.css fest (Vollbild: --cw x --ch, Handy: Nah/Übersicht, siehe viewport.js).
+// Hier nur der Backing-Store = Anzeigegröße x Pixeldichte (höchstens VIEW_FIT.maxDpr und maxSide je Seite, canvasSize in input.js);
 // frame() zeichnet mit setTransform(view.sx, ...) weiter in Canvas-Einheiten (VIEW_WIDTH x VIEW_HEIGHT).
 const view = { sx: 1, sy: 1 };
+const compactQuery = window.matchMedia('(max-width: 759.98px), (max-height: 519.98px)'); // = Kompakt-Schwelle in style.css
 function fitCanvas() {
-  const s = canvasSize(canvas.clientWidth, Infinity, window.devicePixelRatio || 1);
+  const s = canvasSize(canvas.clientWidth, Infinity, window.devicePixelRatio || 1, compactQuery.matches ? VIEW_FIT.maxSide : Infinity);
   if (canvas.width !== s.width || canvas.height !== s.height) { canvas.width = s.width; canvas.height = s.height; }
   view.sx = s.sx;
   view.sy = s.sy;
@@ -51,7 +53,6 @@ if (document.fonts && document.fonts.load) document.fonts.load('14px "Lilita One
 // Seitenzonen in einem Bild, der Canvas zeigt davon den Ausschnitt 1:1), daher keine Naht an der Canvas-Kante.
 // Kompakt (Handy) scrollt der Canvas: dort bleibt das unscharfe, verkleinerte Bild dahinter.
 const backdrop = document.getElementById('backdrop');
-const compactQuery = window.matchMedia('(max-width: 759.98px), (max-height: 519.98px)'); // = Kompakt-Schwelle in style.css
 let backdropFor = null;
 // Seitenzonen in Geräte-px messen und an render.js melden (auf PAINTED_STYLE.sideZone.quantum aufgerundet: seltener neu rastern)
 function measureExtent() {
@@ -428,7 +429,8 @@ const startScreen = mountStartScreen($('start-screen'), {
 });
 $('to-maps').addEventListener('click', () => startScreen.show(true));
 if (!TEST_MODE) startScreen.show();
-$('zoom').addEventListener('click', toggleZoom);
+// C6 Handy: Feld wischen, Zoom-Knopf Nah/Übersicht (viewport.js)
+mountViewport({ board: $('app'), stage: document.querySelector('.stage'), canvas, zoomBtn: $('zoom'), zoomLabel: $('zoom-label') });
 $('sound').addEventListener('click', toggleSound);
 
 function toggleSound() {
@@ -437,13 +439,6 @@ function toggleSound() {
   if (ui.soundOn) unlockAudio(); // Klick bzw. Taste ist die Nutzeraktion
   saveSoundOn(soundStorage(), ui.soundOn);
   refreshUI();
-}
-
-// Zoom (mobil): Spielfeld auf doppelte Breite, im Rahmen verschiebbar. Größere Kacheln = treffsicheres Tippen.
-function toggleZoom() {
-  const on = document.querySelector('.board').classList.toggle('zoomed');
-  $('zoom').setAttribute('aria-pressed', String(on));
-  $('zoom-label').textContent = on ? 'Normal' : 'Zoom';
 }
 
 function doStartWave() {

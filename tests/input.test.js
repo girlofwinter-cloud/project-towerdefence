@@ -119,3 +119,64 @@ test('fieldPoint + canvasSize: Ecken-Kacheln treffen bei jeder Größe und Pixel
     }
   }
 });
+
+// ---------- C6 Handy: Wischen und Zoom (viewport.js), Umrechnung mit Versatz, Backing-Store-Obergrenze ----------
+import { clampScroll, scrollEdges, gestureKind, dragScroll } from '../src/viewport.js';
+import { VIEWPORT } from '../src/config.js';
+
+test('clampScroll: Wisch-Position bleibt zwischen 0 und Inhalt minus Sichtbreite', () => {
+  assert.equal(clampScroll(-30, 1009, 390), 0);
+  assert.equal(clampScroll(200, 1009, 390), 200);
+  assert.equal(clampScroll(5000, 1009, 390), 619);
+  assert.equal(clampScroll(50, 300, 390), 0, 'Inhalt schmaler als Sicht: nicht wischbar');
+  assert.equal(clampScroll(NaN, 1009, 390), 0);
+});
+
+test('scrollEdges: Schattenkanten nur, wo weiter gewischt werden kann', () => {
+  assert.deepEqual(scrollEdges(0, 1009, 390), { canLeft: false, canRight: true });
+  assert.deepEqual(scrollEdges(300, 1009, 390), { canLeft: true, canRight: true });
+  assert.deepEqual(scrollEdges(619, 1009, 390), { canLeft: true, canRight: false });
+  assert.deepEqual(scrollEdges(0, 390, 390), { canLeft: false, canRight: false });
+});
+
+test('gestureKind: kleine Bewegung ist ein Tipp, ab tapSlop (Finger oder Feld-Verschiebung) Wischen', () => {
+  const s = VIEWPORT.tapSlop;
+  assert.equal(gestureKind(0, 0), 'tap');
+  assert.equal(gestureKind(s - 1, 0), 'tap');
+  assert.equal(gestureKind(s, 0), 'swipe');
+  assert.equal(gestureKind(0, -s), 'swipe', 'senkrecht zählt ebenfalls');
+  assert.equal(gestureKind(s * 0.6, s * 0.6), 'tap', 'Betrag der Bewegung (Hypotenuse) unter der Schwelle');
+  assert.equal(gestureKind(s * 0.8, s * 0.8), 'swipe');
+  assert.equal(gestureKind(2, 1, -s), 'swipe', 'Feld hat sich verschoben, auch wenn der Finger kaum wanderte');
+  assert.equal(gestureKind(2, 1, s - 1), 'tap');
+});
+
+test('dragScroll: Mausziehen nach links schiebt die Ansicht nach rechts, begrenzt', () => {
+  assert.equal(dragScroll(100, -50, 1009, 390), 150);
+  assert.equal(dragScroll(100, 50, 1009, 390), 50);
+  assert.equal(dragScroll(100, 500, 1009, 390), 0);
+  assert.equal(dragScroll(600, -500, 1009, 390), 619);
+});
+
+test('fieldPoint mit gewischtem Feld: Rechteck links außerhalb des Fensters trifft dieselbe Kachel', () => {
+  // Canvas 1009 CSS-px breit, um 400 px gewischt: linke Kante bei -400, oben 56 - Rand (abgeschnitten)
+  const k = 1009 / VIEW_WIDTH;
+  const rect = { left: -400, top: 56 - FRAME_MARGIN * k, width: 1009, height: VIEW_HEIGHT * k };
+  const at = (col, row) => [rect.left + (FRAME_MARGIN + (col + 0.5) * TILE) * k, rect.top + (FRAME_MARGIN + (row + 0.5) * TILE) * k];
+  for (const [col, row] of [[9, 0], [12, 7], [COLS - 1, ROWS - 1]]) {
+    const p = fieldPoint(...at(col, row), rect);
+    assert.deepEqual([p.col, p.row, p.inField], [col, row, true], `Kachel ${col},${row}`);
+  }
+  // Bildschirmpunkt x = 0 liegt nach dem Wischen in Spalte 7 (nicht 0)
+  assert.equal(fieldPoint(0, 300, rect).col, Math.floor((400 / k - FRAME_MARGIN) / TILE));
+});
+
+test('canvasSize: Obergrenze maxSide je Seite (Handy), Seitenverhältnis bleibt; ohne Angabe unbegrenzt', () => {
+  const s = canvasSize(3000, Infinity, 2, VIEW_FIT.maxSide);
+  assert.equal(s.width, VIEW_FIT.maxSide);
+  assert.ok(s.height <= VIEW_FIT.maxSide);
+  assert.ok(Math.abs(s.width / s.height - VIEW_WIDTH / VIEW_HEIGHT) < 0.01);
+  assert.ok(Math.abs(s.sx * VIEW_WIDTH - s.width) < 1e-6, 'Transformation füllt den begrenzten Backing-Store');
+  assert.equal(canvasSize(1009, Infinity, 2, VIEW_FIT.maxSide).width, 2018, 'unter der Grenze: volle 2x');
+  assert.equal(canvasSize(3000, Infinity, 2).width, 6000);
+});

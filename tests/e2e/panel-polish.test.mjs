@@ -78,12 +78,13 @@ test('Desktop 1280x800: alle Shop-Karten gleich hoch, Scharfschütze einzeilig, 
 for (const fontSize of [null, '200%']) {
   test(`Handy 390x844${fontSize ? ' mit 200 % Schrift' : ''}: ganz unten verdeckt die Leiste keinen Inhalt`, async () => {
     const { ctx, page } = await openWithTower({ width: 390, height: 844 }, fontSize);
-    // ResizeObserver setzt die Höhe vor dem nächsten Bild, danach ganz nach unten scrollen
+    // ResizeObserver setzt die Höhe vor dem nächsten Bild, danach ganz nach unten scrollen.
+    // C6: Feld = sichtbarer Ausschnitt .stage (der Canvas ragt oben/unten abgeschnitten darüber hinaus); das Dock darf verdeckt sein.
     await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
     await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
     const r = await page.evaluate(() => {
       const bar = document.getElementById('tower-info').getBoundingClientRect();
-      const bottoms = ['#game', '#shop', '#shop .tower-btn:last-child'].map((s) => document.querySelector(s).getBoundingClientRect().bottom);
+      const bottoms = ['.stage', '#shop', '#shop .tower-btn:last-child'].map((s) => document.querySelector(s).getBoundingClientRect().bottom);
       return { top: bar.top, bottoms };
     });
     for (const b of r.bottoms) assert.ok(b <= r.top + 0.5, `Inhalt endet bei ${b}, Leiste beginnt bei ${r.top}`);
