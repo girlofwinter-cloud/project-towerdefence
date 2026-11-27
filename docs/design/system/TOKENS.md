@@ -2,7 +2,7 @@
 
 Erzeugt aus `tokens.json` mit `node scripts/design-tokens.mjs`. Nicht von Hand ändern.
 
-## Farben (113)
+## Farben (127)
 
 | Token | Wert | Verwendung |
 |---|---|---|
@@ -119,6 +119,20 @@ Erzeugt aus `tokens.json` mit `node scripts/design-tokens.mjs`. Nicht von Hand �
 | `map-volcano-path-edge` | `#4a3836` | Karte Vulkan: Weg edge (theme.painted.path). |
 | `map-volcano-path-earth` | `#8b7468` | Karte Vulkan: Weg earth (theme.painted.path). |
 | `map-volcano-path-mid` | `#9c857a` | Karte Vulkan: Weg mid (theme.painted.path). |
+| `figure-shadow` | `rgba(20,30,40,0.4)` | Bodenschatten unter Figuren (Gegner, Türme). |
+| `enemy-bat-wing` | `#4a3560` | Fledermaus: Flügel (B-167). |
+| `enemy-bat-body` | `#6b4a80` | Fledermaus: Körper und Ohren. |
+| `enemy-bat-vein` | `#8a6aa8` | Fledermaus: Flügeladern. |
+| `enemy-wisp-body` | `#c9fff0` | Irrlicht: Körper (B-168). |
+| `enemy-wisp-core` | `#ffffff` | Irrlicht: heller Kern, Funken. |
+| `enemy-wisp-glow` | `#9effd9` | Irrlicht: flackernder Lichthof. |
+| `enemy-beetle-shell` | `#b0703a` | Panzerkäfer: Schale (B-169). |
+| `enemy-beetle-ridge` | `#7a4a24` | Panzerkäfer: Rillen der Schale, Splitter dunkel. |
+| `enemy-beetle-shine` | `#e8b27a` | Panzerkäfer: Glanz, Splitter hell. |
+| `enemy-beetle-head` | `#3a2a3a` | Panzerkäfer: Kopf. |
+| `enemy-beetle-soft` | `#e9a98c` | Panzerkäfer: weicher Leib ohne Schale. |
+| `enemy-beetle-soft-line` | `#b8705a` | Panzerkäfer: Linien am weichen Leib. |
+| `steam` | `#f4f1ea` | Dampfwölkchen, wenn Kälte den Glutling trifft (B-170). |
 
 ## Schrift
 
