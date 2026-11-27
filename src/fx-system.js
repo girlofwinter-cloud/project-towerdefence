@@ -283,6 +283,8 @@ export function observeEffect(fx, e, time, reducedMotion = false) {
   } else if (e.kind === 'coin') {
     const drift = reducedMotion ? 0 : (nextRand(fx) - 0.5) * FX_STYLE.coin.drift;
     spawnParticle(fx, K_COIN, x, y - 6, drift, 0, 0.7, 3.5);
+  } else if (e.kind === 'phase2') {
+    triggerShake(fx, time, bossEntryShake(reducedMotion)); // B-180: Phasenwechsel wackelt wie der Boss-Auftritt
   } else if (e.kind === 'summon') {
     // B-127: kleine grüne Lichtfunken; bei reduzierter Bewegung steigen sie nicht auf
     const S = FX_STYLE.summon;

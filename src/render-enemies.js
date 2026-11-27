@@ -2,8 +2,10 @@
 // Stil 1 (G7): Figuren aus dem Entwurf (Goblin Z.110, Flitzer Z.112, Troll Z.113, eingefroren Z.111), übrige
 // Typen auf Goblin-Basis (src/figures.js). Je Typ x Frost x Pixeldichte ein Sprite, pro Frame nur drawImage
 // mit Wippen, Schwanken und Spiegelung. Fußpunkt FIGURE_STYLE.enemyFoot unter der Wegmitte. Lebensbalken nur bei Schaden.
-import { ENEMY_TYPES, ENEMY_STYLE, FIGURE_STYLE as S, TILE, ABILITIES } from './config.js';
-import { enemyFigure, shellStage } from './figures.js';
+import { ENEMY_TYPES, ENEMY_STYLE, FIGURE_STYLE as S, TILE, ABILITIES, isBoss } from './config.js';
+import { enemyFigure, shellStage, NECRO_VARIANT_P2 } from './figures.js';
+import { drawNecroBack, drawNecroSkulls, drawNecroShield, necroGlowOverflow } from './render-necro.js';
+import { drawEliteRing, drawEliteBadge, drawEliteTrait, eliteBadgeSize, eliteGlyph } from './render-elite.js';
 import { drawElements } from './svg-figure.js';
 import { sprite, drawSprite, dprOf } from './sprites.js';
 import { walkPhase, animSpeedFactor, facingFor, facingFlip, facingTilt } from './enemy-fx.js';
@@ -61,7 +63,7 @@ export function drawWardBubble(ctx, e, time) {
 // Figur zeichnen (Sprite, sonst direkt); eingefroren: Eis-Überzug über der Figur (Z.111)
 function paintFigure(c, f) {
   if (f.glow) iceLayer(c, f, f.glow);
-  drawElements(c, f.els);
+  drawElements(c, f.cloak ? f.front : f.els); // B-180: Schatten und Umhang zeichnet drawNecroBack live
   if (f.shell) iceLayer(c, f, f.shell);
 }
 // Eis-Teile im 54 x 56-Rahmen des Entwurfs auf die Figur gestreckt (Fußpunkt unten mittig, Maße in figures.js)
@@ -110,12 +112,14 @@ const hash01 = (a, b) => frac(Math.sin(a * 12.9898 + b * 78.233) * 43758.5453);
 function variantOf(e, type, time, still) {
   if (type === 'beetle') return shellStage(e.shell);
   if (type === 'bat' && !still && Number.isFinite(time)) return Math.floor(Math.abs(time) * ENEMY_STYLE.bat.flapHz) % 2;
+  if (type === 'necro' && e.phase === 2) return NECRO_VARIANT_P2; // B-180: Phase 2 leuchtet magenta
   return 0;
 }
 
 // path ist optional (state.path); ohne Weg blickt die Figur nach rechts. reduced: prefers-reduced-motion
 // (Fledermaus/Irrlicht wippen nicht, Glutling lodert nicht und sprüht keine Funken, Flügelschlag steht).
-export function drawEnemy(ctx, e, time, path, reduced = false) {
+// bossBar (B-180): die Boss-Leiste im HUD ist sichtbar, dann kein kleiner Lebensbalken über Bossen.
+export function drawEnemy(ctx, e, time, path, reduced = false, bossBar = false) {
   const known = Object.hasOwn(ENEMY_TYPES, e.type) && enemyFigure(e.type, false);
   const type = known ? e.type : 'grunt'; // unbekannte Typen: Goblin
   const slowed = type !== 'ember' && time < e.slowUntil; // Glutling: nie Eis-Fassung
@@ -136,8 +140,11 @@ export function drawEnemy(ctx, e, time, path, reduced = false) {
   const sway = slowed || floats ? 0 : s * S.sway;
   const bob = slowed || floats ? 0 : Math.abs(s) * S.bob;
 
+  const elite = e.elite && !isBoss(e) ? e.elite : null; // B-179: Bosse tragen nie ein Abzeichen
+  if (elite) drawEliteRing(ctx, e, enemyFootY(e), f.w * k, time, still);
   if (type === 'bat') drawBatShadow(ctx, e, flip, lift);
   if (type === 'wisp' && !slowed) drawWispGlow(ctx, e, time, reduced, lift);
+  if (type === 'necro') drawNecroSkulls(ctx, e, time, reduced, false); // hintere Schädel (Phase 2)
 
   ctx.save();
   ctx.translate(e.x, enemyFootY(e));
@@ -145,18 +152,30 @@ export function drawEnemy(ctx, e, time, path, reduced = false) {
   ctx.rotate(facingTilt(angle) * S.tilt + sway);
   ctx.scale(k, k * stretch);
   ctx.translate(-f.w / 2, -f.h - bob - lift);
+  if (f.cloak) drawNecroBack(ctx, f, e, time, still); // B-180: Schatten, Kugelschein und Umhang live, Rest als Sprite
   const sp = sprite(`enemy:${type}:${variant}:${slowed ? 1 : 0}:${dpr}`, f.box, k * dpr, (cx) => paintFigure(cx, f));
   if (sp) drawSprite(ctx, sp);
   else paintFigure(ctx, f);
   ctx.restore();
+  if (type === 'necro') {
+    drawNecroSkulls(ctx, e, time, reduced, true);
+    drawNecroShield(ctx, e, time);
+  }
 
   if (type === 'ember') {
     if (!reduced) drawEmberSparks(ctx, e, time);
     drawEmberSteam(ctx, e, time, reduced);
   }
   drawWardBubble(ctx, e, time);
-  const rise = Math.max(0, lift) * k + (stretch - 1) * (f.h - f.box[1]) * k;
-  drawHpBar(ctx, e, f, k, rise);
+  const rise = Math.max(0, lift) * k + (stretch - 1) * (f.h - f.box[1]) * k + (f.cloak ? necroGlowOverflow(f) * k : 0);
+  if (!(bossBar && isBoss(e))) drawHpBar(ctx, e, f, k, rise);
+  if (elite) {
+    const top = enemyFootY(e) - (f.h + lift) * k;
+    const kind = eliteGlyph(elite);
+    if (kind) drawEliteTrait(ctx, e, kind, flip, top, enemyFootY(e), f.w * k, time, still);
+    const size = eliteBadgeSize(f.big ? S[f.big] : 1);
+    drawEliteBadge(ctx, e.x + 0.28 * f.w * k, top - ENEMY_STYLE.elite.lift * size, size, elite);
+  }
 }
 
 // B-167: ruhender Bodenschatten der Fledermaus, versetzt in Blickrichtung; kleiner, wenn der Körper oben ist

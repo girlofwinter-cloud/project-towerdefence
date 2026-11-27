@@ -511,7 +511,7 @@ function summonStep(state) {
       const p = pointAt(path, m.dist);
       m.x = p.x;
       m.y = p.y;
-      state.effects.push({ kind: 'summon', x: p.x, y: p.y, ttl: FX_STYLE.summon.life, max: FX_STYLE.summon.life });
+      state.effects.push({ kind: 'summon', x: p.x, y: p.y, ttl: FX_STYLE.summon.life, max: FX_STYLE.summon.life, p2: s.phase === 2 }); // p2: nur Optik (Farbe)
     }
   }
 }

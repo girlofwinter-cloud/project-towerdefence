@@ -73,6 +73,22 @@
       </span>
     </div>
 
+    <!-- B-180: Boss-Lebensleiste (nur Anzeige, nicht anklickbar), je Boss eine Leiste, höchstens zwei (src/boss-bar.js) -->
+    <div id="boss-bars" hidden aria-live="polite">
+      <div id="boss-bar" class="plq boss-bar" hidden>
+        <svg class="bb-skull" viewBox="0 0 34 34" aria-hidden="true"><path d="M17 4 C8 4 4 10 4 16 C4 21 7 23 9 24 V29 H25 V24 C27 23 30 21 30 16 C30 10 26 4 17 4 Z" fill="#f2e9d8" stroke="#2b1a10" stroke-width="3" stroke-linejoin="round"/><circle cx="12" cy="16" r="3.6" fill="#2b1a10"/><circle cx="22" cy="16" r="3.6" fill="#2b1a10"/><path d="M17 20 L15 23 H19 Z" fill="#2b1a10"/><path d="M13 25 V29 M17 25 V29 M21 25 V29" stroke="#2b1a10" stroke-width="2"/></svg>
+        <span class="bb-name"></span><span class="bb-phase"></span>
+        <svg class="bb-shield-ico" viewBox="0 0 26 28" aria-hidden="true"><path d="M13 2 L23 6 V13 Q23 22 13 26 Q3 22 3 13 V6 Z" fill="#bff6ff" stroke="#2b1a10" stroke-width="3" stroke-linejoin="round"/></svg>
+        <div class="bb-track" role="progressbar" aria-label="Leben des Bosses" aria-valuemin="0" aria-valuemax="100"><div class="bb-trail"></div><div class="bb-fill"></div><div class="bb-shield"></div><i class="bb-notch"></i></div>
+      </div>
+      <div id="boss-bar-2" class="plq boss-bar" hidden>
+        <svg class="bb-skull" viewBox="0 0 34 34" aria-hidden="true"><path d="M17 4 C8 4 4 10 4 16 C4 21 7 23 9 24 V29 H25 V24 C27 23 30 21 30 16 C30 10 26 4 17 4 Z" fill="#f2e9d8" stroke="#2b1a10" stroke-width="3" stroke-linejoin="round"/><circle cx="12" cy="16" r="3.6" fill="#2b1a10"/><circle cx="22" cy="16" r="3.6" fill="#2b1a10"/><path d="M17 20 L15 23 H19 Z" fill="#2b1a10"/><path d="M13 25 V29 M17 25 V29 M21 25 V29" stroke="#2b1a10" stroke-width="2"/></svg>
+        <span class="bb-name"></span><span class="bb-phase"></span>
+        <svg class="bb-shield-ico" viewBox="0 0 26 28" aria-hidden="true"><path d="M13 2 L23 6 V13 Q23 22 13 26 Q3 22 3 13 V6 Z" fill="#bff6ff" stroke="#2b1a10" stroke-width="3" stroke-linejoin="round"/></svg>
+        <div class="bb-track" role="progressbar" aria-label="Leben des Bosses" aria-valuemin="0" aria-valuemax="100"><div class="bb-trail"></div><div class="bb-fill"></div><div class="bb-shield"></div><i class="bb-notch"></i></div>
+      </div>
+    </div>
+
     <!-- C2: runde Knöpfe oben rechts (Hilfe, Ton, Tempo, Pause) -->
     <div class="top-buttons">
       <details class="help">

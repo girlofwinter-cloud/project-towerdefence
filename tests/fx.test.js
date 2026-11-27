@@ -1522,3 +1522,153 @@ test('B-170 Glutling: nie Eis, Dampf beim Kälteschock, Funken mit Obergrenze, r
   assert.ok(seen > 0, 'Funken sichtbar');
   for (const time of [NaN, Infinity, -2]) for (const slowUntil of [NaN, undefined, 99]) assert.equal((await recordEnemy({ type: 'ember', slowUntil }, time)).depth, 0);
 });
+
+// ---------- B-180: Nekromantin als Endboss (Optik) ----------
+
+test('B-180 Nekromantin: Phase-2-Variante magenta statt grün, Box höher als der Oger-König, Umhang als eigener Teil', async () => {
+  const { enemyFigure, NECRO_VARIANT_P2 } = await import('../src/figures.js');
+  const { FIGURE_STYLE: S, ENEMY_STYLE } = await import('../src/config.js');
+  const N = ENEMY_STYLE.necro;
+  const p1 = await recordEnemy({ type: 'necro' });
+  const p2 = await recordEnemy({ type: 'necro', phase: 2 });
+  assert.ok(p1.print.includes(N.glow) && !p1.print.includes(N.glow2), 'Phase 1 grün');
+  assert.ok(p2.print.includes(N.glow2) && !p2.print.includes(N.glow), 'Phase 2 magenta, kein Grün');
+  assert.ok(!p2.print.includes('rgba(125,255,154,'), 'Phase 2: auch kein halbdurchsichtiges Grün');
+  const f = enemyFigure('necro', false), boss = enemyFigure('boss', false);
+  assert.ok(f.h * S.necroScale > boss.h * S.bossScale, 'Nekromantin höher als der Oger-König');
+  assert.ok(f.cloak.length > 0 && f.front.length > 0 && f.back.length > 0, 'Umhang getrennt (weht live)');
+  assert.notEqual(enemyFigure('necro', false, NECRO_VARIANT_P2), f, 'Variante eigenes Bild');
+  // verlangsamt: Reif am Saum statt Eisblock (kein Lichthof, kein Kristall wie bei anderen Typen)
+  const slow = enemyFigure('necro', true);
+  assert.ok(!slow.glow && !slow.shell, 'nie Eisblock');
+  assert.ok(slow.els.length > f.els.length, 'Reif kommt dazu');
+});
+
+test('B-180 Nekromantin: Umhang und Kugel bewegen sich, reduced motion steht', async () => {
+  const live = (r) => r.calls.filter((c) => c.startsWith('arc:') || c.startsWith('transform:')).join('\n');
+  assert.notEqual(live(await recordEnemy({ type: 'necro' }, 0.3)), live(await recordEnemy({ type: 'necro' }, 0.9)), 'Kugelschein pulsiert');
+  assert.ok((await recordEnemy({ type: 'necro' }, 0.5)).print.includes('transform:'), 'Umhang weht (skewX)');
+  assert.ok(!(await recordEnemy({ type: 'necro' }, 0.5, undefined, true)).print.includes('transform:'), 'reduced: Umhang steht');
+  const r1 = await recordEnemy({ type: 'necro' }, 0.3, undefined, true), r2 = await recordEnemy({ type: 'necro' }, 0.9, undefined, true);
+  assert.equal(live(r1).replace(/transform:.*/g, ''), live(r2).replace(/transform:.*/g, ''), 'reduced: Kugel pulsiert nicht');
+});
+
+test('B-180 Nekromantin: Aura nur bei der Nekromantin, dreht (Phase 2 schneller), reduced ohne Drehung, ausgewogen', async () => {
+  const { drawNecroAura, necroAuraAngle } = await import('../src/render-necro.js');
+  const { ENEMY_STYLE } = await import('../src/config.js');
+  const N = ENEMY_STYLE.necro;
+  for (const type of ALL_ENEMIES) {
+    const m = mockCtx();
+    drawNecroAura(m.ctx, { type, x: 100, y: 100 }, 1);
+    assert.equal((m.counts.ellipse || 0) > 0, type === 'necro', `${type}: Aura`);
+    assert.equal(m.depth, 0);
+    assert.equal(m.props.globalAlpha, undefined);
+  }
+  const e = { type: 'necro' };
+  assert.ok(Math.abs(necroAuraAngle(e, N.auraTurn / 4) - Math.PI / 2) < 1e-9, 'eine Umdrehung in auraTurn s');
+  assert.ok(Math.abs(necroAuraAngle({ phase: 2 }, N.auraTurn2 / 4) - Math.PI / 2) < 1e-9, 'Phase 2: auraTurn2');
+  assert.equal(necroAuraAngle(e, 3, true), 0, 'reduced: keine Drehung');
+  assert.equal(necroAuraAngle(e, NaN), 0);
+  const m = mockCtx();
+  drawNecroAura(m.ctx, { type: 'necro', x: NaN, y: 1 }, 1);
+  assert.equal(m.counts.ellipse || 0, 0, 'kaputte Lage: nichts');
+});
+
+test('B-180 Nekromantin: kreisende Schädel nur in Phase 2, Schild-Kugel nur solange der Schild hält, ausgewogen', async () => {
+  const { skullOffsets } = await import('../src/render-necro.js');
+  const { ENEMY_STYLE } = await import('../src/config.js');
+  const N = ENEMY_STYLE.necro;
+  const skulls = (r) => r.calls.filter((c) => c.startsWith('arc:') && c.includes('|' + N.skull + '|')).length;
+  const base = await recordEnemy({ type: 'necro' });
+  const p2 = await recordEnemy({ type: 'necro', phase: 2 }, 1.3);
+  assert.equal(skulls(p2), skulls(base) + 2, 'zwei Schädel kreisen');
+  assert.notDeepEqual(skullOffsets(0.2), skullOffsets(1.1), 'Schädel bewegen sich');
+  const still = skullOffsets(5, true);
+  assert.ok(still[0][0] > 0 && still[1][0] < 0 && still.every((s) => s[2] && Math.abs(s[1]) < 1e-9), 'reduced: stehen links und rechts');
+  const on = await recordEnemy({ type: 'necro', phase: 2, shieldUntil: 5 }, 4);
+  const off = await recordEnemy({ type: 'necro', phase: 2, shieldUntil: 5 }, 5.5);
+  assert.ok(on.print.includes('|' + N.shieldColor) && !off.print.includes('|' + N.shieldColor), 'Schild nur bis shieldUntil');
+  for (const r of [on, off, p2]) { assert.equal(r.depth, 0); assert.equal(r.props.globalAlpha, undefined); }
+});
+
+test('B-180 Phasenwechsel: ein Ereignis ergibt genau einen Effekt (Druckwelle, Schrift), Wackeln, Beschwörungs-Fleck', async () => {
+  const { drawEffectOver, drawEffectUnder } = await import('../src/render-fx.js');
+  const { ENEMY_STYLE } = await import('../src/config.js');
+  const N = ENEMY_STYLE.necro;
+  const ev = { kind: 'phase2', id: 1, x: 100, y: 100, ttl: 2, max: 2 };
+  // Zeichnet alle Effekte einer Liste wie render.js; zählt Schriften und Ringe
+  const frame = (effects, reduced = false) => {
+    const m = mockCtx();
+    const out = { texts: [], rings: [] };
+    const ctx = new Proxy(m.ctx, {
+      get: (t, k) => (k === 'fillText' ? (txt) => out.texts.push(txt) : k === 'arc' ? (...a) => out.rings.push(a[2]) : t[k]),
+      set: (t, k, v) => { t[k] = v; return true; },
+    });
+    for (const e of effects) drawEffectOver(ctx, e, reduced);
+    assert.equal(m.depth, 0);
+    return out;
+  };
+  const list = [{ kind: 'coin', x: 1, y: 1, ttl: 1, max: 1, text: '+1' }, ev];
+  const at = (age, reduced) => frame([{ ...ev, ttl: ev.max - age }], reduced);
+  assert.deepEqual(frame(list).texts.filter((t) => t === N.text), [N.text], 'genau eine Schrift „Zweite Phase!“');
+  assert.equal(at(0.05).rings.length, 1, 'Druckwelle am Anfang');
+  assert.equal(at(N.waveLife + 0.05).rings.length, 0, 'Druckwelle nach waveLife vorbei');
+  assert.deepEqual(at(N.textLife + 0.05).texts, [], 'Schrift nach textLife vorbei');
+  assert.ok(at(0.5 * N.waveLife).rings[0] > at(0.05).rings[0], 'Druckwelle wächst');
+  assert.equal(at(0.5 * N.waveLife, true).rings[0], at(0.05, true).rings[0], 'reduced: wächst nicht');
+  // Wackeln wie beim Boss-Auftritt, reduced ohne
+  for (const reduced of [false, true]) {
+    const f = createFx();
+    syncFx(f, { time: 1, effects: [{ ...ev }], enemies: [], projectiles: [] }, reduced);
+    assert.equal(shakeAmplitude(1, f.shakeStart, f.shakeStrength) > 0, !reduced, `Wackeln reduced=${reduced}`);
+  }
+  // Beschwörung: Bodenfleck (grün, Phase 2 magenta) unter den Figuren, Schädel darüber
+  const spot = (p2) => { const m = mockCtx(); drawEffectUnder(m.ctx, { kind: 'summon', x: 50, y: 50, ttl: 0.3, max: 0.6, p2 }); assert.equal(m.depth, 0); return m.props.fillStyle; };
+  assert.ok(spot(false).startsWith('rgba(125,255,154,') && spot(true).startsWith('rgba(255,95,208,'), 'Fleck in Phasenfarbe');
+  const skull = mockCtx();
+  drawEffectOver(skull.ctx, { kind: 'summon', x: 50, y: 50, ttl: 0.3, max: 0.6 });
+  assert.ok(skull.counts.arc > 0 && skull.depth === 0, 'Schädel steigt auf');
+});
+
+// ---------- B-179: Elite-Abzeichen ----------
+
+test('B-179 Elite: Goldstern und Fußring nur mit elite, je Eigenschaft eigenes Zeichen, Bosse nie, unbekannt crasht nicht', async () => {
+  const { ENEMY_STYLE } = await import('../src/config.js');
+  const E = ENEMY_STYLE.elite;
+  const plain = await recordEnemy({ type: 'grunt' });
+  assert.ok(!plain.print.includes('|' + E.gold + '|'), 'ohne elite kein Stern');
+  const prints = {};
+  for (const trait of ['shield', 'regen', 'swift', 'unbekannt']) {
+    const r = await recordEnemy({ type: 'grunt', elite: trait, ward: 3 }, 0.7);
+    assert.ok(r.print.includes('fill:|' + E.gold + '|'), `${trait}: Goldstern`);
+    assert.ok(r.calls.some((c) => c.startsWith('ellipse:') && c.includes('|' + E.ring.slice(0, E.ring.lastIndexOf(',')))), `${trait}: Fußring`);
+    assert.equal(r.depth, 0, `${trait}: save/restore`);
+    // globalAlpha setzt hier die Schild-Blase (B-126, save/restore), das Abzeichen selbst nutzt Farben mit Alpha
+    prints[trait] = r.calls.filter((c) => !c.startsWith('ellipse:')).join('\n');
+  }
+  const keys = Object.keys(prints);
+  for (let i = 0; i < keys.length; i++) for (let j = i + 1; j < keys.length; j++) assert.notEqual(prints[keys[i]], prints[keys[j]], `${keys[i]} == ${keys[j]}`);
+  assert.ok(prints.shield.includes('|' + E.shield + '|'), 'Schild-Zeichen gefüllt');
+  for (const type of ['boss', 'necro']) {
+    const r = await recordEnemy({ type, elite: 'shield' });
+    assert.ok(!r.print.includes(E.ring.slice(0, E.ring.lastIndexOf(','))), `${type}: kein Elite-Abzeichen (Fußring)`); // Gold allein zeigt auch die Krone
+  }
+});
+
+test('B-179 Elite: Abzeichen mindestens minPx, über der Figur, reduced motion und eingefroren ohne Versatz', async () => {
+  const { eliteBadgeSize, eliteGlyph } = await import('../src/render-elite.js');
+  const { ENEMY_STYLE } = await import('../src/config.js');
+  const E = ENEMY_STYLE.elite;
+  assert.ok(eliteBadgeSize(1) >= E.minPx && eliteBadgeSize(0.1) === E.minPx && eliteBadgeSize(2) > eliteBadgeSize(1));
+  assert.equal(eliteBadgeSize(NaN), eliteBadgeSize(1));
+  assert.deepEqual(['swift', 'shield', 'regen', 'x', undefined].map(eliteGlyph), ['fast', 'shield', 'heal', null, null]);
+  // Stern liegt oberhalb der Figur-Oberkante (Teile davon), Fußpunkt-Ring am Boden
+  for (const trait of ['swift', 'regen']) {
+    const still = new Set();
+    for (const time of [0, 0.3, 0.7]) still.add((await recordEnemy({ type: 'grunt', elite: trait }, time, undefined, true)).calls.filter((c) => !c.startsWith('translate:') && !c.startsWith('rotate:') && !c.startsWith('scale:')).filter((c) => c.includes(E.cream) || c.includes(E.healA) || c.includes(E.ring)).join('\n'));
+    assert.equal(still.size, 1, `${trait}: reduced ohne Versatz`);
+    const moving = new Set();
+    for (const time of [0, 0.2, 0.45]) moving.add((await recordEnemy({ type: 'grunt', elite: trait }, time)).calls.filter((c) => c.includes(E.cream) || c.includes(E.healA)).join('\n'));
+    assert.ok(moving.size > 1, `${trait}: Zeichen bewegen sich`);
+  }
+});

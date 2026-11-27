@@ -9,6 +9,7 @@ import { BOSS_ENTRY, FX_STYLE, STYLE, WIDTH, HEIGHT, TILE, FIGURE_STYLE } from '
 import { outlineOf, starPath, zigPath } from './draw-utils.js';
 import { enemyFigure } from './figures.js';
 import { drawElements } from './svg-figure.js';
+import { drawNecroPhase, drawSummonSpot, drawSummonSkull } from './render-necro.js';
 
 // Ein gemeinsamer Partikelzustand fuer das Spiel (wird bei Neustart/Zeitsprung von syncFx geleert).
 const fx = createFx();
@@ -321,6 +322,7 @@ export function drawParticles(ctx, under = false) {
 
 // Effekte aus dem Spielzustand, die unter den Figuren liegen: Lichthof und Rauch der Explosion (Z.131f)
 export function drawEffectUnder(ctx, e) {
+  if (e && e.kind === 'summon') { drawSummonSpot(ctx, e); return; } // B-180: Bodenfleck der Beschwörung
   if (!e || e.kind !== 'explosion') return;
   if (e.meteor) { drawMeteorUnder(ctx, e); return; }
   const a = e.ttl / e.max;
@@ -388,6 +390,10 @@ export function drawEffectOver(ctx, e, reducedMotion = false) {
     drawExplosionStars(ctx, e, a);
   } else if (e.kind === 'shellBreak') {
     drawShellBreak(ctx, e, reducedMotion);
+  } else if (e.kind === 'phase2') {
+    drawNecroPhase(ctx, e, reducedMotion); // B-180: Druckwelle und „Zweite Phase!“
+  } else if (e.kind === 'summon') {
+    drawSummonSkull(ctx, e, reducedMotion);
   } else if (e.kind === 'coin') {
     const ty = e.y - CT.lift + (reducedMotion ? 0 : a * CT.rise);
     ctx.save();

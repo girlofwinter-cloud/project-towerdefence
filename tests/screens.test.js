@@ -51,3 +51,47 @@ test('starsHtml: immer STAR_COUNT Sterne, davon n voll', () => {
   assert.equal(html.match(/#f2c14e/g).length, 2);
   assert.equal(html.match(/#5a3a22/g).length, STAR_COUNT - 2);
 });
+
+// B-180: Boss-Leiste (src/boss-bar.js) mit einem kleinen Schein-DOM: zeigt, füllt, Phase II, blendet nach dem Tod aus
+test('B-180 Boss-Leiste: erscheint mit dem Boss, Phase-Text und Schild, steht nach dem Tod noch fadeAfter s', async () => {
+  const { createBossBars } = await import('../src/boss-bar.js');
+  const { BOSS_BAR } = await import('../src/config.js');
+  const el = () => {
+    const cls = new Set();
+    const vars = {};
+    const attrs = {};
+    return { hidden: true, textContent: '', classList: { toggle: (c, on) => (on ? cls.add(c) : cls.delete(c)), has: (c) => cls.has(c) }, style: { setProperty: (k, v) => { vars[k] = v; } }, vars, attrs, setAttribute: (k, v) => { attrs[k] = v; } };
+  };
+  const mkBar = () => { const b = el(); b.parts = { '.bb-name': el(), '.bb-phase': el(), '.bb-track': el() }; b.querySelector = (q) => b.parts[q]; return b; };
+  const bars = [mkBar(), mkBar()];
+  const box = { ...el(), querySelectorAll: () => bars };
+  const rect = (left, right) => ({ getBoundingClientRect: () => ({ left, right }) });
+  const doc = { getElementById: (id) => (id === 'boss-bars' ? box : id === 'hud-bar' ? rect(0, 548) : null), querySelector: () => rect(853, 900) };
+  const update = createBossBars(doc);
+  const ui = {};
+  const necro = { type: 'necro', hp: 600, maxHp: 1000 };
+  const state = { time: 0, enemies: [necro] };
+  update(state, ui, 0);
+  assert.equal(box.hidden, false);
+  assert.equal(ui.bossBarShown, true);
+  assert.equal(bars[0].hidden, false);
+  assert.equal(bars[1].hidden, true, 'nur eine Leiste bei einem Boss');
+  assert.equal(bars[0].parts['.bb-name'].textContent, 'Nekromantin');
+  assert.equal(bars[0].parts['.bb-phase'].textContent, 'Phase I');
+  assert.equal(bars[0].vars['--f'], '0.600');
+  assert.equal(bars[0].parts['.bb-track'].attrs['aria-valuenow'], '60');
+  assert.equal(box.vars['--bb-w'], '272px');
+  Object.assign(necro, { hp: 400, phase: 2, shieldUntil: 2 });
+  update(state, ui, 0.1);
+  assert.equal(bars[0].parts['.bb-phase'].textContent, 'Phase II');
+  assert.ok(bars[0].classList.has('p2') && bars[0].classList.has('shielded'));
+  state.enemies = [];
+  update(state, ui, 1);
+  assert.equal(box.hidden, false, 'leere Leiste steht noch');
+  assert.equal(bars[0].vars['--f'], '0.000');
+  update(state, ui, 1 + BOSS_BAR.fadeAfter + 0.01);
+  assert.equal(box.hidden, true, 'danach ausgeblendet');
+  assert.equal(ui.bossBarShown, false);
+  // ohne Element im DOM: nichts tun, nicht crashen
+  createBossBars({ getElementById: () => null })(state, ui, 0);
+});

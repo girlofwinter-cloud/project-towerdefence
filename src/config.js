@@ -1357,7 +1357,40 @@ export const ENEMY_STYLE = {
     steamRgb: '244,241,234', steamAlpha: 0.75, steamPuffs: [[-8, -26], [0, -32], [8, -24]],
     steamR: [3, 8], steamRise: 16, steamLife: 0.5, steamInk: 'rgba(43,26,16,0.5)', steamLine: 1.5,
   },
+  // B-180 Nekromantin (Bauvorlage Gegner-Nekromantin). Maße in Entwurfs-px (mal TILE/57 und necroScale), Zeiten in s.
+  // glow = necro-glow #7dff9a, glow2 = necro-glow-2 #ff5fd0, shield = boss-shield #bff6ff, skull wie Skelett
+  necro: {
+    glow: '#7dff9a', glow2: '#ff5fd0', ink: '#2b1a10', skull: '#f2e9d8',
+    // Boden-Aura: Lichtfleck (rx in Kacheln, ry = rx * flat) und Runenring (Radien, flach, 5 Spitzen), Drehung je Umdrehung
+    spotRx: 1.6, flat: 0.3, spotAlpha: 0.22, ringOuter: 84, ringInner: 64, ringAlpha: 0.6, ringWidth: 2.5,
+    spikes: 5, spikeLen: 12, spikeHalf: 5, auraTurn: 8, auraTurn2: 4,
+    orb: [64, 10], orbR: 12, orbAlpha: 0.3, orbPulse: 0.3, orbHz: 1 / 1.4,       // Leuchtschein der Stabkugel pulsiert
+    cloakTop: 40, cloakSkew: -4, cloakPeriod: 2, cloakPeriod2: 1,                 // Umhang: skewX 0 -> -4 Grad um die Oberkante
+    skullOrbit: 62, skullR: 7, skullTurn: 3, head: [38, 25],                      // Phase 2: zwei Schädel kreisen um den Kopf
+    shieldR: 0.8, shieldAlpha: 0.18, shieldLine: 4, shieldInk: 7, shieldColor: '#bff6ff', // Schild-Kugel r = 0,8 x Figurhöhe
+    waveWidth: 5, waveFrom: 0.3, waveTo: 1.3, waveLife: 0.6,                      // Druckwelle beim Phasenwechsel
+    text: 'Zweite Phase!', font: '26px "Lilita One", "Trebuchet MS", sans-serif', textLine: 6, textLife: 1.2, textGap: 10,
+    summonRx: 16, summonRy: 6, summonRise: 8, summonAlpha: 0.55, summonSkullR: 4.5, // Beschwörung: Bodenfleck + Schädel steigt
+  },
+  // B-179 Elite-Abzeichen (Bauvorlage Gegner-Elite): Goldstern mit Zeichen, gestrichelter Fußring. Box 20 x 20 Entwurfs-px.
+  elite: {
+    gold: '#f2c14e', cream: '#fff3d2', ink: '#2b1a10', ring: 'rgba(242,193,78,0.9)', // elite-ring
+    shield: '#bff6ff', healA: '#a8e070', healB: '#3a8a3c',                             // boss-shield, ab-repair-a/-b
+    // 8-zackiger Stern (R 9,5 / r 7,6) als Punktliste in der 20er-Box
+    star: [10, 0.5, 12.9, 3, 16.7, 3.3, 17, 7.1, 19.5, 10, 17, 12.9, 16.7, 16.7, 12.9, 17, 10, 19.5, 7.1, 17, 3.3, 16.7, 3, 12.9, 0.5, 10, 3, 7.1, 3.3, 3.3, 7.1, 3],
+    size: 20, minPx: 14, dx: 0.28, lift: 0.55, starLine: 2, innerR: 6.2, innerLine: 1.2, glyphLine: 2,
+    ringPad: 4, ringFlat: 0.3, ringDash: [6, 4], ringWidth: 2.5, ringPulse: [0.5, 0.9], ringPeriod: 2,
+    // Eigenschaftszeichen an der Figur (Spiel-px, Zeiten in s)
+    dashes: 3, dashLen: 8, dashGap: 6, dashRun: 10, dashPeriod: 0.5, dashWidth: 2.5,
+    arcR: 0.62, arcSpan: 1.2, arcWidth: 3, arcInk: 5, arcPulse: [0.55, 1], arcPeriod: 1.2,
+    plus: 3, plusSize: 4, plusRise: 14, plusPeriod: 1.5, plusWidth: 2.5, plusInk: 5,
+  },
 };
+
+// B-180 Boss-Lebensleiste (Bauvorlage HUD-Bossleiste, nur Anzeige): höchstens maxBars Leisten, weitere Bosse
+// zählen in der letzten Leiste zusammen. Breite und Abstand in CSS-px (Desktop, mittig zwischen HUD und Knöpfen),
+// fadeAfter = Sekunden, die die leere Leiste nach dem Tod noch steht.
+export const BOSS_BAR = { maxBars: 2, width: 272, gapPad: 8, top: 6, fadeAfter: 1 };
 
 // Auftritt des Bosses (B-067, nur Darstellung): Bodenschlag-Ring plus leichtes Wackeln.
 // Bei prefers-reduced-motion entfällt das Wackeln, der Ring wächst nicht.

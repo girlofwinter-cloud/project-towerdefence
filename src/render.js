@@ -7,6 +7,7 @@ import { drawPathStyled } from './render-path.js';
 import { drawTowerFigure, drawTowerBadge, towerFootY } from './render-towers.js';
 import { recoilOffset } from './tower-fx.js';
 import { drawEnemy, drawHealAura, enemyFootY } from './render-enemies.js';
+import { drawNecroAura } from './render-necro.js';
 import { updateFx, shakeX, shakeY, drawProjectileFx, drawParticles, drawBossEntry, drawEffectUnder, drawEffectOver } from './render-fx.js';
 import { drawTreeFrame } from './render-trees.js';
 import * as flat from './render-decor.js';
@@ -182,6 +183,7 @@ export function render(ctx, state, ui) {
   }
   drawHover(ctx, state, ui);
   for (const e of state.enemies) drawHealAura(ctx, e, state.time);
+  for (const e of state.enemies) drawNecroAura(ctx, e, state.time, reduced); // B-180: Boden-Aura unter allen Figuren
   drawBossEntry(ctx);
   // Explosionen und Rauch unter den Figuren, damit sie keine Figur verdecken (B-068)
   for (const fx of state.effects) drawEffectUnder(ctx, fx);
@@ -562,7 +564,7 @@ function drawFigures(ctx, state, ui) {
   figures.sort(byFoot);
   for (const o of figures) {
     if (o.hp === undefined) drawTower(ctx, o, ui.selectedTowerId === o.id);
-    else drawEnemy(ctx, o, state.time, enemyPath(state, o), !!ui.reducedMotion);
+    else drawEnemy(ctx, o, state.time, enemyPath(state, o), !!ui.reducedMotion, !!ui.bossBarShown); // B-180: Leiste im HUD
   }
   figures.length = 0;
 }

@@ -1925,3 +1925,85 @@ test('C4 Render: Bau-Ring-Vorschau und Verbessern-Vorschau zeichnen zusätzlich,
   assert.ok((up.setLineDash || 0) > (sel.setLineDash || 0), 'gestrichelte Reichweite der nächsten Stufe');
   assert.ok((up.arc || 0) > (sel.arc || 0));
 });
+
+// ---------- B-180: Boss-Leiste im HUD ----------
+
+test('B-180 Boss-Leiste: eine Ansicht je Boss (Nekromantin zuerst), Phase und Schild, mehr als zwei zählen zusammen', async () => {
+  const { bossBarViews } = await import('../src/hud.js');
+  const { ENEMY_TYPES: T } = await import('../src/config.js');
+  const st = (enemies, time = 10) => ({ time, enemies });
+  assert.deepEqual(bossBarViews(st([{ type: 'grunt', hp: 5, maxHp: 10 }])), [], 'kein Boss: keine Leiste');
+  assert.deepEqual(bossBarViews(null), []);
+  const ogre = { type: 'boss', hp: 550, maxHp: 1100 };
+  const necro = { type: 'necro', hp: 400, maxHp: 1000, phase: 2, shieldUntil: 11 };
+  const v = bossBarViews(st([ogre, { type: 'grunt', hp: 1, maxHp: 1 }, necro]));
+  assert.equal(v.length, 2);
+  assert.deepEqual(v[0], { name: T.necro.name, frac: 0.4, phase: 2, shielded: true }, 'Nekromantin zuerst, Phase II, Schild');
+  assert.deepEqual(v[1], { name: T.boss.name, frac: 0.5, phase: 0, shielded: false }, 'Oger-König ohne Phase');
+  assert.equal(bossBarViews(st([{ ...necro, phase: undefined }], 12))[0].phase, 1, 'Phase I');
+  assert.equal(bossBarViews(st([necro], 12))[0].shielded, false, 'Schild abgelaufen');
+  // drei Bosse: zweite Leiste ist die Summe der übrigen
+  const three = bossBarViews(st([necro, ogre, { type: 'boss', hp: 1100, maxHp: 1100 }]));
+  assert.equal(three.length, 2);
+  assert.equal(three[1].name, `${T.boss.name} ×2`);
+  assert.ok(Math.abs(three[1].frac - 1650 / 2200) < 1e-9);
+  assert.equal(bossBarViews(st([necro, ogre, ogre]), 1)[0].name, 'Bosse ×3', 'gemischte Summe');
+  // tote Bosse und kaputte Werte
+  assert.deepEqual(bossBarViews(st([{ type: 'boss', hp: 0, maxHp: 1100 }])), []);
+  assert.equal(bossBarViews(st([{ type: 'boss', hp: 5, maxHp: NaN }]))[0].frac, 0);
+  assert.equal(bossBarViews(st([{ type: 'boss', hp: 5000, maxHp: 1100 }]))[0].frac, 1);
+});
+
+test('B-180 Boss-Leiste: Lage mittig zwischen HUD und Knöpfen, schmale Lücke macht sie schmaler', async () => {
+  const { bossBarPlacement } = await import('../src/hud.js');
+  const { BOSS_BAR } = await import('../src/config.js');
+  // 1280x800 (gemessen): HUD endet bei 548, Knöpfe ab 853 -> Breite 272, links 564,5
+  const p = bossBarPlacement(548, 853);
+  assert.equal(p.width, BOSS_BAR.width);
+  assert.ok(Math.abs(p.left - 564.5) < 1e-9);
+  assert.ok(p.left > 548 && p.left + p.width < 853, 'schneidet weder HUD noch Knöpfe');
+  const q = bossBarPlacement(600, 870); // Lücke 270 < 280
+  assert.equal(q.width, 270 - BOSS_BAR.gapPad);
+  assert.ok(q.left > 600 && q.left + q.width < 870);
+  assert.equal(bossBarPlacement(500, 400).width, 0, 'keine Lücke');
+  assert.equal(bossBarPlacement(NaN, 10), null);
+});
+
+test('B-180 Boss-Leiste sichtbar: kein kleiner Lebensbalken über Bossen, andere Gegner behalten ihn', async () => {
+  const { drawEnemy } = await import('../src/render-enemies.js');
+  const { FIGURE_STYLE: S } = await import('../src/config.js');
+  const bar = (type, bossBar) => {
+    const fills = [];
+    const m = mockCtx();
+    const ctx = new Proxy(m.ctx, { get: (t, k) => (k === 'fill' ? () => fills.push(m.props.fillStyle) : t[k]), set: (t, k, v) => { t[k] = v; return true; } });
+    drawEnemy(ctx, { id: 1, type, x: 100, y: 100, dist: 0, hp: 1, maxHp: 10, slowUntil: 0, speed: 1, radius: 18 }, 1, null, false, bossBar);
+    assert.equal(m.depth, 0);
+    return fills.includes(S.hp.low); // wenig HP: rote Füllung (Kontur-Farbe hp.back nutzt auch die Figur)
+  };
+  for (const type of ['boss', 'necro']) {
+    assert.equal(bar(type, false), true, `${type}: ohne Leiste kleiner Balken`);
+    assert.equal(bar(type, true), false, `${type}: mit Leiste kein kleiner Balken`);
+  }
+  assert.equal(bar('grunt', true), true, 'Goblin behält den Balken');
+});
+
+test('B-180 render: reicht ui.bossBarShown an die Gegner weiter und zeichnet die Aura der Nekromantin', async () => {
+  const { render } = await import('../src/render.js');
+  const { FIGURE_STYLE: S, ENEMY_STYLE } = await import('../src/config.js');
+  const { spawnEnemy } = await import('../src/game.js');
+  const s = createGame();
+  const n = spawnEnemy(s, 'necro');
+  n.hp = n.maxHp / 10; // rote Füllung (hp.low)
+  const run = (ui) => {
+    const fills = [];
+    const m = mockCtx();
+    const ctx = new Proxy(m.ctx, { get: (t, k) => (k === 'fill' ? () => fills.push(m.props.fillStyle) : t[k]), set: (t, k, v) => { t[k] = v; return true; } });
+    render(ctx, s, ui);
+    return fills;
+  };
+  const glowRgba = 'rgba(125,255,154,';
+  assert.ok(run({}).some((f) => typeof f === 'string' && f.startsWith(glowRgba)), 'Aura (Lichtfleck)');
+  assert.ok(run({}).includes(S.hp.low), 'ohne Leiste: kleiner Balken');
+  assert.ok(!run({ bossBarShown: true }).includes(S.hp.low), 'mit Leiste: kein kleiner Balken');
+  assert.ok(ENEMY_STYLE.necro.glow === '#7dff9a');
+});

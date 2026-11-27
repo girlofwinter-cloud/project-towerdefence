@@ -13,6 +13,7 @@ import { unlockAudio, setSoundOn, playSound, updateMusic } from './audio.js';
 import { loadProgress, saveProgress, recordResult, isUnlocked, mapProgress, starText, resultLines, startMap, mapAfterResult, starsFor, MAP_ORDER } from './progress.js';
 import { mountStartScreen, endView, starsHtml, STAR_COUNT } from './screens.js';
 import { fullscreenControl } from './fullscreen.js';
+import { createBossBars } from './boss-bar.js';
 import { ringRadius, tileCenterPx, ringCenter, infoOnLeft, pickTower, buildRingView, towerRingView } from './ring-menu.js';
 
 const canvas = document.getElementById('game');
@@ -702,8 +703,10 @@ window.addEventListener('keydown', (ev) => {
 });
 
 // ---------- HUD ----------
+const updateBossBars = createBossBars(); // B-180: Boss-Leiste im HUD
 function refreshUI() {
   if (state.status !== 'playing' || state.paused) ui.aiming = false; // Zielmodus nur im laufenden Spiel
+  updateBossBars(state, ui, performance.now() / 1000);
   $('gold').textContent = state.gold.toLocaleString('de-DE');
   $('lives').textContent = state.lives;
   $('lives-box').classList.toggle('low', state.status === 'playing' && state.lives <= LOW_LIVES);
