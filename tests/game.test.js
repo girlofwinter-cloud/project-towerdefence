@@ -3383,7 +3383,7 @@ describe('Tester: Randfälle neue Gegner', () => {
 });
 
 // --- B-179: Elite-Gegner und gemischtere Mitte ---
-import { ELITE, eliteCount, WAVE_EXTRAS, WAVE_GAP_SCALE } from '../src/config.js';
+import { ELITE, eliteCount, WAVE_EXTRAS } from '../src/config.js';
 
 test('B-179: Elite-Gegner erst ab ELITE.from, Anzahl wächst bis ELITE.max, nur erlaubte Typen und Eigenschaften', () => {
   const traits = new Set();
@@ -3443,17 +3443,14 @@ test('B-179: Elite-Markierung läuft über startWave und Spawn-Liste bis zum Geg
   assert.deepEqual(seen.map((e) => e.elite), want);
 });
 
-test('B-179: gemischtere Mitte (WAVE_EXTRAS nur Wellen 6-12, nicht 5 und 10), Welle 5 lockerer gestaffelt', () => {
+test('B-179: gemischtere Mitte (WAVE_EXTRAS nur Wellen 6-12, nicht 5 und 10), Welle 5 unverändert', () => {
   for (const w of Object.keys(WAVE_EXTRAS).map(Number)) assert.ok(w >= 6 && w <= 12 && w !== 10, `Welle ${w}`);
   assert.equal(waveSummary(6).tank, Math.floor(6 / 2) + 1 + WAVE_EXTRAS[6].tank);
   assert.equal(waveSummary(9).shielded, 1 + WAVE_EXTRAS[9].shielded);
   assert.equal(waveSummary(7).healer, 1 + WAVE_EXTRAS[7].healer);
-  // Welle 5: gleiche Gegner, aber größere Abstände in der Goblin-Gruppe
-  assert.ok(WAVE_GAP_SCALE[5] > 1);
+  // Welle 5 bleibt wie bisher (Wunsch des Menschen): normale Abstände in der Goblin-Gruppe
   const grunts = waveFor(5).filter((e) => e.type === 'grunt');
-  assert.ok(Math.abs(grunts[1].at - grunts[0].at - Math.max(0.3, 0.9 - 5 * 0.04) * WAVE_GAP_SCALE[5]) < 1e-9);
-  const g4 = waveFor(4).filter((e) => e.type === 'grunt');
-  assert.ok(Math.abs(g4[1].at - g4[0].at - Math.max(0.3, 0.9 - 4 * 0.04)) < 1e-9, 'andere Wellen unverändert');
+  assert.ok(Math.abs(grunts[1].at - grunts[0].at - Math.max(0.3, 0.9 - 5 * 0.04)) < 1e-9);
 });
 
 // --- B-180: Nekromantin Phase 2 ---

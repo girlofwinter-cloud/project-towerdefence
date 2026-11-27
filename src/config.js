@@ -705,8 +705,6 @@ export const WAVE_EXTRAS = {
   11: { healer: 1 },
   12: { shielded: 1 },
 };
-// B-179: Abstands-Faktor der Gegner einer Welle (> 1 = lockerer). Glättet die Spitze in Welle 5, ohne Gegner zu streichen.
-export const WAVE_GAP_SCALE = { 5: 1.25 };
 
 // B-179: Elite-Gegner ab Welle `from`: count in Welle from, danach +1 je `every` Wellen, höchstens max. Gewählt werden
 // gleichmäßig verteilte Gegner der Typen `types` (feste Auswahl, kein Zufall); die Eigenschaft wechselt reihum (traits).
@@ -741,13 +739,12 @@ function markElites(list, wave) {
 export function waveFor(wave, mapId) {
   const list = [];
   let t = 0;
-  const gapScale = WAVE_GAP_SCALE[wave] ?? 1;
   const extras = WAVE_EXTRAS[wave] || {};
   const add = (type, count, gap) => {
     if (!(count > 0)) return;
     for (let i = 0; i < count; i++) {
       list.push({ type, at: t });
-      t += gap * gapScale;
+      t += gap;
     }
     t += 1;
   };
