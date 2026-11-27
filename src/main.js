@@ -1,5 +1,5 @@
 // Verbindet Spiel-Logik, Rendering und Bedienung (DOM, Maus, Tastatur).
-import { TILE, FRAME_MARGIN, VIEW_WIDTH, VIEW_HEIGHT, PAINTED_STYLE, FIGURE_STYLE, SHOP_CARD, TOWER_TYPES, ENEMY_TYPES, MAX_WAVES, MAPS, SPEED_STEPS, TARGET_MODES, MAX_SUBSTEP, LOW_LIVES, ABILITIES, ICON, VIEW_FIT, COIN_BURST, waveSummary, meteorText } from './config.js';
+import { TILE, FRAME_MARGIN, VIEW_WIDTH, VIEW_HEIGHT, PAINTED_STYLE, FIGURE_STYLE, SHOP_CARD, TOWER_TYPES, ENEMY_TYPES, MAX_WAVES, MAPS, SPEED_STEPS, TARGET_MODES, MAX_SUBSTEP, LOW_LIVES, ABILITIES, ICON, VIEW_FIT, COIN_BURST, HUD_BAR, waveSummary, meteorText } from './config.js';
 import {
   createGame, stepGame, togglePause, buildTower, upgradeTower, sellTower, setTargetMode, startWave,
   useAbility, abilityCooldownLeft, canBuild, towerAt, towerStats,
@@ -73,7 +73,7 @@ function drawBackdrop() {
   backdropFor = key;
   const b = backdrop.getContext('2d');
   if (compact) {
-    const w = 320, h = Math.round(w * window.innerHeight / window.innerWidth);
+    const w = PAINTED_STYLE.sideZone.compactWidth, h = Math.round(w * window.innerHeight / window.innerWidth);
     backdrop.removeAttribute('style');
     backdrop.width = w; backdrop.height = h;
     const sc = Math.max(w / canvas.width, h / canvas.height);
@@ -84,12 +84,12 @@ function drawBackdrop() {
   backdrop.width = W; backdrop.height = H;
   b.drawImage(img.canvas, 0, 0);
   // Nach außen leicht dunkler: ab der Canvas-Kante von 0 bis sideZone.darken am Bildrand
-  const dark = PAINTED_STYLE.sideZone.darken;
+  const { darken: dark, shade } = PAINTED_STYLE.sideZone;
   const side = (x0, y0, x1, y1, rx, ry, rw, rh) => {
     if (rw <= 0 || rh <= 0) return;
     const g = b.createLinearGradient(x0, y0, x1, y1);
-    g.addColorStop(0, 'rgba(20,30,10,0)');
-    g.addColorStop(1, `rgba(20,30,10,${dark})`);
+    g.addColorStop(0, `rgba(${shade},0)`);
+    g.addColorStop(1, `rgba(${shade},${dark})`);
     b.fillStyle = g;
     b.fillRect(rx, ry, rw, rh);
   };
@@ -357,7 +357,8 @@ canvas.addEventListener('pointermove', (ev) => {
   const { col, row, inField } = tileFromEvent(ev);
   // C2: Holzleiste blasst aus, wenn die Maus darunter steht; Fahne zeigt Hand-Zeiger
   const hr = $('hud-bar').getBoundingClientRect();
-  ui.hudDim = ev.clientX >= hr.left - 8 && ev.clientX <= hr.right + 8 && ev.clientY >= hr.top - 8 && ev.clientY <= hr.bottom + 8;
+  const pad = HUD_BAR.dimPad;
+  ui.hudDim = ev.clientX >= hr.left - pad && ev.clientX <= hr.right + pad && ev.clientY >= hr.top - pad && ev.clientY <= hr.bottom + pad;
   canvas.classList.toggle('over-flag', overFlag(ev));
   ui.hoverPx = pointFromEvent(ev);
   ui.hover = inField ? { col, row, ok: canBuild(state, col, row).ok } : null;
@@ -367,8 +368,8 @@ canvas.addEventListener('pointerleave', (ev) => { if (ev.pointerType === 'mouse'
 // G5/C3: Klick auf die Wellenfahne im Rand startet die Welle (Box in Entwurfs-px, ±8 Spiel-px Spielraum)
 function overFlag(ev) {
   const p = pointFromEvent(ev);
-  const K = TILE / PAINTED_STYLE.unit;
-  return !tileFromEvent(ev).inField && flagBoxes(state).some((f) => p.x >= f.box[0] * K - 8 && p.x <= f.box[2] * K + 8 && p.y >= f.box[1] * K - 8 && p.y <= f.box[3] * K + 8);
+  const K = TILE / PAINTED_STYLE.unit, pad = PAINTED_STYLE.flagHitPad;
+  return !tileFromEvent(ev).inField && flagBoxes(state).some((f) => p.x >= f.box[0] * K - pad && p.x <= f.box[2] * K + pad && p.y >= f.box[1] * K - pad && p.y <= f.box[3] * K + pad);
 }
 canvas.addEventListener('click', (ev) => {
   if (!ui.aiming && !ui.buildType && overFlag(ev)) { doStartWave(); return; }
