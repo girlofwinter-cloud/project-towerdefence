@@ -1,7 +1,7 @@
 // B-175/B-176: Stufe-3-Fähigkeiten der Türme (TOWER_TYPES[typ].master). Eigene Datei neben game.test.js.
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { createGame, update, buildTower, spawnEnemy, enemyPath, towerStats, masterOf, masterInfo, densestCluster, upgradeTower } from '../src/game.js';
+import { createGame, update, buildTower, spawnEnemy, enemyPath, towerStats, masterOf, masterInfo, densestCluster, upgradeTower, useAbility } from '../src/game.js';
 import { buildPath, pointAt } from '../src/path.js';
 import { TOWER_TYPES, ENEMY_TYPES, TILE, MAX_LEVEL, MASTER_FX } from '../src/config.js';
 import { freeTileNearPath } from './helpers.js';
@@ -368,5 +368,59 @@ describe('B-173/B-174 Optik-Ereignisse', () => {
     const g = s.grounds[0];
     assert.ok(Number.isFinite(g.born) && g.born <= s.time);
     assert.equal(g.towerId, tower.id);
+  });
+});
+
+// Review-Befunde 27.11.
+describe('Review: Gewitter, Aufstieg, Elite-Schild', () => {
+  const M = TOWER_TYPES.lightning.master;
+
+  test('Gewitter: Irrlichter weichen aus (wie bei Splash und Brandfläche)', () => {
+    const { s, tower } = lineSetup('lightning');
+    tower.cooldown = 99;
+    const pack = [put(s, 'grunt', 4), put(s, 'wisp', 4.2), put(s, 'grunt', 4.4)];
+    update(s, 0.001);
+    assert.ok(s.effects.some((f) => f.kind === 'storm'), 'Einschlag');
+    assert.ok(pack[0].hp < pack[0].maxHp, 'Goblin getroffen');
+    assert.equal(pack[1].hp, pack[1].maxHp, 'Irrlicht nicht getroffen');
+  });
+
+  test('Aufstieg auf Stufe 3: erster Einschlag erst nach stormEvery, mit Ankündigung', () => {
+    const { s, tower } = lineSetup('lightning', MAX_LEVEL - 1);
+    tower.cooldown = 99;
+    const e = put(s, 'grunt', 4);
+    assert.ok(upgradeTower(s, tower.id).ok);
+    assert.ok(Math.abs(tower.stormAt - (s.time + M.stormEvery)) < 1e-9);
+    update(s, 0.001);
+    assert.equal(e.hp, e.maxHp, 'nicht sofort');
+    let warned = false;
+    for (let i = 0; i < 40 && e.hp === e.maxHp; i++) {
+      tower.cooldown = 99;
+      update(s, M.stormEvery / 30);
+      warned ||= s.effects.some((f) => f.kind === 'stormWarn');
+    }
+    assert.ok(e.hp < e.maxHp, 'Einschlag nach dem Takt');
+    assert.ok(warned, 'Ankündigung vorher');
+    // andere Türme bekommen kein stormAt
+    const { s: s2, tower: t2 } = lineSetup('arrow', MAX_LEVEL - 1);
+    upgradeTower(s2, t2.id);
+    assert.equal(t2.stormAt, undefined);
+  });
+
+  test('Elite-Schild: Splitter nur einmal, auch wenn der Schild nachgefüllt wird', () => {
+    const { s } = lineSetup('arrow', 1);
+    const e = put(s, 'grunt', 4);
+    e.elite = 'shield';
+    const breaks = () => s.effects.filter((f) => f.kind === 'eliteBreak').length;
+    const hit = (amount) => { e.ward = amount; s.towers[0].cooldown = 99; spawnHit(s, e); };
+    function spawnHit(st, en) {
+      // Meteor als neutraler Schadensweg über die öffentliche API
+      st.abilities.meteor.readyAt = 0;
+      assert.ok(useAbility(st, 'meteor', en.x, en.y).ok, 'Meteor trifft');
+    }
+    hit(5);
+    assert.equal(breaks(), 1);
+    hit(5); // Magier füllt nach, Schild bricht erneut
+    assert.equal(breaks(), 1, 'kein zweiter Splitter-Effekt');
   });
 });

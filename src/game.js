@@ -163,6 +163,8 @@ export function upgradeTower(state, id) {
   tower.level += 1;
   tower.invested += cost;
   // B-174: Lichtsäule beim Aufstieg auf Stufe 3 (nur Darstellung)
+  // Gewitter: erster Einschlag erst nach einem vollen Takt (mit Ankündigung)
+  if (tower.level === MAX_LEVEL && masterOf(tower)?.stormEvery) tower.stormAt = state.time + masterOf(tower).stormEvery;
   if (tower.level === MAX_LEVEL) state.effects.push({ kind: 'ascend', towerId: tower.id, x: tower.x, y: tower.y, ttl: MASTER_FX.ascend.life, max: MASTER_FX.ascend.life });
   return { ok: true, tower };
 }
@@ -700,7 +702,8 @@ function stormStep(state, tower, master) {
   tower.stormWarned = false;
   const dmg = stats.damage * master.stormDamage;
   for (const e of state.enemies) {
-    if (e.hp > 0 && Math.hypot(e.x - center.x, e.y - center.y) <= radius) damage(state, e, { damage: dmg });
+    // Irrlichter weichen Flächenschaden aus (wie bei Splash und Brandfläche)
+    if (e.hp > 0 && !isDodger(e) && Math.hypot(e.x - center.x, e.y - center.y) <= radius) damage(state, e, { damage: dmg });
   }
   const life = MASTER_FX.storm.life; // Wolke, Druckring und Rußfleck bleiben länger als der Blitz
   state.effects.push({ kind: 'storm', x: center.x, y: center.y, r: radius, towerId: tower.id, fromX: tower.x, fromY: tower.y, ttl: life, max: life });
@@ -843,7 +846,11 @@ function damage(state, enemy, p, direct = false) {
     enemy.ward -= absorbed;
     dmg -= absorbed;
     // B-179: nur Optik, der Elite-Schild bricht (Splitter)
-    if (enemy.elite === 'shield' && !(enemy.ward > 0)) state.effects.push({ kind: 'eliteBreak', x: enemy.x, y: enemy.y, ttl: FX_STYLE.eliteBreak.life, max: FX_STYLE.eliteBreak.life });
+    // (nur einmal je Gegner, auch wenn ein Magier den Schild später nachfüllt)
+    if (enemy.elite === 'shield' && !(enemy.ward > 0) && !enemy.eliteShieldBroken) {
+      enemy.eliteShieldBroken = true;
+      state.effects.push({ kind: 'eliteBreak', x: enemy.x, y: enemy.y, ttl: FX_STYLE.eliteBreak.life, max: FX_STYLE.eliteBreak.life });
+    }
   }
   enemy.hp -= dmg;
   phaseCheck(state, enemy);
