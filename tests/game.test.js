@@ -3323,3 +3323,54 @@ describe('B-169 Panzerkäfer: Schale fängt die ersten Treffer ab', () => {
     assert.equal(breaks(), 1, 'kein zweiter Effekt');
   });
 });
+
+// ---------- Tester: Randfälle der neuen Gegner (B-167 bis B-171) ----------
+describe('Tester: Randfälle neue Gegner', () => {
+  const still = (s, type) => {
+    const e = spawnEnemy(s, type, 1);
+    e.dist = 300; e.speed = 0; e.hp = e.maxHp = 1e6;
+    return e;
+  };
+
+  test('Meteor trifft das Irrlicht (Fähigkeit ist kein fremder Splash)', () => {
+    const s = createGame();
+    const e = still(s, 'wisp');
+    update(s, 0.001);
+    assert.ok(useAbility(s, 'meteor', e.x, e.y).ok);
+    assert.ok(e.hp < e.maxHp);
+  });
+
+  test('Glutling: nach Ende des Kälteschocks wieder volles Tempo', () => {
+    const s = createGame();
+    const e = still(s, 'ember');
+    e.speed = ENEMY_TYPES.ember.speed;
+    assert.ok(useAbility(s, 'freeze').ok);
+    run(s, ABILITIES.freeze.duration + 0.5);
+    const d0 = e.dist;
+    update(s, 0.1);
+    assert.ok(Math.abs((e.dist - d0) - e.speed * TILE * 0.1) < 1e-6, 'kein Rest-Slow');
+  });
+
+  test('Lava knackt die Schale nicht, macht aber Schaden', () => {
+    const s = createGame({ mapId: 'volcano' });
+    const e = spawnEnemy(s, 'beetle', 1);
+    e.speed = 0; e.hp = e.maxHp = 1e6;
+    const shell = e.shell;
+    let hit = false;
+    for (let d = 0; d < 2000 && !hit; d += 5) {
+      e.dist = d; e.hp = e.maxHp; update(s, 0.05);
+      if (e.hp < e.maxHp) hit = true;
+    }
+    assert.ok(hit, 'Lava-Kachel gefunden');
+    assert.equal(e.shell, shell);
+  });
+
+  test('waveHp mit Karte entspricht der Summe aus waveFor(wave, mapId)', () => {
+    for (const mapId of Object.keys(MAPS)) {
+      for (const w of [1, 8, 15, MAX_WAVES]) {
+        const exp = waveFor(w, mapId).reduce((a, e) => a + Math.round(ENEMY_TYPES[e.type].hp * hpScale(w)), 0);
+        assert.equal(waveHp(w, mapId), exp, `${mapId} Welle ${w}`);
+      }
+    }
+  });
+});
