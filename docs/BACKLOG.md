@@ -103,3 +103,15 @@ Reihenfolge (je Zeile eine eigene Sitzung mit `/pipeline`, dazwischen `/clear`).
   - Tests: Brandfläche (Dauer, Schaden, zählt nicht für die Schale), Spröde und Markieren (Aufschlag nur solange der Zustand gilt; Spröde und Markieren zusammen multiplizieren sich, Obergrenze in `config.js`).
   - Die Turm-Info zeigt die Fähigkeit, und der Zustand ist am Gegner sichtbar (Optik aus B-173/B-174).
   - Die Strategie "nur Kanone + Frost" darf durch Stufe 3 nicht wieder zur besten werden (Messung aus B-171).
+
+### B-178: Fehlende Effekte der neuen Gegner (Logik-Ereignisse + Optik)
+- Status: entwurf
+- Aufwand: S
+- Idee: Drei Effekte aus den Bauvorlagen (`docs/design/elemente/Gegner-*.md`) fehlen, weil die Logik kein Ereignis liefert. `game.js` soll dafür nur Effekt-Einträge in `state.effects` schreiben (wie `dodge`/`shellBreak`), das Zeichnen kommt in `render-fx.js`. Spielwerte ändern sich nicht.
+  - Glutling: Frostturm-Treffer erzeugt `steam` (Dampfwölkchen, kurzes Aufzischen), nicht nur beim Kälteschock.
+  - Panzerkäfer: jede verlorene Schicht erzeugt `shellChip` (2 kleine Splitter); der große Bruch bleibt `shellBreak`.
+  - Irrlicht: der `dodge`-Effekt bekommt Gegner-ID und Richtung, damit das seitliche Zucken (ca. 9 px) gezeichnet werden kann und je Irrlicht nur ein "Verfehlt" gleichzeitig erscheint.
+- Akzeptanzkriterien:
+  - Tests in `tests/game.test.js`: die drei Ereignisse entstehen genau in diesen Fällen (nicht bei Pfeil auf Glutling, nicht bei Lava auf Käfer).
+  - Tests in `tests/fx.test.js`: Zeichnen ausgewogen (save/restore), robust bei kaputten Werten, abgeschwächt bei `prefers-reduced-motion`.
+  - `npm test` grün, `npm run test:balance` unverändert grün.
