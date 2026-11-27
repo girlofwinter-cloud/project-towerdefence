@@ -327,3 +327,27 @@ test('moveFocusTile: Pfeiltasten verschieben um eine Kachel, am Rand begrenzt, o
   assert.equal(moveFocusTile({ col: 3, row: 4 }, ' '), null, 'Leertaste gehört dem Wellenstart');
   assert.equal(moveFocusTile({ col: 3, row: 4 }, 'Enter'), null);
 });
+
+// ---------- B-137: Drehhinweis im Hochformat pausiert (rotatePauseStep) ----------
+import { rotatePauseStep } from '../src/input.js';
+
+test('rotatePauseStep: Hochformat pausiert ein laufendes Spiel, Drehen setzt es fort', () => {
+  const a = rotatePauseStep({ portrait: true, paused: false, playing: true, byHint: false });
+  assert.deepEqual(a, { pause: true, byHint: true });
+  // weiter im Hochformat: nichts ändern, Pause gehört weiter dem Hinweis
+  assert.deepEqual(rotatePauseStep({ portrait: true, paused: true, playing: true, byHint: true }), { pause: null, byHint: true });
+  assert.deepEqual(rotatePauseStep({ portrait: false, paused: true, playing: true, byHint: true }), { pause: false, byHint: false });
+});
+
+test('rotatePauseStep: eigene Pause des Spielers bleibt nach dem Drehen bestehen', () => {
+  const a = rotatePauseStep({ portrait: true, paused: true, playing: true, byHint: false });
+  assert.deepEqual(a, { pause: null, byHint: false });
+  assert.deepEqual(rotatePauseStep({ portrait: false, paused: true, playing: true, byHint: a.byHint }), { pause: null, byHint: false });
+});
+
+test('rotatePauseStep: ohne laufendes Spiel (Spielende) nichts pausieren; Querformat ohne Hinweis ändert nichts', () => {
+  assert.deepEqual(rotatePauseStep({ portrait: true, paused: false, playing: false, byHint: false }), { pause: null, byHint: false });
+  assert.deepEqual(rotatePauseStep({ portrait: false, paused: false, playing: true, byHint: false }), { pause: null, byHint: false });
+  // Neustart im Hochformat: neues Spiel ist nicht pausiert, Merker fällt weg
+  assert.deepEqual(rotatePauseStep({ portrait: false, paused: false, playing: true, byHint: true }), { pause: null, byHint: false });
+});

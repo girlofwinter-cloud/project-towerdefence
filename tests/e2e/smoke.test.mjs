@@ -4,7 +4,7 @@ import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 import { createServer } from '../../scripts/serve.mjs';
-import { TOWER_TYPES, VIEW_WIDTH, VIEW_HEIGHT } from '../../src/config.js';
+import { TOWER_TYPES, VIEW_WIDTH, VIEW_HEIGHT, TILE, FRAME_MARGIN, COLS, ROWS } from '../../src/config.js';
 import { tileCenter, enterGame, build, openRing } from './tile.mjs';
 
 const require = createRequire(import.meta.url);
@@ -83,8 +83,8 @@ test('B-005: Leertaste startet früh, gehaltene Taste (Wiederholung) startet nic
   assert.deepEqual(errors, []);
 });
 
-test('Handy: Bauen per Touch in zwei Schritten (Tipp Kachel -> Ring, Tipp Knopf), Zoom auf Übersicht verkleinert das Spielfeld', async () => {
-  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, deviceScaleFactor: 2 });
+test('Handy quer: Bauen per Touch in zwei Schritten (Tipp Kachel -> Ring, Tipp Knopf), ganzes Spielfeld ohne Zoom im Bild', async () => {
+  const ctx = await browser.newContext({ viewport: { width: 844, height: 390 }, hasTouch: true, isMobile: true, deviceScaleFactor: 2 });
   const m = await ctx.newPage();
   const mErrors = [];
   m.on('pageerror', (e) => mErrors.push(e.message));
@@ -99,13 +99,11 @@ test('Handy: Bauen per Touch in zwei Schritten (Tipp Kachel -> Ring, Tipp Knopf)
     // Zweiter Tipp auf den Knopf baut.
     await m.locator('#shop .tower-btn[data-type="arrow"]').tap();
     assert.equal(await m.evaluate(() => window.__game().towers.length), 1);
-    // C6: Standard ist Nah (Feld breiter als der Bildschirm, wischbar). Zoom-Knopf schaltet auf Übersicht: ganzes Feld sichtbar.
-    assert.ok(box.width > 390, `Nah: Feld ${box.width} breiter als der Bildschirm`);
-    await m.locator('#zoom').tap();
-    const zoomed = await m.locator('#game').boundingBox();
-    assert.ok(zoomed.width < box.width * 0.5, `Übersicht: ${zoomed.width} statt ${box.width}`);
-    assert.ok(zoomed.x >= 0 && zoomed.x + zoomed.width <= 390, 'Übersicht: ganzes Feld im Bild');
-    assert.equal(await m.locator('#zoom').getAttribute('aria-pressed'), 'true');
+    // B-137: kein Zoom-Knopf mehr; das ganze Feld (ohne Rand) liegt immer im Bild
+    assert.equal(await m.locator('#zoom').count(), 0);
+    const k = box.width / VIEW_WIDTH;
+    const fl = box.x + FRAME_MARGIN * k, ft = box.y + FRAME_MARGIN * k;
+    assert.ok(fl >= 0 && ft >= -0.5 && fl + COLS * TILE * k <= 844 + 0.5 && ft + ROWS * TILE * k <= 390 + 0.5, `ganzes Feld im Bild: ${JSON.stringify(box)}`);
     assert.deepEqual(mErrors, []);
   } finally {
     await ctx.close();

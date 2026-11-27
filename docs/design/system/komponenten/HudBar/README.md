@@ -8,6 +8,7 @@ Die Holzleiste zeigt Gold, Welle und Leben über dem Feld, als Holzplakette mit 
 - Höhe `size-hud-h` (56 px), Innenrand links `space-buttons`, rechts `space-plaque-x`, Abstand `space-hud`.
 - Fläche: Verlauf `wood-a` → `wood-b`, Rand `stroke-ui` in `ink`, Ecken `radius-plaque`, Schatten `shadow-plaque`.
 - Zahl `.num`: Lilita 28/30, `cream`, Umriss `text-outline` in `ink` plus 0 3px 0. Welle als `8<small> / 20</small>`.
+- Handy quer (B-137): senkrechte Plakette oben links (mind. 92 × 124, ohne `.sep`), Zahl `num-compact` (22/24), Icons 22 px, Abstand zum Rand `max(8px, env(safe-area-inset-*))`.
 
 **Zustände:** normal · Gold mit Tausenderpunkt (`toLocaleString('de-DE')`) · wenig Leben (`.low`, Zahl `bad`, Puls 1 s; ohne Puls bei reduced motion) · `.dim` (Deckkraft .35, wenn die Maus darunter steht; `pointer-events: none`).
 

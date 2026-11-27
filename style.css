@@ -126,7 +126,6 @@ canvas#game.over-flag { cursor: pointer; } /* Maus über der Wellenfahne */
 #pause .ic-play, #pause[data-paused="true"] .ic-pause { display: none; }
 #pause[data-paused="true"] .ic-play { display: block; }
 #pause[data-paused="true"] { box-shadow: 0 0 0 3px var(--hl), inset 0 2px 0 rgba(255,235,190,.6), 0 3px 0 rgba(30,15,5,.5); }
-#zoom { display: none; }
 .help { position: relative; }
 .help-pop { position: absolute; right: 0; top: 58px; width: 360px; padding: 10px 14px; font: 15px/1.35 'Trebuchet MS', sans-serif; }
 .help-pop ul { margin: 0; padding-left: 18px; }
@@ -275,8 +274,8 @@ kbd { font: 12px/1.4 ui-monospace, monospace; color: var(--cream); background: r
 #test-panel input[type="number"] { width: 4.5em; }
 #test-panel .tp-speeds button.active { outline: 2px solid #e0457b; }
 
-/* ---------- Kompakt (Handy, Grundlage bis Block E/C6): untereinander, scrollbar. Schwelle = LAYOUT in config.js ---------- */
-@media (max-width: 759.98px), (max-height: 519.98px) {
+/* ---------- Kompakt (schmales Fenster ohne Handy-Querformat): untereinander, scrollbar. Handy quer und Drehhinweis: Block B-137 am Ende ---------- */
+@media (max-width: 759.98px) and (orientation: portrait), (max-width: 759.98px) and (min-height: 520px) {
 :root { --u: calc((100vw - 12px) / var(--view-w)); }
 html, body { overflow: auto; height: auto; }
 #app { position: static; display: flex; flex-direction: column; align-items: stretch; gap: 8px; padding: 6px 6px calc(10px + env(safe-area-inset-bottom)); }
@@ -291,7 +290,6 @@ canvas#game, #game { height: auto; border-radius: 10px; }
 .help { display: block; } /* C-Abnahme 9: "?" als fünfter runder Knopf */
 .top-buttons .rb { width: 56px; height: 56px; }
 .help-pop { position: fixed; left: 8px; right: 8px; top: auto; width: auto; z-index: 30; }
-#zoom { display: inline-grid; }
 .wave-row { position: relative; order: 3; left: 0; bottom: 0; width: 100%; height: auto; display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
 .wave-btn, #wave-preview, .map-pick { position: static; transform: none; max-width: none; }
 .wave-btn { position: relative; } /* Bezug für die Fortschrittsfüllung */
@@ -315,7 +313,7 @@ body:has(#tower-info:not([hidden])) #app { padding-bottom: calc(var(--tower-info
 #start-screen { position: fixed; inset: 0; z-index: 40; display: flex; flex-direction: column; align-items: center; padding-top: 70px; background: rgba(16,28,14,.45); overflow: auto; }
 #start-screen[hidden] { display: none; }
 body.on-start .hud, body.on-start .abilities, body.on-start .wave-row, body.on-start .stage, body.on-start #shop, body.on-start #tower-info,
-body.on-start #speed, body.on-start #pause, body.on-start #zoom { visibility: hidden; }
+body.on-start #speed, body.on-start #pause { visibility: hidden; }
 body.on-start .top-buttons { z-index: 41; } /* Ton und Hilfe bleiben erreichbar */
 .start-title { position: relative; margin: 0; width: 640px; max-width: calc(100vw - 16px); height: 86px; flex: none; border-radius: 22px; display: flex; align-items: center; justify-content: center; gap: 12px; font: 50px/1 var(--display); font-weight: 400;
   text-shadow: -3px 0 #2b1a10, 3px 0 #2b1a10, 0 -3px #2b1a10, 0 3px #2b1a10, 0 5px 0 #2b1a10; }
@@ -396,6 +394,8 @@ body.on-start .top-buttons { z-index: 41; } /* Ton und Hilfe bleiben erreichbar 
 @media (prefers-reduced-motion: reduce) { .ring-btn, .rbtn { animation: none; } }
 @media (max-width: 759.98px), (max-height: 519.98px) {
   .ring-btn { width: 48px; height: 48px; left: -24px; top: -24px; } .ring-btn .t-icon { width: 38px; height: 38px; }
+}
+@media (max-width: 759.98px) and (orientation: portrait), (max-width: 759.98px) and (min-height: 520px) {
   /* Handy: Turm-Ring wird zur festen Leiste unten, Knöpfe in einer Reihe */
   #tower-info.ring { position: fixed; left: 0; right: 0; bottom: 0; top: auto; width: auto; height: auto; z-index: 20; display: grid;
     grid-template-columns: minmax(0,1fr) 44px; grid-template-areas: 'info close' 'acts acts'; gap: 6px 8px; padding: 8px 8px calc(10px + env(safe-area-inset-bottom));
@@ -410,124 +410,54 @@ body.on-start .top-buttons { z-index: 41; } /* Ton und Hilfe bleiben erreichbar 
   #ti-special { display: none; }
   #tower-info .ring-acts { grid-area: acts; display: flex; gap: 6px; } #tower-info .ring-acts .rbtn { flex: 1 1 0; min-width: 0; }
 }
-/* ---------- C6 Handy (Bauvorlagen Handy-Hoch.md, Handy-Quer.md): ersetzt die Kompakt-Ansicht getrennt nach Ausrichtung ----------
-   Hochformat: Feld füllt die Höhe, seitlich wischen (viewport.js), Dock unten. Querformat: Feld mittig, Spalten links/rechts.
-   C4 Ringmenü: Bau-Ring liegt über dem Feld (keine Turmleiste mehr, --shop-w: 0), Turm-Ring wird im Hochformat zur Leiste im Dock,
-   im Querformat zur rechten Spalte. */
-.swipe-hint, .vp-edges { display: none; }
-#zoom .ic-in, #zoom[aria-pressed="true"] .ic-out { display: none; }
-#zoom[aria-pressed="true"] .ic-in { display: block; }
-@media (max-width: 759.98px), (max-height: 519.98px) { #zoom { display: none; } }
-
-@media (max-width: 759.98px) and (orientation: portrait) {
-  :root { --safe-t: env(safe-area-inset-top, 0px); --safe-b: env(safe-area-inset-bottom, 0px); --shop-w: 0px;
-    --field-vh: calc(100vh - 216px - var(--safe-t) - var(--safe-b)); --uh: calc(var(--field-vh) / 560); --u: var(--uh); }
-  @supports (height: 100dvh) { :root { --field-vh: calc(100dvh - 216px - var(--safe-t) - var(--safe-b)); } }
+/* ---------- B-137 Handy: Querformat ist das Handy-Layout, Hochformat zeigt nur den Drehhinweis (Bauvorlage Handy-Quer.md, Handy-Hoch.md) ---------- */
+#rotate-hint { display: none; }
+@media (max-width: 759.98px) and (orientation: portrait) and (pointer: coarse) {
+  /* Vollbild-Hinweis über allem (auch Startbild und Spielende); main.js pausiert solange (rotatePauseStep in input.js) */
+  #rotate-hint { position: fixed; inset: 0; z-index: 60; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px;
+    padding: env(safe-area-inset-top, 0px) 24px env(safe-area-inset-bottom, 0px); background: #1d3a1f; text-align: center; }
+  #rotate-hint .plq { padding: 10px 22px; border-radius: 18px; font: 28px/1.1 var(--display); text-shadow: 0 3px 0 var(--ink); margin: 0; }
   html, body { overflow: hidden; height: 100%; }
-  #app, body:has(#tower-info:not([hidden])) #app { position: fixed; inset: 0; display: block; padding: 0; min-height: 0; }
-  .zoomed-out { --u: calc((100vw - 12px - var(--shop-w)) / 900); } /* Übersicht: ganzes Feld sichtbar */
-  /* Dock unten (Fläche hinter Fähigkeiten, Zoom und Wellenknopf) */
-  #app::after { content: ''; position: fixed; left: 0; right: 0; bottom: 0; z-index: 9; height: calc(160px + var(--safe-b)); pointer-events: none;
-    background: linear-gradient(var(--wood-a), var(--wood-b)); border-top: 3px solid var(--ink); border-radius: 16px 16px 0 0; box-shadow: inset 0 2px 0 rgba(255,220,160,.55); }
-  /* Feld: Rand oben/unten abgeschnitten, links/rechts beim Wischen sichtbar */
-  .stage { position: absolute; left: 0; right: 0; width: auto; top: calc(56px + var(--safe-t)); height: var(--field-vh); order: 0;
-    display: flex; align-items: flex-start; overflow-x: auto; overflow-y: hidden; touch-action: pan-x; overscroll-behavior-x: contain; scrollbar-width: none; }
-  .stage::-webkit-scrollbar { display: none; }
-  canvas#game, #game { flex: none; width: calc(900 * var(--u)); height: calc(660 * var(--u)); max-width: none; margin: calc(-50 * var(--u)) var(--shop-w) 0 0; border-radius: 0; touch-action: pan-x; }
-  .zoomed-out .stage { overflow: hidden; align-items: center; }
-  .zoomed-out canvas#game { margin: 0 0 0 6px; border-radius: 10px; }
-  /* Kopfleiste: HUD kompakt links, drei runde Knöpfe rechts */
-  .hud { position: absolute; left: 6px; top: calc(6px + var(--safe-t)); order: 0; align-self: auto; justify-content: flex-start; height: 44px; padding: 0 8px 0 4px; gap: 6px; border-radius: 12px; }
-  .hud .sep { display: none; }
-  .hud .num { font-size: 20px; line-height: 22px; } .num small { font-size: 14px; }
-  .hud-ico { width: 28px; height: 28px; } .hud-item { gap: 2px; } .hud .num { white-space: nowrap; }
-  #gold { min-width: 40px; } #wave { min-width: 44px; } #lives { min-width: 22px; }
-  .top-buttons { position: absolute; right: 6px; top: calc(6px + var(--safe-t)); order: 0; transform: none; gap: 6px; justify-content: flex-end; }
-  .top-buttons .rb { width: 44px; height: 44px; } .top-buttons .rb > svg { width: 32px; height: 32px; }
-  .help { display: none; }
-  /* Dock: Zeile 1 Fähigkeiten 3 x 56 + Zoom 44, Zeile 2 Wellenknopf volle Breite */
-  #zoom { display: inline-grid; position: absolute; right: 4px; top: calc(var(--field-vh) + 60px); } /* Dock Zeile 1 rechts (Bezug: .top-buttons) */
-  .abilities { position: fixed; left: 10px; top: auto; bottom: calc(94px + var(--safe-b)); order: 0; align-self: auto; transform: none; width: auto; height: 56px;
-    padding: 0; gap: 18px; justify-content: flex-start; background: none; border: 0; border-radius: 0; box-shadow: none; }
-  .ab { width: 56px; height: 56px; }
-  .cap { bottom: -12px; font: 13px/16px var(--display); padding: 0 6px; }
-  .wave-row { position: fixed; left: 10px; right: 10px; bottom: calc(10px + var(--safe-b)); width: auto; height: 52px; display: block; order: 0; }
-  .wave-btn { width: 100%; min-width: 0; height: 52px; border-radius: 26px; font-size: 22px; }
-  #wave-preview, .map-pick { display: none; }
-  /* Turm-Ring: Leiste genau über dem Dock (gleiche Höhe), Dock-Inhalt solange ausgeblendet; das Feld bleibt frei */
-  #tower-info.ring { height: calc(160px + var(--safe-b)); box-sizing: border-box; align-content: start; overflow-y: auto; }
-  body:has(#tower-info:not([hidden])) :is(.abilities, .wave-row, #zoom) { visibility: hidden; }
-  /* Meldung, Pause, Spielende fest im Fenster (der Feldbehälter wischt) */
-  #message { position: fixed; top: calc(66px + var(--safe-t)); max-width: calc(100vw - 90px); white-space: normal; text-align: center; }
-  #pause-banner { position: fixed; top: calc(56px + var(--safe-t) + var(--field-vh) / 2); }
-  #overlay { position: fixed; inset: 0; z-index: 30; background: rgba(16,28,14,.78); overflow: auto; }
-  /* Wisch-Hinweis und Schattenkanten (Klassen swiped, can-left, can-right aus viewport.js) */
-  .swipe-hint { display: block; position: fixed; left: 50%; bottom: calc(172px + var(--safe-b)); transform: translateX(-50%); z-index: 11; pointer-events: none;
-    padding: 4px 16px; border-radius: 16px; border: 3px solid var(--ink); background: linear-gradient(#b97a3e, #7a4520); box-shadow: 0 3px 0 rgba(30,15,5,.5);
-    color: var(--cream); font: 15px/1.3 var(--display); text-shadow: 0 2px 0 var(--ink); white-space: nowrap; animation: swipe-wiggle 2.4s ease-in-out infinite; }
-  .swiped .swipe-hint, .zoomed-out .swipe-hint, body.on-start .swipe-hint, body:has(#tower-info:not([hidden])) .swipe-hint, body:has(#overlay:not([hidden])) .swipe-hint { display: none; }
-  body.on-start #app::after { display: none; }
-  .vp-edges { display: block; position: fixed; left: 0; right: 0; top: calc(56px + var(--safe-t)); height: var(--field-vh); z-index: 8; pointer-events: none; }
-  .vp-edges::before, .vp-edges::after { content: ''; position: absolute; top: 0; bottom: 0; width: 18px; opacity: 0; transition: opacity .15s; }
-  .vp-edges::before { left: 0; background: linear-gradient(90deg, rgba(0,0,0,.35), transparent); }
-  .vp-edges::after { right: 0; background: linear-gradient(270deg, rgba(0,0,0,.35), transparent); }
-  .can-left .vp-edges::before, .can-right .vp-edges::after { opacity: 1; }
-  .zoomed-out .vp-edges { display: none; }
-  #test-panel { position: fixed; left: 6px; bottom: calc(166px + var(--safe-b)); width: calc(100vw - 80px); max-height: 40vh; overflow: auto; z-index: 25; order: 0; }
-  /* Startbildschirm: alle fünf Karten ohne Scrollen (2 Spalten), nur der Ton-Knopf oben rechts */
-  #start-screen { padding: calc(6px + var(--safe-t)) 8px calc(12px + var(--safe-b)); }
-  body.on-start .top-buttons { position: fixed; right: 6px; top: calc(6px + var(--safe-t)); }
-  body.on-start #speed, body.on-start #pause { display: none; }
-  .start-title { align-self: flex-start; width: calc(100% - 56px); height: 48px; font-size: 24px; gap: 6px; border-radius: 16px; }
-  .start-castle { width: 34px; height: 38px; margin-top: -4px; }
-  .map-cards { display: grid; grid-template-columns: repeat(2, minmax(0, 172px)); justify-content: center; gap: 10px; margin-top: 12px; }
-  .map-card { width: auto; height: auto; padding: 8px 8px 10px; gap: 4px; border-radius: 16px; }
-  .map-card:last-child:nth-child(odd) { grid-column: 1 / -1; justify-self: center; width: calc((100% - 10px) / 2); }
-  .map-thumb { width: 100%; height: auto; aspect-ratio: 16 / 10; object-fit: cover; }
-  .map-name { font-size: 20px; margin-top: 2px; } .map-stars svg { width: 20px; height: 20px; } .map-best { font-size: 13px; line-height: 1.2; }
-  .map-lock { top: 34px; }
-  .start-hint { margin-top: 14px; }
-}
-/* Schmal (unter 380 px): HUD kleiner, Welle ohne "/ 20" */
-@media (max-width: 379.98px) and (orientation: portrait) {
-  .hud .num { font-size: 18px; } .hud-ico { width: 24px; height: 24px; } #wave small { display: none; } #wave { min-width: 26px; }
 }
 
+/* Querformat: Feld (20 x 14) in voller Höhe mittig, Lage wie im Vollbild aus --u. Links und rechts malt #backdrop die Landschaft
+   bis an den Rand (main.js, wie die Seitenzonen im Vollbild). Bedienung schwebt in den Ecken, außerhalb der Safe-Area (--safe-*). */
 @media (max-height: 519.98px) and (orientation: landscape) {
-  :root { --u: min(100vh / 560, (100vw - 224px) / 800); --side: max(112px, calc((100vw - 800 * var(--u)) / 2)); --shop-w: 0px; }
-  html, body { overflow: hidden; height: 100%; }
-  #app, body:has(#tower-info:not([hidden])) #app { position: fixed; inset: 0; display: block; padding: 0; min-height: 0; }
-  #app::before, #app::after { content: ''; position: fixed; top: 0; bottom: 0; width: var(--side); z-index: 1; pointer-events: none; background: rgba(16,28,14,.35); }
-  #app::before { left: 0; } #app::after { right: 0; }
-  body.on-start #app::before, body.on-start #app::after { display: none; }
-  /* Feld 800u x 560u mittig, Rand abgeschnitten */
-  .stage { position: absolute; left: var(--side); top: calc((100vh - 560 * var(--u)) / 2); width: calc(800 * var(--u)); height: calc(560 * var(--u)); overflow: hidden; order: 0; }
-  canvas#game, #game { position: absolute; left: calc(-50 * var(--u)); top: calc(-50 * var(--u)); width: calc(900 * var(--u)); height: calc(660 * var(--u)); max-width: none; border-radius: 0; }
-  /* Spalte links: HUD senkrecht, Fähigkeiten senkrecht */
-  .hud { position: absolute; left: 6px; top: 6px; width: calc(var(--side) - 12px); height: auto; order: 0; align-self: auto; flex-direction: column; align-items: stretch; justify-content: flex-start; gap: 2px; padding: 6px 8px; }
-  .hud .sep { display: none; } .hud .num { font-size: 22px; line-height: 26px; } .hud-ico { width: 26px; height: 26px; }
-  .hud-item { height: 32px; gap: 6px; } #gold, #wave, #lives { min-width: 0; } .hud .num { white-space: nowrap; } #wave small { font-size: 15px; }
-  .abilities { position: absolute; left: calc((var(--side) - 76px) / 2); top: 128px; bottom: auto; order: 0; align-self: auto; transform: none; width: 76px; height: auto;
-    flex-direction: column; align-items: center; gap: 22px; padding: 8px 0 18px; border-radius: 38px; }
-  .ab { width: 48px; height: 48px; } .cap { font-size: 12px; line-height: 16px; bottom: -12px; }
-  /* Spalte rechts: runde Knöpfe 2 x 2, Wellenknopf unten (Bau-Ring liegt über dem Feld) */
-  .top-buttons { position: absolute; right: 6px; top: 6px; width: calc(var(--side) - 12px); order: 0; transform: none; display: grid; grid-template-columns: 44px 44px; justify-content: center; gap: 8px; }
-  .top-buttons .rb { width: 44px; height: 44px; } .top-buttons .rb > svg { width: 32px; height: 32px; }
-  .help, #zoom { display: none; }
-  .wave-row { position: absolute; right: 6px; bottom: 8px; left: auto; width: calc(var(--side) - 12px); height: auto; display: block; order: 0; }
-  .wave-btn { width: 100%; min-width: 0; height: 56px; padding: 0 8px; font-size: 18px; white-space: normal; line-height: 1.05; }
+  :root { --u: min(100vh / var(--field-h), (100vw - 224px) / var(--field-w)); --side: calc((100vw - var(--fw)) / 2);
+    --safe-l: max(8px, env(safe-area-inset-left, 0px)); --safe-r: max(8px, env(safe-area-inset-right, 0px));
+    --safe-t: max(8px, env(safe-area-inset-top, 0px)); --safe-b: max(8px, env(safe-area-inset-bottom, 0px)); }
+  /* Oben links: HUD-Plakette Gold, Welle, Leben untereinander (Zahlen num-compact 22 px) */
+  .hud { left: var(--safe-l); top: var(--safe-t); height: 124px; min-width: 92px; flex-direction: column; align-items: flex-start; justify-content: space-evenly; gap: 0; padding: 0 10px 0 8px; }
+  .hud .sep { display: none; }
+  .hud .num { font-size: 22px; line-height: 24px; white-space: nowrap; } .hud .num small { font-size: 15px; }
+  .hud-ico { width: 22px; height: 22px; } #gold, #wave, #lives { min-width: 0; }
+  /* Oben rechts: Tempo und Pause (48), Ton kompakt darunter (44) */
+  .top-buttons { right: var(--safe-r); top: var(--safe-t); display: grid; grid-template-columns: 48px 48px; gap: 8px; justify-items: end; }
+  .help { display: none; }
+  #speed { grid-area: 1 / 1; } #pause { grid-area: 1 / 2; }
+  #sound { grid-area: 2 / 2; width: 44px; height: 44px; } #sound > svg { width: 32px; height: 32px; }
+  /* Links unten: drei Fähigkeiten untereinander, nur Symbol (Name im aria-label) */
+  .abilities { left: calc(var(--safe-l) + 18px); top: auto; bottom: calc(var(--safe-b) + 10px); height: auto; width: auto; flex-direction: column; gap: 16px;
+    padding: 0; background: none; border: 0; border-radius: 0; box-shadow: none; }
+  .ab { width: 56px; height: 56px; } .ab .cap { display: none; }
+  /* Unten rechts: runder Wellenknopf mit Fortschritt (size-wave-round, schmaler, wenn die Seite knapp ist) */
+  .wave-row { left: auto; right: var(--safe-r); bottom: var(--safe-b); width: auto; height: auto; display: block; }
+  .wave-btn { --d: min(104px, calc(var(--side) - var(--safe-r) - 4px)); width: var(--d); height: var(--d); min-width: 0; padding: 0 10px; border-radius: 50%;
+    font-size: 18px; line-height: 1.05; white-space: normal; }
+  .wave-btn::after { left: 18px; bottom: 14px; width: calc((100% - 36px) * var(--wave-fill, 0)); }
   #wave-preview, .map-pick { display: none; }
-  /* Turm-Ring: rechte Spalte über den Knöpfen (statt Leiste unten, die das Feld verdecken würde) */
-  #tower-info.ring { left: auto; right: 0; top: 0; bottom: 0; width: var(--side); border-top: 0; border-left: 3px solid #2b1a10; border-radius: 14px 0 0 14px;
-    align-content: start; padding: 8px 8px calc(8px + env(safe-area-inset-bottom)); overflow-y: auto; box-sizing: border-box; }
-  #tower-info h3 { font-size: 16px; } #tower-info p { font-size: 12px; }
-  #tower-info .ring-acts { flex-direction: column; } #tower-info .ring-acts .rbtn { flex: none; height: 44px; }
-  #message { top: 10px; max-width: calc(100% - 20px); white-space: normal; text-align: center; }
+  /* Turm-Ring bleibt ein Ring (Knöpfe 48), Info-Plakette nur bei Bedarf rechts zwischen Knöpfen und Wellenknopf */
+  .rbtn { width: 48px; height: 48px; left: -24px; top: -24px; } .rbtn > svg { width: 30px; height: 30px; }
+  .rbtn-small { width: 44px; height: 44px; left: -22px; top: -22px; }
+  .ring-tower .ring-info, .ring-tower.info-left .ring-info { position: fixed; left: auto; right: var(--safe-r); top: calc(var(--safe-t) + 112px); z-index: 16;
+    width: min(130px, calc(var(--side) - var(--safe-r) - 4px)); max-height: calc(100vh - var(--safe-t) - var(--safe-b) - 112px - 112px); overflow: hidden; padding: 8px; text-align: center; }
+  .ring-info h3 { font-size: 15px; } .ring-info p { font-size: 12px; line-height: 1.25; } #ti-special { display: none; }
+  #message { max-width: calc(var(--fw) - 20px); white-space: normal; text-align: center; }
   #overlay { position: fixed; inset: 0; z-index: 30; background: rgba(16,28,14,.78); overflow: auto; }
-  #test-panel { position: fixed; left: var(--side); bottom: 0; width: calc(100vw - 2 * var(--side)); max-height: 40vh; overflow: auto; z-index: 25; order: 0; }
+  #test-panel { position: fixed; left: var(--side); bottom: 0; width: var(--fw); max-height: 40vh; overflow: auto; z-index: 25; }
   /* Startbildschirm: Titel oben, fünf Karten in einer Reihe */
   #start-screen { padding: 6px 8px 10px; }
-  body.on-start .top-buttons { position: fixed; right: 6px; top: 6px; display: flex; width: auto; }
+  body.on-start .top-buttons { position: fixed; right: var(--safe-r); top: 6px; display: flex; width: auto; }
   body.on-start #speed, body.on-start #pause { display: none; }
   .start-title { width: min(520px, calc(100vw - 120px)); height: 46px; font-size: 26px; gap: 8px; border-radius: 16px; }
   .start-castle { width: 32px; height: 36px; margin-top: -4px; }
@@ -538,9 +468,3 @@ body.on-start .top-buttons { z-index: 41; } /* Ton und Hilfe bleiben erreichbar 
   .map-lock { top: 26px; }
   .start-hint { margin-top: 12px; }
 }
-/* Querformat schmal (Spalten unter 130 px, z. B. 740x360): HUD-Zahlen kleiner */
-@media (max-height: 519.98px) and (orientation: landscape) and (max-width: 799.98px) {
-  .hud .num { font-size: 19px; } .hud-ico { width: 22px; height: 22px; } .hud-item { gap: 4px; } #wave small { font-size: 13px; }
-}
-@media (prefers-reduced-motion: reduce) { .swipe-hint { animation: none; } }
-@keyframes swipe-wiggle { 0%, 70%, 100% { transform: translateX(-50%); } 80% { transform: translateX(calc(-50% - 6px)); } 90% { transform: translateX(calc(-50% + 6px)); } }

@@ -207,8 +207,8 @@ for (const [width, height] of [[1280, 800], [1366, 768]]) {
   });
 }
 
-test('Touch 390x844: Tipp öffnet Ring, Tipp daneben schließt, Tipp auf Knopf baut; Turm-Ring per Tipp', async () => {
-  const { ctx, page, errors } = await open({ width: 390, height: 844 }, { hasTouch: true, isMobile: true });
+test('Touch 844x390 (B-137: Handy quer): Tipp öffnet Ring, Tipp daneben schließt, Tipp auf Knopf baut; Turm-Ring per Tipp', async () => {
+  const { ctx, page, errors } = await open({ width: 844, height: 390 }, { hasTouch: true, isMobile: true });
   await openRing(page, 0, 0, { touch: true });
   assert.equal((await towers(page)).length, 0);
   const vw = await page.evaluate(() => [window.innerWidth, window.innerHeight]);

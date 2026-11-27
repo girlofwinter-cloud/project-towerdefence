@@ -142,12 +142,15 @@ for (const fontSize of [null, '200%']) {
         const st = document.querySelector('.stage').getBoundingClientRect();
         return Math.min(e.bottom, st.bottom); // Canvas ragt im Hochformat abgeschnitten über .stage hinaus: sichtbarer Teil zählt
       });
-      // C4+C6: Turm-Leiste liegt genau über dem Dock; dessen Knöpfe sind solange ausgeblendet (keine Überdeckung sichtbarer Knöpfe)
-      const dockShown = ['#abilities', '.wave-row'].filter((s) => getComputedStyle(document.querySelector(s)).visibility !== 'hidden');
+      // C4: Die Turm-Leiste verdeckt keine sichtbaren Knöpfe (B-137: ohne Dock liegen Fähigkeiten und Wellenknopf darüber)
+      const dockShown = ['#abilities', '.wave-row'].filter((s) => {
+        const e = document.querySelector(s), b = e.getBoundingClientRect();
+        return getComputedStyle(e).visibility !== 'hidden' && b.height > 0 && b.bottom > bar.top + 0.5;
+      });
       return { top: bar.top, bottoms, dockShown };
     });
     for (const b of r.bottoms) assert.ok(b <= r.top + 0.5, `Inhalt endet bei ${b}, Leiste beginnt bei ${r.top}`);
-    assert.deepEqual(r.dockShown, [], 'Dock-Knöpfe unter der Turm-Leiste ausgeblendet');
+    assert.deepEqual(r.dockShown, [], 'keine sichtbaren Knöpfe unter der Turm-Leiste');
     await ctx.close();
   });
 }
