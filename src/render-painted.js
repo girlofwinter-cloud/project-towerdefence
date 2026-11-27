@@ -1,6 +1,6 @@
 // Stil 1 "Gemalt und warm": Hintergrund als SVG, portiert aus docs/design/stil1-entwurf.dc.html (Zeilen Z.xx dort).
 // buildPaintedScene/buildPaintedSvg sind reine Funktionen (kein DOM), deterministisch je Karte, in Node testbar.
-// Gerastert wird im Browser genau einmal je Karte (rasterizePainted), pro Frame nur drawImage (render.js).
+// Gerastert wird im Browser einmal je Karte und Anzeigemaßstab (rasterizePainted), pro Frame nur drawImage (render.js).
 // Koordinaten: innen in Entwurfs-Einheiten (Kachel = PAINTED_STYLE.unit = 57), Feld ab (0,0);
 // die äußere Gruppe verschiebt um den Rand und skaliert mit TILE / unit auf Spiel-px.
 import { TILE, COLS, ROWS, MAPS, FRAME_MARGIN, VIEW_WIDTH, VIEW_HEIGHT, PAINTED_STYLE as P, PAINTED_PALETTE, WATER_STYLE, themed } from './config.js';
@@ -460,12 +460,13 @@ export function toGame([x0, y0, x1, y1]) {
 }
 
 // ---------- Rasterung (nur Browser) ----------
-// SVG -> Blob -> Image -> decode -> Canvas (VIEW_WIDTH x VIEW_HEIGHT). Liefert null ohne DOM (Node) oder bei Fehler.
+// SVG -> Blob -> Image -> decode -> Canvas (VIEW_WIDTH x VIEW_HEIGHT mal scale; HiDPI: scale = Geräte-px je Canvas-Einheit,
+// Vektor wird direkt in dieser Größe gerastert, daher scharf). Liefert null ohne DOM (Node) oder bei Fehler.
 export function canRasterize() {
   return typeof Image !== 'undefined' && typeof Blob !== 'undefined' && typeof document !== 'undefined' && typeof URL?.createObjectURL === 'function';
 }
 
-export async function rasterizePainted(svg) {
+export async function rasterizePainted(svg, scale = 1) {
   if (!canRasterize()) return null;
   const url = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' }));
   try {
@@ -473,9 +474,9 @@ export async function rasterizePainted(svg) {
     img.src = url;
     await img.decode();
     const cv = document.createElement('canvas');
-    cv.width = VIEW_WIDTH;
-    cv.height = VIEW_HEIGHT;
-    cv.getContext('2d').drawImage(img, 0, 0, VIEW_WIDTH, VIEW_HEIGHT);
+    cv.width = Math.max(1, Math.round(VIEW_WIDTH * scale));
+    cv.height = Math.max(1, Math.round(VIEW_HEIGHT * scale));
+    cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
     return cv;
   } finally {
     URL.revokeObjectURL(url);

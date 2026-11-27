@@ -284,3 +284,26 @@ test('Stil 1: mehrere Wege werden als ein Weg gemalt (jede Schicht genau einmal,
     assert.equal((fuge[1].match(/M /g) || []).length, n, `${id}: ${n} Wege als Teilstücke derselben Schicht`);
   }
 });
+
+// HiDPI im Vollbild: das SVG wird direkt im Anzeigemaßstab gerastert (Vektor, scharf), für alle gemalten Karten gleich
+test('HiDPI: rasterizePainted rastert im Maßstab scale (Standard 1)', async () => {
+  const { rasterizePainted } = await import('../src/render-painted.js');
+  const drawn = [];
+  const saved = { Image: globalThis.Image, document: globalThis.document, create: URL.createObjectURL, revoke: URL.revokeObjectURL };
+  globalThis.Image = class { decode() { return Promise.resolve(); } };
+  globalThis.document = { createElement: () => ({ width: 0, height: 0, getContext: () => ({ drawImage: (...a) => drawn.push(a) }) }) };
+  URL.createObjectURL = () => 'blob:x';
+  URL.revokeObjectURL = () => {};
+  try {
+    const one = await rasterizePainted('<svg/>');
+    assert.deepEqual([one.width, one.height], [VIEW_WIDTH, VIEW_HEIGHT]);
+    const two = await rasterizePainted('<svg/>', 2.42);
+    assert.deepEqual([two.width, two.height], [Math.round(VIEW_WIDTH * 2.42), Math.round(VIEW_HEIGHT * 2.42)]);
+    assert.deepEqual(drawn.at(-1).slice(1), [0, 0, two.width, two.height], 'Bild füllt den ganzen Puffer');
+  } finally {
+    if (saved.Image === undefined) delete globalThis.Image; else globalThis.Image = saved.Image;
+    if (saved.document === undefined) delete globalThis.document; else globalThis.document = saved.document;
+    URL.createObjectURL = saved.create;
+    URL.revokeObjectURL = saved.revoke;
+  }
+});

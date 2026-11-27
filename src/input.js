@@ -38,7 +38,7 @@ export function canvasSize(availW, availH, dpr) {
   const w = Number.isFinite(availW) && availW > 0 ? availW : VIEW_WIDTH;
   const h = availH > 0 ? availH : Infinity; // Infinity = nur die Breite zählt
   const scale = Math.min(w / VIEW_WIDTH, h / VIEW_HEIGHT);
-  const cssW = Math.max(1, Math.floor(VIEW_WIDTH * scale));
+  const cssW = Math.max(1, Math.floor(VIEW_WIDTH * scale + 1e-6)); // + 1e-6: 939 / 900 * 900 ergibt sonst 938,999…
   const cssH = Math.max(1, Math.round((cssW * VIEW_HEIGHT) / VIEW_WIDTH));
   const width = Math.round(cssW * d);
   const height = Math.round(cssH * d);

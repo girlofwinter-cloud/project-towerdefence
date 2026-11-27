@@ -72,3 +72,33 @@ test('HiDPI: Fenstergröße ändern passt Canvas und Backing-Store an', async ()
   assert.ok(bottom <= 700, `Canvas passt in die Fensterhöhe (${bottom})`);
   assert.deepEqual(errors, []);
 });
+
+// Vollbild-Layout (Block C) mit Pixeldichte 2: Canvas füllt die Bühne (.stage), die Wellenfahne im Rand bleibt klickbar
+test('HiDPI im Vollbild: Canvas = Bühne, Klick auf die Fahne startet Welle 1 (1366x768, dpr 2)', async () => {
+  const { TILE, FRAME_MARGIN, PAINTED_STYLE } = await import('../../src/config.js');
+  const { createGame } = await import('../../src/game.js');
+  const { flagBoxes } = await import('../../src/render.js');
+  const p = await browser.newPage({ viewport: { width: 1366, height: 768 }, deviceScaleFactor: 2 });
+  try {
+    await p.goto(`http://localhost:${server.address().port}/`);
+    await p.waitForSelector('#abilities .ability-btn');
+    const m = await p.evaluate(() => {
+      const c = document.getElementById('game'), r = c.getBoundingClientRect(), st = c.closest('.stage').getBoundingClientRect();
+      return { w: c.width, rw: r.width, rh: r.height, sw: st.width, sh: st.height, scroll: document.documentElement.scrollHeight - innerHeight };
+    });
+    assert.ok(Math.abs(m.rw - m.sw) < 1 && Math.abs(m.rh - m.sh) < 1, `Canvas ${m.rw}x${m.rh} = Bühne ${m.sw}x${m.sh}`);
+    assert.ok(m.w >= 2 * m.rw - 4, `Backing ${m.w} >= 2 x ${m.rw}`);
+    assert.ok(m.scroll <= 0, 'kein Scrollen');
+    const mapId = await p.evaluate(() => window.__game().mapId);
+    const [fl] = flagBoxes(createGame({ mapId }));
+    const k = TILE / PAINTED_STYLE.unit;
+    const box = await p.locator('#game').boundingBox();
+    const s = box.width / VIEW_WIDTH;
+    const x = box.x + (FRAME_MARGIN + ((fl.box[0] + fl.box[2]) / 2) * k) * s;
+    const y = box.y + (FRAME_MARGIN + ((fl.box[1] + fl.box[3]) / 2) * k) * s;
+    await p.mouse.move(x, y);
+    assert.equal(await p.evaluate(() => document.getElementById('game').classList.contains('over-flag')), true, 'Hand-Zeiger über der Fahne');
+    await p.mouse.click(x, y);
+    assert.equal(await p.evaluate(() => window.__game().wave), 1);
+  } finally { await p.close(); }
+});

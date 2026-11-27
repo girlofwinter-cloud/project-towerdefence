@@ -92,6 +92,11 @@ test('canvasSize: Backing-Store = CSS-Größe x Pixeldichte, höchstens maxDpr, 
   assert.ok(Math.abs(odd.sy * VIEW_HEIGHT - odd.height) < 1e-6);
 });
 
+// Vollbild: Anzeigebreite kommt aus style.css; ganze CSS-px dürfen durch Rundungsfehler nicht 1 px verlieren
+test('canvasSize: ganze Anzeigebreiten bleiben exakt (kein Gleitkomma-Verlust beim Abrunden)', () => {
+  for (let w = 300; w <= 2600; w++) assert.equal(canvasSize(w, Infinity, 2).width, 2 * w, `Breite ${w}`);
+});
+
 test('canvasSize: ungültige Werte (0, negativ, NaN, kleine dpr) fallen auf sinnvolle Größen zurück', () => {
   assert.equal(canvasSize(800, Infinity, 0.5).dpr, 1);
   assert.equal(canvasSize(800, Infinity, NaN).dpr, 1);
