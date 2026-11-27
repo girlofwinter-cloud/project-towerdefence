@@ -1,14 +1,14 @@
 ---
 name: design
-description: Lässt den designer Aussehen und Bedienung des Spiels auf Desktop und Handy prüfen und Vorschläge für neue Designs machen; trägt Befunde und Vorschläge ins Backlog ein. Entwürfe und Zielbilder baut er als klickbare Prototypen in Claude Design. Nutzen bei "Design prüfen", "sieht das gut aus", "Zielbild", "Prototyp" oder /design.
+description: Lässt den designer Aussehen und Bedienung des Spiels auf Desktop und Handy prüfen und Vorschläge für neue Designs machen; trägt Befunde und Vorschläge in docs/IDEEN.md ein. Entwürfe und Zielbilder baut er als klickbare Prototypen in Claude Design. Nutzen bei "Design prüfen", "sieht das gut aus", "Zielbild", "Prototyp" oder /design.
 ---
 
 ## Prüfen (Standard)
-1. Rufe den Subagent `designer` auf. Gib ihm im Auftrag mit: den Pfad des Repos, den Pfad des Scratchpad-Verzeichnisses für Screenshots und Skripte (außerhalb des Repos) und, falls der Mensch einen Schwerpunkt genannt hat (z. B. "nur Handy", "nur Eiswelt", "Türme"), diesen Schwerpunkt. Ohne Schwerpunkt prüft er alles.
-2. Trage die **Muss-Befunde** und alle **Vorschläge** in `docs/BACKLOG.md` ein (Format dort), Status `vorschlag`, Aufwand und Akzeptanzkriterien aus dem Bericht. "Sollte"/"Nett"-Befunde nur, wenn sie sich zu einem sinnvollen Eintrag bündeln lassen. Lies dafür nur die offenen und vorgeschlagenen Einträge, Erledigtes liegt in `docs/archiv/BACKLOG-fertig.md`.
-3. Ändere keinen Code. Ein Mensch gibt Einträge frei (`offen`); die Umsetzung läuft danach über die Pipeline (`developer`).
+1. Rufe den Subagent `designer` auf. Gib ihm im Auftrag mit: den Pfad des Repos, den Pfad des Scratchpad-Verzeichnisses für Screenshots und Skripte (außerhalb des Repos) und, falls der Mensch einen Schwerpunkt genannt hat (z. B. "nur Handy", "nur Eiswelt", "Türme"), diesen Schwerpunkt. Ohne Schwerpunkt fragst du den Menschen kurz nach einem; die volle Prüfung (alle Geräte, alle Karten) nur, wenn er sie ausdrücklich will, und dann mit dem Zusatz "volle Prüfung" im Auftrag.
+2. Hänge die **Muss-Befunde** und alle **Vorschläge** an `docs/IDEEN.md` an (`cat >>`, Format wie in `docs/BACKLOG.md`), Status `vorschlag`, Aufwand und Akzeptanzkriterien aus dem Bericht. "Sollte"/"Nett"-Befunde nur, wenn sie sich zu einem sinnvollen Eintrag bündeln lassen. Doppelte vermeiden per `grep "^### "` in `docs/BACKLOG.md`, `docs/IDEEN.md` und `docs/archiv/BACKLOG-fertig.md`.
+3. Ändere keinen Code. Ein Mensch gibt Einträge frei (nach `docs/BACKLOG.md`, Status `offen`); die Umsetzung läuft danach über die Pipeline (`developer`).
 4. Fasse dem Menschen die wichtigsten Befunde und Vorschläge in wenigen Zeilen zusammen und nenne den Pfad der Screenshots.
-5. Hänge einen Ledger-Eintrag an `docs/LEDGER.md` an (Rolle `designer`), auf einem Branch `agent/design-<kurzname>` mit Pull Request (nie direkt auf `main`).
+5. Hänge einen Ledger-Eintrag an `docs/LEDGER.md` an (Rolle `designer`, per `cat >>`), auf einem Branch `agent/design-<kurzname>` mit Pull Request (nie direkt auf `main`).
 
 ## Entwurf als Prototyp in Claude Design
 Wenn der Mensch ein Zielbild, einen Entwurf oder Prototyp möchte, entsteht er als klickbarer Prototyp in Claude Design (Artefakt vom Typ "Design"), nicht nur als PNG. Der `designer` hat kein Artifact-Tool, darum veröffentlicht der Orchestrator:
@@ -19,4 +19,4 @@ Wenn der Mensch ein Zielbild, einen Entwurf oder Prototyp möchte, entsteht er a
 5. **Veröffentlichen:** `Artifact` mit `url`, `root: <scratchpad>/canvas`, `file_path: <root>/project/canvas.json` und `files` für die `.dc.html`-Dateien. Bei Ablehnung der Fehlermeldung folgen und den designer nachbessern lassen.
 6. **Bauteil-Bibliothek und Bauvorlagen:** Jedes Design-Element, das ins Spiel soll, landet als eigene Zeichenfläche in der gemeinsamen Design-Bibliothek (ein Design-Artefakt "Bauteile", Link in `docs/design/README.md`; neue Flächen per Republish hinzufügen, vorher lesen) und als Bauvorlage in `docs/design/elemente/<Bereich>-<Element>.md` im Format `.claude/skills/design/bauvorlage-format.md` (Commit auf dem Branch des Blocks oder `agent/design-<kurzname>`). Farben und Maße kommen als Token aus dem Design-System "Gemalt und warm" (Kopie im Repo: `docs/design/system/`, Original in Claude Design, Link in `docs/design/README.md`); fehlt ein Token, zuerst dort ergänzen.
 7. **Design-System abgleichen:** Ändern sich Tokens oder Bauteile, zuerst `docs/design/system/` ändern, `node scripts/design-tokens.mjs` ausführen (schreibt `TOKENS.md`, `tokens.css`) und dieselben Dateien nach Claude Design veröffentlichen (`tokens.json`, `README.md`/Bauteil-Dateien unter `project/`; vorher lesen). Beides im selben PR. Die Rollen lesen nur die Kopie im Repo, sie haben kein Artifact-Tool. developer-Aufträge verweisen auf diese Bauvorlagen statt auf Zeilen in Entwurfsdateien.
-8. Dem Menschen den Link geben. Vorschläge daraus wie oben ins Backlog (Status `vorschlag`), Ledger-Eintrag auf `agent/design-<kurzname>` mit PR.
+8. Dem Menschen den Link geben. Vorschläge daraus wie oben nach `docs/IDEEN.md` (Status `vorschlag`), Ledger-Eintrag auf `agent/design-<kurzname>` mit PR.

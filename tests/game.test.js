@@ -10,6 +10,16 @@ import { TOWER_TYPES, MAX_WAVES, START_GOLD, START_LIVES, LOW_LIVES, WAYPOINTS, 
 
 import { run, freeTileNearPath, mockCtx, recordEnemy, enemyExtent } from './helpers.js';
 
+import { useAbility, abilityCooldownLeft } from '../src/game.js';
+import { ABILITIES, WIDTH, HEIGHT } from '../src/config.js';
+import { LAVA } from '../src/config.js';
+import { sellValue } from '../src/game.js';
+import { meteorLife } from '../src/game.js';
+import { meteorDamage, meteorText, FX_STYLE } from '../src/config.js';
+import { AUTO_WAVE_DELAY } from '../src/config.js';
+import { createSoundTracker, detectStateEvents } from '../src/sound-events.js';
+import { rankedSpots } from './balance/sim.js';
+
 test('Pfad: Länge und Positionen', () => {
   const path = buildPath([[0, 0], [3, 0], [3, 2]], 10);
   assert.equal(path.length, 50);
@@ -214,28 +224,6 @@ test('Schwierigkeit: hpScale steigt streng, Wellen werden nie kleiner', () => {
   }
 });
 
-// Freie Felder neben dem Weg, sortiert nach Anzahl Wegpunkte in Reichweite (deterministisch).
-// Zählt über alle Wege (B-099); bei Karten mit einem Weg ist das genau der Hauptweg.
-// cool (B-030): nur Plätze, die nicht neben Lava liegen (Türme dort überhitzen nicht)
-function rankedSpots(state, rangeTiles, cool = false) {
-  const spots = [];
-  for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
-    if (!canBuild(state, c, r).ok) continue;
-    if (cool && nearLava(state.lava, c, r)) continue;
-    const x = (c + 0.5) * TILE;
-    const y = (r + 0.5) * TILE;
-    let n = 0;
-    for (const path of state.paths || [state.path]) {
-      for (let d = 0; d < path.length; d += 8) {
-        const p = pointAt(path, d);
-        if (Math.hypot(p.x - x, p.y - y) <= rangeTiles * TILE) n++;
-      }
-    }
-    if (n) spots.push({ c, r, n });
-  }
-  return spots.sort((a, b) => b.n - a.n || a.r - b.r || a.c - b.c);
-}
-
 test('Schwierigkeit: hpScale(1) == 1, Faktor pro Welle wächst bis Welle 10 und flacht danach ab', () => {
   assert.equal(hpScale(1), 1);
   const f = (w) => hpScale(w) / hpScale(w - 1);
@@ -262,33 +250,6 @@ test('Schwierigkeit: Wellenbonus steigt monoton, Startgold reicht für Kanone pl
 
 // --- Tester-Ergänzungen (Runde 2): Robustheit gegen den Zeitschritt ---
 
-function playDt(mix, dt) {
-  const s = createGame();
-  const spots = rankedSpots(s, TOWER_TYPES.cannon.range);
-  let i = 0;
-  while (s.status === 'playing' && s.wave < MAX_WAVES) {
-    for (let progress = true; progress;) {
-      progress = false;
-      const type = mix[s.towers.length % mix.length];
-      if (i < spots.length && s.gold >= TOWER_TYPES[type].cost) {
-        buildTower(s, type, spots[i].c, spots[i].r);
-        i++;
-        progress = true;
-      } else {
-        let best = null;
-        for (const t of s.towers) {
-          const c = upgradeCost(t);
-          if (c !== null && (!best || c < best.c)) best = { id: t.id, c };
-        }
-        if (best && s.gold >= best.c) { upgradeTower(s, best.id); progress = true; }
-      }
-    }
-    startWave(s);
-    for (let k = 0; k < Math.round(600 / dt) && s.waveActive && s.status === 'playing'; k++) update(s, dt);
-  }
-  return s;
-}
-
 test('Schwierigkeit: Boss-Wellen sind effektiv nicht schwächer als vor B-008 (HP * hpScale)', () => {
   const OLD_BOSS_HP = 900;
   const oldScale = (w) => Math.pow(1.13, w - 1);
@@ -300,127 +261,6 @@ test('Schwierigkeit: Boss-Wellen sind effektiv nicht schwächer als vor B-008 (H
 
 // --- Gebündelte Strategie-Simulationen (B-013) ---
 // Jede Kombination aus Strategie und Zeitschritt wird nur einmal simuliert; alle Tests lesen das Ergebnis aus dem Cache.
-
-const MIX_CANNON = ['arrow', 'cannon', 'cannon', 'frost'];
-const MIX_ARROW = ['cannon', 'arrow', 'arrow', 'frost'];
-
-// Gemeinsamer Strategie-Lauf für alle Karten. mix ist eine Bau-Reihenfolge (mit Aufrüsten) oder 'arrowOnly'
-// (jede Runde so viele Pfeiltürme wie möglich, nie aufrüsten). Liefert zusätzlich pro Welle den größten
-// Wegfortschritt (dist / Weglänge, 0..1) eines Gegners und die verlorenen Leben.
-// Jeder Lauf (Schlüssel `mapId:mix@dt`) wird nur einmal simuliert, alle Tests lesen aus demselben Cache.
-function playTracked(mix, dt, mapId = 'meadow', cool = false) {
-  const s = createGame({ mapId });
-  const arrowOnly = mix === 'arrowOnly';
-  const spots = rankedSpots(s, TOWER_TYPES[arrowOnly ? 'arrow' : 'cannon'].range, cool);
-  const progress = [];
-  const lost = [];
-  let i = 0;
-  while (s.status === 'playing' && s.wave < MAX_WAVES) {
-    if (arrowOnly) {
-      for (const p of spots) {
-        if (s.gold < TOWER_TYPES.arrow.cost) break;
-        buildTower(s, 'arrow', p.c, p.r);
-      }
-    } else {
-      for (let again = true; again;) {
-        again = false;
-        const type = mix[s.towers.length % mix.length];
-        if (i < spots.length && s.gold >= TOWER_TYPES[type].cost) {
-          buildTower(s, type, spots[i].c, spots[i].r);
-          i++;
-          again = true;
-        } else {
-          let best = null;
-          for (const t of s.towers) {
-            const c = upgradeCost(t);
-            if (c !== null && (!best || c < best.c)) best = { id: t.id, c };
-          }
-          if (best && s.gold >= best.c) { upgradeTower(s, best.id); again = true; }
-        }
-      }
-    }
-    const livesBefore = s.lives;
-    let furthest = 0;
-    startWave(s);
-    for (let k = 0; k < Math.round(600 / dt) && s.waveActive && s.status === 'playing'; k++) {
-      update(s, dt);
-      for (const e of s.enemies) if (e.dist > furthest) furthest = e.dist;
-    }
-    progress.push(furthest / s.path.length);
-    lost.push(livesBefore - s.lives);
-  }
-  return { state: s, progress, lost };
-}
-
-const strategyCache = new Map();
-function strategyRun(mix, dt, mapId = 'meadow', cool = false) {
-  const key = `${mapId}:${mix === 'arrowOnly' ? mix : mix.join(',')}@${dt}${cool ? ':kühl' : ''}`;
-  if (!strategyCache.has(key)) strategyCache.set(key, playTracked(mix, dt, mapId, cool));
-  return strategyCache.get(key);
-}
-
-test('Simulation: Fortschrittsmessung ändert den Spielverlauf nicht (gleiches Ergebnis wie playDt)', () => {
-  const ref = playDt(MIX_CANNON, 1 / 30);
-  const run = strategyRun(MIX_CANNON, 1 / 30);
-  assert.equal(run.state.status, ref.status);
-  assert.equal(run.state.lives, ref.lives);
-  assert.equal(run.state.gold, ref.gold);
-  assert.equal(run.progress.length, MAX_WAVES);
-});
-
-// B-125 (Spätphase schwerer, vom Menschen freigegeben): Früher mussten beide robusten Reihenfolgen Welle 20 mit Reserve
-// gewinnen. Jetzt gilt: Welle 1-9 bleiben unverändert (kein Lebensverlust), der Kanonen-Mix schafft die Wiese weiter
-// (robust gegen den Zeitschritt), der Pfeil-Mix ohne Fähigkeiten scheitert erst in der Spätphase (ab Welle 15).
-test('Schwierigkeit (B-125): Kanonen-Mix gewinnt die Wiese, Pfeil-Mix verliert erst in der Spätphase (dt 1/20, 1/30, 1/60, 1/120)', () => {
-  for (const dt of [1 / 30, 1 / 60, 1 / 20, 1 / 120]) {
-    const s = strategyRun(MIX_CANNON, dt).state;
-    assert.equal(s.status, 'won', `Kanonen-Mix dt=${dt}: Status ${s.status} in Welle ${s.wave}`);
-    assert.ok(s.lives >= 2, `Kanonen-Mix dt=${dt}: nur ${s.lives} Leben übrig`);
-  }
-  for (const dt of [1 / 30, 1 / 60, 1 / 120]) {
-    const { state, lost } = strategyRun(MIX_ARROW, dt);
-    assert.equal(state.status, 'lost', `Pfeil-Mix dt=${dt}: ${state.status} mit ${state.lives} Leben`);
-    assert.ok(state.wave >= 15, `Pfeil-Mix dt=${dt}: verloren schon in Welle ${state.wave}`);
-    assert.equal(lost.slice(0, 9).reduce((a, b) => a + b, 0), 0, `Pfeil-Mix dt=${dt}: Leben vor Welle 10 verloren`);
-  }
-});
-
-// B-046: Die schwächere Reihenfolge Pfeil > Pfeil > Kanone > Frost schafft Welle 20 nicht mehr (Druck bewusst erhöht).
-const MIX_WEAK = ['arrow', 'arrow', 'cannon', 'frost'];
-test('Schwierigkeit: die schwächere Strategie a>a>c>f verliert (dt 1/30, 1/60)', () => {
-  for (const dt of [1 / 30, 1 / 60]) {
-    const s = strategyRun(MIX_WEAK, dt).state;
-    assert.equal(s.status, 'lost', `dt=${dt}: Status ${s.status}, ${s.lives} Leben`);
-  }
-});
-
-test('Schwierigkeit: die Reserve ist klein, mindestens eine robuste Strategie endet mit höchstens 8 Leben (dt 1/30, 1/60)', () => {
-  for (const dt of [1 / 30, 1 / 60]) {
-    assert.ok(strategyRun(MIX_ARROW, dt).state.lives <= 8, `dt=${dt}`);
-  }
-});
-
-test('Schwierigkeit: nur Pfeiltürme ohne Aufrüstung verlieren vor Welle 12 (dt 1/20, 1/30, 1/60, 1/120)', () => {
-  for (const dt of [1 / 30, 1 / 60, 1 / 20, 1 / 120]) {
-    const s = strategyRun('arrowOnly', dt).state;
-    assert.equal(s.status, 'lost', `dt=${dt}`);
-    assert.ok(s.wave < 12, `dt=${dt}: verloren erst in Welle ${s.wave}`);
-  }
-});
-
-// B-013: In der Spätphase (Welle 14-20) dringen Gegner messbar weit vor, bevor sie sterben.
-// Vor B-013 erreichte der weiteste Gegner dort höchstens 75 % des Wegs, danach in mindestens 3 Wellen über 76 %.
-// Kanonen-Reichweite 2,6 -> 3,4 (auf Wunsch des Menschen): gemessen 53-81 %, Schwelle 55 % (im schwächsten Lauf bestehen 5 von 7 Wellen, die Schwelle trennt also noch).
-const LATE_PROGRESS = 0.55;
-test('Spätphase: in mindestens 3 der Wellen 14-20 dringt ein Gegner über 55 % des Wegs vor (beide Strategien, dt 1/30 und 1/60)', () => {
-  for (const mix of [MIX_CANNON, MIX_ARROW]) {
-    for (const dt of [1 / 30, 1 / 60]) {
-      const { progress } = strategyRun(mix, dt);
-      const deep = progress.slice(13, 20).filter((p) => p > LATE_PROGRESS).length;
-      assert.ok(deep >= 3, `${mix.join(',')} dt=${dt}: nur ${deep} Wellen über ${LATE_PROGRESS * 100} % (${progress.slice(13).map((p) => Math.round(p * 100))})`);
-    }
-  }
-});
 
 // B-013: Schildträger zwingt zu gemischten Setups. Die Strategien ohne Kanonen sterben schon vor Welle 9
 // (siehe Test "nur Pfeiltürme"), also wird hier nur die Schildträger-Gruppe der Wellen 11-14 isoliert (B-046: in 9-12 leckt mit den stärkeren Fähigkeiten keiner der beiden Aufbauten mehr) gegen zwei
@@ -1178,41 +1018,6 @@ test('Eiswelt: Slowfaktor in (0,1), Upgrade-Stufen und Kanonen-Splash skalieren 
   for (const v of lost) assert.ok(Math.abs(v - TOWER_TYPES.cannon.damage * MAPS.ice.modifiers.towerDamage.cannon) < 1e-6, 'Splash ' + v);
 });
 
-// B-044: Eiswelt etwas fordernder als die Wiese, aber klar schaffbar (eigene Läufe mit mapId, per Cache nur einmal je Strategie).
-const mapRun = (kind, dt, mapId = 'ice') =>
-  strategyRun(kind === 'cannon' ? MIX_CANNON : kind === 'arrow' ? MIX_ARROW : kind, dt, mapId).state;
-
-// B-125: Eiswelt bleibt fordernder als die Wiese. Ohne Fähigkeiten scheitern beide robusten Reihenfolgen,
-// aber erst in der Spätphase (ab Welle 15) und mit höchstens 1 verlorenen Leben vor Welle 10.
-// B-127: Seit der Nekromantin (vom Menschen am 2026-11-26 freigegeben) darf ein knapper Sieg mit höchstens 5 Leben vorkommen.
-test('Eiswelt (B-125): einfache Strategien ohne Fähigkeiten verlieren erst in der Spätphase (dt 1/30, 1/60)', () => {
-  for (const mix of [MIX_CANNON, MIX_ARROW]) {
-    for (const dt of [1 / 30, 1 / 60]) {
-      const { state, lost } = strategyRun(mix, dt, 'ice');
-      const tightWin = state.status === 'won' && state.lives <= 5;
-      assert.ok(state.status === 'lost' || tightWin, `${mix.join(',')} dt=${dt}: ${state.status} mit ${state.lives} Leben`);
-      if (state.status === 'lost') assert.ok(state.wave >= 15, `${mix.join(',')} dt=${dt}: verloren schon in Welle ${state.wave}`);
-      assert.ok(lost.slice(0, 9).reduce((a, b) => a + b, 0) <= 1, `${mix.join(',')} dt=${dt}: zu viele Leben vor Welle 10`);
-    }
-  }
-});
-
-test('Eiswelt: nur Pfeiltürme verlieren vor Welle 12 (dt 1/30, 1/60)', () => {
-  for (const dt of [1 / 30, 1 / 60]) {
-    const s = mapRun('arrowOnly', dt);
-    assert.equal(s.status, 'lost', `dt=${dt}`);
-    assert.ok(s.wave < 12, `dt=${dt}: verloren erst in Welle ${s.wave}`);
-  }
-});
-
-// B-046/B-125: Zangenangriff (fork): der Kanonen-Mix schafft Welle 20 weiter (dt 1/30 und 1/60).
-test('Zangenangriff (B-125): Kanonen-Mix gewinnt Welle 20 (dt 1/30, 1/60)', () => {
-  for (const dt of [1 / 30, 1 / 60]) {
-    const s = mapRun('cannon', dt, 'fork');
-    assert.equal(s.status, 'won', `dt=${dt}: Status ${s.status} in Welle ${s.wave}`);
-  }
-});
-
 // B-046: Karten haben eigene Modifikatoren, die Wiese bleibt ohne. B-099: Zangenangriff seit den festen Seiten
 // ohne schnellere Gegner (bewusste Balancing-Änderung, siehe docs/LEDGER.md), Zwei Fronten mit langsameren.
 test('Modifikatoren: Wiese hat keine, Zangenangriff schwächere Kanone, Zwei Fronten langsamere Gegner', () => {
@@ -1226,19 +1031,6 @@ test('Modifikatoren: Wiese hat keine, Zangenangriff schwächere Kanone, Zwei Fro
     assert.equal(s.enemies[0].speed, ENEMY_TYPES.grunt.speed * (MAPS[id].modifiers.enemySpeed ?? 1));
   }
 });
-
-// B-125: Die Reihenfolge „Kanone zuerst“ gewann früher mit 1-9 Leben; jetzt scheitert sie ohne Fähigkeiten in der
-// Spätphase (ab Welle 15), ohne vor Welle 10 Leben zu verlieren.
-test('Zangenangriff (B-125): Strategie Kanone zuerst verliert erst in der Spätphase (dt 1/30, 1/60)', () => {
-  for (const dt of [1 / 30, 1 / 60]) {
-    const { state, lost } = strategyRun(MIX_ARROW, dt, 'fork');
-    assert.equal(state.status, 'lost', `dt=${dt}: ${state.status} mit ${state.lives} Leben`);
-    assert.ok(state.wave >= 15, `dt=${dt}: verloren schon in Welle ${state.wave}`);
-    assert.equal(lost.slice(0, 9).reduce((a, b) => a + b, 0), 0, `dt=${dt}: Leben vor Welle 10 verloren`);
-  }
-});
-
-// ---------- Zwei Eingänge (B-033) ----------
 
 test('Zwei Eingänge: Karten ohne extraPaths haben genau einen Weg', () => {
   for (const id of ['meadow', 'ice']) {
@@ -1443,49 +1235,6 @@ test('Karte Zwei Fronten: Wege gültig, getrennt bis auf ein kurzes Endstück, B
       if (canBuild(s, c, r).ok && pts.some(([pc, pr]) => Math.max(Math.abs(pc - c), Math.abs(pr - r)) <= 2)) near++;
     }
     assert.ok(near >= 25, `nur ${near} Bauplätze`);
-  }
-});
-
-// B-124: Seit den asynchronen Schüben reicht der Kanonen-Mix ohne Fähigkeiten auf Zwei Fronten nicht mehr
-// (früher: Sieg mit 1-9 Leben); er hält aber bis in die Spätphase und verliert in Welle 1-8 keine Leben.
-// Mit Meteor und Kälteschock gewinnt er ohne Lebensverlust (siehe „Perfektes Spiel möglich“).
-test('Zwei Fronten (B-124): Kanonen-Mix ohne Fähigkeiten verliert erst in der Spätphase (dt 1/30, 1/60)', () => {
-  for (const dt of [1 / 30, 1 / 60]) {
-    const { state: s, lost } = strategyRun(MIX_CANNON, dt, 'twin');
-    assert.equal(s.status, 'lost', `dt=${dt}: Status ${s.status} mit ${s.lives} Leben`);
-    assert.ok(s.wave >= 15, `dt=${dt}: verloren schon in Welle ${s.wave}`);
-    assert.equal(lost.slice(0, 8).reduce((a, b) => a + b, 0), 0, `dt=${dt}: Leben vor Welle 9 verloren`);
-  }
-});
-
-// Nur eine Seite verteidigen reicht nicht: Türme nur an den Bauplätzen des oberen Wegs (Hauptweg).
-function oneSideRun(mapId, dt) {
-  const s = createGame({ mapId });
-  const top = createGame({ mapId, paths: [s.path] }); // gleiche Karte, Bauplätze nur nach dem Hauptweg bewertet
-  const spots = rankedSpots(top, TOWER_TYPES.cannon.range);
-  let i = 0;
-  while (s.status === 'playing' && s.wave < MAX_WAVES) {
-    for (let again = true; again;) {
-      again = false;
-      const type = MIX_ARROW[s.towers.length % MIX_ARROW.length];
-      if (i < spots.length && s.gold >= TOWER_TYPES[type].cost) { buildTower(s, type, spots[i].c, spots[i].r); i++; again = true; }
-      else {
-        let best = null;
-        for (const t of s.towers) { const c = upgradeCost(t); if (c !== null && (!best || c < best.c)) best = { id: t.id, c }; }
-        if (best && s.gold >= best.c) { upgradeTower(s, best.id); again = true; }
-      }
-    }
-    startWave(s);
-    for (let k = 0; k < Math.round(600 / dt) && s.waveActive && s.status === 'playing'; k++) update(s, dt);
-  }
-  return s;
-}
-
-test('Feste Seiten: nur oben bauen verliert auf Zangenangriff (vor Welle 18) und Zwei Fronten (vor Welle 5)', () => {
-  for (const [mapId, maxWave] of [['fork', 18], ['twin', 5]]) {
-    const s = oneSideRun(mapId, 1 / 30);
-    assert.equal(s.status, 'lost', `${mapId}: ${s.status} mit ${s.lives} Leben`);
-    assert.ok(s.wave < maxWave, `${mapId}: verloren erst in Welle ${s.wave}`);
   }
 });
 
@@ -1832,28 +1581,6 @@ test('Blitzturm-Rolle: gegen Flitzer- und Goblin-Schwärme besser als Kanonen, g
   assert.ok(LT.damage / LT.rate < TOWER_TYPES.cannon.damage / TOWER_TYPES.cannon.rate, 'Einzelziel-Schaden pro Sekunde unter der Kanone');
 });
 
-// Blitz-Mix (Kanone, Pfeil, Blitz, Frost): gewinnt Welle 20 auf Wiese und Eiswelt mit mindestens 1 Leben, unabhängig vom Zeitschritt.
-const MIX_LIGHTNING = ['cannon', 'arrow', 'lightning', 'frost'];
-// B-125: Der Blitz-Mix gewann früher Wiese und Eiswelt; seit der stärkeren Spätphase hält er ohne Fähigkeiten
-// bis mindestens Welle 15 und ist weiterhin nicht leichter als der Kanonen-Mix.
-test('Strategie (B-125): Blitz-Mix hält auf Wiese und Eiswelt bis zur Spätphase (dt 1/30, 1/60), nicht leichter als der Kanonen-Mix', () => {
-  for (const mapId of ['meadow', 'ice']) {
-    for (const dt of [1 / 30, 1 / 60]) {
-      const { state: s, lost } = strategyRun(MIX_LIGHTNING, dt, mapId);
-      assert.ok(s.status === 'won' || s.wave >= 15, `${mapId} dt=${dt}: verloren schon in Welle ${s.wave}`);
-      assert.equal(lost.slice(0, 9).reduce((a, b) => a + b, 0), 0, `${mapId} dt=${dt}: Leben vor Welle 10 verloren`);
-    }
-  }
-  for (const dt of [1 / 30, 1 / 60]) {
-    const s = strategyRun(MIX_LIGHTNING, dt).state;
-    assert.ok(s.lives <= strategyRun(MIX_CANNON, dt).state.lives, `Wiese dt=${dt}: Blitz-Mix nicht mit mehr Reserve als der Kanonen-Mix`);
-  }
-});
-
-// ---------- B-038: Fähigkeiten ----------
-import { useAbility, abilityCooldownLeft } from '../src/game.js';
-import { ABILITIES, WIDTH, HEIGHT } from '../src/config.js';
-
 const enemyAt = (s, type, x, y) => { const e = spawnEnemy(s, type); e.x = x; e.y = y; return e; };
 
 test('Fähigkeiten: Zustand startet bereit, neues Spiel setzt zurück', () => {
@@ -2175,7 +1902,6 @@ test('B-103/B-104 Randfälle (Tester): canBuild-Reihenfolge Weg > Hindernis > Wa
 });
 
 // ---------- Vulkan (B-030): Lava, Lava-Schaden, Überhitzung ----------
-import { LAVA } from '../src/config.js';
 
 const keyOf = ([c, r]) => `${c},${r}`;
 const V = MAPS.volcano;
@@ -2317,110 +2043,6 @@ test('B-030 Vulkan: Wege gültig (Eingang links, Ausgang rechts), Modifikator sc
   assert.equal(MAP_ORDER[MAP_ORDER.indexOf('twin') + 1], 'volcano');
 });
 
-// Balancing (B-030, gemessen per Strategie-Simulation): Wer Türme nicht neben die Lava stellt,
-// gewinnt mit dem Kanonen-Mix mit 4 Leben (ein Boss bricht durch). Die Platzwahl nur nach Abdeckung (viele beste Plätze
-// liegen neben Lava) verliert mit allen Mischungen, ebenso nur Pfeiltürme.
-test('Vulkan: Kanonen-Mix auf Plätzen ohne Überhitzung gewinnt Welle 20 mit 1 bis 4 Leben (dt 1/30, 1/60)', () => {
-  for (const dt of [1 / 30, 1 / 60]) {
-    const s = strategyRun(MIX_CANNON, dt, 'volcano', true).state;
-    assert.equal(s.status, 'won', `dt=${dt}: Status ${s.status} in Welle ${s.wave}`);
-    assert.ok(s.lives >= 1 && s.lives <= 4, `dt=${dt}: ${s.lives} Leben`);
-  }
-});
-
-test('Vulkan: Platzwahl nur nach Abdeckung (Kanonen-Mix, schwache Strategie) und nur Pfeiltürme verlieren (dt 1/30, 1/60)', () => {
-  for (const dt of [1 / 30, 1 / 60]) {
-    for (const mix of [MIX_CANNON, MIX_WEAK, 'arrowOnly']) {
-      const s = strategyRun(mix, dt, 'volcano').state;
-      assert.equal(s.status, 'lost', `${mix} dt=${dt}: ${s.status} mit ${s.lives} Leben`);
-    }
-  }
-});
-
-test('Vulkan: ohne Lava-Schaden verliert auch der Kanonen-Mix ohne Überhitzung (Lava hilft dem Spieler)', () => {
-  const before = LAVA.dps;
-  LAVA.dps = 0;
-  try {
-    const s = playTracked(MIX_CANNON, 1 / 30, 'volcano', true).state;
-    assert.equal(s.status, 'lost', `Status ${s.status} mit ${s.lives} Leben`);
-  } finally { LAVA.dps = before; }
-});
-
-// Perfektes Spiel (Vorgabe: auf jeder Karte muss ein ganzer Durchlauf ohne Lebensverlust möglich sein).
-// Optimierte, aber nachvollziehbare Strategie: Türme nur auf Plätze ohne Überhitzung, jeweils der Platz mit der besten
-// Wegabdeckung für den Turmtyp; erst Kanone und Pfeil, dann früh Scharfschützen gegen Bosse und Trolle, dazu Frost und
-// Blitz; mit Restgold das billigste Upgrade. Meteor auf den vordersten Gegner, sobald er die letzten 12 Kacheln erreicht,
-// Kälteschock in den letzten 6 Kacheln; keine Reparatur. Auf dem Vulkan kommt der Scharfschütze als dritter Turm
-// (der erste Boss in Welle 5 ist schneller), sonst die zweite Kanone (Zwei Fronten: viele Flitzer in Welle 4).
-const PERFECT_ORDER = ['cannon', 'arrow', 'cannon', 'sniper', 'sniper', 'frost', 'sniper', 'lightning'];
-const PERFECT_ORDER_VOLCANO = ['cannon', 'arrow', 'sniper', 'cannon', 'sniper', 'frost', 'sniper', 'lightning'];
-// B-125: Auf Zwei Fronten reicht seit der stärkeren Spätphase der Kanonen-Mix (mit Fähigkeiten) für ein perfektes Spiel,
-// die Scharfschützen-Reihenfolge verliert dort Leben.
-const PERFECT_ORDER_TWIN = ['arrow', 'cannon', 'cannon', 'frost'];
-
-function bestCoolSpot(state, rangeTiles) {
-  return rankedSpots(state, rangeTiles, true)[0] || null;
-}
-
-function perfectRun(mapId, dt) {
-  const s = createGame({ mapId });
-  const order = mapId === 'volcano' ? PERFECT_ORDER_VOLCANO : mapId === 'twin' ? PERFECT_ORDER_TWIN : PERFECT_ORDER;
-  let lost = 0;
-  while (s.status === 'playing' && s.wave < MAX_WAVES) {
-    for (let again = true; again;) {
-      again = false;
-      const type = order[s.towers.length % order.length];
-      const spot = s.gold >= TOWER_TYPES[type].cost ? bestCoolSpot(s, TOWER_TYPES[type].range) : null;
-      if (spot) { buildTower(s, type, spot.c, spot.r); again = true; continue; }
-      let best = null;
-      for (const t of s.towers) {
-        const c = upgradeCost(t);
-        if (c !== null && (!best || c < best.c)) best = { id: t.id, c };
-      }
-      if (best && s.gold >= best.c) { upgradeTower(s, best.id); again = true; }
-    }
-    const before = s.lives;
-    startWave(s);
-    for (let k = 0; k < Math.round(600 / dt) && s.waveActive && s.status === 'playing'; k++) {
-      update(s, dt);
-      let front = null;
-      for (const e of s.enemies) {
-        const rest = enemyPath(s, e).length - e.dist;
-        if (!front || rest < front.rest) front = { e, rest };
-      }
-      if (front && front.rest < 12 * TILE) {
-        useAbility(s, 'meteor', front.e.x, front.e.y);
-        if (front.rest < 6 * TILE) useAbility(s, 'freeze');
-      }
-    }
-    lost += before - s.lives;
-  }
-  assert.equal(s.abilities.repair.uses, 0, 'keine Reparatur');
-  return { state: s, lost };
-}
-
-test('Perfektes Spiel möglich: optimierte Strategie gewinnt Welle 20 auf jeder Karte ohne Lebensverlust (dt 1/30, 1/60)', async () => {
-  const { MAP_ORDER } = await import('../src/progress.js');
-  assert.deepEqual([...MAP_ORDER].sort(), Object.keys(MAPS).sort(), 'alle Karten');
-  for (const mapId of MAP_ORDER) {
-    for (const dt of [1 / 30, 1 / 60]) {
-      const { state, lost } = perfectRun(mapId, dt);
-      assert.equal(state.status, 'won', `${mapId} dt=${dt}: Status ${state.status} in Welle ${state.wave}`);
-      assert.equal(state.lives, START_LIVES, `${mapId} dt=${dt}: ${state.lives} von ${START_LIVES} Leben`);
-      assert.equal(lost, 0, `${mapId} dt=${dt}: ${lost} Leben verloren`);
-    }
-  }
-});
-
-test('Vulkan: perfektes Spiel möglich, die Strategie stellt keinen Turm neben die Lava', () => {
-  for (const dt of [1 / 30, 1 / 60]) {
-    const { state } = perfectRun('volcano', dt);
-    assert.equal(state.status, 'won');
-    assert.equal(state.lives, START_LIVES);
-    assert.ok(state.towers.length > 0 && state.towers.every((t) => !t.overheated), 'nur kühle Plätze');
-  }
-});
-
 test('B-030 hotPath: genau die Wegkacheln neben Lava, einmal in createGame; ohne Lava leer', () => {
   const s = createGame({ mapId: 'volcano' });
   const expected = [...s.blocked].filter((k) => nearLava(s.lava, ...k.split(',').map(Number)));
@@ -2492,11 +2114,8 @@ test('B-030 Randfall (Tester): Überhitzung bleibt beim Upgrade, Verkauf unverä
   assert.equal(sellTower(s, cool.id).ok, true);
   assert.equal(buildTower(s, 'frost', 6, 6).tower.overheated, false, 'Neubau weg von Lava normal');
 });
-import { sellValue } from '../src/game.js';
 
 // ---------- B-112: Meteor stärker, wächst mit der Welle ----------
-import { meteorLife } from '../src/game.js';
-import { meteorDamage, meteorText, FX_STYLE } from '../src/config.js';
 
 test('B-112 Meteor: Schaden wächst mit hpScale(Welle), Welle 0 zählt als 1, Rüstung zählt nicht', () => {
   for (const w of [1, 5, 10, 20]) {
@@ -2844,7 +2463,6 @@ test('B-005 Rand: Frühstart 19 -> 20, won nicht, solange Gegner von Welle 19 le
 });
 
 // ---------- B-121: Nächste Welle startet automatisch ----------
-import { AUTO_WAVE_DELAY } from '../src/config.js';
 
 // Beendet die laufende Welle sofort (keine Gegner mehr) und lässt waveEndCheck laufen.
 function finishWave(s) {
@@ -2954,7 +2572,6 @@ test('B-121: HUD-Knopf zeigt den Countdown (aufgerundet) und bleibt bedienbar', 
 });
 
 // ---------- B-121: Tester-Randfälle ----------
-import { createSoundTracker, detectStateEvents } from '../src/sound-events.js';
 
 test('B-121 Rand: Tempo x3 läuft den Countdown dreimal so schnell ab', () => {
   const s = createGame();
