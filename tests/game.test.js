@@ -1,5 +1,5 @@
 // Unit-Tests der Spiel-Logik (game.js, path.js, config.js). Ausführen: npm test
-import { test } from 'node:test';
+import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { createGame, mapModifiers, update, buildTower, upgradeTower, sellTower, startWave, planLanes, earlyStartBonus, earlyStartRisk, earlyStartPreview, waveHp, spawnEnemy, canBuild, towerStats, upgradeCost, togglePause, stepGame, setTargetMode, pickTarget, enemyPath, chainTargets, laneFor, nearLava } from '../src/game.js';
 
@@ -2992,4 +2992,43 @@ test('Fahnen-Kacheln: canBuild lehnt ab ("Hier steht die Fahne"), Nachbarkacheln
   assert.equal(createGame({ mapId: 'twin' }).flagTiles.size, 2);
   // Override ohne flagTiles: alles wie früher
   assert.ok(canBuild(createGame({ mapId: 'fork', flagTiles: undefined }), 0, 0).ok);
+});
+
+describe('B-170: Glutling ist immun gegen Verlangsamung und Einfrieren', () => {
+  test('Konfiguration: slowImmune und chillFactor gesetzt, Frost-Text nennt die Immunität', () => {
+    assert.equal(ENEMY_TYPES.ember.slowImmune, true);
+    assert.equal(ENEMY_TYPES.ember.chillFactor, 0.5);
+    assert.match(TOWER_TYPES.frost.special.text, /Glutlinge sind immun/);
+  });
+
+  test('Frost-Treffer verlangsamt nicht, macht aber Schaden', () => {
+    const { s, tower, e } = specialSetup('frost', 'ember');
+    const hp0 = e.hp;
+    fireAndLand(s, tower);
+    assert.ok(e.hp < hp0, 'Frost-Schaden wirkt');
+    assert.ok(!(s.time < (e.slowUntil || 0)) || e.slowFactor === 1, 'kein Slow');
+    // Gegenprobe: Goblin wird verlangsamt
+    const g = specialSetup('frost', 'grunt');
+    fireAndLand(g.s, g.tower);
+    assert.ok(g.s.time < g.e.slowUntil && g.e.slowFactor < 1, 'Goblin verlangsamt');
+  });
+
+  test('kein Einfrieren, auch nicht beim N-ten Treffer; Treffer zählen weiter', () => {
+    const { s, tower, e } = specialSetup('frost', 'ember');
+    const n = cfg('frost').freezeEvery;
+    for (let i = 0; i < n; i++) fireAndLand(s, tower);
+    assert.equal(tower.hitCount, n, 'Treffer zählen im hitCount');
+    assert.equal(e.frozenUntil || 0, 0, 'nicht eingefroren');
+  });
+
+  test('Kälteschock wirkt nur zur Hälfte (chillFactor), auf Goblins voll', () => {
+    const s = createGame();
+    const em = spawnEnemy(s, 'ember', 1);
+    const gr = spawnEnemy(s, 'grunt', 1);
+    assert.equal(useAbility(s, 'freeze').ok, true);
+    const slow = ABILITIES.freeze.slow;
+    assert.ok(Math.abs(em.slowFactor - (1 - slow * ENEMY_TYPES.ember.chillFactor)) < 1e-9);
+    assert.ok(Math.abs(gr.slowFactor - (1 - slow)) < 1e-9);
+    assert.ok(em.slowUntil > s.time);
+  });
 });

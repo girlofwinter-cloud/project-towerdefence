@@ -139,6 +139,12 @@ const ENEMY_SVG = {
     svg: goblinSvg({ legs: '#3d2a5c', body: '#5b3d8a', belt: '#7dff9a', ears: null, head: '#a8c8a0', front: hood('#3d2a5c'),
       weapon: staff(`<circle cx="45" cy="5" r="5.5" fill="#f2e9d8" stroke="#2b1a10" stroke-width="2.5"/><circle cx="43" cy="5" r="1.4" fill="#2b1a10"/><circle cx="47" cy="5" r="1.4" fill="#2b1a10"/>`) }),
   },
+  // Glutling (B-170): Platzhalter, Goblin in Glutfarben mit Flamme auf dem Kopf (finale Figur kommt vom designer)
+  ember: {
+    w: 46, h: 50,
+    svg: goblinSvg({ legs: '#7a3f1e', body: '#c9794a', belt: '#d6483a', ears: '#c9794a', head: '#d79a2b', weapon: '',
+      front: `<path d="M18 7 Q20 -2 24 -6 Q28 -2 30 7 Z" fill="#ffe266" stroke="#2b1a10" stroke-width="2.5" stroke-linejoin="round"/>` }),
+  },
 };
 // Eingefrorener Goblin (Z.111) und der Eiskristall daraus als Überzug für alle anderen Typen
 const ICED = { w: 54, h: 56, svg: `<ellipse cx="27" cy="50" rx="17" ry="4" fill="rgba(20,30,40,.4)"/><path d="M14 28 Q14 44 27 44 Q40 44 40 28 Z" fill="#8fd0e8" stroke="#2b1a10" stroke-width="3"/><path d="M8 18 L16 22 L14 28 Z M46 18 L38 22 L40 28 Z" fill="#9fdcf0" stroke="#2b1a10" stroke-width="2.5" stroke-linejoin="round"/><circle cx="27" cy="22" r="13" fill="#a8e2f5" stroke="#2b1a10" stroke-width="3"/><path d="M20 20 H25 M30 20 H35" stroke="#2b1a10" stroke-width="2.5" stroke-linecap="round"/><path d="M5 40 L12 8 L21 36 L28 2 L35 36 L44 10 L50 40 L44 52 H10 Z" fill="#dff7ff" fill-opacity=".55" stroke="#2b1a10" stroke-width="2.5" stroke-linejoin="round"/><path d="M14 12 L18 36" stroke="#fff" stroke-width="3" stroke-linecap="round"/>` };

@@ -326,8 +326,9 @@ export function useAbility(state, id, x, y) {
     state.effects.push({ kind: 'explosion', meteor: true, x, y, r, ttl: life, max: life });
     removeDead(state);
   } else if (id === 'freeze') {
-    const factor = 1 - def.slow;
     for (const e of state.enemies) {
+      // B-170: Glutlinge spüren nur den Anteil chillFactor der Verlangsamung
+      const factor = 1 - def.slow * (isSlowImmune(e) ? ENEMY_TYPES[e.type].chillFactor : 1);
       const active = state.time < (e.slowUntil || 0);
       e.slowFactor = active ? Math.min(e.slowFactor, factor) : factor;
       e.slowUntil = Math.max(e.slowUntil || 0, state.time + def.duration);
@@ -638,7 +639,8 @@ function hit(state, p, target) {
     const tower = p.freezeEvery ? state.towers.find((t) => t.id === p.towerId) : null;
     if (tower) {
       tower.hitCount = (tower.hitCount || 0) + 1;
-      if (tower.hitCount % p.freezeEvery === 0 && !isBoss(target)) target.frozenUntil = state.time + p.freezeDuration;
+      // B-170: Treffer zählt auch bei Glutlingen, eingefroren werden sie aber nicht
+      if (tower.hitCount % p.freezeEvery === 0 && !isBoss(target) && !isSlowImmune(target)) target.frozenUntil = state.time + p.freezeDuration;
     }
   }
 }
@@ -666,10 +668,15 @@ function damage(state, enemy, p, direct = false) {
     dmg -= absorbed;
   }
   enemy.hp -= dmg;
-  if (p.slow) {
+  if (p.slow && !isSlowImmune(enemy)) { // B-170: Glutlinge ignorieren den Frost-Slow, der Schaden wirkt
     enemy.slowFactor = 1 - p.slow;
     enemy.slowUntil = state.time + p.slowDuration;
   }
+}
+
+// B-170: immun gegen Frost-Slow und Einfrieren (Merkmal slowImmune des Gegnertyps)
+function isSlowImmune(e) {
+  return ENEMY_TYPES[e.type]?.slowImmune === true;
 }
 
 function removeDead(state) {
