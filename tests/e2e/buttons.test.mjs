@@ -46,12 +46,12 @@ test('Handy 390x844: Fähigkeits-, Zoom-, Pause- und Tempo-Knopf >= 44 px, keine
   await ctx.close();
 });
 
-test('Desktop 1280x800: Fähigkeitsknöpfe kompakt (44-60 px), Tastenkürzel sichtbar', async () => {
+test('Desktop 1280x800: runde Fähigkeitsknöpfe (56-72 px), Tastenkürzel sichtbar', async () => {
   const { ctx, page } = await openPage({ width: 1280, height: 800 }, false);
   const hs = await heights(page, '.abilities button');
   assert.equal(hs.length, 3);
-  for (const h of hs) assert.ok(h >= MIN_TOUCH && h <= 60, `Knopfhöhe ${h} zwischen ${MIN_TOUCH} und 60`);
-  assert.ok(await page.locator('.ability-btn[data-ability="meteor"] .key').isVisible(), 'Kürzel Q sichtbar');
+  for (const h of hs) assert.ok(h >= 56 && h <= 72, `Knopfhöhe ${h} zwischen 56 und 72`);
+  assert.ok(await page.locator('.ability-btn[data-ability="meteor"] .key-badge').isVisible(), 'Kürzel Q sichtbar');
   // Nach dem Auslösen: Ladezustand im zugänglichen Namen und am Knopf
   await page.keyboard.press('q');
   const box = await page.locator('#game').boundingBox();
@@ -95,8 +95,8 @@ test('B-096 Desktop 1280x800: Turmkarten-Kürzel und "P drücken" sichtbar, kein
   assert.equal(kbdVisible, await page.locator('.tower-btn').count());
   assert.match(text, /P drücken/);
   assert.doesNotMatch(text, /Tippe/);
-  // Sichtbare Spiel-UI ohne Emoji (Fußzeile ausgenommen); Kartenliste inkl. gesperrter Karten
-  const ui = await page.evaluate(() => document.querySelector('header').innerText + document.querySelector('main').innerText
+  // Sichtbare Spiel-UI ohne Emoji; Kartenliste inkl. gesperrter Karten
+  const ui = await page.evaluate(() => document.querySelector('#app').innerText
     + [...document.querySelectorAll('#map-select option')].map((o) => o.textContent).join(' '));
   assert.doesNotMatch(ui, /\p{Extended_Pictographic}/u);
   assert.match(ui, /\(gesperrt\)/);

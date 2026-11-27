@@ -1814,3 +1814,14 @@ test('svg-figure: Pfad-Leser (absolut/relativ, H/V/Q, Bogen als Ellipse), Teile,
   assert.equal(withAlpha('rgba(30,20,50,.4)', 0.5), 'rgba(30,20,50,0.2)');
   assert.equal(withAlpha('#abc', 1), '#abc');
 });
+
+// C3/G5: Wellenfahne klickbar. Fahnen-Boxen je Karte (Entwurfs-px, Feld ab 0,0); Wiese hat eine Fahne im linken Rand.
+test('Wellenfahne: flagBoxes liefert je Eingang eine Box im Rand', async () => {
+  const { flagBoxes } = await import('../src/render.js');
+  const meadow = flagBoxes(createGame({ mapId: 'meadow' }));
+  assert.equal(meadow.length, 1);
+  assert.ok(meadow[0].box[0] < 0, 'Wiese: Fahne links außerhalb des Feldes');
+  for (const id of ['fork', 'twin']) assert.equal(flagBoxes(createGame({ mapId: id })).length, 2, id);
+  // Zwischengespeichert: gleiche Liste beim zweiten Aufruf
+  assert.equal(flagBoxes(createGame({ mapId: 'meadow' })), meadow);
+});

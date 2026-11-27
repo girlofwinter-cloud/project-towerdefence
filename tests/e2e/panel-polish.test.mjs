@@ -83,7 +83,7 @@ for (const fontSize of [null, '200%']) {
     await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
     const r = await page.evaluate(() => {
       const bar = document.getElementById('tower-info').getBoundingClientRect();
-      const bottoms = ['#game', 'aside', '#shop .tower-btn:last-child'].map((s) => document.querySelector(s).getBoundingClientRect().bottom);
+      const bottoms = ['#game', '#shop', '#shop .tower-btn:last-child'].map((s) => document.querySelector(s).getBoundingClientRect().bottom);
       return { top: bar.top, bottoms };
     });
     for (const b of r.bottoms) assert.ok(b <= r.top + 0.5, `Inhalt endet bei ${b}, Leiste beginnt bei ${r.top}`);

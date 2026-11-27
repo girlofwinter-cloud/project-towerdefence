@@ -1,8 +1,8 @@
 // Zeichnet den Spielzustand auf ein Canvas. Keine Spiel-Logik hier!
-import { TILE, COLS, ROWS, WIDTH, HEIGHT, FRAME_MARGIN, VIEW_WIDTH, VIEW_HEIGHT, TOWER_TYPES, MAPS, ABILITIES, RANGE_STYLE, TREE_FRAME, GROUND_STYLE, LIGHT_STYLE, DECOR_STYLE, PAINT_STYLE, themed } from './config.js';
+import { TILE, COLS, ROWS, WIDTH, HEIGHT, FRAME_MARGIN, VIEW_WIDTH, VIEW_HEIGHT, TOWER_TYPES, MAPS, MAX_WAVES, PAINTED_STYLE, ABILITIES, RANGE_STYLE, TREE_FRAME, GROUND_STYLE, LIGHT_STYLE, DECOR_STYLE, PAINT_STYLE, themed } from './config.js';
 import { towerStats, enemyPath } from './game.js';
 import { disc, shd } from './draw-utils.js';
-import { buildPaintedSvg, rasterizePainted, canRasterize } from './render-painted.js';
+import { buildPaintedSvg, buildPaintedScene, rasterizePainted, canRasterize } from './render-painted.js';
 import { drawPathStyled } from './render-path.js';
 import { drawTowerFigure, drawTowerBadge, towerFootY } from './render-towers.js';
 import { recoilOffset } from './tower-fx.js';
@@ -24,7 +24,37 @@ export function renderView(ctx, state, ui) {
   ctx.save();
   ctx.translate(FRAME_MARGIN, FRAME_MARGIN);
   render(ctx, state, ui);
+  drawFlagNumbers(ctx, state);
   ctx.restore();
+}
+
+// G5: Fahnen am Eingang je Karte (Box in Entwurfs-px, Feld ab 0,0); main.js macht sie klickbar (Wellenstart)
+const flagCache = new Map();
+export function flagBoxes(state) {
+  if (!MAPS[state.mapId]?.theme?.painted) return [];
+  if (!flagCache.has(state.mapId)) flagCache.set(state.mapId, buildPaintedScene(state).flags);
+  return flagCache.get(state.mapId);
+}
+// Zahl der kommenden bzw. laufenden Welle auf der Fahne (Entwurf Z.117: x 50, y 45, 30 px, Kontur 5)
+function drawFlagNumbers(ctx, state) {
+  if (!paintedFor(state)) return;
+  const n = String(Math.min(state.waveActive ? state.wave : state.wave + 1, MAX_WAVES));
+  const k = TILE / PAINTED_STYLE.unit;
+  for (const fl of flagBoxes(state)) {
+    ctx.save();
+    ctx.scale(k, k);
+    ctx.translate(fl.tx, fl.ty);
+    ctx.scale(fl.s, fl.s);
+    ctx.font = '30px "Lilita One", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.lineJoin = 'round';
+    ctx.lineWidth = 5;
+    ctx.strokeStyle = '#2b1a10';
+    ctx.fillStyle = '#fff3d2';
+    ctx.strokeText(n, 50, 45);
+    ctx.fillText(n, 50, 45);
+    ctx.restore();
+  }
 }
 
 // Einfacher dunkler Rahmen in Kartenfarbe (Karten ohne theme.painted und Rückfall, solange das Bild lädt)

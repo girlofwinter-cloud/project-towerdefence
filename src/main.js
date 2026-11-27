@@ -1,11 +1,11 @@
 // Verbindet Spiel-Logik, Rendering und Bedienung (DOM, Maus, Tastatur).
-import { TILE, VIEW_WIDTH, VIEW_HEIGHT, FIGURE_STYLE, SHOP_CARD, TOWER_TYPES, ENEMY_TYPES, MAX_WAVES, MAPS, SPEED_STEPS, TARGET_MODES, TARGET_MODE_NAMES, MAX_SUBSTEP, LOW_LIVES, ABILITIES, ICON, COIN_BURST, waveSummary, meteorText } from './config.js';
+import { TILE, FRAME_MARGIN, VIEW_WIDTH, VIEW_HEIGHT, PAINTED_STYLE, FIGURE_STYLE, SHOP_CARD, TOWER_TYPES, ENEMY_TYPES, MAX_WAVES, MAPS, SPEED_STEPS, TARGET_MODES, TARGET_MODE_NAMES, MAX_SUBSTEP, LOW_LIVES, ABILITIES, ICON, COIN_BURST, waveSummary, meteorText } from './config.js';
 import {
   createGame, stepGame, togglePause, buildTower, upgradeTower, sellTower, setTargetMode, startWave,
   useAbility, abilityCooldownLeft, canBuild, towerAt, towerStats, upgradeCost, sellValue,
 } from './game.js';
-import { renderView, drawTower, paintedStatus } from './render.js';
-import { heartStates, abilityView, overheatNote, startButtonView } from './hud.js';
+import { renderView, drawTower, paintedStatus, flagBoxes } from './render.js';
+import { abilityView, overheatNote, startButtonView } from './hud.js';
 import { drawIcon } from './render-icons.js';
 import { buildTapStep, aimStep, fieldPoint } from './input.js';
 import { createSoundTracker, collectSounds, loadSoundOn, saveSoundOn } from './sound-events.js';
@@ -18,9 +18,26 @@ canvas.height = VIEW_HEIGHT;
 const ctx = canvas.getContext('2d');
 // Stil 1: Schrift der Stufenmarken früh laden (Canvas-Text löst das Laden selbst nicht aus)
 if (document.fonts && document.fonts.load) document.fonts.load('14px "Lilita One"').catch(() => {});
+// C1: Vollbild. Die Lage rechnet style.css (--u) aus diesen Maßen; hier nur die Zahlen aus config.js setzen.
+for (const [k, v] of Object.entries({ 'view-w': VIEW_WIDTH, 'view-h': VIEW_HEIGHT, 'field-w': VIEW_WIDTH - 2 * FRAME_MARGIN, 'field-h': VIEW_HEIGHT - 2 * FRAME_MARGIN, frame: FRAME_MARGIN })) {
+  document.documentElement.style.setProperty(`--${k}`, String(v));
+}
+// Unscharfer Hintergrund: einmal je Karte (und Fenstergröße) das fertige Bild klein in #backdrop kopieren, CSS macht die Unschärfe
+const backdrop = document.getElementById('backdrop');
+let backdropFor = null;
+window.addEventListener('resize', () => { backdropFor = null; });
+function drawBackdrop() {
+  if (backdropFor === state.mapId || paintedStatus(state.mapId) !== 'ready') return;
+  backdropFor = state.mapId;
+  const w = 320, h = Math.round(w * window.innerHeight / window.innerWidth);
+  backdrop.width = w; backdrop.height = h;
+  const b = backdrop.getContext('2d');
+  const sc = Math.max(w / canvas.width, h / canvas.height);
+  b.drawImage(canvas, (w - canvas.width * sc) / 2, (h - canvas.height * sc) / 2, canvas.width * sc, canvas.height * sc);
+}
 
 const $ = (id) => document.getElementById(id);
-const ui = { buildType: null, selectedTowerId: null, hover: null, pending: null, aiming: false, hoverPx: null, speed: SPEED_STEPS[0], message: '', messageKind: 'error', messageTtl: 0 };
+const ui = { hudDim: false, buildType: null, selectedTowerId: null, hover: null, pending: null, aiming: false, hoverPx: null, speed: SPEED_STEPS[0], message: '', messageKind: 'error', messageTtl: 0 };
 let mapId;
 let state = createGame();
 
@@ -135,23 +152,29 @@ for (const [type, def] of Object.entries(TOWER_TYPES)) {
     <span class="t-name">${def.name} <kbd class="key">${def.key}</kbd></span>
     <span class="t-cost">${def.cost} ${COIN()}</span>
     <span class="t-desc">${def.description}</span>`;
-  // Fähigkeiten-Text: als Tooltip der Karte (und im Turm-Info-Panel des gewählten Turms)
-  if (def.special) btn.title = def.special.text;
+  // Tooltip mit Name, Preis und Fähigkeit (Übergang bis Block D: die runden Knöpfe zeigen nur Bild und Preis)
+  btn.title = `${def.name} (${def.cost} Gold): ${def.description}${def.special ? ` ${def.special.text}` : ''}`;
   drawTowerIcon(btn.querySelector('.t-icon'), type);
   btn.addEventListener('click', () => selectBuild(type));
   shop.appendChild(btn);
 }
 
 // ---------- Fähigkeiten ----------
+// Symbole aus dem Entwurf Z.165–167 (46 x 46)
+const ABILITY_SVG = {
+  meteor: '<svg width="46" height="46" viewBox="0 0 46 46" aria-hidden="true"><path d="M8 38 L26 20" stroke="#ffe266" stroke-width="8" stroke-linecap="round" opacity=".6"/><circle cx="29" cy="17" r="11" fill="#7a5a45" stroke="#2b1a10" stroke-width="3"/><path d="M24 12 L30 11" stroke="#d6bfa5" stroke-width="3" stroke-linecap="round"/><path d="M36 22 L42 28 M30 28 L34 36" stroke="#ffe266" stroke-width="3" stroke-linecap="round"/></svg>',
+  freeze: '<svg width="46" height="46" viewBox="0 0 46 46" aria-hidden="true"><path d="M23 6 V40 M8 14 L38 32 M38 14 L8 32" stroke="#2b1a10" stroke-width="7" stroke-linecap="round"/><path d="M23 6 V40 M8 14 L38 32 M38 14 L8 32" stroke="#f4fcff" stroke-width="3.5" stroke-linecap="round"/></svg>',
+  repair: '<svg width="46" height="46" viewBox="0 0 46 46" aria-hidden="true"><path d="M10 36 L28 18" stroke="#2b1a10" stroke-width="9" stroke-linecap="round"/><path d="M10 36 L28 18" stroke="#e8c185" stroke-width="4.5" stroke-linecap="round"/><path d="M26 8 Q38 6 38 16 L32 14 L28 20 L22 14 Z" fill="#d9dde2" stroke="#2b1a10" stroke-width="2.5" stroke-linejoin="round"/></svg>',
+};
 const abilityBtns = {};
 for (const [id, def] of Object.entries(ABILITIES)) {
   const btn = document.createElement('button');
-  btn.className = 'ability-btn';
+  btn.className = 'ability-btn ab';
   btn.dataset.ability = id;
   btn.title = def.text;
-  // Großes Symbol, Kurzname mit Tastenkürzel, Ladungs-Abzeichen, Abklingbalken (B-058)
-  btn.innerHTML = `${iconHtml(id, 'ability')}<span class="ab-label">${def.short} <span class="key">${def.key.toUpperCase()}</span></span>`
-    + '<span class="ab-badge"></span><span class="ab-bar"><span class="ab-fill"></span></span>';
+  // C3: Symbol (SVG aus dem Entwurf), Abklingkuchen, Restsekunden, Ladungs-Abzeichen, Beschriftung darunter
+  btn.innerHTML = `${ABILITY_SVG[id]}<span class="ab-cd" aria-hidden="true"></span><span class="ab-num" aria-hidden="true"></span>`
+    + `<span class="ab-badge"></span><span class="cap">${def.short}</span><span class="key key-badge">${def.key.toUpperCase()}</span>`;
   btn.addEventListener('click', () => doAbility(id));
   $('abilities').appendChild(btn);
   abilityBtns[id] = btn;
@@ -201,12 +224,23 @@ let lastPointerType = 'mouse';
 canvas.addEventListener('pointerdown', (ev) => { lastPointerType = ev.pointerType; });
 canvas.addEventListener('pointermove', (ev) => {
   const { col, row, inField } = tileFromEvent(ev);
+  // C2: Holzleiste blasst aus, wenn die Maus darunter steht; Fahne zeigt Hand-Zeiger
+  const hr = $('hud-bar').getBoundingClientRect();
+  ui.hudDim = ev.clientX >= hr.left - 8 && ev.clientX <= hr.right + 8 && ev.clientY >= hr.top - 8 && ev.clientY <= hr.bottom + 8;
+  canvas.classList.toggle('over-flag', overFlag(ev));
   ui.hoverPx = pointFromEvent(ev);
   ui.hover = inField ? { col, row, ok: canBuild(state, col, row).ok } : null;
 });
 // Bei Touch feuert pointerleave direkt nach dem Loslassen: dort die Vorschau behalten.
-canvas.addEventListener('pointerleave', (ev) => { if (ev.pointerType === 'mouse') ui.hover = null; });
+canvas.addEventListener('pointerleave', (ev) => { if (ev.pointerType === 'mouse') { ui.hover = null; ui.hudDim = false; } });
+// G5/C3: Klick auf die Wellenfahne im Rand startet die Welle (Box in Entwurfs-px, ±8 Spiel-px Spielraum)
+function overFlag(ev) {
+  const p = pointFromEvent(ev);
+  const K = TILE / PAINTED_STYLE.unit;
+  return !tileFromEvent(ev).inField && flagBoxes(state).some((f) => p.x >= f.box[0] * K - 8 && p.x <= f.box[2] * K + 8 && p.y >= f.box[1] * K - 8 && p.y <= f.box[3] * K + 8);
+}
 canvas.addEventListener('click', (ev) => {
+  if (!ui.aiming && !ui.buildType && overFlag(ev)) { doStartWave(); return; }
   if (ui.aiming && !tileFromEvent(ev).inField) return; // Meteor nur aufs Feld, im Rand bleibt der Zielmodus
   const aim = aimStep(ui.aiming, 'click');
   if (aim.fire) {
@@ -425,22 +459,23 @@ window.addEventListener('keydown', (ev) => {
 });
 
 // ---------- HUD ----------
+// Übergang bis Block D: Turm-Panel schwebt unten über dem Feld, bei Türmen ab dieser Zeile oben (sonst verdeckt es den Turm)
+const TOWER_INFO_TOP_ROW = 9;
 function refreshUI() {
   if (state.status !== 'playing' || state.paused) ui.aiming = false; // Zielmodus nur im laufenden Spiel
-  $('gold').textContent = state.gold;
+  $('gold').textContent = state.gold.toLocaleString('de-DE');
   $('lives').textContent = state.lives;
-  renderHearts($('hearts'), state.lives);
   $('lives-box').classList.toggle('low', state.status === 'playing' && state.lives <= LOW_LIVES);
-  $('wave').textContent = `${state.wave} / ${MAX_WAVES}`;
-  $('speed-label').textContent = `Tempo ×${ui.speed}`;
-  $('pause-hint').hidden = !state.paused;
+  setHtml($('wave'), `${state.wave}<small> / ${MAX_WAVES}</small>`);
+  $('speed-label').textContent = `×${ui.speed}`;
+  $('speed').setAttribute('aria-label', `Tempo ×${ui.speed}`);
+  $('pause').dataset.paused = String(state.paused);
+  $('hud-bar').classList.toggle('dim', ui.hudDim);
   // Deutliches Banner über dem Spielfeld (nur Anzeige, Bauen bleibt möglich)
   $('pause-banner').hidden = !state.paused;
   $('pause-label').textContent = state.paused ? 'Weiter' : 'Pause';
   $('sound-label').textContent = ui.soundOn ? 'Ton an' : 'Ton aus';
   $('sound').setAttribute('aria-pressed', String(ui.soundOn));
-  if ($('sound-icon').dataset.icon !== (ui.soundOn ? 'sound' : 'soundOff')) setIcon($('sound-icon'), ui.soundOn ? 'sound' : 'soundOff');
-  if ($('pause-icon').dataset.icon !== (state.paused ? 'play' : 'pause')) setIcon($('pause-icon'), state.paused ? 'play' : 'pause');
   mapSelect.disabled = state.wave !== 0 || state.waveActive;
   mapSelect.value = state.mapId;
   // B-005: Während einer Welle bleibt der Knopf bedienbar (vorzeitiger Start mit Bonus), bis zur letzten Welle
@@ -448,6 +483,7 @@ function refreshUI() {
   $('start-wave').disabled = sb.disabled;
   $('start-label').textContent = sb.label;
   $('start-key').hidden = !sb.showKey;
+  $('start-wave').classList.toggle('ready', sb.showKey && !state.waveActive);
 
   // Vorschau der nächsten Welle (nur solange keine Welle läuft)
   const showPreview = !state.waveActive && state.status === 'playing' && state.wave < MAX_WAVES;
@@ -462,9 +498,11 @@ function refreshUI() {
     const btn = abilityBtns[id];
     const v = abilityView(def, state.abilities[id].uses, abilityCooldownLeft(state, id));
     btn.setAttribute('aria-label', v.aria);
+    if (btn.dataset.state === 'charging' && v.state === 'ready') { btn.classList.remove('pop'); void btn.offsetWidth; btn.classList.add('pop'); }
     btn.dataset.state = v.state;
     btn.style.setProperty('--fill', v.fill.toFixed(3));
     btn.querySelector('.ab-badge').textContent = v.badge;
+    btn.querySelector('.ab-num').textContent = v.state === 'charging' ? String(Math.ceil(abilityCooldownLeft(state, id))) : '';
     btn.disabled = v.state !== 'ready' || state.status !== 'playing';
     btn.classList.toggle('aiming', id === 'meteor' && ui.aiming);
     // B-112: Meteor-Schaden wächst mit der Welle, der Tooltip zeigt den aktuellen Wert
@@ -482,6 +520,7 @@ function refreshUI() {
 
   const t = state.towers.find((x) => x.id === ui.selectedTowerId);
   $('tower-info').hidden = !t;
+  if (t) $('tower-info').classList.toggle('ti-top', t.row >= TOWER_INFO_TOP_ROW);
   if (t) {
     const s = towerStats(t, state.modifiers);
     const up = upgradeCost(t);
@@ -513,14 +552,6 @@ function refreshUI() {
   $('overlay-stats').textContent = `Welle ${state.wave} · ${state.kills} Gegner besiegt`;
   if (state.status !== 'playing' && !resultSaved) saveResult();
   renderResultLines($('overlay-progress'), resultText);
-}
-
-// Herzreihe als Icons (gefüllt/leer); nur neu bauen, wenn sich die Lebenszahl ändert.
-function renderHearts(el, lives) {
-  const key = String(lives);
-  if (el.dataset.key === key) return;
-  el.dataset.key = key;
-  setHtml(el, heartStates(lives).map((full) => iconHtml(full ? 'heart' : 'heartEmpty', 'heart')).join(''));
 }
 
 // Erste Zeile normal, weitere als hervorgehobene Meldungen (nur neu bauen, wenn sich etwas ändert).
@@ -564,6 +595,7 @@ function frame(now) {
   updateMusic({ status: state.status, paused: state.paused, mapId: state.mapId });
   ui.messageTtl -= dt;
   renderView(ctx, state, ui);
+  drawBackdrop();
   hudTimer -= dt;
   if (hudTimer <= 0) { refreshUI(); hudTimer = 0.1; }
   requestAnimationFrame(frame);
