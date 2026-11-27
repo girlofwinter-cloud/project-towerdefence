@@ -524,6 +524,9 @@ const startScreen = mountStartScreen($('start-screen'), {
     mapId = id;
     progress.lastMap = id;
     saveProgress(getStorage(), progress);
+    // Handy: Vollbild schon bei der Kartenwahl, damit Chromes Vollbild-Hinweis vor Welle 1 wieder verschwindet
+    // nicht im automatisierten Browser (e2e prüft Drehen und Vollbild-Knopf ohne Vollbild)
+    if (window.matchMedia('(pointer: coarse)').matches && !navigator.webdriver) fullscreen.enter(document.documentElement, true);
     restart();
   },
 });

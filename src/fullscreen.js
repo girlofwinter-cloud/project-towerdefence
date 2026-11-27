@@ -34,6 +34,12 @@ export function fullscreenControl(doc, scr) {
       } catch { /* Browser hat abgelehnt */ }
       return current() !== null;
     },
+    // Nur einschalten, nie ausschalten (z. B. beim Kartenwählen auf dem Handy, damit Chromes Hinweis nicht ins Spiel fällt)
+    async enter(el, lockLandscape = false) {
+      if (!enabled || current()) return current() !== null;
+      try { await enter(el, lockLandscape); } catch { /* Browser hat abgelehnt */ }
+      return current() !== null;
+    },
     onChange(fn) {
       doc.addEventListener('fullscreenchange', fn);
       doc.addEventListener('webkitfullscreenchange', fn);

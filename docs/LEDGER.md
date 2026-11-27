@@ -44,3 +44,8 @@ Anhängen ohne die Datei zu lesen: `cat >> docs/LEDGER.md <<'EOF' … EOF`. Übe
 - Ergebnis: fertig, Branch agent/vollbild. Runder Knopf „Vollbild“ (Fullscreen-API mit webkit-Präfix, auf Touch-Geräten Querformat festgehalten), nur sichtbar, wo der Browser es kann; Handy-Querformat in der freien Ecke links neben Ton. Web-App-Manifest (display fullscreen, landscape) plus Apple-Meta und Symbole 180/192/512 aus der Burg des Startbildschirms.
 - Tests: npm test grün, test:e2e grün (neu tests/fullscreen.test.js, tests/e2e/vollbild.test.mjs).
 - Entscheidungen: iPhone-Safari kann kein Vollbild für Seiten, dort nur „Zum Home-Bildschirm“. Kartenwahl am Desktop rückt um einen Knopf nach links. Kein Balancing berührt.
+
+### 2026-11-27 – Vollbild bei Kartenwahl (Handy)
+- Chromes Vollbild-Hinweis blieb ~15 s im laufenden Spiel stehen.
+- Handy: Vollbild jetzt schon beim Tippen auf eine Karte (`fullscreen.enter`, schaltet nur ein); Knopf bleibt.
+- Test in tests/fullscreen.test.js; e2e 91/91 grün.
