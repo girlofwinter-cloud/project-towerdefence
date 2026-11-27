@@ -3381,3 +3381,77 @@ describe('Tester: Randfälle neue Gegner', () => {
     }
   });
 });
+
+// --- B-179: Elite-Gegner und gemischtere Mitte ---
+import { ELITE, eliteCount, WAVE_EXTRAS, WAVE_GAP_SCALE } from '../src/config.js';
+
+test('B-179: Elite-Gegner erst ab ELITE.from, Anzahl wächst bis ELITE.max, nur erlaubte Typen und Eigenschaften', () => {
+  const traits = new Set();
+  for (let w = 1; w <= MAX_WAVES; w++) {
+    const elites = waveFor(w).filter((e) => e.elite);
+    assert.equal(elites.length, eliteCount(w), `Welle ${w}`);
+    assert.equal(elites.length > 0, w >= ELITE.from, `Welle ${w}: Elite`);
+    assert.ok(eliteCount(w) <= ELITE.max);
+    for (const e of elites) {
+      assert.ok(ELITE.types.includes(e.type), `Welle ${w}: ${e.type}`);
+      assert.ok(ELITE.traits.includes(e.elite), `Welle ${w}: ${e.elite}`);
+      traits.add(e.elite);
+    }
+  }
+  assert.equal(ELITE.from, 8);
+  assert.ok(eliteCount(20) > eliteCount(8));
+  assert.deepEqual([...traits].sort(), [...ELITE.traits].sort(), 'alle Eigenschaften kommen vor');
+  assert.deepEqual(waveFor(12), waveFor(12), 'feste Auswahl, kein Zufall');
+});
+
+test('B-179: Elite-Eigenschaften: schneller, Schild, Selbstheilung, mehr Gold, Flag fürs Abzeichen', () => {
+  const s = createGame();
+  const plain = spawnEnemy(s, 'tank', 10);
+  const swift = spawnEnemy(s, 'tank', 10, null, 'swift');
+  const shield = spawnEnemy(s, 'tank', 10, null, 'shield');
+  const regen = spawnEnemy(s, 'tank', 10, null, 'regen');
+  assert.equal(plain.elite, undefined);
+  assert.equal(swift.elite, 'swift');
+  assert.ok(Math.abs(swift.speed - plain.speed * ELITE.swift.speed) < 1e-9);
+  assert.equal(shield.ward, ELITE.shield.wardShare * shield.maxHp);
+  assert.equal(plain.ward, 0);
+  for (const e of [swift, shield, regen]) assert.equal(e.reward, Math.round(plain.reward * ELITE.rewardFactor));
+  // Selbstheilung: healPerSec * maxHp pro Sekunde, nie über maxHp; normale Gegner heilen nicht
+  regen.hp = regen.maxHp / 2;
+  plain.hp = plain.maxHp / 2;
+  for (let i = 0; i < 60; i++) update(s, 1 / 60);
+  assert.ok(Math.abs(regen.hp - (regen.maxHp / 2 + regen.maxHp * ELITE.regen.healPerSec)) < 1e-6, `regen ${regen.hp}`);
+  assert.equal(plain.hp, plain.maxHp / 2);
+  regen.hp = regen.maxHp - 0.001;
+  update(s, 1);
+  assert.equal(regen.hp, regen.maxHp);
+  assert.equal(spawnEnemy(s, 'grunt', 10, null, 'unbekannt').elite, undefined, 'unbekannte Eigenschaft wird ignoriert');
+});
+
+test('B-179: Elite-Markierung läuft über startWave und Spawn-Liste bis zum Gegner', () => {
+  const s = createGame();
+  s.wave = 11;
+  startWave(s);
+  const want = s.spawnQueue.filter((e) => e.elite).map((e) => e.elite);
+  assert.equal(want.length, eliteCount(12));
+  const seen = [];
+  for (let k = 0; k < 200 * 60 && s.spawnQueue.length; k++) {
+    update(s, 1 / 60);
+    for (const e of s.enemies) if (e.elite && !seen.includes(e)) seen.push(e);
+    s.lives = START_LIVES; // Leben spielen hier keine Rolle
+  }
+  assert.deepEqual(seen.map((e) => e.elite), want);
+});
+
+test('B-179: gemischtere Mitte (WAVE_EXTRAS nur Wellen 6-12, nicht 5 und 10), Welle 5 lockerer gestaffelt', () => {
+  for (const w of Object.keys(WAVE_EXTRAS).map(Number)) assert.ok(w >= 6 && w <= 12 && w !== 10, `Welle ${w}`);
+  assert.equal(waveSummary(6).tank, Math.floor(6 / 2) + 1 + WAVE_EXTRAS[6].tank);
+  assert.equal(waveSummary(9).shielded, 1 + WAVE_EXTRAS[9].shielded);
+  assert.equal(waveSummary(7).healer, 1 + WAVE_EXTRAS[7].healer);
+  // Welle 5: gleiche Gegner, aber größere Abstände in der Goblin-Gruppe
+  assert.ok(WAVE_GAP_SCALE[5] > 1);
+  const grunts = waveFor(5).filter((e) => e.type === 'grunt');
+  assert.ok(Math.abs(grunts[1].at - grunts[0].at - Math.max(0.3, 0.9 - 5 * 0.04) * WAVE_GAP_SCALE[5]) < 1e-9);
+  const g4 = waveFor(4).filter((e) => e.type === 'grunt');
+  assert.ok(Math.abs(g4[1].at - g4[0].at - Math.max(0.3, 0.9 - 4 * 0.04)) < 1e-9, 'andere Wellen unverändert');
+});

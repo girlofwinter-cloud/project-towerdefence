@@ -4,6 +4,7 @@ import {
   MAPS, DEFAULT_MAP_ID, LANE_ASYNC, TOWER_TYPES, ABILITIES, WIDTH, HEIGHT, ENEMY_TYPES, LAVA, FX_STYLE, AUTO_WAVE_DELAY, earlyStartBonus, waveFor, waveBonus, hpScale, meteorDamage, isBoss,
 } from './config.js';
 import { buildPath, pointAt, pathTiles } from './path.js';
+import { ELITE } from './config.js'; // B-179: Elite-Gegner
 
 // Map-Modifikatoren mit Standardwerten (1 = unverändert); unbekannte Karte = Standardkarte.
 export function mapModifiers(mapId) {
@@ -255,7 +256,7 @@ export function planLanes(state, list, wave) {
   return out.sort((a, b) => a.at - b.at);
 }
 
-export function spawnEnemy(state, type, wave = state.wave, lane = null) {
+export function spawnEnemy(state, type, wave = state.wave, lane = null, elite = null) {
   const def = ENEMY_TYPES[type];
   const hp = Math.round(def.hp * hpScale(Math.max(1, wave)));
   const paths = state.paths || [state.path];
@@ -286,8 +287,17 @@ export function spawnEnemy(state, type, wave = state.wave, lane = null) {
   };
   if (def.summonInterval) enemy.summonAt = state.time + def.summonInterval; // B-127: nächste Beschwörung
   if (def.shellHits) enemy.shell = def.shellHits; // B-169: Schichten der Schale (Panzerkäfer)
+  if (elite && ELITE[elite]) makeElite(enemy, elite);
   state.enemies.push(enemy);
   return enemy;
+}
+
+// B-179: Elite-Eigenschaft anwenden (enemy.elite = Eigenschaft, Flag fürs Abzeichen). Werte in ELITE (config.js).
+function makeElite(enemy, trait) {
+  enemy.elite = trait;
+  enemy.reward = Math.round(enemy.reward * ELITE.rewardFactor);
+  if (trait === 'swift') enemy.speed *= ELITE.swift.speed;
+  else if (trait === 'shield') enemy.ward = ELITE.shield.wardShare * enemy.maxHp;
 }
 
 // ---------- Update-Schleife ----------
@@ -369,6 +379,7 @@ export function update(state, dt) {
   if (state.status !== 'playing') return;
   lavaStep(state, dt);
   healStep(state);
+  regenStep(state, dt);
   wardStep(state);
   summonStep(state);
   towersStep(state, dt);
@@ -389,7 +400,7 @@ function spawnStep(state, dt) {
   state.waveTime += dt;
   while (state.spawnQueue.length && state.spawnQueue[0].at <= state.waveTime) {
     const next = state.spawnQueue.shift();
-    spawnEnemy(state, next.type, next.wave ?? state.wave, next.lane ?? null); // HP-Skalierung der eigenen Welle, B-124: geplante Seite
+    spawnEnemy(state, next.type, next.wave ?? state.wave, next.lane ?? null, next.elite ?? null); // HP-Skalierung der eigenen Welle, B-124: geplante Seite, B-179: Elite
   }
 }
 
@@ -453,6 +464,15 @@ function healStep(state) {
       e.hp = Math.min(e.maxHp, e.hp + e.maxHp * def.healPerSec * def.healInterval);
       e.healTick = tick;
     }
+  }
+}
+
+// B-179: Selbstheilung der Elite-Gegner mit regen: healPerSec * maxHp pro Sekunde (Rate mal dt), nie über maxHp.
+function regenStep(state, dt) {
+  const rate = ELITE.regen.healPerSec * dt;
+  for (const e of state.enemies) {
+    if (e.elite !== 'regen' || e.hp <= 0 || e.hp >= e.maxHp) continue;
+    e.hp = Math.min(e.maxHp, e.hp + e.maxHp * rate);
   }
 }
 

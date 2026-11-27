@@ -692,15 +692,59 @@ export function newEnemyCount(type, wave, mapId) {
   return scale === 1 ? n : scale <= 0 ? 0 : Math.max(1, Math.floor(n * scale));
 }
 
-// Erzeugt die Spawn-Liste einer Welle: [{ type, at }] (at = Sekunden nach Wellenstart).
+// B-179 (vorläufige Werte, Balancing folgt): gemischtere Mitte. Zusätzliche Gegner je Welle zu den normalen Gruppen
+// (Trolle, Heiler, Schildträger; nur Typen, die in der Welle ohnehin schon vorkommen). Wellen 5 und 10 bleiben gleich.
+export const WAVE_EXTRAS = {
+  6: { tank: 1 },
+  7: { healer: 1 },
+  8: { tank: 1 },
+  9: { shielded: 1 },
+  11: { healer: 1 },
+  12: { shielded: 1 },
+};
+// B-179: Abstands-Faktor der Gegner einer Welle (> 1 = lockerer). Glättet die Spitze in Welle 5, ohne Gegner zu streichen.
+export const WAVE_GAP_SCALE = { 5: 1.25 };
+
+// B-179: Elite-Gegner ab Welle `from`: count in Welle from, danach +1 je `every` Wellen, höchstens max. Gewählt werden
+// gleichmäßig verteilte Gegner der Typen `types` (feste Auswahl, kein Zufall); die Eigenschaft wechselt reihum (traits).
+// swift: Tempo mal speed; shield: einmaliger Schild (wie der Magier-Schild) von wardShare * maxHp;
+// regen: heilt healPerSec * maxHp pro Sekunde. Elite-Gegner bringen rewardFactor mal so viel Gold. Flag enemy.elite fürs Abzeichen.
+export const ELITE = {
+  from: 8, count: 1, every: 3, max: 4,
+  types: ['grunt', 'runner', 'tank', 'shielded'],
+  traits: ['swift', 'shield', 'regen'],
+  swift: { speed: 1.35 },
+  shield: { wardShare: 0.3 },
+  regen: { healPerSec: 0.03 },
+  rewardFactor: 1.5,
+};
+
+// B-179: Anzahl der Elite-Gegner in Welle `wave` (0 vor ELITE.from)
+export function eliteCount(wave) {
+  if (wave < ELITE.from) return 0;
+  return Math.min(ELITE.max, ELITE.count + Math.floor((wave - ELITE.from) / ELITE.every));
+}
+
+// B-179: markiert eliteCount(wave) Einträge der Spawn-Liste (gleichmäßig verteilt unter ELITE.types) mit elite = Eigenschaft.
+function markElites(list, wave) {
+  const n = eliteCount(wave);
+  const pool = list.filter((e) => ELITE.types.includes(e.type));
+  const k = Math.min(n, pool.length);
+  for (let i = 0; i < k; i++) pool[Math.floor(((i + 0.5) * pool.length) / k)].elite = ELITE.traits[(wave + i) % ELITE.traits.length];
+}
+
+// Erzeugt die Spawn-Liste einer Welle: [{ type, at, elite? }] (at = Sekunden nach Wellenstart).
 // mapId (B-171) nur für die kartenabhängige Anzahl der neuen Gegner.
 export function waveFor(wave, mapId) {
   const list = [];
   let t = 0;
+  const gapScale = WAVE_GAP_SCALE[wave] ?? 1;
+  const extras = WAVE_EXTRAS[wave] || {};
   const add = (type, count, gap) => {
+    if (!(count > 0)) return;
     for (let i = 0; i < count; i++) {
       list.push({ type, at: t });
-      t += gap;
+      t += gap * gapScale;
     }
     t += 1;
   };
@@ -716,15 +760,15 @@ export function waveFor(wave, mapId) {
   extra('bat');
   extra('ember');
   const tankStart = t;
-  if (wave >= 5) add('tank', Math.floor(wave / 2) + 1 + lateTanks, 1.0);
+  if (wave >= 5) add('tank', Math.floor(wave / 2) + 1 + lateTanks + (extras.tank || 0), 1.0);
   // B-171: Panzerkäfer laufen zwischen den Trollen mit (verlängern die Welle nicht)
   const beetles = newEnemyCount('beetle', wave, mapId);
   for (let i = 0; i < beetles; i++) list.push({ type: 'beetle', at: tankStart + NEW_ENEMY_WAVES.beetle.offset + i * NEW_ENEMY_WAVES.beetle.gap });
   if (beetles) list.sort((a, b) => a.at - b.at);
-  if (wave >= 9) add('shielded', 1 + Math.floor((wave - 9) / 2), 1.0);
+  add('shielded', (wave >= 9 ? 1 + Math.floor((wave - 9) / 2) : 0) + (extras.shielded || 0), 1.0);
   // B-126: Magier laufen kurz nach der Troll-Gruppe
   if (wave >= 8) add('mage', 1 + Math.floor((wave - 8) / 4), 1.5);
-  if (wave >= 7 && wave < LATE_WAVE) add('healer', 1 + Math.floor((wave - 7) / 4), 1.2);
+  if (wave < LATE_WAVE) add('healer', (wave >= 7 ? 1 + Math.floor((wave - 7) / 4) : 0) + (extras.healer || 0), 1.2);
   // Spätphase: Heiler laufen mitten in der Troll-Gruppe mit, statt ihr als letzte Gruppe hinterherzulaufen
   if (wave >= LATE_WAVE) {
     const healers = 2 + Math.floor((wave - LATE_WAVE) / 3);
@@ -734,6 +778,7 @@ export function waveFor(wave, mapId) {
   extra('wisp');
   // B-127: Bosse in jeder 5. Welle; in Welle NECRO_WAVE kommt die Nekromantin statt des Oger-Königs
   if (wave % 5 === 0) add(wave === NECRO_WAVE ? 'necro' : 'boss', Math.floor(wave / 10) + 1, 3);
+  markElites(list, wave);
   return list;
 }
 
