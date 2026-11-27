@@ -12,6 +12,7 @@ import { createSoundTracker, collectSounds, loadSoundOn, saveSoundOn } from './s
 import { unlockAudio, setSoundOn, playSound, updateMusic } from './audio.js';
 import { loadProgress, saveProgress, recordResult, isUnlocked, mapProgress, starText, resultLines, startMap, mapAfterResult, starsFor, MAP_ORDER } from './progress.js';
 import { mountStartScreen, endView, starsHtml, STAR_COUNT } from './screens.js';
+import { fullscreenControl } from './fullscreen.js';
 import { ringRadius, tileCenterPx, ringCenter, infoOnLeft, pickTower, buildRingView, towerRingView } from './ring-menu.js';
 
 const canvas = document.getElementById('game');
@@ -540,6 +541,16 @@ function applyRotateHint() {
 rotateQuery.addEventListener('change', applyRotateHint);
 if (rotateQuery.matches) applyRotateHint();
 $('sound').addEventListener('click', toggleSound);
+
+// B-178: Vollbild-Knopf (nur wo der Browser es kann). Auf Touch-Geräten zusätzlich Querformat festhalten.
+const fullscreen = fullscreenControl(document, window.screen);
+$('fullscreen').hidden = !fullscreen.supported;
+$('fullscreen').addEventListener('click', () => fullscreen.toggle(document.documentElement, window.matchMedia('(pointer: coarse)').matches));
+fullscreen.onChange(() => {
+  const on = fullscreen.isOn();
+  $('fullscreen').setAttribute('aria-pressed', String(on));
+  $('fullscreen-label').textContent = on ? 'Vollbild beenden' : 'Vollbild';
+});
 
 function toggleSound() {
   ui.soundOn = !ui.soundOn;
