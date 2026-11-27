@@ -1794,3 +1794,59 @@ test('svg-figure: Pfad-Leser (absolut/relativ, H/V/Q, Bogen als Ellipse), Teile,
   assert.equal(withAlpha('rgba(30,20,50,.4)', 0.5), 'rgba(30,20,50,0.2)');
   assert.equal(withAlpha('#abc', 1), '#abc');
 });
+
+// ---------- HiDPI: Hintergrund-Cache im Maßstab der Pixeldichte ----------
+
+test('HiDPI: bgScaleOf liest den Maßstab aus der Transformation, bgCacheKey trennt Karte und Maßstab', async () => {
+  const { bgScaleOf, bgCacheKey } = await import('../src/render.js');
+  const tf = (a, b = 0) => ({ getTransform: () => ({ a, b }) });
+  assert.equal(bgScaleOf({}), 1, 'ohne getTransform');
+  assert.equal(bgScaleOf(tf(2)), 2);
+  assert.equal(bgScaleOf(tf(2.0377)), 2.04, 'auf 1/100 gerundet');
+  assert.equal(bgScaleOf(tf(0, 1.5)), 1.5, 'gedreht zählt die Länge');
+  assert.equal(bgScaleOf(tf(NaN)), 1);
+  assert.equal(bgScaleOf(tf(0)), 1);
+  assert.equal(bgScaleOf(tf(100)), 4, 'nach oben begrenzt');
+  assert.equal(bgCacheKey('meadow', 2), 'meadow@2');
+  assert.notEqual(bgCacheKey('meadow', 2), bgCacheKey('meadow', 1));
+  assert.notEqual(bgCacheKey('meadow', 2), bgCacheKey('ice', 2));
+});
+
+test('HiDPI: Rückfall-Hintergrund wird im Maßstab gerastert und bei Maßstabwechsel neu gebaut', async () => {
+  const { render } = await import('../src/render.js?hidpi'); // eigene Instanz: frischer Cache
+  const offscreen = [];
+  globalThis.document = {
+    createElement() {
+      const m = mockCtx();
+      const c = { width: 0, height: 0, getContext: () => m.ctx, m };
+      offscreen.push(c);
+      return c;
+    },
+  };
+  try {
+    const s = createGame();
+    const main = mockCtx();
+    let scale = 2;
+    const drawn = [];
+    const ctx = new Proxy(main.ctx, {
+      get(t, k) {
+        if (k === 'getTransform') return () => ({ a: scale, b: 0 });
+        if (k === 'drawImage') return (...a) => { drawn.push(a); };
+        return t[k];
+      },
+    });
+    render(ctx, s, {});
+    const off = offscreen[offscreen.length - 1];
+    assert.equal(off.width, COLS * TILE * 2);
+    assert.equal(off.height, ROWS * TILE * 2);
+    assert.equal(off.m.counts.setTransform, 1, 'Cache zeichnet im Maßstab');
+    assert.deepEqual(drawn.at(-1).slice(1), [0, 0, COLS * TILE, ROWS * TILE], 'in Feldgröße zurückskaliert');
+    const builds = off.m.counts.fillRect;
+    render(ctx, s, {});
+    assert.equal(off.m.counts.fillRect, builds, 'gleicher Maßstab: nicht neu gezeichnet');
+    scale = 1.5;
+    render(ctx, s, {});
+    assert.equal(off.width, COLS * TILE * 1.5);
+    assert.ok(off.m.counts.fillRect > builds, 'neuer Maßstab: neu gebaut');
+  } finally { delete globalThis.document; }
+});

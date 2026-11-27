@@ -102,7 +102,7 @@ main {
   align-items: flex-start;
   flex-wrap: wrap;
 }
-.board { max-width: 800px; width: 100%; }
+.board { max-width: var(--board-w, 800px); width: 100%; } /* --board-w: main.js (fitBoard) */
 .stage { position: relative; }
 canvas#game {
   display: block;

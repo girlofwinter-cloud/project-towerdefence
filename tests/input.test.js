@@ -2,8 +2,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { buildTapStep, fieldPoint } from '../src/input.js';
-import { TILE, COLS, ROWS, FRAME_MARGIN, VIEW_WIDTH, VIEW_HEIGHT } from '../src/config.js';
+import { buildTapStep, fieldPoint, canvasSize } from '../src/input.js';
+import { TILE, COLS, ROWS, FRAME_MARGIN, VIEW_WIDTH, VIEW_HEIGHT, VIEW_FIT } from '../src/config.js';
 
 // ---------- Bauen per Touch in zwei Schritten (buildTapStep) ----------
 
@@ -62,4 +62,55 @@ test('fieldPoint: genau auf der Feldkante gehört der Punkt zum Feld, genau hint
   assert.equal(fieldPoint(FRAME_MARGIN - 0.01, FRAME_MARGIN + 5, rect).inField, false, 'knapp links davor');
   // Ecken des Canvas und Punkte außerhalb (Pointer-Capture) liegen nie im Feld
   for (const [x, y] of [[0, 0], [VIEW_WIDTH, VIEW_HEIGHT], [-20, 300], [VIEW_WIDTH + 20, 300]]) assert.equal(fieldPoint(x, y, rect).inField, false, `${x},${y}`);
+});
+
+// ---------- HiDPI: Canvas-Größe (canvasSize) ----------
+
+test('canvasSize: Seitenverhältnis bleibt, Breite oder Höhe begrenzt', () => {
+  const byW = canvasSize(450, Infinity, 1);
+  assert.deepEqual([byW.cssW, byW.cssH], [450, 330]);
+  const byH = canvasSize(5000, 330, 1);
+  assert.deepEqual([byH.cssW, byH.cssH], [450, 330]);
+  for (const [w, h] of [[917, 700], [1234, 567], [375, 9999], [801, 589]]) {
+    const s = canvasSize(w, h, 1);
+    assert.ok(s.cssW <= w && s.cssH <= h + 0.5, `${w}x${h} passt`);
+    assert.ok(Math.abs(s.cssW / s.cssH - VIEW_WIDTH / VIEW_HEIGHT) < 0.01, 'keine Verzerrung');
+  }
+});
+
+test('canvasSize: Backing-Store = CSS-Größe x Pixeldichte, höchstens maxDpr, Transformation passt', () => {
+  const s = canvasSize(900, Infinity, 2);
+  assert.deepEqual([s.width, s.height, s.dpr], [1800, 1320, 2]);
+  assert.equal(s.sx, 2);
+  assert.equal(s.sy, 2);
+  const capped = canvasSize(900, Infinity, 3);
+  assert.equal(capped.dpr, VIEW_FIT.maxDpr);
+  assert.equal(capped.width, 900 * VIEW_FIT.maxDpr);
+  const odd = canvasSize(917, Infinity, 2);
+  assert.equal(odd.width, 1834);
+  assert.ok(Math.abs(odd.sx * VIEW_WIDTH - odd.width) < 1e-6, 'Canvas-Einheiten füllen den Backing-Store genau');
+  assert.ok(Math.abs(odd.sy * VIEW_HEIGHT - odd.height) < 1e-6);
+});
+
+test('canvasSize: ungültige Werte (0, negativ, NaN, kleine dpr) fallen auf sinnvolle Größen zurück', () => {
+  assert.equal(canvasSize(800, Infinity, 0.5).dpr, 1);
+  assert.equal(canvasSize(800, Infinity, NaN).dpr, 1);
+  assert.equal(canvasSize(800, Infinity, undefined).dpr, 1);
+  assert.equal(canvasSize(0, Infinity, 1).cssW, VIEW_WIDTH);
+  assert.equal(canvasSize(NaN, -5, 1).cssW, VIEW_WIDTH);
+  const tiny = canvasSize(1, 1, 2);
+  assert.ok(tiny.width >= 1 && tiny.height >= 1);
+});
+
+test('fieldPoint + canvasSize: Ecken-Kacheln treffen bei jeder Größe und Pixeldichte', () => {
+  for (const dpr of [1, 1.5, 2, 3]) {
+    for (const avail of [375, 800, 917, 1600]) {
+      const s = canvasSize(avail, Infinity, dpr);
+      const rect = { left: 13, top: 27, width: s.cssW, height: s.cssH };
+      const at = (col, row) => fieldPoint(rect.left + ((FRAME_MARGIN + (col + 0.5) * TILE) / VIEW_WIDTH) * s.cssW,
+        rect.top + ((FRAME_MARGIN + (row + 0.5) * TILE) / VIEW_HEIGHT) * s.cssH, rect);
+      assert.deepEqual([at(0, 0).col, at(0, 0).row], [0, 0]);
+      assert.deepEqual([at(COLS - 1, ROWS - 1).col, at(COLS - 1, ROWS - 1).row], [COLS - 1, ROWS - 1]);
+    }
+  }
 });

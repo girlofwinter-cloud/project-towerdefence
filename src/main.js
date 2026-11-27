@@ -1,5 +1,5 @@
 // Verbindet Spiel-Logik, Rendering und Bedienung (DOM, Maus, Tastatur).
-import { TILE, VIEW_WIDTH, VIEW_HEIGHT, FIGURE_STYLE, SHOP_CARD, TOWER_TYPES, ENEMY_TYPES, MAX_WAVES, MAPS, SPEED_STEPS, TARGET_MODES, TARGET_MODE_NAMES, MAX_SUBSTEP, LOW_LIVES, ABILITIES, ICON, COIN_BURST, waveSummary, meteorText } from './config.js';
+import { TILE, VIEW_WIDTH, VIEW_HEIGHT, VIEW_FIT, FIGURE_STYLE, SHOP_CARD, TOWER_TYPES, ENEMY_TYPES, MAX_WAVES, MAPS, SPEED_STEPS, TARGET_MODES, TARGET_MODE_NAMES, MAX_SUBSTEP, LOW_LIVES, ABILITIES, ICON, COIN_BURST, waveSummary, meteorText } from './config.js';
 import {
   createGame, stepGame, togglePause, buildTower, upgradeTower, sellTower, setTargetMode, startWave,
   useAbility, abilityCooldownLeft, canBuild, towerAt, towerStats, upgradeCost, sellValue,
@@ -7,15 +7,55 @@ import {
 import { renderView, drawTower, paintedStatus } from './render.js';
 import { heartStates, abilityView, overheatNote, startButtonView } from './hud.js';
 import { drawIcon } from './render-icons.js';
-import { buildTapStep, aimStep, fieldPoint } from './input.js';
+import { buildTapStep, aimStep, fieldPoint, canvasSize } from './input.js';
 import { createSoundTracker, collectSounds, loadSoundOn, saveSoundOn } from './sound-events.js';
 import { unlockAudio, setSoundOn, playSound, updateMusic } from './audio.js';
 import { loadProgress, saveProgress, recordResult, isUnlocked, mapProgress, starText, resultLines, startMap, mapAfterResult, MAP_ORDER } from './progress.js';
 
 const canvas = document.getElementById('game');
-canvas.width = VIEW_WIDTH; // Stil 1: Feld + Rand (Wald, Burg, Fahne)
+canvas.width = VIEW_WIDTH; // Stil 1: Feld + Rand (Wald, Burg, Fahne); HiDPI-Größe setzt fitCanvas()
 canvas.height = VIEW_HEIGHT;
 const ctx = canvas.getContext('2d');
+
+// ---------- HiDPI und Größe des Canvas ----------
+// Breites Layout (Seitenpanel daneben): Canvas so groß, wie Breite neben dem Panel und Fensterhöhe erlauben
+// (Turm-Panel darunter bleibt ohne Scrollen sichtbar).
+// Schmal (Panel darunter): volle Breite, höchstens VIEW_FIT.baseWidth (wie bisher). Backing-Store = CSS-Größe x Pixeldichte.
+const view = { sx: 1, sy: 1 };
+const wideQuery = window.matchMedia('(min-width: 1141px)');
+function fitBoard() {
+  const board = document.querySelector('.board');
+  const main = board.parentElement;
+  const cs = getComputedStyle(main);
+  const border = canvas.offsetWidth - canvas.clientWidth;
+  let availW = main.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight) - border;
+  let cssW = Math.min(availW, VIEW_FIT.baseWidth);
+  if (wideQuery.matches) {
+    const aside = document.querySelector('main > aside');
+    availW -= (aside ? aside.offsetWidth : 0) + (parseFloat(cs.columnGap) || 0);
+    const top = canvas.getBoundingClientRect().top + window.scrollY + border / 2;
+    const availH = window.innerHeight - top - border / 2 - VIEW_FIT.panelBelow - VIEW_FIT.bottomGap;
+    cssW = Math.max(canvasSize(availW, availH, 1).cssW, Math.min(availW, VIEW_FIT.baseWidth));
+  }
+  board.style.setProperty('--board-w', `${Math.floor(cssW) + border}px`);
+}
+// Backing-Store an die tatsächliche Anzeigegröße (inkl. Zoom) und Pixeldichte anpassen
+function fitCanvas() {
+  const s = canvasSize(canvas.clientWidth, Infinity, window.devicePixelRatio || 1);
+  if (canvas.width !== s.width || canvas.height !== s.height) { canvas.width = s.width; canvas.height = s.height; }
+  view.sx = s.sx;
+  view.sy = s.sy;
+}
+function relayout() { fitBoard(); fitCanvas(); }
+// Wechsel der Pixeldichte (Fenster auf anderen Monitor, Browser-Zoom): Abfrage gilt nur für den aktuellen Wert, daher neu anmelden
+function watchDpr() {
+  const q = window.matchMedia(`(resolution: ${window.devicePixelRatio || 1}dppx)`);
+  q.addEventListener('change', () => { relayout(); watchDpr(); }, { once: true });
+}
+window.addEventListener('resize', relayout);
+if (typeof ResizeObserver === 'function') new ResizeObserver(fitCanvas).observe(canvas);
+relayout();
+watchDpr();
 // Stil 1: Schrift der Stufenmarken früh laden (Canvas-Text löst das Laden selbst nicht aus)
 if (document.fonts && document.fonts.load) document.fonts.load('14px "Lilita One"').catch(() => {});
 
@@ -563,6 +603,7 @@ function frame(now) {
   // B-116/B-118: Musik der Karte laden/starten und je nach Spielstatus ein- oder ausblenden
   updateMusic({ status: state.status, paused: state.paused, mapId: state.mapId });
   ui.messageTtl -= dt;
+  ctx.setTransform(view.sx, 0, 0, view.sy, 0, 0); // HiDPI: Canvas-Einheiten (VIEW_WIDTH x VIEW_HEIGHT) -> Geräte-px
   renderView(ctx, state, ui);
   hudTimer -= dt;
   if (hudTimer <= 0) { refreshUI(); hudTimer = 0.1; }

@@ -1,4 +1,4 @@
-import { TILE, COLS, ROWS, FRAME_MARGIN, VIEW_WIDTH, VIEW_HEIGHT } from './config.js';
+import { TILE, COLS, ROWS, FRAME_MARGIN, VIEW_WIDTH, VIEW_HEIGHT, VIEW_FIT } from './config.js';
 
 // Reine Eingabe-Logik (kein DOM): Bauen per Touch geht in zwei Schritten.
 // Erster Tipp auf eine Kachel zeigt nur die Vorschau (Reichweite, grün/rot), zweiter Tipp auf dieselbe Kachel baut.
@@ -28,4 +28,19 @@ export function fieldPoint(clientX, clientY, rect) {
   const col = Math.floor(x / TILE);
   const row = Math.floor(y / TILE);
   return { x, y, col, row, inField: col >= 0 && row >= 0 && col < COLS && row < ROWS };
+}
+
+// HiDPI: Größe des Canvas für verfügbaren Platz (availW x availH in CSS-px) und Pixeldichte dpr.
+// Seitenverhältnis VIEW_WIDTH:VIEW_HEIGHT bleibt; dpr wird auf [1, VIEW_FIT.maxDpr] begrenzt.
+// cssW/cssH: Anzeigegröße, width/height: Backing-Store in Geräte-px, sx/sy: Transformation Canvas-Einheit -> Geräte-px.
+export function canvasSize(availW, availH, dpr) {
+  const d = Number.isFinite(dpr) && dpr > 0 ? Math.min(VIEW_FIT.maxDpr, Math.max(1, dpr)) : 1;
+  const w = Number.isFinite(availW) && availW > 0 ? availW : VIEW_WIDTH;
+  const h = availH > 0 ? availH : Infinity; // Infinity = nur die Breite zählt
+  const scale = Math.min(w / VIEW_WIDTH, h / VIEW_HEIGHT);
+  const cssW = Math.max(1, Math.floor(VIEW_WIDTH * scale));
+  const cssH = Math.max(1, Math.round((cssW * VIEW_HEIGHT) / VIEW_WIDTH));
+  const width = Math.round(cssW * d);
+  const height = Math.round(cssH * d);
+  return { cssW, cssH, dpr: d, width, height, sx: width / VIEW_WIDTH, sy: height / VIEW_HEIGHT };
 }
