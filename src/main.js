@@ -534,6 +534,7 @@ function applyRotateHint() {
   const s = rotatePauseStep({ portrait: rotateQuery.matches, paused: state.paused, playing: state.status === 'playing', byHint: pausedByRotate });
   if (s.pause !== null && s.pause !== state.paused) togglePause(state);
   pausedByRotate = s.byHint;
+  $('app').inert = rotateQuery.matches; // Tastaturfokus nicht unter dem Hinweis
   refreshUI();
 }
 rotateQuery.addEventListener('change', applyRotateHint);

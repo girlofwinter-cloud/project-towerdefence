@@ -174,10 +174,12 @@ test('B-137 Drehen 844x390 -> 390x844 -> zurück: Spiel pausiert mit Hinweis und
   await page.waitForSelector('#rotate-hint', { state: 'visible' });
   // Media-Ereignis kommt nach dem Neuzeichnen: auf die Pause warten (Zeitüberschreitung = Fehler)
   await page.waitForFunction(() => window.__game().paused === true, null, { timeout: 3000 });
+  assert.equal(await page.evaluate(() => document.getElementById('app').inert), true, 'Spielbereich unter dem Hinweis inert');
   const t0 = await page.evaluate(() => window.__game().time);
   await page.setViewportSize({ width: 844, height: 390 });
   await page.waitForSelector('#rotate-hint', { state: 'hidden' });
   await page.waitForFunction(() => window.__game().paused === false, null, { timeout: 3000 }); // läuft weiter
+  assert.equal(await page.evaluate(() => document.getElementById('app').inert), false, 'nach dem Drehen wieder bedienbar');
   await page.waitForFunction((t) => window.__game().time > t, t0);
   // Spieler pausiert selbst: nach dem Drehen bleibt die Pause
   await page.locator('#pause').tap();

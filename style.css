@@ -423,11 +423,14 @@ body.on-start .top-buttons { z-index: 41; } /* Ton und Hilfe bleiben erreichbar 
 /* Querformat: Feld (20 x 14) in voller Höhe mittig, Lage wie im Vollbild aus --u. Links und rechts malt #backdrop die Landschaft
    bis an den Rand (main.js, wie die Seitenzonen im Vollbild). Bedienung schwebt in den Ecken, außerhalb der Safe-Area (--safe-*). */
 @media (max-height: 519.98px) and (orientation: landscape) {
-  :root { --u: min(100vh / var(--field-h), (100vw - 224px) / var(--field-w)); --side: calc((100vw - var(--fw)) / 2);
-    --safe-l: max(8px, env(safe-area-inset-left, 0px)); --safe-r: max(8px, env(safe-area-inset-right, 0px));
-    --safe-t: max(8px, env(safe-area-inset-top, 0px)); --safe-b: max(8px, env(safe-area-inset-bottom, 0px)); }
+  /* --col: Breite der Bedienung je Seite (Knöpfe oben rechts 48 + 8 + 48, HUD höchstens so breit). Das Feld wird nur so breit,
+     dass neben ihm je Seite Safe-Area plus --col frei bleibt (Bedienung überdeckt das Feld nie), sonst füllt es die Höhe. */
+  :root { --safe-l: max(8px, env(safe-area-inset-left, 0px)); --safe-r: max(8px, env(safe-area-inset-right, 0px));
+    --safe-t: max(8px, env(safe-area-inset-top, 0px)); --safe-b: max(8px, env(safe-area-inset-bottom, 0px)); --col: 104px;
+    --u: min(100vh / var(--field-h), (100vw - 2 * (max(var(--safe-l), var(--safe-r)) + var(--col))) / var(--field-w));
+    --side: calc((100vw - var(--fw)) / 2); }
   /* Oben links: HUD-Plakette Gold, Welle, Leben untereinander (Zahlen num-compact 22 px) */
-  .hud { left: var(--safe-l); top: var(--safe-t); height: 124px; min-width: 92px; flex-direction: column; align-items: flex-start; justify-content: space-evenly; gap: 0; padding: 0 10px 0 8px; }
+  .hud { left: var(--safe-l); top: var(--safe-t); height: 124px; min-width: 92px; max-width: var(--col); flex-direction: column; align-items: flex-start; justify-content: space-evenly; gap: 0; padding: 0 10px 0 8px; }
   .hud .sep { display: none; }
   .hud .num { font-size: 22px; line-height: 24px; white-space: nowrap; } .hud .num small { font-size: 15px; }
   .hud-ico { width: 22px; height: 22px; } #gold, #wave, #lives { min-width: 0; }
@@ -442,7 +445,7 @@ body.on-start .top-buttons { z-index: 41; } /* Ton und Hilfe bleiben erreichbar 
   .ab { width: 56px; height: 56px; } .ab .cap { display: none; }
   /* Unten rechts: runder Wellenknopf mit Fortschritt (size-wave-round, schmaler, wenn die Seite knapp ist) */
   .wave-row { left: auto; right: var(--safe-r); bottom: var(--safe-b); width: auto; height: auto; display: block; }
-  .wave-btn { --d: min(104px, calc(var(--side) - var(--safe-r) - 4px)); width: var(--d); height: var(--d); min-width: 0; padding: 0 10px; border-radius: 50%;
+  .wave-btn { --d: min(104px, calc(var(--side) - var(--safe-r))); width: var(--d); height: var(--d); min-width: 0; padding: 0 10px; border-radius: 50%;
     font-size: 18px; line-height: 1.05; white-space: normal; }
   .wave-btn::after { left: 18px; bottom: 14px; width: calc((100% - 36px) * var(--wave-fill, 0)); }
   #wave-preview, .map-pick { display: none; }
@@ -450,7 +453,7 @@ body.on-start .top-buttons { z-index: 41; } /* Ton und Hilfe bleiben erreichbar 
   .rbtn { width: 48px; height: 48px; left: -24px; top: -24px; } .rbtn > svg { width: 30px; height: 30px; }
   .rbtn-small { width: 44px; height: 44px; left: -22px; top: -22px; }
   .ring-tower .ring-info, .ring-tower.info-left .ring-info { position: fixed; left: auto; right: var(--safe-r); top: calc(var(--safe-t) + 112px); z-index: 16;
-    width: min(130px, calc(var(--side) - var(--safe-r) - 4px)); max-height: calc(100vh - var(--safe-t) - var(--safe-b) - 112px - 112px); overflow: hidden; padding: 8px; text-align: center; }
+    width: min(130px, calc(var(--side) - var(--safe-r))); max-height: calc(100vh - var(--safe-t) - var(--safe-b) - 112px - 112px); overflow: hidden; padding: 8px; text-align: center; }
   .ring-info h3 { font-size: 15px; } .ring-info p { font-size: 12px; line-height: 1.25; } #ti-special { display: none; }
   #message { max-width: calc(var(--fw) - 20px); white-space: normal; text-align: center; }
   #overlay { position: fixed; inset: 0; z-index: 30; background: rgba(16,28,14,.78); overflow: auto; }
