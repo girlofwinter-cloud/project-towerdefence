@@ -5,3 +5,5 @@ node_modules/
 # Audit-Log entsteht lokal bei jeder Session; das Entscheidungsbuch docs/LEDGER.md wird dagegen eingecheckt.
 .claude/ledger/
 .claude/settings.local.json
+# Ablagen des Browser-Werkzeugs (Playwright MCP), entstehen lokal
+.playwright-mcp/
