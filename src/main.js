@@ -1,8 +1,8 @@
 // Verbindet Spiel-Logik, Rendering und Bedienung (DOM, Maus, Tastatur).
-import { TILE, FRAME_MARGIN, VIEW_WIDTH, VIEW_HEIGHT, PAINTED_STYLE, FIGURE_STYLE, SHOP_CARD, TOWER_TYPES, ENEMY_TYPES, MAX_WAVES, MAPS, SPEED_STEPS, TARGET_MODES, TARGET_MODE_NAMES, MAX_SUBSTEP, LOW_LIVES, ABILITIES, ICON, COIN_BURST, waveSummary, meteorText } from './config.js';
+import { TILE, FRAME_MARGIN, VIEW_WIDTH, VIEW_HEIGHT, PAINTED_STYLE, FIGURE_STYLE, SHOP_CARD, TOWER_TYPES, ENEMY_TYPES, MAX_WAVES, MAPS, SPEED_STEPS, TARGET_MODES, MAX_SUBSTEP, LOW_LIVES, ABILITIES, ICON, COIN_BURST, waveSummary, meteorText } from './config.js';
 import {
   createGame, stepGame, togglePause, buildTower, upgradeTower, sellTower, setTargetMode, startWave,
-  useAbility, abilityCooldownLeft, canBuild, towerAt, towerStats, upgradeCost, sellValue,
+  useAbility, abilityCooldownLeft, canBuild, towerAt, towerStats,
 } from './game.js';
 import { renderView, drawTower, paintedStatus, paintedImage, setPaintedExtent, flagBoxes } from './render.js';
 import { abilityView, overheatNote, startButtonView, waveProgress } from './hud.js';
@@ -12,6 +12,7 @@ import { createSoundTracker, collectSounds, loadSoundOn, saveSoundOn } from './s
 import { unlockAudio, setSoundOn, playSound, updateMusic } from './audio.js';
 import { loadProgress, saveProgress, recordResult, isUnlocked, mapProgress, starText, resultLines, startMap, mapAfterResult, starsFor, MAP_ORDER } from './progress.js';
 import { mountStartScreen, endView, starsHtml, STAR_COUNT } from './screens.js';
+import { ringRadius, tileCenterPx, ringCenter, infoOnLeft, pickTower, buildRingView, towerRingView } from './ring-menu.js';
 
 const canvas = document.getElementById('game');
 canvas.width = VIEW_WIDTH; // Stil 1: Feld + Rand (Wald, Burg, Fahne); HiDPI-Größe setzt fitCanvas()
@@ -105,7 +106,7 @@ measureExtent();
 compactQuery.addEventListener('change', measureExtent);
 
 const $ = (id) => document.getElementById(id);
-const ui = { hudDim: false, buildType: null, selectedTowerId: null, hover: null, pending: null, aiming: false, hoverPx: null, speed: SPEED_STEPS[0], message: '', messageKind: 'error', messageTtl: 0 };
+const ui = { hudDim: false, buildType: null, selectedTowerId: null, ring: null, ringPreview: null, upgradeHover: false, upgradePreview: null, hover: null, pending: null, aiming: false, hoverPx: null, speed: SPEED_STEPS[0], message: '', messageKind: 'error', messageTtl: 0 };
 let mapId;
 let state = createGame();
 
@@ -190,12 +191,16 @@ function setHtml(el, html) {
   el.innerHTML = html;
 }
 const COIN = () => iconHtml('gold', 'inline', 'Gold');
-// Knopf im Turm-Panel: "Verbessern (38 Gold) (U)" am Desktop, auf dem Handy zweizeilig ohne Klammern und Kürzel
-const actionHtml = (label, cost, key) => `<span class="act-label">${label}</span> `
-  + `<span class="act-cost"><span class="paren">(</span>${cost}<span class="paren">)</span></span> <span class="key">(${key})</span>`;
+// C4 Turm-Ring: Symbole der Knöpfe (40 x 40, Menue-Ring-Turm.md)
+const RING_SVG = {
+  upgrade: '<svg width="40" height="40" viewBox="0 0 40 40" aria-hidden="true"><path d="M10 22 L20 11 L30 22 M10 31 L20 20 L30 31" fill="none" stroke="#2b1a10" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/><path d="M10 22 L20 11 L30 22 M10 31 L20 20 L30 31" fill="none" stroke="#fff3d2" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  max: '<svg width="40" height="40" viewBox="0 0 40 40" aria-hidden="true"><path d="M20 5 L24.5 15 L35 16 L27 23 L29.5 34 L20 28.5 L10.5 34 L13 23 L5 16 L15.5 15 Z" fill="#f2c14e" stroke="#2b1a10" stroke-width="3" stroke-linejoin="round"/></svg>',
+  sell: '<svg width="40" height="40" viewBox="0 0 40 40" aria-hidden="true"><circle cx="18" cy="22" r="12" fill="#f2c14e" stroke="#2b1a10" stroke-width="3"/><circle cx="18" cy="22" r="6.5" fill="none" stroke="#b9851d" stroke-width="2.5"/><path d="M26 9 H36" stroke="#2b1a10" stroke-width="7" stroke-linecap="round"/><path d="M26 9 H36" stroke="#fff3d2" stroke-width="3" stroke-linecap="round"/></svg>',
+  target: '<svg width="40" height="40" viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="11" fill="none" stroke="#2b1a10" stroke-width="7"/><circle cx="20" cy="20" r="11" fill="none" stroke="#fff3d2" stroke-width="3"/><path d="M20 4 V12 M20 28 V36 M4 20 H12 M28 20 H36" stroke="#2b1a10" stroke-width="7" stroke-linecap="round"/><path d="M20 4 V12 M20 28 V36 M4 20 H12 M28 20 H36" stroke="#fff3d2" stroke-width="3" stroke-linecap="round"/><circle cx="20" cy="20" r="3" fill="#d6483a"/></svg>',
+};
 
-// ---------- Turm-Leiste ----------
-// Mini-Turm als Kartenbild: nutzt dieselbe Zeichenfunktion wie das Spielfeld (kein extra Grafik-Aufwand).
+// ---------- C4 Bau-Ring (Knöpfe je Turmtyp) ----------
+// Mini-Turm als Knopfbild: nutzt dieselbe Zeichenfunktion wie das Spielfeld (kein extra Grafik-Aufwand).
 const ICON_SIZE = 48;
 function drawTowerIcon(cv, type) {
   const c = cv.getContext('2d');
@@ -212,18 +217,28 @@ const shop = $('shop');
 for (const [k, v] of Object.entries(SHOP_CARD)) {
   if (typeof v === 'string') shop.style.setProperty(`--card-${k.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`)}`, v);
 }
-for (const [type, def] of Object.entries(TOWER_TYPES)) {
+for (const v of buildRingView(0)) {
+  const { type } = v;
+  const def = TOWER_TYPES[type];
   const btn = document.createElement('button');
-  btn.className = 'tower-btn';
+  btn.className = 'tower-btn ring-btn';
   btn.dataset.type = type;
+  btn.setAttribute('role', 'menuitem');
+  btn.style.setProperty('--a', `${v.angle}deg`);
   btn.innerHTML = `<canvas class="t-icon" width="${ICON_SIZE}" height="${ICON_SIZE}"></canvas>
-    <span class="t-name">${def.name} <kbd class="key">${def.key}</kbd></span>
-    <span class="t-cost">${def.cost} ${COIN()}</span>
+    <span class="t-name">${def.name}</span>
+    <span class="t-cost">${def.cost} ${COIN()}</span><kbd class="key">${def.key}</kbd>
     <span class="t-desc">${def.description}</span>`;
-  // Tooltip mit Name, Preis und Fähigkeit (Übergang bis Block D: die runden Knöpfe zeigen nur Bild und Preis)
+  // Tooltip mit Name, Preis und Fähigkeit (die runden Knöpfe zeigen nur Bild und Preis)
   btn.title = `${def.name} (${def.cost} Gold): ${def.description}${def.special ? ` ${def.special.text}` : ''}`;
   drawTowerIcon(btn.querySelector('.t-icon'), type);
-  btn.addEventListener('click', () => selectBuild(type));
+  btn.addEventListener('click', () => buildFromRing(type));
+  // Vorschau: Reichweite und Geistturm dieses Typs auf der Ringkachel (render.js liest ui.ringPreview)
+  const preview = (on) => { ui.ringPreview = on ? type : (ui.ringPreview === type ? null : ui.ringPreview); };
+  btn.addEventListener('pointerenter', () => preview(true));
+  btn.addEventListener('pointerleave', () => preview(false));
+  btn.addEventListener('focus', () => preview(true));
+  btn.addEventListener('blur', () => preview(false));
   shop.appendChild(btn);
 }
 
@@ -266,7 +281,53 @@ function selectBuild(type) {
   ui.buildType = ui.buildType === type ? null : type;
   ui.selectedTowerId = null;
   ui.pending = null;
+  ui.ring = null;
   refreshUI();
+}
+
+// ---------- C4 Ringmenü ----------
+const stage = canvas.parentElement;
+function closeRings() {
+  Object.assign(ui, { ring: null, ringPreview: null, selectedTowerId: null, upgradeHover: false, upgradePreview: null, pending: null });
+}
+function openBuildRing(col, row) {
+  Object.assign(ui, { ring: { col, row }, ringPreview: null, selectedTowerId: null, buildType: null, pending: null });
+}
+// Bau-Ring: Turm des Typs auf der Ringkachel bauen. Zu teuer: Meldung, Ring bleibt offen.
+function buildFromRing(type) {
+  if (!ui.ring) return;
+  const res = buildTower(state, type, ui.ring.col, ui.ring.row);
+  if (!res.ok) flash(res.reason);
+  else {
+    if (res.tower.overheated) flash(`${overheatNote(res.tower)} (neben Lava)`, 'info'); // B-030
+    ui.ring = null;
+    ui.ringPreview = null;
+    if (lastPointerType !== 'mouse') ui.hover = null;
+  }
+  refreshUI();
+}
+// Ring an die Kachel (col,row) legen: ganz im sichtbaren Teil des Canvas, nicht über HUD-Leiste und runden Knöpfen.
+function placeRing(el, col, row) {
+  const cr = canvas.getBoundingClientRect();
+  if (!(cr.width > 0)) return;
+  const sr = stage.getBoundingClientRect();
+  const clips = getComputedStyle(stage).overflow !== 'visible';
+  const bounds = {
+    left: Math.max(cr.left, clips ? sr.left : -Infinity, 0), top: Math.max(cr.top, clips ? sr.top : -Infinity, 0),
+    right: Math.min(cr.right, clips ? sr.right : Infinity, window.innerWidth), bottom: Math.min(cr.bottom, clips ? sr.bottom : Infinity, window.innerHeight),
+  };
+  const R = ringRadius((cr.width / VIEW_WIDTH) * TILE, compactQuery.matches);
+  const t = tileCenterPx(col, row, cr.width);
+  const p = { x: cr.left + t.x, y: cr.top + t.y };
+  const avoid = [$('hud-bar'), document.querySelector('.top-buttons')].map((e) => e?.getBoundingClientRect()).filter((r) => r && r.width > 0);
+  const c = ringCenter(p, R, bounds, avoid);
+  const px = (v) => `${Math.round(v * 10) / 10}px`;
+  el.style.setProperty('--rx', px(c.x - sr.left + stage.scrollLeft - stage.clientLeft));
+  el.style.setProperty('--ry', px(c.y - sr.top + stage.scrollTop - stage.clientTop));
+  el.style.setProperty('--R', px(R));
+  el.style.setProperty('--dx', px(p.x - c.x));
+  el.style.setProperty('--dy', px(p.y - c.y));
+  el.classList.toggle('info-left', infoOnLeft(c.x, bounds.left, bounds.right));
 }
 
 function flash(msg, kind = 'error') {
@@ -320,19 +381,22 @@ canvas.addEventListener('click', (ev) => {
     return;
   }
   const { col, row, inField } = tileFromEvent(ev);
-  if (!inField) { // Klick in den Rand: nichts bauen, nur Auswahl aufheben
-    ui.selectedTowerId = null;
-    ui.pending = null;
+  if (!inField) { // Klick in den Rand: nichts bauen, nur Auswahl und Ring schließen
+    closeRings();
     refreshUI();
     return;
   }
-  const existing = towerAt(state, col, row);
+  const touch = lastPointerType !== 'mouse';
+  // C4: ohne Baumodus trifft der Klick auch die Turmfigur (ragt über die Kachel nach oben)
+  const pt = pointFromEvent(ev);
+  const existing = ui.buildType ? towerAt(state, col, row) : pickTower(state.towers, pt.x, pt.y);
   if (existing) {
     ui.selectedTowerId = existing.id;
     ui.buildType = null;
     ui.pending = null;
+    ui.ring = null;
+    ui.ringPreview = null;
   } else if (ui.buildType) {
-    const touch = lastPointerType !== 'mouse';
     const step = buildTapStep(ui.pending, col, row, touch);
     ui.pending = step.pending;
     if (step.action === 'preview') {
@@ -346,8 +410,17 @@ canvas.addEventListener('click', (ev) => {
       else if (res.tower.overheated) flash(`${overheatNote(res.tower)} (neben Lava)`, 'info'); // B-030
       if (touch) ui.hover = null;
     }
+  } else if (ui.selectedTowerId !== null) {
+    closeRings(); // Turm-Ring offen: Klick daneben schließt
+  } else if (ui.ring && (touch || (ui.ring.col === col && ui.ring.row === row))) {
+    closeRings(); // Touch: Tipp daneben schließt; Maus: Klick auf dieselbe Kachel schließt
   } else {
-    ui.selectedTowerId = null;
+    const check = state.status === 'playing' ? canBuild(state, col, row) : { ok: false, reason: '' };
+    if (check.ok) openBuildRing(col, row); // Maus: anderer freier Platz -> Ring springt dorthin
+    else {
+      closeRings();
+      if (check.reason) flash(check.reason);
+    }
   }
   refreshUI();
 });
@@ -355,8 +428,17 @@ canvas.addEventListener('contextmenu', (ev) => {
   ev.preventDefault();
   ui.aiming = false;
   ui.buildType = null;
-  ui.selectedTowerId = null;
-  ui.pending = null;
+  closeRings();
+  refreshUI();
+});
+// Rechtsklick auf einen Ring schließt ihn ebenfalls; Tipp/Klick außerhalb von Ring und Spielfeld schließt
+for (const el of [shop, $('tower-info')]) {
+  el.addEventListener('contextmenu', (ev) => { ev.preventDefault(); closeRings(); refreshUI(); });
+}
+document.addEventListener('pointerdown', (ev) => {
+  if (!ui.ring && ui.selectedTowerId === null) return;
+  if (ev.target === canvas || ev.target.closest?.('.ring, #test-panel')) return;
+  closeRings();
   refreshUI();
 });
 
@@ -395,15 +477,13 @@ $('pause').addEventListener('click', doTogglePause);
 $('upgrade').addEventListener('click', doUpgrade);
 $('sell').addEventListener('click', doSell);
 $('target-mode').addEventListener('click', doCycleTarget);
-// Nach dem Schließen geht der Fokus auf die Shop-Karte des eben gezeigten Turmtyps: der ×-Knopf verschwindet,
-// sonst fiele der Fokus auf <body> und Tab begänne wieder oben. Die Karte gehört zum Turm und liegt in der
-// Tab-Reihenfolge. Das Spielfeld (Canvas) wäre nur mit tabindex fokussierbar und zeigte dann bei jedem
-// Tastendruck einen Fokusrahmen.
+// C4: Maus über bzw. Fokus auf Verbessern -> Canvas zeigt die Reichweite der nächsten Stufe (refreshUI setzt ui.upgradePreview)
+for (const [evName, on] of [['pointerenter', true], ['pointerleave', false], ['focus', true], ['blur', false]]) {
+  $('upgrade').addEventListener(evName, () => { ui.upgradeHover = on; refreshUI(); });
+}
 $('ti-close').addEventListener('click', () => {
-  const type = state.towers.find((t) => t.id === ui.selectedTowerId)?.type;
-  ui.selectedTowerId = null;
+  closeRings();
   refreshUI();
-  shop.querySelector(`.tower-btn[data-type="${type}"]`)?.focus({ preventScroll: true });
 });
 // Handy-Leiste (fest unten): echte Höhe als --tower-info-h, damit main genug Platz darunter lässt (auch bei großer Schrift)
 const towerInfo = $('tower-info');
@@ -521,19 +601,22 @@ function restart() {
   state = createGame({ mapId });
   resultSaved = false;
   resultText = [];
-  Object.assign(ui, { buildType: null, selectedTowerId: null, pending: null, aiming: false, hoverPx: null, speed: SPEED_STEPS[0] });
+  Object.assign(ui, { buildType: null, selectedTowerId: null, pending: null, aiming: false, hoverPx: null, speed: SPEED_STEPS[0], ring: null, ringPreview: null, upgradeHover: false, upgradePreview: null });
   refreshUI();
 }
 
 window.addEventListener('keydown', (ev) => {
   if (startScreen.handleKey(ev)) return; // C5: Startbildschirm offen
   const key = ev.key.toLowerCase();
+  // Enter/Leertaste auf einem Ringknopf löst den Knopf aus (nicht den Wellenstart)
+  if ((key === ' ' || key === 'enter') && ev.target.closest?.('.ring')) return;
   const type = Object.keys(TOWER_TYPES).find((t) => TOWER_TYPES[t].key === key);
   const ability = Object.keys(ABILITIES).find((a) => ABILITIES[a].key === key);
-  if (type) selectBuild(type);
+  if (type && ui.ring) buildFromRing(type); // C4: Bau-Ring offen -> diesen Typ auf der Ringkachel bauen
+  else if (type) selectBuild(type);
   else if (ability) doAbility(ability);
   else if (key === ' ') { ev.preventDefault(); if (!ev.repeat) doStartWave(); } // B-005: gehaltene Taste startet nicht mehrfach
-  else if (key === 'escape') { ui.aiming = false; ui.buildType = null; ui.selectedTowerId = null; ui.pending = null; refreshUI(); }
+  else if (key === 'escape') { ui.aiming = false; ui.buildType = null; closeRings(); refreshUI(); }
   else if (key === 'u') doUpgrade();
   else if (key === 's') doSell();
   else if (key === 't') doCycleTarget();
@@ -543,8 +626,6 @@ window.addEventListener('keydown', (ev) => {
 });
 
 // ---------- HUD ----------
-// Übergang bis Block D: Turm-Panel schwebt unten über dem Feld, bei Türmen ab dieser Zeile oben (sonst verdeckt es den Turm)
-const TOWER_INFO_TOP_ROW = 9;
 function refreshUI() {
   if (state.status !== 'playing' || state.paused) ui.aiming = false; // Zielmodus nur im laufenden Spiel
   $('gold').textContent = state.gold.toLocaleString('de-DE');
@@ -601,33 +682,39 @@ function refreshUI() {
     }
   }
 
-  for (const btn of shop.children) {
-    const def = TOWER_TYPES[btn.dataset.type];
-    btn.classList.toggle('active', ui.buildType === btn.dataset.type);
-    btn.classList.toggle('poor', state.gold < def.cost);
+  // C4 Bau-Ring: nur im laufenden Spiel und solange die Kachel frei ist (z. B. nach Neustart zu)
+  if (ui.ring && (state.status !== 'playing' || !canBuild(state, ui.ring.col, ui.ring.row).ok)) { ui.ring = null; ui.ringPreview = null; }
+  shop.hidden = !ui.ring;
+  for (const v of buildRingView(state.gold)) {
+    const btn = shop.querySelector(`.tower-btn[data-type="${v.type}"]`);
+    btn.classList.toggle('active', ui.buildType === v.type);
+    btn.classList.toggle('poor', v.poor);
+    btn.setAttribute('aria-disabled', String(v.poor));
+    btn.setAttribute('aria-label', v.label);
   }
+  if (ui.ring) placeRing(shop, ui.ring.col, ui.ring.row);
 
+  // C4 Turm-Ring (Handy: feste Leiste unten)
   const t = state.towers.find((x) => x.id === ui.selectedTowerId);
   $('tower-info').hidden = !t;
-  if (t) $('tower-info').classList.toggle('ti-top', t.row >= TOWER_INFO_TOP_ROW);
+  ui.upgradePreview = null;
   if (t) {
     const s = towerStats(t, state.modifiers);
-    const up = upgradeCost(t);
-    $('ti-name').textContent = `${s.name} (Stufe ${t.level})`;
+    const v = towerRingView(t, state.gold, state.modifiers);
+    $('ti-name').textContent = v.name;
     const heat = overheatNote(t); // B-030: steht in der Werte-Zeile, damit es auch auf dem Handy sichtbar bleibt
     $('ti-stats').textContent = `Schaden ${Math.round(s.damage)} · Reichweite ${s.range.toFixed(1)} · ${(1 / s.rate).toFixed(1)} Schuss/s${heat ? ` · ${heat}` : ''}`;
     $('ti-special').textContent = s.special?.text ?? '';
-    // Knöpfe (B-056): Beschriftung und Preis als eigene Zeilen-Teile, Klammern und Kürzel
-    // fallen auf dem Handy weg (CSS); der zugängliche Name bleibt vollständig (aria-label).
-    const sell = sellValue(t);
-    const mode = TARGET_MODE_NAMES[t.targetMode];
-    setHtml($('upgrade'), up === null ? 'Max. Stufe' : actionHtml('Verbessern', `${up} ${COIN()}`, 'U'));
-    $('upgrade').setAttribute('aria-label', up === null ? 'Max. Stufe' : `Verbessern für ${up} Gold (U)`);
-    $('upgrade').disabled = up === null || state.gold < up;
-    setHtml($('target-mode'), `<span class="act-label">Ziel: ${mode}</span> <span class="key">(T)</span>`);
-    $('target-mode').setAttribute('aria-label', `Ziel: ${mode} (T)`);
-    setHtml($('sell'), actionHtml('Verkaufen', `+${sell} ${COIN()}`, 'S'));
-    $('sell').setAttribute('aria-label', `Verkaufen für ${sell} Gold (S)`);
+    // Knöpfe: Symbol und Preis bzw. Regel; der zugängliche Name bleibt vollständig (aria-label mit Kürzel)
+    setHtml($('upgrade'), v.upgrade.max ? `${RING_SVG.max}<span class="cap">Max.</span>` : `${RING_SVG.upgrade}<span class="cap act-cost">${v.upgrade.cost} ${COIN()}</span>`);
+    $('upgrade').setAttribute('aria-label', v.upgrade.label);
+    $('upgrade').disabled = v.upgrade.disabled;
+    setHtml($('target-mode'), `${RING_SVG.target}<span class="cap">${v.target.mode}</span>`);
+    $('target-mode').setAttribute('aria-label', v.target.label);
+    setHtml($('sell'), `${RING_SVG.sell}<span class="cap act-cost">+${v.sell.value} ${COIN()}</span>`);
+    $('sell').setAttribute('aria-label', v.sell.label);
+    if (ui.upgradeHover) ui.upgradePreview = v.upgradeRange;
+    placeRing($('tower-info'), t.col, t.row);
   }
 
   $('message').textContent = ui.messageTtl > 0 ? ui.message : '';

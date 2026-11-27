@@ -14,3 +14,38 @@ export async function enterGame(page, mapId) {
   await page.locator(mapId ? `.map-card[data-map="${mapId}"]` : '.map-card.current').click();
   await page.waitForSelector('#start-screen', { state: 'hidden' });
 }
+
+// C4 Ringmenü: Klick bzw. Tipp auf die Kachel (Mitte jedes Mal neu gemessen), touch = Tipp statt Mausklick.
+export async function clickTile(page, col, row, { touch = false } = {}) {
+  const box = await page.locator('#game').boundingBox();
+  const at = tileCenter(box, col, row);
+  if (touch) await page.touchscreen.tap(...at);
+  else await page.mouse.click(...at);
+}
+
+// Bau-Ring auf der freien Kachel öffnen und warten, bis er sichtbar ist.
+export async function openRing(page, col, row, opts) {
+  await clickTile(page, col, row, opts);
+  await page.waitForSelector('#shop:not([hidden]) .tower-btn');
+  await ringSettled(page);
+}
+
+// Einblend-Animation der Ringknöpfe (0,14 s) abwarten, damit Maße und Klickziele stimmen
+export async function ringSettled(page) {
+  await page.waitForFunction(() => document.getAnimations().every((a) => a.playState !== 'running' || !a.effect?.target?.closest?.('.ring')));
+}
+
+// Turm über den Bau-Ring bauen: Kachel anklicken, dann den Turmknopf im Ring (ersetzt Turmleiste + Klick aufs Feld).
+export async function build(page, type, col, row, opts = {}) {
+  await openRing(page, col, row, opts);
+  const btn = page.locator(`#shop .tower-btn[data-type="${type}"]`);
+  if (opts.touch) await btn.tap();
+  else await btn.click();
+}
+
+// Turm-Ring eines Turms öffnen (Klick auf seine Kachel).
+export async function openTower(page, col, row, opts) {
+  await clickTile(page, col, row, opts);
+  await page.waitForSelector('#tower-info:not([hidden])');
+  await ringSettled(page);
+}

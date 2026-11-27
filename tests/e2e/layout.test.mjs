@@ -45,7 +45,7 @@ for (const [width, height] of [[1280, 800], [1366, 768], [1440, 900]]) {
       const c = document.getElementById('game').getBoundingClientRect();
       const inset = c.width * frame / view; // Feld = Canvas-Box, je Seite um den Rand eingerückt
       const field = { left: c.left + inset, top: c.top + inset, right: c.right - inset, bottom: c.bottom - inset };
-      const boxes = Object.fromEntries(['#hud-bar', '.top-buttons', '#abilities', '#start-wave', '#shop', '.map-pick'].map((s) => {
+      const boxes = Object.fromEntries(['#hud-bar', '.top-buttons', '#abilities', '#start-wave', '.map-pick'].map((s) => {
         const b = document.querySelector(s).getBoundingClientRect();
         return [s, { left: b.left, top: b.top, right: b.right, bottom: b.bottom }];
       }));

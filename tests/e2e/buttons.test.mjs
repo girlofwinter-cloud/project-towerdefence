@@ -4,7 +4,7 @@ import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 import { createServer } from '../../scripts/serve.mjs';
-import { enterGame } from './tile.mjs';
+import { enterGame, openRing } from './tile.mjs';
 
 const require = createRequire(import.meta.url);
 const { chromium } = require('playwright');
@@ -65,10 +65,11 @@ test('Desktop 1280x800: runde Fähigkeitsknöpfe (48-60 px), Tastenkürzel sicht
   await ctx.close();
 });
 
-// B-096: Pause-Banner und Turmkarten-Kürzel je nach Gerät
+// B-096: Pause-Banner und Turmkarten-Kürzel je nach Gerät (C4: Kürzel stehen im Bau-Ring, daher Ring an (0,0) öffnen)
 async function pauseBannerTexts(page) {
   await page.locator('#pause').click();
   await page.waitForSelector('#pause-banner:not([hidden])');
+  await openRing(page, 0, 0);
   return {
     text: await page.locator('#pause-banner').innerText(),
     kbdVisible: await page.$$eval('.tower-btn kbd', (els) => els.filter((e) => e.offsetParent !== null).length),

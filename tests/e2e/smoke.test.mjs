@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 import { createServer } from '../../scripts/serve.mjs';
 import { TOWER_TYPES, VIEW_WIDTH, VIEW_HEIGHT } from '../../src/config.js';
-import { tileCenter, enterGame } from './tile.mjs';
+import { tileCenter, enterGame, build, openRing } from './tile.mjs';
 
 const require = createRequire(import.meta.url);
 const { chromium } = require('playwright');
@@ -36,21 +36,13 @@ test('Seite lädt ohne Fehler', async () => {
   assert.deepEqual(errors, []);
 });
 
-test('Desktop 1280x800: alle Turm-Buttons ohne Scrollen sichtbar', async () => {
+// C4: Turmleiste entfällt, Bauen über den Ring (Ring an den Feldecken: tests/e2e/ring.test.mjs)
+test('Turm bauen per Klick (Bau-Ring)', async () => {
   await page.setViewportSize({ width: 1280, height: 800 });
-  const btns = page.locator('#shop .tower-btn');
-  const n = await btns.count();
-  for (let i = 0; i < n; i++) assert.equal(await btns.nth(i).isVisible(), true);
-  const box = await btns.nth(n - 1).boundingBox();
-  assert.ok(box.y + box.height <= 800, `Letzter Turm endet bei ${box.y + box.height}`);
-});
-
-test('Turm bauen per Klick', async () => {
   const goldBefore = await page.evaluate(() => window.__game().gold);
-  await page.locator('.tower-btn[data-type="arrow"]').click();
-  // Feld (0,0) ist frei: Klick in die Mitte der ersten Kachel
-  const box = await page.locator('#game').boundingBox();
-  await page.mouse.click(...tileCenter(box, 0, 0));
+  // Feld (0,0) ist frei: Klick in die Mitte der ersten Kachel öffnet den Ring, Knopf baut
+  await build(page, 'arrow', 0, 0);
+  assert.ok(await page.locator('#shop').isHidden(), 'Ring nach dem Bauen zu');
   const s = await page.evaluate(() => ({ gold: window.__game().gold, towers: window.__game().towers.length }));
   assert.equal(s.towers, 1);
   assert.equal(s.gold, goldBefore - 50);
@@ -91,7 +83,7 @@ test('B-005: Leertaste startet früh, gehaltene Taste (Wiederholung) startet nic
   assert.deepEqual(errors, []);
 });
 
-test('Handy: Bauen per Touch in zwei Schritten, Zoom vergrößert das Spielfeld', async () => {
+test('Handy: Bauen per Touch in zwei Schritten (Tipp Kachel -> Ring, Tipp Knopf), Zoom vergrößert das Spielfeld', async () => {
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, deviceScaleFactor: 2 });
   const m = await ctx.newPage();
   const mErrors = [];
@@ -99,15 +91,13 @@ test('Handy: Bauen per Touch in zwei Schritten, Zoom vergrößert das Spielfeld'
   await m.goto(url);
   await enterGame(m);
   try {
-    await m.locator('.tower-btn[data-type="arrow"]').tap();
     const box = await m.locator('#game').boundingBox();
-    const at = (col, row) => tileCenter(box, col, row);
-    // Feld (0,0) ist frei. Erster Tipp: nur Vorschau, es wird nichts gebaut.
-    await m.touchscreen.tap(...at(0, 0));
+    // Feld (0,0) ist frei. Erster Tipp: nur der Ring öffnet, es wird nichts gebaut.
+    await openRing(m, 0, 0, { touch: true });
     assert.equal(await m.evaluate(() => window.__game().towers.length), 0);
-    assert.deepEqual(await m.evaluate(() => ({ c: window.__ui.hover.col, r: window.__ui.hover.row })), { c: 0, r: 0 });
-    // Zweiter Tipp auf dieselbe Kachel baut.
-    await m.touchscreen.tap(...at(0, 0));
+    assert.deepEqual(await m.evaluate(() => window.__ui.ring), { col: 0, row: 0 });
+    // Zweiter Tipp auf den Knopf baut.
+    await m.locator('#shop .tower-btn[data-type="arrow"]').tap();
     assert.equal(await m.evaluate(() => window.__game().towers.length), 1);
     // Zoom: Spielfeld wird deutlich breiter als der Bildschirm und liegt in einem scrollbaren Rahmen.
     await m.locator('#zoom').tap();
@@ -130,7 +120,6 @@ test('Stil 1: gemalter Hintergrund wird gerastert; Klick in den Rand baut nichts
     const cv = await p.evaluate(() => { const c = document.getElementById('game'); return [c.width, c.height, c.clientWidth, c.clientHeight]; });
     assert.equal(cv[0], cv[2]);
     assert.ok(Math.abs(cv[1] - cv[3]) <= 1 && Math.abs(cv[0] / cv[1] - VIEW_WIDTH / VIEW_HEIGHT) < 0.01, `Canvas ${cv.join(' x ')}`);
-    await p.locator('.tower-btn[data-type="arrow"]').click();
     const box = await p.locator('#game').boundingBox();
     // Rand links neben Kachel (0,5) und Rand oben über Kachel (6,0): kein Turm, keine Fehlermeldung
     const [x0, y5] = tileCenter(box, 0, 5);
@@ -139,7 +128,8 @@ test('Stil 1: gemalter Hintergrund wird gerastert; Klick in den Rand baut nichts
     await p.mouse.click(x6, box.y + 10 * (box.width / VIEW_WIDTH));
     assert.equal(await p.evaluate(() => window.__game().towers.length), 0);
     assert.equal(await p.locator('#message').textContent(), '');
-    await p.mouse.click(x0, y5);
+    assert.ok(await p.locator('#shop').isHidden(), 'Klick in den Rand öffnet keinen Ring');
+    await build(p, 'arrow', 0, 5);
     assert.deepEqual(await p.evaluate(() => window.__game().towers.map((t) => [t.col, t.row])), [[0, 5]]);
     assert.deepEqual(pErrors, []);
   } finally {

@@ -202,11 +202,7 @@ kbd { font: 12px/1.4 ui-monospace, monospace; color: var(--cream); background: r
 .map-pick select { font: 15px var(--display); color: var(--ink); background: #fff3d2; border: 2px solid var(--ink); border-radius: 12px; padding: 3px 6px; max-width: 170px; }
 .map-pick:has(select:disabled) { display: none; } /* nur vor Welle 1 wählbar */
 
-/* ---------- Übergang bis Block D: Turmwahl rechts als runde Knöpfe ---------- */
-#shop {
-  position: absolute; z-index: 10; right: max(8px, calc(var(--cx) - 92px)); top: 50%; transform: translateY(-50%);
-  width: 84px; padding: 10px 0 24px; border-radius: 42px; display: flex; flex-direction: column; align-items: center; gap: 22px;
-}
+/* ---------- C4: Turmknöpfe (im Bau-Ring, Lage siehe Block C4 am Ende) ---------- */
 .tower-btn {
   position: relative; width: 60px; height: 60px; padding: 0; border-radius: 50%; border: 4px solid var(--ink); cursor: pointer;
   background-color: var(--card-bg); background-image: radial-gradient(circle at 35% 30%, rgba(255,255,255,.22), rgba(0,0,0,.18));
@@ -225,27 +221,7 @@ kbd { font: 12px/1.4 ui-monospace, monospace; color: var(--cream); background: r
 .tower-btn.poor .t-cost { color: var(--card-cost-poor); text-decoration: line-through; text-decoration-thickness: 2px; } /* nicht nur Farbe */
 .tower-btn:hover { filter: brightness(1.08); }
 
-/* Turm-Panel schwebend über dem unteren Feldrand (oben, wenn der Turm unten steht: .ti-top) */
-#tower-info {
-  position: absolute; z-index: 15; left: calc(var(--fx) + var(--fw) / 2); transform: translateX(-50%);
-  bottom: calc(var(--fb) + 10px); width: min(480px, calc(var(--fw) - 24px)); /* C-Abnahme 7: schmaler, leicht durchscheinend */
-  background: linear-gradient(rgba(164,103,47,.92), rgba(122,69,32,.92));
-  display: grid; grid-template-columns: minmax(0, 1fr); grid-template-areas: 'name' 'stats' 'special' 'actions';
-  gap: 4px; align-items: center; padding: 8px 12px;
-  font-family: 'Trebuchet MS', sans-serif;
-}
-#tower-info.ti-top { bottom: auto; top: calc(var(--fy) + 10px); }
-#tower-info[hidden], #overlay[hidden] { display: none; }
-#tower-info h3 { grid-area: name; margin: 0; font: 20px/1.1 var(--display); color: var(--cream); text-shadow: 0 2px 0 var(--ink); }
-#tower-info p { margin: 0; font-size: 14px; color: var(--muted); }
-#ti-stats { grid-area: stats; }
-#ti-special { grid-area: special; font-size: 13px; line-height: 1.25; }
-#ti-special:empty { display: none; }
-#ti-close { display: none; }
-.ti-actions { grid-area: actions; display: flex; gap: 6px; margin-top: 4px; }
-.ti-actions .act-cost { display: inline-flex; align-items: center; white-space: nowrap; }
-.ti-actions .act-cost .ico { margin: 0 -1px 0 3px; }
-.ti-actions .key { font-size: 13px; opacity: .7; }
+#overlay[hidden] { display: none; }
 
 /* ---------- Meldungen, Pause, Spielende ---------- */
 #message {
@@ -323,15 +299,6 @@ canvas#game, #game { height: auto; border-radius: 10px; }
 .abilities { position: relative; order: 4; left: 0; top: 0; bottom: auto; height: auto; transform: none; width: auto; flex-direction: row; justify-content: center; padding: 10px 14px 22px; gap: 24px; border-radius: 22px; align-self: center; }
 .ab { width: 56px; height: 56px; }
 .cap { bottom: -14px; font: 15px/20px var(--display); padding: 0 8px; }
-#shop { position: relative; order: 5; right: 0; top: 0; transform: none; width: auto; flex-direction: row; flex-wrap: wrap; justify-content: center; padding: 10px 10px 26px; gap: 22px 14px; border-radius: 22px; align-self: center; }
-.tower-btn { width: 52px; height: 52px; } .tower-btn .t-icon { width: 40px; height: 40px; }
-#tower-info { position: fixed; left: 0; right: 0; bottom: 0; top: auto; transform: none; width: auto; z-index: 20; border-radius: 14px 14px 0 0;
-  grid-template-columns: minmax(0, 1fr) 44px; grid-template-areas: 'name close' 'stats close' 'actions actions'; padding: 6px 8px calc(8px + env(safe-area-inset-bottom)); }
-#ti-special { display: none; }
-#ti-close { grid-area: close; display: inline-grid; place-items: center; width: 44px; height: 44px; padding: 0; font: 26px/1 var(--display); color: var(--cream); background: var(--ink); border: 0; border-radius: 50%; }
-.ti-actions { margin-top: 4px; }
-.ti-actions .wbtn { flex: 1 1 0; min-width: 0; min-height: 44px; padding: 4px; font-size: 14px; line-height: 1.15; white-space: normal; flex-direction: column; gap: 1px; }
-.ti-actions .paren { display: none; }
 body:has(#tower-info:not([hidden])) #app { padding-bottom: calc(var(--tower-info-h, 140px) + 8px); }
 .zoomed .stage { overflow: auto; max-height: 60vh; }
 .zoomed canvas#game { width: 200%; max-width: none; }
@@ -396,4 +363,52 @@ body.on-start .top-buttons { z-index: 41; } /* Ton und Hilfe bleiben erreichbar 
   .end-card { padding: 48px 16px 18px; } .end-ribbon text { font-size: 50px; }
   .end-stars svg { width: 44px; height: 44px; }
   .end-actions .wbtn { font-size: 19px; padding: 0 16px; }
+}
+
+/* ---------- C4: Ringmenü (Bauvorlagen Menue-Ring-Bauen.md, Menue-Ring-Turm.md) ----------
+   Ring liegt in .stage; main.js setzt --rx/--ry (Ringmitte), --R (Radius aus RING_MENU) und --dx/--dy (Kachel relativ zur Mitte). */
+/* 1 px statt 0: der Ring zählt so als sichtbares Element (Barrierefreiheit, Browser-Tests); Mitte bleibt bei --rx/--ry */
+.ring { position: absolute; z-index: 16; left: calc(var(--rx, 0px) - .5px); top: calc(var(--ry, 0px) - .5px); width: 1px; height: 1px; --R: 68px; }
+.ring[hidden] { display: none; }
+.ring-yard { position: absolute; left: calc(-1 * (var(--R) + 38px)); top: calc(-1 * (var(--R) + 38px)); width: calc(2 * var(--R) + 76px); height: calc(2 * var(--R) + 76px);
+  border-radius: 50%; background: radial-gradient(circle, rgba(43,26,16,.38) 0 45%, rgba(43,26,16,0) 70%); pointer-events: none; }
+.ring-dot { position: absolute; left: calc(var(--dx, 0px) - 5px); top: calc(var(--dy, 0px) - 5px); width: 10px; height: 10px; border-radius: 50%; background: #fff3d2; border: 3px solid #2b1a10; pointer-events: none; }
+.ring-btn { position: absolute; left: -30px; top: -30px; transform: rotate(var(--a)) translate(var(--R)) rotate(calc(-1 * var(--a))); animation: ring-in .14s ease-out; }
+@keyframes ring-in { from { opacity: 0; transform: rotate(var(--a)) translate(calc(var(--R) * .5)) rotate(calc(-1 * var(--a))) scale(.6); } }
+.ring-btn:hover, .ring-btn:focus-visible { box-shadow: 0 0 0 4px #ffe266, 0 0 16px 4px rgba(255,226,102,.6), 0 4px 0 rgba(30,15,5,.55); z-index: 1; outline: none; }
+.ring-btn[aria-disabled="true"] { cursor: not-allowed; }
+
+.rbtn { position: absolute; left: -30px; top: -30px; width: 60px; height: 60px; padding: 0; border-radius: 50%; border: 4px solid #2b1a10; cursor: pointer;
+  display: grid; place-items: center; background: radial-gradient(circle at 35% 30%, #d79a52, #8a5224); box-shadow: inset 0 3px 0 rgba(255,255,255,.35), 0 4px 0 rgba(30,15,5,.55);
+  transform: rotate(var(--a)) translate(var(--R)) rotate(calc(-1 * var(--a))); animation: ring-in .14s ease-out; }
+.rbtn-gold { background: radial-gradient(circle at 35% 30%, #ffe27a, #e08a1c); }
+.rbtn-red { background: radial-gradient(circle at 35% 30%, #e88a6a, #a8412c); }
+.rbtn-small { width: 44px; height: 44px; left: -22px; top: -22px; font: 26px/1 var(--display); color: #fff3d2; background: #2b1a10; border-color: #2b1a10; }
+.rbtn .cap { bottom: -15px; display: inline-flex; align-items: center; gap: 2px; font-size: 15px; line-height: 20px; }
+.rbtn .cap .ico { width: 16px; height: 16px; }
+.rbtn:disabled { filter: grayscale(.85) brightness(.85); cursor: default; }
+.rbtn:disabled .act-cost { color: #ff9e8f; text-decoration: line-through; }
+.rbtn:hover:not(:disabled), .rbtn:focus-visible { box-shadow: 0 0 0 4px #ffe266, 0 4px 0 rgba(30,15,5,.55); outline: none; z-index: 1; }
+.ring-acts { display: contents; } /* Desktop: nur Hülle */
+.ring-info { position: absolute; left: calc(var(--R) + 44px); top: -46px; width: 240px; padding: 8px 12px; font-family: 'Trebuchet MS', sans-serif; }
+.ring-tower.info-left .ring-info { left: auto; right: calc(var(--R) + 44px); }
+.ring-info h3 { margin: 0 0 2px; font: 19px/1.1 var(--display); color: #fff3d2; text-shadow: 0 2px 0 #2b1a10; }
+.ring-info p { margin: 0; font-size: 13px; line-height: 1.3; color: #e8d3a8; }
+#ti-special:empty { display: none; }
+@media (prefers-reduced-motion: reduce) { .ring-btn, .rbtn { animation: none; } }
+@media (max-width: 759.98px), (max-height: 519.98px) {
+  .ring-btn { width: 48px; height: 48px; left: -24px; top: -24px; } .ring-btn .t-icon { width: 38px; height: 38px; }
+  /* Handy: Turm-Ring wird zur festen Leiste unten, Knöpfe in einer Reihe */
+  #tower-info.ring { position: fixed; left: 0; right: 0; bottom: 0; top: auto; width: auto; height: auto; z-index: 20; display: grid;
+    grid-template-columns: minmax(0,1fr) 44px; grid-template-areas: 'info close' 'acts acts'; gap: 6px 8px; padding: 8px 8px calc(10px + env(safe-area-inset-bottom));
+    background: linear-gradient(#a4672f, #7a4520); border-top: 3px solid #2b1a10; border-radius: 14px 14px 0 0; }
+  #tower-info.ring[hidden] { display: none; }
+  #tower-info .ring-yard { display: none; }
+  #tower-info .ring-info { position: static; grid-area: info; width: auto; padding: 0; background: none; border: 0; box-shadow: none; }
+  #tower-info .rbtn { position: static; transform: none; animation: none; width: auto; height: 52px; border-radius: 26px; display: flex; justify-content: center; gap: 4px; }
+  #tower-info #ti-close { grid-area: close; width: 44px; height: 44px; }
+  #tower-info .rbtn .cap { position: static; transform: none; margin-left: 4px; }
+  #tower-info .rbtn svg { width: 32px; height: 32px; flex: none; }
+  #ti-special { display: none; }
+  #tower-info .ring-acts { grid-area: acts; display: flex; gap: 6px; } #tower-info .ring-acts .rbtn { flex: 1 1 0; min-width: 0; }
 }

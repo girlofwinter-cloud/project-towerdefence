@@ -1168,6 +1168,22 @@ export const RANGE_STYLE = {
   maxFillAlpha: 0.1,      // Obergrenze (Test)
 };
 
+// C4 Ringmenü (docs/design/elemente/Menue-Ring-Bauen.md, Menue-Ring-Turm.md). Maße in CSS-px, Winkel in Grad.
+// Radius = max(minRadius, radiusTiles Kacheln), kompakt (Handy) fest compactRadius. edge = Abstand über den Radius
+// hinaus bis zur Außenkante (halber Knopf + Preisschild); so bleibt der Ring ganz im sichtbaren Bereich.
+export const RING_MENU = {
+  radiusTiles: 1.55,
+  minRadius: 68,
+  compactRadius: 62,
+  edge: 42,
+  gap: 6,                                  // Abstand zur HUD-Leiste und zu den runden Knöpfen oben
+  buildAngles: [-90, -18, 54, 126, 198],   // Reihenfolge = TOWER_TYPES = Tasten 1–5
+  towerAngles: { upgrade: -90, target: 0, sell: 180, close: 90 },
+  silhouetteInset: 0.15,                   // Treffer-Box der Turmfigur: seitlich je 15 % schmaler (Nachbarkacheln)
+  upgradePreview: { color: '#ffe266', width: 2, dash: [6, 6] }, // Reichweite der nächsten Stufe (gestrichelt)
+  ghostAlpha: 0.55,                        // Geistturm der Bau-Vorschau
+};
+
 // Gegner-Zusätze (die Figuren selbst: FIGURE_STYLE und src/figures.js)
 export const ENEMY_STYLE = {
   // B-126: Schild-Blase um geschützte Gegner (Stärke ~ ward/Höchstschild)

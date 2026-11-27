@@ -1,5 +1,5 @@
 // Zeichnet den Spielzustand auf ein Canvas. Keine Spiel-Logik hier!
-import { TILE, COLS, ROWS, WIDTH, HEIGHT, FRAME_MARGIN, VIEW_WIDTH, VIEW_HEIGHT, TOWER_TYPES, MAPS, MAX_WAVES, PAINTED_STYLE, ABILITIES, RANGE_STYLE, TREE_FRAME, GROUND_STYLE, LIGHT_STYLE, DECOR_STYLE, PAINT_STYLE, SELECT_RING, themed } from './config.js';
+import { TILE, COLS, ROWS, WIDTH, HEIGHT, FRAME_MARGIN, VIEW_WIDTH, VIEW_HEIGHT, TOWER_TYPES, MAPS, MAX_WAVES, PAINTED_STYLE, ABILITIES, RANGE_STYLE, RING_MENU, TREE_FRAME, GROUND_STYLE, LIGHT_STYLE, DECOR_STYLE, PAINT_STYLE, SELECT_RING, themed } from './config.js';
 import { towerStats, enemyPath } from './game.js';
 import { disc, shd } from './draw-utils.js';
 import { buildPaintedSvg, buildPaintedScene, rasterizePainted, canRasterize, extentOf } from './render-painted.js';
@@ -486,14 +486,39 @@ function drawHover(ctx, state, ui) {
   const selected = state.towers.find((t) => t.id === ui.selectedTowerId);
   if (selected) rangeCircle(ctx, selected.x, selected.y, towerStats(selected, state.modifiers).range * TILE, `rgba(255,255,255,${RANGE_STYLE.fillAlpha})`);
 
+  // C4: Reichweite der nächsten Stufe (Maus/Fokus auf Verbessern im Turm-Ring), gestrichelt
+  if (selected && ui.upgradePreview > 0) {
+    const P = RING_MENU.upgradePreview;
+    ctx.save();
+    ctx.setLineDash(P.dash);
+    ctx.strokeStyle = P.color;
+    ctx.lineWidth = P.width;
+    ctx.beginPath();
+    ctx.arc(selected.x, selected.y, ui.upgradePreview * TILE, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  }
+
   if (ui.aiming && ui.hoverPx) rangeCircle(ctx, ui.hoverPx.x, ui.hoverPx.y, ABILITIES.meteor.radius * TILE, 'rgba(255,90,40,0.25)');
-  if (!ui.hover || !ui.buildType) return;
-  const { col, row, ok } = ui.hover;
+  // C4 Bau-Ring: Ringkachel markiert; Maus/Fokus auf einem Knopf zeigt Reichweite und Geistturm dieses Typs
+  const ring = ui.ring;
+  const ringType = ring && Object.hasOwn(TOWER_TYPES, ui.ringPreview) ? ui.ringPreview : null;
+  const type = ringType || ui.buildType;
+  const tile = ring ? { col: ring.col, row: ring.row, ok: true } : ui.hover;
+  if (!tile || !(type || ring)) return;
+  const { col, row, ok } = tile;
   const x = (col + 0.5) * TILE;
   const y = (row + 0.5) * TILE;
   ctx.fillStyle = ok ? 'rgba(255,255,255,0.25)' : 'rgba(255,60,60,0.35)';
   ctx.fillRect(col * TILE, row * TILE, TILE, TILE);
-  if (ok) rangeCircle(ctx, x, y, TOWER_TYPES[ui.buildType].range * TILE, `rgba(255,255,255,${RANGE_STYLE.fillAlpha})`);
+  if (!ok || !Object.hasOwn(TOWER_TYPES, type)) return;
+  rangeCircle(ctx, x, y, TOWER_TYPES[type].range * TILE, `rgba(255,255,255,${RANGE_STYLE.fillAlpha})`);
+  if (ringType) {
+    ctx.save();
+    ctx.globalAlpha *= RING_MENU.ghostAlpha;
+    drawTowerFigure(ctx, { type: ringType, x, y, level: 1, angle: -Math.PI / 4 }, 0);
+    ctx.restore();
+  }
 }
 
 function rangeCircle(ctx, x, y, r, fill) {

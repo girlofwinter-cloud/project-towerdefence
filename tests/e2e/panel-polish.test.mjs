@@ -5,7 +5,7 @@ import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 import { createServer } from '../../scripts/serve.mjs';
-import { tileCenter } from './tile.mjs';
+import { build, openTower } from './tile.mjs';
 
 const require = createRequire(import.meta.url);
 const { chromium } = require('playwright');
@@ -29,49 +29,35 @@ async function openWithTower(viewport, fontSize) {
   await page.goto(`${url}?test`);
   await page.waitForSelector('#test-panel');
   if (fontSize) await page.addStyleTag({ content: `html { font-size: ${fontSize}; }` });
-  await page.locator('.tower-btn[data-type="frost"]').click();
   await page.evaluate(() => window.scrollTo(0, 0));
-  const box = await page.locator('#game').boundingBox();
-  const at = tileCenter(box, 0, 0);
-  await page.mouse.click(...at);
-  await page.mouse.click(...at);
+  await build(page, 'frost', 0, 0);
   await page.keyboard.press('Escape');
-  await page.mouse.click(...at);
-  await page.waitForSelector('#tower-info:not([hidden])');
+  await openTower(page, 0, 0);
   return { ctx, page };
 }
 
-test('Handy: × heißt "Turm-Panel schließen", danach liegt der Fokus auf der Karte des Turmtyps', async () => {
+// C4: Die Turmkarte, auf die früher der Fokus sprang, liegt jetzt im (geschlossenen) Bau-Ring; × schließt nur.
+test('Handy: × heißt "Turm-Panel schließen" und schließt die Leiste', async () => {
   const { ctx, page } = await openWithTower({ width: 390, height: 844 });
   assert.equal(await page.locator('#ti-close').getAttribute('aria-label'), 'Turm-Panel schließen');
   await page.locator('#ti-close').click();
   assert.ok(await page.locator('#tower-info').isHidden());
-  assert.equal(await page.evaluate(() => document.activeElement?.dataset?.type), 'frost');
+  assert.equal(await page.evaluate(() => window.__ui.selectedTowerId), null);
   await ctx.close();
 });
 
-test('Desktop: keine Lücke zwischen Münze und schließender Klammer bei Verbessern und Verkaufen', async () => {
+// C4: Klammern entfallen im Turm-Ring; Münze steht direkt hinter der Zahl (höchstens ein Leerzeichen Abstand)
+test('Desktop: Münze direkt nach der Zahl bei Verbessern und Verkaufen', async () => {
   const { ctx, page } = await openWithTower({ width: 1280, height: 800 });
   for (const sel of ['#upgrade', '#sell']) {
     const gap = await page.locator(`${sel} .act-cost`).evaluate((e) => {
       const img = e.querySelector('.ico').getBoundingClientRect();
-      const paren = e.querySelectorAll('.paren')[1].getBoundingClientRect();
-      return paren.left - img.right;
+      const range = document.createRange();
+      range.selectNodeContents(e.firstChild);
+      return img.left - range.getBoundingClientRect().right;
     });
-    assert.ok(gap <= 0, `${sel}: Abstand Münze bis ")" ${gap}px`);
+    assert.ok(gap >= -0.5 && gap <= 6, `${sel}: Abstand Zahl bis Münze ${gap}px`);
   }
-  await ctx.close();
-});
-
-test('Desktop 1280x800: alle Shop-Karten gleich hoch, Scharfschütze einzeilig, alle ohne Scrollen sichtbar', async () => {
-  const { ctx, page } = await openWithTower({ width: 1280, height: 800 });
-  const hs = await page.$$eval('.tower-btn', (bs) => bs.map((b) => b.getBoundingClientRect().height));
-  assert.ok(Math.max(...hs) - Math.min(...hs) < 1, `Kartenhöhen ${hs.join(', ')}`);
-  const name = await page.locator('.tower-btn[data-type="sniper"] .t-name').evaluate((e) => e.getClientRects().length === 1 && e.getBoundingClientRect().height);
-  const kbd = await page.locator('.tower-btn[data-type="sniper"] kbd').evaluate((e) => e.getBoundingClientRect().height);
-  assert.ok(name && name < kbd * 2, `Name ${name}px hoch`);
-  const last = await page.locator('#shop .tower-btn:last-child').evaluate((e) => e.getBoundingClientRect().bottom);
-  assert.ok(last <= 800, `Letzte Karte endet bei ${last}`);
   await ctx.close();
 });
 
@@ -83,7 +69,7 @@ for (const fontSize of [null, '200%']) {
     await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
     const r = await page.evaluate(() => {
       const bar = document.getElementById('tower-info').getBoundingClientRect();
-      const bottoms = ['#game', '#shop', '#shop .tower-btn:last-child'].map((s) => document.querySelector(s).getBoundingClientRect().bottom);
+      const bottoms = ['#game', '#abilities'].map((s) => document.querySelector(s).getBoundingClientRect().bottom);
       return { top: bar.top, bottoms };
     });
     for (const b of r.bottoms) assert.ok(b <= r.top + 0.5, `Inhalt endet bei ${b}, Leiste beginnt bei ${r.top}`);

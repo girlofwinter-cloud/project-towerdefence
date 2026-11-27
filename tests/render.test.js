@@ -1902,3 +1902,26 @@ test('C-Abnahme 1 / Leistung: setPaintedExtent rundet und prüft, deviceSizeOf l
   setPaintedExtent(null);
   assert.equal(paintedImage('meadow'), null, 'in Node kein Bild');
 });
+
+// C4 Ringmenü: Vorschau auf der Ringkachel (Reichweite + Geistturm) und gestrichelte Reichweite der nächsten Stufe
+test('C4 Render: Bau-Ring-Vorschau und Verbessern-Vorschau zeichnen zusätzlich, ui bleibt unverändert', async () => {
+  const { render } = await import('../src/render.js?ring');
+  const s = createGame();
+  s.gold = 99999;
+  let spot = null;
+  for (let r = 0; r < ROWS && !spot; r++) for (let c = 0; c < COLS && !spot; c++) if (buildTower(createGame(), 'arrow', c, r).ok) spot = { col: c, row: r };
+  const run = (ui) => { const m = mockCtx(); render(m.ctx, s, ui); return m.counts; };
+  const plain = run({ ring: spot });
+  const ui = { ring: spot, ringPreview: 'cannon' };
+  const copy = JSON.stringify(ui);
+  const prev = run(ui);
+  assert.equal(JSON.stringify(ui), copy);
+  assert.ok((prev.arc || 0) > (plain.arc || 0), 'Reichweitenkreis');
+  assert.ok((prev.save || 0) > (plain.save || 0), 'Geistturm gezeichnet');
+  run({ ring: spot, ringPreview: 'gibtsnicht' }); // unbekannter Typ: kein Absturz
+  const t = buildTower(s, 'arrow', spot.col, spot.row).tower;
+  const sel = run({ selectedTowerId: t.id });
+  const up = run({ selectedTowerId: t.id, upgradePreview: towerStats({ ...t, level: 2 }, s.modifiers).range });
+  assert.ok((up.setLineDash || 0) > (sel.setLineDash || 0), 'gestrichelte Reichweite der nächsten Stufe');
+  assert.ok((up.arc || 0) > (sel.arc || 0));
+});

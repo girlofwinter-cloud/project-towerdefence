@@ -28,6 +28,20 @@
           </div>
         </div>
       </div>
+      <!-- C4 Ringmenü: Bau-Ring auf freier Kachel (Knöpfe baut main.js), Turm-Ring auf einem Turm. Lage setzt main.js (--rx/--ry/--R). -->
+      <div id="shop" class="ring ring-build" role="menu" aria-label="Turm bauen" hidden>
+        <span class="ring-yard" aria-hidden="true"></span><span class="ring-dot" aria-hidden="true"></span>
+      </div>
+      <div id="tower-info" class="ring ring-tower" role="dialog" aria-labelledby="ti-name" hidden>
+        <span class="ring-yard" aria-hidden="true"></span>
+        <div class="ring-acts">
+          <button id="upgrade" class="rbtn rbtn-gold" style="--a:-90deg"></button>
+          <button id="target-mode" class="rbtn" style="--a:0deg"></button>
+          <button id="sell" class="rbtn rbtn-red" style="--a:180deg"></button>
+        </div>
+        <button id="ti-close" class="rbtn rbtn-small" style="--a:90deg" aria-label="Turm-Panel schließen">×</button>
+        <div class="ring-info plq"><h3 id="ti-name"></h3><p id="ti-stats"></p><p id="ti-special"></p></div>
+      </div>
       <p id="message" role="status"></p>
       <div id="pause-banner" hidden>PAUSE<span class="key"> – P drücken zum Fortsetzen</span><span class="touch-hint">Tippe auf Weiter</span></div>
     </div>
@@ -56,7 +70,7 @@
         <summary class="rb" aria-label="Steuerung"><span class="rb-q" aria-hidden="true">?</span></summary>
         <div class="help-pop plq">
           <ul>
-            <li><kbd>1</kbd>–<kbd>5</kbd> Turm wählen, dann aufs Feld klicken</li>
+            <li>Freies Feld anklicken: Turm im Ring wählen · <kbd>1</kbd>–<kbd>5</kbd> Turm wählen, dann aufs Feld klicken</li>
             <li><kbd>Leertaste</kbd> nächste Welle starten</li>
             <li><kbd>P</kbd> Pause / Weiter · <kbd>F</kbd> Tempo · <kbd>M</kbd> Ton</li>
             <li>Turm anklicken: <kbd>U</kbd> verbessern, <kbd>S</kbd> verkaufen, <kbd>T</kbd> Zielregel</li>
@@ -89,20 +103,6 @@
     <div class="wave-row">
       <button id="start-wave" class="wave-btn" title="Nächste Welle starten (Leertaste)"><span id="start-label">Welle 1 starten</span> <span class="key" id="start-key">(Leertaste)</span></button>
       <p id="wave-preview" class="plq"></p>
-    </div>
-
-    <!-- Übergang bis Block D (Ringmenü): Türme als runde Knöpfe rechts, Turm-Panel schwebend -->
-    <div id="shop" class="plq"></div>
-    <div id="tower-info" class="plq" hidden>
-      <h3 id="ti-name"></h3>
-      <button id="ti-close" aria-label="Turm-Panel schließen">×</button>
-      <p id="ti-stats"></p>
-      <p id="ti-special"></p>
-      <div class="ti-actions">
-        <button id="target-mode" class="wbtn"></button>
-        <button id="upgrade" class="wbtn wbtn-gold"></button>
-        <button id="sell" class="wbtn"></button>
-      </div>
     </div>
 
     <!-- C5: Startbildschirm mit Kartenkarten (screens.js baut die Karten) -->
