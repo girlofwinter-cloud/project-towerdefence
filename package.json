@@ -8,8 +8,9 @@
     "start": "node scripts/serve.mjs",
     "testserver": "node scripts/testserver.mjs",
     "test": "node --test tests/*.test.js",
+    "test:balance": "node --test tests/balance/*.test.js",
     "test:e2e": "node --test tests/e2e/*.test.mjs",
-    "test:all": "npm test && npm run test:e2e"
+    "test:all": "npm test && npm run test:balance && npm run test:e2e"
   },
   "engines": {
     "node": ">=20"

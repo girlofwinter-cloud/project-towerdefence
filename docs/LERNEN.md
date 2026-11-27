@@ -18,7 +18,7 @@ Hier lernst du, **wie man ein Projekt so aufsetzt, dass mehrere KI-Agents sicher
 | **Rechte** | `.claude/settings.json` | Was ist erlaubt, was verboten? |
 | **Audit-Log** | `.claude/hooks/ledger.mjs` | Was ist wirklich passiert? |
 | **Entscheidungsbuch (Ledger)** | `docs/LEDGER.md` | Warum wurde so entschieden? |
-| **Backlog** | `docs/BACKLOG.md` | Was soll als Nächstes passieren? |
+| **Backlog** | `docs/BACKLOG.md` | Was soll als Nächstes passieren? (Ideen: `docs/IDEEN.md`) |
 | **Qualitätstor** | `.claude/hooks/test-gate.mjs`, `.github/workflows/ci.yml` | Wie wird verhindert, dass kaputter Code durchrutscht? |
 
 ## 1. Gedächtnis: `CLAUDE.md`
@@ -36,7 +36,7 @@ Schau dir die fünf Dateien in `.claude/agents/` an und achte auf die Zeile `too
 |---|---|---|
 | `developer` | ja (`src/`, Tests) | Er baut. |
 | `tester` | nur `tests/` | Wer prüft, soll den Code nicht „passend machen“. |
-| `reviewer` | **nein** (Dateien); im PR-Modus darf er per `gh` abnehmen und mergen | Wer bewertet, darf nicht gleichzeitig reparieren. Gemergt wird nur unter festen Bedingungen (CI grün, keine Änderung an `.claude/`, `.github/`, Abhängigkeiten, bei Risiko ein `APPROVE`; siehe Abschnitt 3). Eine eigene Freigabe des Menschen pro PR ist seit dem schnellen Ablauf nicht mehr nötig. |
+| `reviewer` | **nein** | Wer bewertet, darf nicht gleichzeitig reparieren. Gemergt wird vom Orchestrator, nur unter festen Bedingungen (CI grün, keine Änderung an `.claude/`, `.github/`, Abhängigkeiten, bei Risiko ein `APPROVE`; siehe Abschnitt 3). Eine eigene Freigabe des Menschen pro PR ist seit dem schnellen Ablauf nicht mehr nötig. |
 | `ideator` | **nein** | Er liefert Vorschläge, ein Mensch entscheidet. |
 | `designer` | **nein** (nur Screenshots außerhalb des Repos) | Er prüft Optik und Bedienung mit echten Screenshots und schlägt Designs vor; gebaut wird über die Pipeline. |
 
@@ -121,7 +121,7 @@ Beides ist **append-only**: Es wird nur angehängt, nie überschrieben. So kanns
 
 ## 6. Qualitätstore
 
-- **Stop-Hook** (`test-gate.mjs`): Claude kann nicht „fertig“ sagen, solange `npm test` rot ist.
+- **Stop-Hook** (`test-gate.mjs`): Claude kann nicht „fertig“ sagen, solange `npm test` rot ist (nur wenn Code oder Tests geändert sind). Die Balancing-Simulationen (`npm run test:balance`) laufen in der CI.
 - **CI** (`ci.yml`): GitHub führt bei jedem Pull Request alle Tests aus.
 - **Reviewer-Agent:** inhaltliche Prüfung, wenn ein Block Risiko-Dateien oder bestehende Tests berührt (Abschnitt 3).
 - **Merge-Bedingungen:** Der Orchestrator mergt selbst, aber nur, wenn alle Bedingungen aus Abschnitt 3 erfüllt sind. Sonst bleibt der PR offen.
@@ -133,7 +133,7 @@ Beides ist **append-only**: Es wird nur angehängt, nie überschrieben. So kanns
 
 1. Starte Claude Code im Projektordner: `claude`
 2. Tippe `/ideen` und schau, was der `ideator` vorschlägt und wie das Backlog sich füllt.
-3. Setze in `docs/BACKLOG.md` einen Eintrag von `vorschlag` auf `offen`.
+3. Verschiebe einen Eintrag aus `docs/IDEEN.md` nach `docs/BACKLOG.md` und setze ihn von `vorschlag` auf `offen`.
 4. Tippe `/pipeline` und beobachte, wie die Rollen nacheinander arbeiten.
 5. Lies danach `docs/LEDGER.md` und `.claude/ledger/audit.jsonl`.
 6. Schau dir auf GitHub den Pull Request an, den der Orchestrator angelegt hat: Beschreibung, Tab „Files changed“ und den CI-Haken. Ist er gemergt, findest du das Ergebnis nach ein bis zwei Minuten online.
@@ -162,7 +162,8 @@ Was hinter den Befehlen steckt, die in diesem Leitfaden ständig vorkommen.
 | Befehl | Führt aus | Wozu |
 |---|---|---|
 | `npm start` | `node scripts/serve.mjs` | Startet einen kleinen Webserver auf http://localhost:8080 |
-| `npm test` | `node --test tests/*.test.js` | Unit-Tests der Spiel-Logik, ohne Browser |
+| `npm test` | `node --test tests/*.test.js` | Unit-Tests der Spiel-Logik, ohne Browser (ca. 2 s) |
+| `npm run test:balance` | `node --test tests/balance/*.test.js` | Balancing-Simulationen über alle Wellen (ca. 10 s) |
 | `npm run test:e2e` | `node --test tests/e2e/*.test.mjs` | Unsichtbarer Chrome klickt das Spiel durch (Playwright) |
 
 **Warum überhaupt ein Server?** Das Spiel besteht aus JavaScript-Modulen, die sich gegenseitig laden (`import …`). Öffnest du `index.html` per Doppelklick (`file://…`), blockiert der Browser solche Importe aus Sicherheitsgründen. Über `http://localhost:8080` klappt es.
