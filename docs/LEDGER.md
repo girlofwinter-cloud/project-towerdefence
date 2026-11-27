@@ -853,6 +853,22 @@ Neue Einträge werden unten angehängt. Bestehende Einträge werden nie geänder
 - Entscheidungen: Empfehlung des designers: Stil 1 als Hauptrichtung. Stil 3 (CSS-3D-Neigung) nicht als Ganzes, weil Klick- und Bauraster betroffen wären. Die Flächen sind vom Orchestrator nicht selbst angesehen (Format läuft nur in Claude Design).
 - Tests: keine Codeänderung.
 
+---
+
+## 2026-11-27 · Design-System "Gemalt und warm"
+- Rolle(n): orchestrator (auf Wunsch des Menschen, ohne developer/tester/reviewer: keine Codeänderung). Branch: agent/design-system
+- Ergebnis: Design-System in Claude Design https://claude.ai/artifact/5cJerN82BWQNMcMiZjMBpR mit 100 Farb-Tokens (inkl. 5 Karten-Paletten), 14 Schriftstilen (Lilita One + Trebuchet), Konturen, Rundungen, Schatten, Abständen, Knopfgrößen, 7 Bauteilen und 11 Icons; alle Werte aus agent/gemalt-karten@a3d15b4, nichts neu erfunden. Feste Vorlage `.claude/skills/design/bauvorlage-format.md` (designer.md und design-Skill verweisen darauf). Bauvorlage `docs/design/elemente/Seite-Styleguide.md`, Konzept `docs/design/token-einfuehrung.md`.
+- Backlog: B-160 bis B-164 (vorschlag): Tokens anlegen, Nutzer umstellen, alte Stile entfernen, Kontrast Info-Meldung, Styleguide-Seite. Umsetzung nach dem Merge des Stil-1-Umbaus.
+- Abweichung: Herbst-Palette im Plan (#c9b25a → #7d7a34) weicht vom Code ab (#d9a94e → #8a5a2b); übernommen ist der Code.
+
+---
+
+## 2026-11-27 · Design-System im Repo für alle Rollen
+- Rolle(n): orchestrator (auf Wunsch des Menschen). Branch: agent/design-system-repo
+- Ergebnis: Kopie des Design-Systems unter `docs/design/system/` (README, tokens.json, daraus erzeugt `TOKENS.md` und `tokens.css` per `scripts/design-tokens.mjs`, 7 Bauteile mit Richtlinien und Markup, `bauteile.css`, 11 Icons, `vorschau.html` mit allen Bauteilen). Grund: Die Rollen haben kein Artifact-Tool und kommen an das private Artefakt nicht heran.
+- Verweise: je eine Zeile in den fünf Rollen, CLAUDE.md (Architektur) und design-Skill (neuer Schritt 7: Repo-Kopie und Claude Design im selben PR abgleichen).
+- Tests: keine neuen (nur Doku und ein Erzeugungsskript), `npm test` grün. Vorschauseite im Browser geprüft: 7 Bauteile, keine Skriptfehler; Lilita One fehlt auf main bis zum Stil-1-Merge (Ersatzschrift).
+
 ## 2026-11-27 · Stil · Stil 1 „Gemalt und warm“
 - Rolle(n): orchestrator. Branch: agent/gemalt-karten, PR #92
 - Ergebnis: Stil-1-Umbau umgesetzt. Auf ausdrücklichen Wunsch des Menschen gilt einmalig eine Merge-Ausnahme vor unabhängiger Tester-/Reviewer-Freigabe.

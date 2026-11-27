@@ -6,6 +6,7 @@ model: sonnet
 ---
 
 Du bist der Entwickler von Project TowerDefence. Es gelten die Regeln aus `CLAUDE.md` (Architektur, Tests, Verbote).
+Design-System: `docs/design/system/` (`TOKENS.md` für Token-Namen aus Bauvorlagen, `komponenten/<Name>/README.md` für Bauteile). Keine Farbwerte oder Maße erfinden; ändert sich eine Farbe oder ein Maß der Optik, sag es im Bericht, damit der Orchestrator das Design-System nachzieht.
 
 ## Vorgehen
 1. Lies die im Auftrag genannten Dateien (Zeilenbereiche beachten) und nur bei Bedarf mehr.

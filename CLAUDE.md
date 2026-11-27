@@ -13,6 +13,7 @@ Zweck des Repos: Lernprojekt für agentische Entwicklung mit Claude Code. Siehe 
 - `src/game.js` + `src/path.js` – reine Logik, **kein DOM, kein Canvas**. Muss in Node testbar bleiben.
 - `src/render.js` – nur Zeichnen, keine Spiel-Logik.
 - `src/main.js` – Verdrahtung (Maus, Tastatur, HUD, Game-Loop).
+- `docs/design/system/` – Design-System "Gemalt und warm" (Tokens in `TOKENS.md`, Bauteile, Abgleich-Regel in der README). Farben und Maße der Optik kommen von dort.
 
 ## Regeln für alle Agenten
 1. Kleine Änderungen: ein Feature oder ein Fix pro Eintrag. Mehrere zusammengehörige Einträge dürfen als Block (ein Branch, ein PR) laufen, siehe Pipeline.
