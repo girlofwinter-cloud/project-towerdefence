@@ -1,6 +1,6 @@
 # Design-Ablage
 
-- **Design-System "Gemalt und warm" (Claude Design):** https://claude.ai/artifact/5cJerN82BWQNMcMiZjMBpR — Tokens (Farben inkl. Karten-Paletten, Schrift, Konturen, Rundungen, Schatten, Abstände, Knopfgrößen), Bauteile (Holzleiste, runder Knopf, Fähigkeitsknopf, Wellenknopf, Preisschild, Stufenmarke, Plakette), Icons, Lilita One. Werte aus dem Code von Stil 1; ändert sich der Code, wird das System im selben PR nachgezogen.
+- **Design-System "Gemalt und warm":** Kopie im Repo für alle Rollen `docs/design/system/` (README, `TOKENS.md`, Bauteile, `vorschau.html`), Original in Claude Design https://claude.ai/artifact/5cJerN82BWQNMcMiZjMBpR — Tokens (Farben inkl. Karten-Paletten, Schrift, Konturen, Rundungen, Schatten, Abstände, Knopfgrößen), Bauteile (Holzleiste, runder Knopf, Fähigkeitsknopf, Wellenknopf, Preisschild, Stufenmarke, Plakette), Icons, Lilita One. Werte aus dem Code von Stil 1; ändert sich der Code, wird das System im selben PR nachgezogen.
 - **Bauteil-Bibliothek (Claude Design):** https://claude.ai/artifact/Sh1JhJ3E4h97wTMLVNEkDs — jedes Design-Element als eigene Zeichenfläche.
 - **Bauvorlagen für den developer:** `docs/design/elemente/<Bereich>-<Element>.md`, Format `.claude/skills/design/bauvorlage-format.md` (Maße, Tokens, Formen/SVG, Zustände, betroffene Dateien, Tests, messbare Abnahme).
 - **Konzepte:** Styleguide-Seite `elemente/Seite-Styleguide.md` (B-164), Tokens im Code `token-einfuehrung.md` (B-160 bis B-163).
