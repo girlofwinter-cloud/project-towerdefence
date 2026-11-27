@@ -25,13 +25,15 @@ Anhängen ohne die Datei zu lesen: `cat >> docs/LEDGER.md <<'EOF' … EOF`. Übe
 - Ergebnis: fertig, Branch agent/handy-quer. Handy nur Querformat: Feld in voller Höhe, Landschaft bis zum Rand, Bedienung schwebt in den Ecken, Safe-Area frei; Hochformat mit Touch zeigt "Bitte Handy drehen", pausiert, `#app` inert. Wischen und Zoom auf dem Handy entfernt.
 - Tests: npm test 523 grün, e2e 88 grün (lokal ohne test:balance, Vorgabe Mensch). Handy-e2e neu geschrieben, buttons/panel/panel-polish/ring/smoke auf Querformat bzw. Fenster ohne Touch umgestellt, neu `handy-randfaelle.test.mjs` (tester).
 - Entscheidungen: Mensch hat Testumbau und Merge freigegeben. Review APPROVE; tester fand Überlappung mit Safe-Area, behoben (Feld wird bei Notch etwas kleiner). Schmale Desktop-Fenster im Hochformat ohne Touch zeigen jetzt das alte Kompakt-Layout statt Wischen (bewusst). Kacheln quer ca. 28 px statt 44 px, folgt aus der Entscheidung.
-- Offen: B-167 in IDEEN (Wisch-Helfer entfernen, Token für Bedienspalte).
+- Offen: B-177 in IDEEN (Wisch-Helfer entfernen, Token für Bedienspalte).
 
-## 2026-11-27 · B-167 · Ungenutzte Wisch-Helfer entfernt
+## 2026-11-27 · B-177 · Ungenutzte Wisch-Helfer entfernt
 - Ergebnis: fertig, Branch agent/wisch-aufraeumen. `src/viewport.js` und `VIEWPORT.tapSlop` entfernt, 4 Unit-Tests dazu gelöscht (vom Menschen freigegeben). Token `size-side-col-mobile` (104 px) im Design-System.
 - Tests: npm test 519 grün, Handy-e2e 18 grün. Review APPROVE (ohne Tester, kleiner Diff).
 - Entscheidungen: `--col` in style.css bleibt 104px mit Token-Kommentar, weil index.html tokens.css nicht lädt (wie bei den anderen Tokens).
 
+## 2026-11-27 · B-177 · Nummer umbenannt
+- Ergebnis: fertig, Branch agent/nummer-b177. Aufräum-Eintrag "Wisch-Helfer entfernen" von B-167 in B-177 umbenannt (Archiv und Ledger), weil B-167 bis B-176 von der Gegner-Reihe belegt sind. Entscheidung Mensch; PR #106 trägt noch den alten Titel.
 ## 2026-11-27 · B-167, B-168, B-169, B-170, B-171 · Neue Gegner für Turm-Vielfalt
 - Ergebnis: fertig, Branch agent/gegner-vielfalt (PR folgt)
 - Tests: npm test 557 grün, test:balance 20 grün, e2e 88 grün; Tester PASS, Reviewer APPROVE
