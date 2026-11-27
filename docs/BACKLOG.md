@@ -40,3 +40,87 @@ Erledigte Einträge (`fertig`) liegen in `docs/archiv/BACKLOG-fertig.md`. Beim A
 - Idee: Übrige Gegnertypen (inkl. Fliegende, Splitter/Tarn, sofern vorhanden). Zustände Schild, Heilung, Eingefroren zusätzlich über Form/Symbol.
 - Akzeptanzkriterien:
   - Je Typ ein Screenshot-Beleg, keine reine Farbunterscheidung.
+
+---
+
+## Entwurf 2026-11-27: Mehr Abwechslung bei den Türmen (wartet auf Freigabe durch den Menschen)
+Problem: Kanone (Fläche + Rückstoß) und Frost (Verlangsamung) decken fast alles ab; Pfeil und Blitz haben kaum eine eigene Aufgabe.
+Idee: Jeder neue Gegner bremst gezielt Kanone oder Frost aus und belohnt einen anderen Turm. Bis zur Freigabe steht der Status auf `entwurf`, die Pipeline nimmt nur `offen`.
+Wer gegen wen: Fledermaus → Pfeil, Blitz, Scharfschütze | Irrlicht → Blitz, Pfeil | Panzerkäfer → Pfeil, Blitz | Glutling → Blitz, Pfeil, Scharfschütze.
+
+### B-167: Fledermäuse: Flieger, die Kanone und Frost nicht treffen (Spiel-Logik)
+- Status: entwurf
+- Aufwand: M
+- Idee: Einfachere Variante von B-036 (ersetzt sie): Fledermäuse folgen dem normalen Weg (kein eigener Luftweg, `path.js` bleibt), fliegen aber. Türme haben `hitsAir`: Pfeil, Scharfschütze und Blitz ja; Kanone und Frost nein (auch kein Flächenschaden, keine Verlangsamung). Der Kettenblitz kann auf Fledermäuse überspringen. Fähigkeiten (Meteor, Kälteschock) treffen sie.
+- Werte als Vorschlag in `ENEMY_TYPES.bat`: hp 30, speed 1.8, reward 3, leak 1. Kommen in Schwärmen von 6 bis 10.
+- Akzeptanzkriterien:
+  - Tests: Kanone und Frost zielen nicht auf Fledermäuse, und der Flächenschaden der Kanone verletzt sie nicht. Pfeil und Scharfschütze treffen sie, und der Kettenblitz springt auf sie über.
+  - Die Turm-Info zeigt "Trifft Flieger" bzw. "Trifft keine Flieger". Die Fledermaus hat eine eigene Figur und einen Bodenschatten, der unter ihr versetzt liegt (damit man sieht, dass sie fliegt).
+  - Wann sie in den Wellen vorkommen, regelt B-171.
+
+### B-168: Irrlicht: weicht langsamen Geschossen aus (Spiel-Logik)
+- Status: entwurf
+- Aufwand: M
+- Idee: Ein flackerndes Licht, das in großen Abständen läuft (nie in Klumpen). Geschosse mit `projectileSpeed` unter `dodgeBelow` (z. B. 11, das trifft Kanone 7 und Frost 10) verfehlt es mit `dodgeChance` (z. B. 0,7). Flächenschaden nimmt es nicht, Rückstoß wirkt nicht. Blitz (sofort), Pfeil (12) und Scharfschütze (30) treffen normal.
+- Werte als Vorschlag: hp 60, speed 1.5, reward 6, Abstand beim Erscheinen 1,5 s.
+- Akzeptanzkriterien:
+  - Tests mit festem Zufall (Seed): Ausweichen nur bei langsamen Geschossen, kein Flächenschaden und kein Rückstoß; Blitz und Pfeil treffen immer.
+  - Ein ausgewichenes Geschoss zeigt sichtbar "Verfehlt" (kurzes Aufflackern). Alle Zahlen stehen in `config.js`.
+
+### B-169: Panzerkäfer: Schale fängt die ersten Treffer ab (Spiel-Logik)
+- Status: entwurf
+- Aufwand: M
+- Idee: Eine Schale mit `shellHits` Schichten (z. B. 5). Jeder Treffer nimmt eine Schicht ab und macht keinen Schaden, egal wie stark er ist. Viele kleine Treffer (Pfeil mit Aufwärmen, jeder Sprung des Kettenblitzes) knacken die Schale schnell. Große Einzeltreffer (Kanone, Scharfschütze) verpuffen an ihr. Flächenschaden zählt als ein Treffer je Käfer. Verlangsamung wirkt auch auf die Schale.
+- Werte als Vorschlag: hp 120, speed 1.0, reward 10, leak 2. Laufen in Gruppen von 3 bis 5 mit den Trollen.
+- Akzeptanzkriterien:
+  - Tests: Die ersten `shellHits` Treffer machen 0 Schaden und danach normalen Schaden. Jeder Sprung des Kettenblitzes zählt als ein Treffer. Der Scharfschütze ignoriert zwar Rüstung, aber nicht die Schale.
+  - Die Schale ist sichtbar (Schichten bzw. Risse); fällt die letzte Schicht, gibt es einen Splitter-Effekt.
+
+### B-170: Glutling: immun gegen Verlangsamung und Einfrieren (Spiel-Logik)
+- Status: entwurf
+- Aufwand: S
+- Idee: Ein schneller Feuergeist (`slowImmune: true`): Frost-Treffer machen nur ihren kleinen Schaden, es gibt kein Verlangsamen und kein Einfrieren. Der Kälteschock wirkt nur halb. Auf der Vulkankarte kommt er öfter vor (`themed`).
+- Werte als Vorschlag: hp 70, speed 2.0, reward 6.
+- Akzeptanzkriterien:
+  - Tests: Frost verlangsamt nicht und friert nicht ein, der Kälteschock wirkt mit halber Stärke.
+  - Die Turm-Info des Frostturms nennt die Ausnahme. Der Glutling hat eine eigene Figur mit Glut-Partikeln.
+
+### B-171: Wellen-Mix mit den neuen Gegnern und Messung "jeder Turm wird gebraucht" (Balancing)
+- Status: entwurf
+- Aufwand: M
+- Idee: B-167 bis B-170 in `waveFor` einbauen (Vorschlag: Fledermäuse ab Welle 6, Glutlinge ab 8, Irrlichter ab 10, Panzerkäfer ab 11). Je Karte über `themed` andere Schwerpunkte, damit nicht jede Karte dieselbe Lösung hat.
+- Messung in `tests/balance/`:
+  - Neue Strategie "nur Kanone + Frost" (z. B. `['cannon','cannon','frost','cannon']`): Sie darf Welle 20 nicht mehr ohne Lebensverlust schaffen (vorher messen und den Wert festhalten).
+  - Jede Karte bleibt perfekt spielbar (siehe "Perfektes Spiel möglich"); die perfekte Reihenfolge enthält Pfeil oder Blitz.
+  - Ziel "recht schwer, aber gut" bleibt: Die stärkste Mischung wird mitgemessen und darf nicht leichter werden als heute.
+- Freiwillig, nur wenn die Messung es zeigt: Die Kanone wird leicht abgeschwächt, z. B. fällt ihr Flächenschaden zum Rand hin auf 50 % ab. Darüber entscheidet der Mensch gesondert.
+- Akzeptanzkriterien:
+  - `npm run test:balance` ist grün mit den neuen Messungen. Die Wellen-Vorschau zeigt die neuen Gegner mit Symbol.
+
+### B-172: Stufe 3 als eigene Gestalt: Skizzen für alle fünf Türme (Design)
+- Status: entwurf
+- Aufwand: S
+- Idee: Der `designer` skizziert für jeden Turm die Stufe 3 als eigene Gestalt (keine Feinarbeit, nur zum Vorstellen) in der Bauteil-Bibliothek in Claude Design und schreibt dazu je eine Bauvorlage für den `developer`. Vorschläge:
+  - Pfeil → "Adlerhorst": höher, mit Wimpel und Adlerkopf; die Pfeile ziehen eine helle Spur.
+  - Kanone → "Mörserfestung": Doppelrohr auf einem Steinsockel; beim Schuss eine Rauchwolke, die Explosion mit Feuerring und kurzem Rußfleck.
+  - Frost → "Eiszitadelle": ein schwebender, sich drehender Kristall, dezenter Frostnebel am Fuß; eingefrorene Gegner stecken im Eisblock.
+  - Scharfschütze → "Falkenauge": Fernrohr mit Glanz; kurz vor dem Schuss ein Zielstrahl, dann eine Leuchtspur über die ganze Strecke.
+  - Blitz → "Sturmspule": eine Spule mit Kugel und ständigem leisen Knistern; der Kettenblitz ist dicker und verästelt, am Boden blitzt es kurz hell.
+  - Für alle gilt: Beim Aufwerten auf Stufe 3 gibt es eine Lichtsäule (Aufstiegs-Effekt). Die Figur bleibt im 20x14-Raster und auch auf dem Handy erkennbar.
+- Akzeptanzkriterien:
+  - Je Turm eine Fläche "Stufe 1/2/3 nebeneinander" in Claude Design. Die Farben kommen aus `docs/design/system/`.
+
+### B-173: Stufe 3: Pfeil, Kanone und Frost umsetzen (nur Optik)
+- Status: entwurf
+- Aufwand: M
+- Idee: Die Bauvorlagen aus B-172 in `render-towers.js`, `tower-fx.js` und `render-fx.js` umsetzen. Keine Spiel-Logik.
+- Akzeptanzkriterien:
+  - Auf einem Screenshot ist die Stufe 3 sofort von der Stufe 2 zu unterscheiden (Silhouette, nicht nur Farbe).
+  - Effekte haben eine Obergrenze an Partikeln (Zahl in `config.js`) und sind bei `prefers-reduced-motion` abgeschwächt.
+  - Tests in `tests/render.test.js` bzw. `tests/fx.test.js` laufen; `npm test` und `npm run test:e2e` sind grün.
+
+### B-174: Stufe 3: Scharfschütze und Blitz umsetzen, dazu der Aufstiegs-Effekt (nur Optik)
+- Status: entwurf
+- Aufwand: M
+- Idee: Wie B-173 für die übrigen zwei Türme, dazu die Lichtsäule beim Aufwerten auf Stufe 3 (auch für Pfeil, Kanone, Frost), auf Wunsch mit einem eigenen Klang (Datei wählt der Mensch).
+- Akzeptanzkriterien: wie B-173. Mit 20 Türmen der Stufe 3 bleibt die Bildrate auf dem Handy-Testprofil stabil.
