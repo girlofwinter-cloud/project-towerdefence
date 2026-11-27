@@ -898,3 +898,10 @@ Neue Einträge werden unten angehängt. Bestehende Einträge werden nie geänder
 - Rolle(n): orchestrator (nach Rücksprache mit dem Menschen: weitere Karten, Gegner und Design-Umbauten geplant, voller Umbau lohnt). Branch: agent/design-plan
 - Ergebnis: Richtung umgedreht, `src/theme.js` wird einzige Quelle, Design-System-Dateien und Claude Design werden daraus erzeugt. Backlog neu geordnet: B-160 (theme.js), B-164 (Styleguide), B-161 (Umstellung), neu B-165 (Wächter-Tests: keine Farbliterale, Kontrast) und B-166 (Claude Design per Skript), dann B-162, B-163; alle `vorschlag`.
 - Bauvorlage-Format: Checklisten für neue Karten und neue Gegner. Konzept `docs/design/token-einfuehrung.md` und Styleguide-Vorlage angepasst.
+
+---
+
+## 2026-11-27 · Stil 1 Nacharbeit und Abschluss
+- Rolle(n): orchestrator, developer, tester, reviewer. PRs #92 (Umbau), #96 (Nacharbeit)
+- Ergebnis: Reviewer (APPROVE, keine Muss) und Tester (PASS, kein Blocker) nachgeholt. Behoben in #96: paintedCache nur aktuelle Karte, kein Endlos-Neurastern, Magic Numbers nach config.js, Kartenwahl ≥ 44 px. Wellenfahne 1,25× (Entscheidung Mensch): je Eingang eine Kachel nicht bebaubar, Bauplätze 226/232/219/194/211.
+- Tests: 538 Unit, 81 e2e grün, CI grün. Backlog B-129–B-154 (außer B-137, B-140, B-146) archiviert; B-137 bleibt offen für weitere Handy-Anpassungen.
