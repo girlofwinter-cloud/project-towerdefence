@@ -601,6 +601,8 @@ export const LAVA = { dps: 7.5, overheat: 1.5 };
 // boss: true = Boss (immun gegen Einfrieren, nur anteiliger Rückstoß, Boss-Auftritt und Boss-Sound).
 // Nekromantin (B-127): beschwört alle summonInterval Sekunden (Spielzeit) summonCount Gegner vom Typ summonType,
 //   summonBehind Kacheln hinter sich auf ihrem Weg (nie vor den Wegstart), jeweils summonSpacing Kacheln versetzt.
+//   B-180 (vorläufige Werte): phase2 = zweite Phase, sobald die HP auf at * maxHp oder darunter fallen (genau einmal):
+//   beschwört dann alle summonInterval Sekunden summonCount Gegner und ist shieldDuration Sekunden lang unverwundbar.
 export const ENEMY_TYPES = {
   grunt: { name: 'Goblin', hp: 40, speed: 1.4, reward: 4, leak: 1, radius: 11, color: '#6fbf4a' },
   runner: { name: 'Flitzer', hp: 25, speed: 2.6, reward: 3, leak: 1, radius: 9, color: '#f2c14e' },
@@ -610,7 +612,8 @@ export const ENEMY_TYPES = {
   shielded: { name: 'Schildträger', hp: 90, speed: 1.0, reward: 12, leak: 2, radius: 13, color: '#6f86a8', armor: 0.5 },
   mage: { name: 'Magier', hp: 55, speed: 1.1, reward: 6, leak: 1, radius: 11, color: '#d9c3a0', wardRadius: 1.5, wardInterval: 5, wardShare: 0.05 },
   necro: { name: 'Nekromantin', hp: 1000, speed: 0.6, reward: 75, leak: 6, radius: 18, color: '#3d4a5c', boss: true,
-    summonInterval: 8, summonCount: 2, summonType: 'skeleton', summonBehind: 0.6, summonSpacing: 0.3 },
+    summonInterval: 8, summonCount: 2, summonType: 'skeleton', summonBehind: 0.6, summonSpacing: 0.3,
+    phase2: { at: 0.5, summonInterval: 5, summonCount: 3, shieldDuration: 2 } },
   skeleton: { name: 'Skelett', hp: 18, speed: 0.9, reward: 1, leak: 1, radius: 10, color: '#e6e0cf' },
   // Glutling (B-170): slowImmune = immun gegen Frost-Slow und Einfrieren (Frost-Schaden wirkt normal);
   //   chillFactor = Anteil der Kälteschock-Verlangsamung, der trotzdem wirkt (0,5 = halbe Wirkung).

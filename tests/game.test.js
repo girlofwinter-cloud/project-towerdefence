@@ -3455,3 +3455,76 @@ test('B-179: gemischtere Mitte (WAVE_EXTRAS nur Wellen 6-12, nicht 5 und 10), We
   const g4 = waveFor(4).filter((e) => e.type === 'grunt');
   assert.ok(Math.abs(g4[1].at - g4[0].at - Math.max(0.3, 0.9 - 4 * 0.04)) < 1e-9, 'andere Wellen unverändert');
 });
+
+// --- B-180: Nekromantin Phase 2 ---
+const P2 = ENEMY_TYPES.necro.phase2;
+// Direkttreffer mit festem Schaden (sofortiges Geschoss), ein kurzer Schritt
+function shootNecro(s, e, dmg) {
+  s.projectiles.push({ x: e.x, y: e.y, targetId: e.id, speed: 1e6, damage: dmg, splash: 0 });
+  update(s, 1e-3);
+}
+
+test('B-180: Phasenwechsel genau einmal, sobald die HP auf phase2.at * maxHp fallen, mit Ereignis phase2', () => {
+  const s = createGame();
+  const n = spawnEnemy(s, 'necro', 10);
+  const limit = P2.at * n.maxHp;
+  shootNecro(s, n, n.maxHp - limit - 1); // knapp über der Schwelle
+  assert.equal(n.phase, undefined);
+  assert.equal(s.effects.filter((fx) => fx.kind === 'phase2').length, 0);
+  shootNecro(s, n, 2); // über die Schwelle
+  assert.equal(n.phase, 2);
+  const ev = s.effects.filter((fx) => fx.kind === 'phase2');
+  assert.equal(ev.length, 1);
+  assert.equal(ev[0].id, n.id);
+  assert.equal(ev[0].max, P2.shieldDuration);
+  // nach dem Schild: weiterer Schaden, Heilung über die Schwelle und erneuter Fall lösen keinen zweiten Wechsel aus
+  for (let t = 0; t < P2.shieldDuration + 0.1; t += 0.05) update(s, 0.05);
+  s.enemies = s.enemies.filter((e) => e === n); // Beschworene stören hier nicht
+  n.hp = n.maxHp;
+  shootNecro(s, n, n.maxHp * 0.6);
+  assert.equal(n.phase, 2);
+  assert.ok(n.hp < limit, 'Schaden wirkt wieder');
+  assert.equal(s.effects.filter((fx) => fx.kind === 'phase2').length, 0, 'kein zweites Ereignis');
+  // Wer mit einem Treffer stirbt, wechselt nicht mehr die Phase
+  const d = createGame();
+  const m = spawnEnemy(d, 'necro', 10);
+  shootNecro(d, m, m.maxHp + 1);
+  assert.equal(d.effects.filter((fx) => fx.kind === 'phase2').length, 0);
+  // Andere Bosse haben keine zweite Phase
+  const o = spawnEnemy(d, 'boss', 10);
+  shootNecro(d, o, o.maxHp * 0.6);
+  assert.equal(o.phase, undefined);
+});
+
+test('B-180: Schild beim Phasenwechsel hält genau shieldDuration Sekunden', () => {
+  const s = createGame();
+  const n = spawnEnemy(s, 'necro', 10);
+  shootNecro(s, n, n.maxHp * (1 - P2.at) + 1);
+  const hp = n.hp;
+  const t0 = n.shieldUntil - P2.shieldDuration;
+  while (s.time < t0 + P2.shieldDuration - 0.05) {
+    shootNecro(s, n, 50);
+    update(s, 0.04);
+  }
+  assert.equal(n.hp, hp, 'im Schild kein Schaden');
+  while (s.time < t0 + P2.shieldDuration + 0.01) update(s, 0.01);
+  shootNecro(s, n, 50);
+  assert.ok(Math.abs(n.hp - (hp - 50)) < 1e-9, 'nach dem Schild wieder Schaden');
+});
+
+test('B-180: zweite Phase beschwört im Takt phase2.summonInterval je phase2.summonCount Skelette', () => {
+  assert.ok(P2.summonInterval < ENEMY_TYPES.necro.summonInterval && P2.summonCount > ENEMY_TYPES.necro.summonCount);
+  const s = createGame();
+  const n = spawnEnemy(s, 'necro', 10);
+  n.dist = 8 * TILE; // Platz hinter ihr für die Beschworenen
+  shootNecro(s, n, n.maxHp * (1 - P2.at) + 1);
+  const t0 = s.time;
+  const skeletons = () => s.enemies.filter((e) => e.type === 'skeleton').length;
+  const step = 0.01;
+  while (s.time < t0 + P2.summonInterval - 0.05) update(s, step);
+  assert.equal(skeletons(), 0, 'vor phase2.summonInterval keine Beschwörung');
+  while (s.time < t0 + P2.summonInterval + 0.05) update(s, step);
+  assert.equal(skeletons(), P2.summonCount);
+  while (s.time < t0 + 2 * P2.summonInterval + 0.05) update(s, step);
+  assert.equal(skeletons(), 2 * P2.summonCount);
+});

@@ -486,10 +486,11 @@ function summonStep(state) {
     const s = list[i];
     if (!(s.summonAt <= state.time) || s.hp <= 0) continue;
     const def = ENEMY_TYPES[s.type];
-    s.summonAt += def.summonInterval;
-    if (s.summonAt <= state.time) s.summonAt = state.time + def.summonInterval; // nach großem dt nicht aufholen
+    const phase = s.phase === 2 ? def.phase2 : def; // B-180: zweite Phase beschwört schneller und mehr
+    s.summonAt += phase.summonInterval;
+    if (s.summonAt <= state.time) s.summonAt = state.time + phase.summonInterval; // nach großem dt nicht aufholen
     const path = enemyPath(state, s);
-    for (let k = 0; k < def.summonCount; k++) {
+    for (let k = 0; k < phase.summonCount; k++) {
       const m = spawnEnemy(state, def.summonType, s.wave ?? state.wave, s.lane);
       m.summoned = true; // beschworen, nicht aus der Spawn-Liste
       m.dist = Math.max(0, s.dist - (def.summonBehind + k * def.summonSpacing) * TILE);
@@ -712,6 +713,7 @@ function knockBack(state, e, p) {
 // und Scharfschütze. Kanonen-Splash trifft immer mit vollem Schaden. Der Frost-Slow
 // wirkt unabhängig von der Rüstung unverändert.
 function damage(state, enemy, p, direct = false) {
+  if (enemy.shieldUntil > state.time) return; // B-180: Schild beim Phasenwechsel, unverwundbar
   // B-169: Solange die Schale hält, nimmt jeder Treffer (nicht Lava) eine Schicht und macht 0 Schaden (vor Rüstung und Schild).
   const shelled = enemy.shell > 0 && !p.lava && crackShell(state, enemy);
   let dmg = shelled ? 0 : direct ? p.damage * (p.ignoreArmor ? 1 : 1 - (enemy.armor || 0)) : p.damage;
@@ -722,10 +724,23 @@ function damage(state, enemy, p, direct = false) {
     dmg -= absorbed;
   }
   enemy.hp -= dmg;
+  phaseCheck(state, enemy);
   if (p.slow && !isSlowImmune(enemy)) { // B-170: Glutlinge ignorieren den Frost-Slow, der Schaden wirkt
     enemy.slowFactor = 1 - p.slow;
     enemy.slowUntil = state.time + p.slowDuration;
   }
+}
+
+// B-180: Phasenwechsel der Nekromantin (ENEMY_TYPES[type].phase2), genau einmal, sobald die HP auf phase2.at * maxHp
+// fallen und sie noch lebt: schnellerer Beschwörungstakt ab jetzt, Schild für shieldDuration Sekunden und das
+// Logik-Ereignis 'phase2' in state.effects (für die spätere Optik; ttl = Schilddauer, id = Gegner).
+function phaseCheck(state, enemy) {
+  const p2 = ENEMY_TYPES[enemy.type]?.phase2;
+  if (!p2 || enemy.phase === 2 || enemy.hp <= 0 || enemy.hp > p2.at * enemy.maxHp) return;
+  enemy.phase = 2;
+  enemy.shieldUntil = state.time + p2.shieldDuration;
+  enemy.summonAt = state.time + p2.summonInterval;
+  state.effects.push({ kind: 'phase2', id: enemy.id, x: enemy.x, y: enemy.y, ttl: p2.shieldDuration, max: p2.shieldDuration });
 }
 
 // B-170: immun gegen Frost-Slow und Einfrieren (Merkmal slowImmune des Gegnertyps)
