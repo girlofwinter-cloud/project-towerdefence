@@ -381,6 +381,8 @@ export function drawEffectOver(ctx, e, reducedMotion = false) {
     drawMeteorOver(ctx, e);
   } else if (e.kind === 'explosion') {
     drawExplosionStars(ctx, e, a);
+  } else if (e.kind === 'shellBreak') {
+    drawShellBreak(ctx, e, a);
   } else if (e.kind === 'coin') {
     const ty = e.y - CT.lift + (reducedMotion ? 0 : a * CT.rise);
     ctx.save();
@@ -396,6 +398,27 @@ export function drawEffectOver(ctx, e, reducedMotion = false) {
     ctx.globalAlpha = 1;
     ctx.restore();
   }
+}
+
+// B-169 (Platzhalter): Schale des Panzerkäfers bricht, Splitter fliegen im Kreis auseinander und verblassen
+function drawShellBreak(ctx, e, a) {
+  const c = FX_STYLE.shellBreak;
+  const t = 1 - (a > 0 ? (a < 1 ? a : 1) : 0); // 0 -> 1 über die Lebensdauer
+  ctx.save();
+  ctx.globalAlpha = 1 - t;
+  ctx.fillStyle = c.color;
+  ctx.strokeStyle = c.ink;
+  ctx.lineWidth = c.line;
+  for (let i = 0; i < c.count; i++) {
+    const ang = (i / c.count) * Math.PI * 2;
+    const x = e.x + Math.cos(ang) * c.reach * t;
+    const y = e.y + Math.sin(ang) * c.reach * t;
+    ctx.beginPath();
+    ctx.rect(x - c.size / 2, y - c.size / 2, c.size, c.size);
+    ctx.fill();
+    ctx.stroke();
+  }
+  ctx.restore();
 }
 
 // Kettenblitz (Z.143–145): Zickzack Turm -> Ziel 1 -> Ziel 2 ..., blauer Schein, dunkle Kontur, heller Kern.

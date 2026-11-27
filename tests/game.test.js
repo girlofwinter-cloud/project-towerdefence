@@ -3088,3 +3088,104 @@ describe('B-167 Fledermaus: Flieger, die Kanone und Frost nicht treffen', () => 
     assert.ok(bat.slowUntil > s.time, 'Kälteschock');
   });
 });
+
+// ---------- B-169: Panzerkäfer (Schale) ----------
+describe('B-169 Panzerkäfer: Schale fängt die ersten Treffer ab', () => {
+  const SHELL = ENEMY_TYPES.beetle.shellHits;
+  // Turm schießt einmal, Geschoss fliegt ins Ziel
+  function shoot(s, tower) {
+    tower.cooldown = 0;
+    update(s, 0.001);
+    for (let i = 0; i < 60 && s.projectiles.length; i++) { tower.cooldown = 99; update(s, 0.02); }
+  }
+
+  test('Spawn: Schale mit shellHits Schichten, andere Gegner ohne Schale', () => {
+    const s = createGame();
+    assert.equal(spawnEnemy(s, 'beetle', 1).shell, SHELL);
+    assert.equal(spawnEnemy(s, 'grunt', 1).shell, undefined);
+  });
+
+  test('Pfeil: shellHits Treffer machen 0 Schaden, der nächste normal', () => {
+    const { s, tower, e } = specialSetup('arrow', 'beetle');
+    for (let i = 0; i < SHELL; i++) {
+      shoot(s, tower);
+      assert.equal(e.hp, e.maxHp, `Treffer ${i + 1} ohne Schaden`);
+      assert.equal(e.shell, SHELL - i - 1);
+    }
+    shoot(s, tower);
+    assert.equal(e.maxHp - e.hp, TOWER_TYPES.arrow.damage, 'Treffer nach der Schale normal');
+  });
+
+  test('Kettenblitz: jeder Sprung zählt als Treffer', () => {
+    const { s, tower, e } = specialSetup('lightning', 'beetle');
+    const b2 = spawnEnemy(s, 'beetle', 1);
+    b2.dist = e.dist; b2.x = e.x + 10; b2.y = e.y; b2.speed = 0; b2.hp = b2.maxHp = 1e9;
+    tower.cooldown = 0;
+    update(s, 0.001);
+    assert.equal(e.shell, SHELL - 1);
+    assert.equal(b2.shell, SHELL - 1);
+    assert.equal(e.hp, e.maxHp);
+    assert.equal(b2.hp, b2.maxHp);
+  });
+
+  test('Kanonen-Splash zählt einmal je Käfer und Explosion', () => {
+    const { s, tower, e } = specialSetup('cannon', 'beetle');
+    shoot(s, tower);
+    assert.equal(e.shell, SHELL - 1);
+    assert.equal(e.hp, e.maxHp);
+  });
+
+  test('Meteor zählt einmal', () => {
+    const { s, e } = specialSetup('arrow', 'beetle');
+    s.towers = [];
+    assert.ok(useAbility(s, 'meteor', e.x, e.y).ok);
+    assert.equal(e.shell, SHELL - 1);
+    assert.equal(e.hp, e.maxHp);
+  });
+
+  test('Scharfschütze ignoriert Rüstung, nicht die Schale', () => {
+    const { s, tower, e } = specialSetup('sniper', 'beetle');
+    e.armor = 0.5;
+    shoot(s, tower);
+    assert.equal(e.hp, e.maxHp);
+    assert.equal(e.shell, SHELL - 1);
+  });
+
+  test('Schale vor Magier-Schild: der Schild bleibt bei intakter Schale unberührt', () => {
+    const { s, tower, e } = specialSetup('arrow', 'beetle');
+    e.ward = 5;
+    shoot(s, tower);
+    assert.equal(e.ward, 5);
+    assert.equal(e.shell, SHELL - 1);
+  });
+
+  test('Lava zählt nicht als Treffer und macht Schaden', () => {
+    const { lost, e } = lavaBurn('beetle', 10, 8, 1, 1 / 60);
+    assert.ok(lost > 0, 'Lava-Schaden');
+    assert.equal(e.shell, SHELL, 'Schale unverändert');
+  });
+
+  test('Frost verlangsamt (und friert ein) trotz intakter Schale', () => {
+    const { s, tower, e } = specialSetup('frost', 'beetle');
+    shoot(s, tower);
+    assert.equal(e.hp, e.maxHp);
+    assert.ok(e.slowUntil > s.time && e.slowFactor < 1, 'verlangsamt');
+    tower.hitCount = TOWER_TYPES.frost.special.freezeEvery - 1;
+    shoot(s, tower);
+    assert.ok(e.frozenUntil > s.time, 'eingefroren');
+  });
+
+  test('shellBreak-Effekt entsteht genau beim Bruch der letzten Schicht', () => {
+    const { s, tower, e } = specialSetup('arrow', 'beetle');
+    const breaks = () => s.effects.filter((fx) => fx.kind === 'shellBreak').length;
+    for (let i = 0; i < SHELL - 1; i++) shoot(s, tower);
+    assert.equal(breaks(), 0);
+    shoot(s, tower);
+    const fx = s.effects.find((f) => f.kind === 'shellBreak');
+    assert.ok(fx, 'Effekt da');
+    assert.equal(fx.max, FX_STYLE.shellBreak.life);
+    assert.ok(Math.abs(fx.x - e.x) < 1e-9 && Math.abs(fx.y - e.y) < 1e-9);
+    shoot(s, tower);
+    assert.equal(breaks(), 1, 'kein zweiter Effekt');
+  });
+});

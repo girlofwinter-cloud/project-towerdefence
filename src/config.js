@@ -607,6 +607,8 @@ export const ENEMY_TYPES = {
   skeleton: { name: 'Skelett', hp: 18, speed: 0.9, reward: 1, leak: 1, radius: 10, color: '#e6e0cf' },
   // Fledermaus (B-167): flying = Flieger, nur Türme mit hitsAir zielen auf sie; Kanonen-Splash trifft sie nicht.
   bat: { name: 'Fledermaus', hp: 30, speed: 1.8, reward: 3, leak: 1, radius: 9, color: '#5d4a66', flying: true },
+  // Panzerkäfer (B-169): shellHits = Schichten der Schale; jeder Treffer (nicht Lava) nimmt eine Schicht und macht 0 Schaden.
+  beetle: { name: 'Panzerkäfer', hp: 120, speed: 1.0, reward: 10, leak: 2, radius: 12, color: '#2f7a3d', shellHits: 5 },
 };
 
 // B-127: Boss-Merkmal statt Typname. Nimmt einen Gegner ({ type }) oder einen Typnamen.
@@ -1215,6 +1217,8 @@ export const ENEMY_STYLE = {
   mage: {
     wardFill: 'rgba(120,200,255,0.28)', wardRing: 'rgba(190,235,255,0.9)', wardRingWidth: 1.6, wardPad: 4, wardPulse: 0.6, wardSpeed: 3,
   },
+  // B-169: Schicht-Anzeige der Schale (Platzhalter): kleine Segmente über der Figur, Maße in Spiel-px
+  beetle: { segW: 4, segH: 3, segGap: 1.5, lift: 3, fill: '#9aa6b2', ink: '#2b1a10', line: 1 },
 };
 
 // Auftritt des Bosses (B-067, nur Darstellung): Bodenschlag-Ring plus leichtes Wackeln.
@@ -1265,6 +1269,8 @@ export const FX_STYLE = {
   smoke: { color: '#9a8fa6', alpha: 0.45, grow: 0.6 }, // unter den Gegnern
   // B-127: Beschwörung der Nekromantin: grüne Lichtfunken steigen auf (life = Effektdauer in s Spielzeit, size in px)
   summon: { color: '#7dff9a', count: 6, life: 0.6, size: 2.2, sizeVar: 1.2, speed: 30, spread: 8, alpha: 0.85 },
+  // B-169: Schale des Panzerkäfers bricht (Platzhalter): Splitter fliegen auseinander (life in s Spielzeit, Maße in px)
+  shellBreak: { life: 0.4, color: '#9aa6b2', ink: '#2b1a10', count: 6, reach: 14, size: 3, line: 1 },
   coin: { color: '#f4c542', dark: '#b07a14', shine: '#fff3c9', hop: 12, bounce: 0.3, split: 0.55, end: 0.85, spins: 1.5, minWidth: 0.3, fadeFrom: 0.6, drift: 20,
     edgeWidth: 1, inner: 0.72, shineMin: 0.6, shineOffset: 0.3, shineR: 0.22 }, // Rand, Innenfläche und Glanz relativ zur Größe
   coinText: { color: '#f4c542', outline: '#3b2415', outlineWidth: 3, rise: 10, lift: 20, font: 'bold 13px system-ui, sans-serif' }, // lift: Start über dem Gegner in px
@@ -1405,7 +1411,7 @@ export const SOUND = {
       'shot:lightning': { files: ['lightning-1', 'lightning-2', 'lightning-3'], gain: 0.18, pitchVar: 0.06 },
       // Tod: kurze Monster-Schreie (OpenGameArt, CC0); enemyRate = Tonhöhe je Gegnertyp (klein/schnell höher)
       death:            { files: ['death-1', 'death-2', 'death-3', 'death-4'], gain: 0.55, pitchVar: 0.08,
-                          enemyRate: { runner: 1.25, grunt: 1.1, healer: 1.05, mage: 1.0, shielded: 0.95, tank: 0.85, skeleton: 1.35, bat: 1.4 } },
+                          enemyRate: { runner: 1.25, grunt: 1.1, healer: 1.05, mage: 1.0, shielded: 0.95, tank: 0.85, skeleton: 1.35, bat: 1.4, beetle: 0.9 } },
       // Boss-Tod: langer, tiefer Schrei, zusätzlich tiefer abgespielt (rate = Grund-Tonhöhe)
       boss:             { files: ['boss-1', 'boss-2'], gain: 0.9, pitchVar: 0.03, rate: 0.85 },
       lifeLost:         { files: ['life-lost-1', 'life-lost-2'], gain: 0.8, pitchVar: 0 },

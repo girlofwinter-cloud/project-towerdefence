@@ -285,6 +285,7 @@ export function spawnEnemy(state, type, wave = state.wave, lane = null) {
     ward: 0, // B-126: Schild des Magiers (schluckt Schaden vor den HP)
   };
   if (def.summonInterval) enemy.summonAt = state.time + def.summonInterval; // B-127: nächste Beschwörung
+  if (def.shellHits) enemy.shell = def.shellHits; // B-169: Schichten der Schale (Panzerkäfer)
   state.enemies.push(enemy);
   return enemy;
 }
@@ -422,7 +423,7 @@ function lavaStep(state, dt) {
     const row = Math.floor(e.y / TILE);
     if (!state.hotPath.has(`${col},${row}`)) continue;
     // B-120: skaliert mit der Welle des Gegners (Rückfall: aktuelle Welle)
-    damage(state, e, { damage: LAVA.dps * hpScale(Math.max(1, e.wave ?? state.wave)) * dt });
+    damage(state, e, { damage: LAVA.dps * hpScale(Math.max(1, e.wave ?? state.wave)) * dt, lava: true }); // B-169: kein Treffer auf die Schale
     hit = true;
   }
   if (hit) removeDead(state);
@@ -672,7 +673,9 @@ function knockBack(state, e, p) {
 // und Scharfschütze. Kanonen-Splash trifft immer mit vollem Schaden. Der Frost-Slow
 // wirkt unabhängig von der Rüstung unverändert.
 function damage(state, enemy, p, direct = false) {
-  let dmg = direct ? p.damage * (p.ignoreArmor ? 1 : 1 - (enemy.armor || 0)) : p.damage;
+  // B-169: Solange die Schale hält, nimmt jeder Treffer (nicht Lava) eine Schicht und macht 0 Schaden (vor Rüstung und Schild).
+  const shelled = enemy.shell > 0 && !p.lava && crackShell(state, enemy);
+  let dmg = shelled ? 0 : direct ? p.damage * (p.ignoreArmor ? 1 : 1 - (enemy.armor || 0)) : p.damage;
   // B-126: Der Schild des Magiers schluckt den Schaden (nach der Rüstung) zuerst, der Rest geht auf die HP.
   if (enemy.ward > 0) {
     const absorbed = Math.min(enemy.ward, dmg);
@@ -684,6 +687,16 @@ function damage(state, enemy, p, direct = false) {
     enemy.slowFactor = 1 - p.slow;
     enemy.slowUntil = state.time + p.slowDuration;
   }
+}
+
+// B-169: eine Schicht der Schale abziehen; bricht die letzte, entsteht der Effekt 'shellBreak'. Gibt true zurück.
+function crackShell(state, enemy) {
+  enemy.shell -= 1;
+  if (enemy.shell <= 0) {
+    const life = FX_STYLE.shellBreak.life;
+    state.effects.push({ kind: 'shellBreak', x: enemy.x, y: enemy.y, ttl: life, max: life });
+  }
+  return true;
 }
 
 function removeDead(state) {

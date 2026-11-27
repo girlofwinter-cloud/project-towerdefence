@@ -223,7 +223,7 @@ test('Gegner-Zeichnung: Hintergrund-Cache bleibt bei Gegnern aller Typen ungesto
 });
 
 // ---------- Stil 1 (G7): Gegner nach dem Entwurf ----------
-const ALL_ENEMIES = ['grunt', 'runner', 'tank', 'boss', 'healer', 'shielded', 'mage', 'skeleton', 'necro'];
+const ALL_ENEMIES = ['grunt', 'runner', 'tank', 'boss', 'healer', 'shielded', 'mage', 'skeleton', 'necro', 'beetle'];
 
 // Sichtbare Größe einer Figur in Kacheln: umrandete Formen (Kontur #2b1a10) mal Maßstab, ohne Schatten
 async function figureSize(type, frozen = false) {
@@ -251,7 +251,7 @@ test('Stil 1 Gegner: Größe wie im Plan, Boss = Troll x 1,3, Nekromantin größ
   assert.ok(Math.abs(boss.w / tank.w - S.bossScale) < 0.05, 'Boss 1,3 x so breit wie der Troll');
   assert.ok(boss.h > tank.h * S.bossScale, 'Krone ragt über den Troll hinaus');
   assert.ok((await figureSize('necro')).h > grunt.h * 1.4, 'Nekromantin deutlich größer als der Goblin');
-  for (const type of ['healer', 'shielded', 'mage', 'skeleton']) {
+  for (const type of ['healer', 'shielded', 'mage', 'skeleton', 'beetle']) {
     const z = await figureSize(type);
     assert.ok(z.w <= 0.85 && z.h <= 1, `${type}: Goblin-Größe (${z.w.toFixed(2)} x ${z.h.toFixed(2)})`);
   }
@@ -296,7 +296,7 @@ test('Stil 1 Gegner: dunkle Kontur hebt sich >= 0,25 von jeder Wegfarbe ab, Haup
     const road = { ...PATH_STYLE.colors, ...(MAPS[id].theme?.path || {}) }.mid;
     assert.ok(Math.abs(brightness(S.outline) - brightness(road)) >= 0.25, `${id}: Kontur gegen Weg ${road}`);
   }
-  const main = { grunt: '#6cc03a', runner: '#f4cf3a', tank: '#b5663e', boss: '#f2c14e', healer: '#f4f1e6', shielded: '#8a5326', mage: '#7a4bb0', skeleton: '#f2e9d8', necro: '#5b3d8a' };
+  const main = { grunt: '#6cc03a', runner: '#f4cf3a', tank: '#b5663e', boss: '#f2c14e', healer: '#f4f1e6', shielded: '#8a5326', mage: '#7a4bb0', skeleton: '#f2e9d8', necro: '#5b3d8a', beetle: '#2f7a3d' };
   for (const type of ALL_ENEMIES) {
     const r = await recordEnemy({ type });
     assert.ok(r.print.includes('fill:|' + main[type]), `${type}: Hauptfarbe ${main[type]}`);
@@ -368,9 +368,9 @@ test('Stil 1 Sprites: je Typ x Stufe x Pixeldichte genau einmal gebaut, danach n
     const before = spriteStats.builds;
     const first = frame(1);
     const built = spriteStats.builds - before;
-    // Türme: 5 Typen x 3 Stufen, Kanone und Scharfschütze mit Teil vor dem drehenden Rohr (+2 x 3); Gegner: 9 Typen x 2
-    assert.equal(built, 15 + 6 + 18, 'jede Figur genau ein Sprite');
-    assert.ok(first.drawImage >= 15 + 6 + 18);
+    // Türme: 5 Typen x 3 Stufen, Kanone und Scharfschütze mit Teil vor dem drehenden Rohr (+2 x 3); Gegner: 10 Typen x 2 (B-169: + Panzerkäfer)
+    assert.equal(built, 15 + 6 + 20, 'jede Figur genau ein Sprite');
+    assert.ok(first.drawImage >= 15 + 6 + 20);
     frame(1);
     frame(1);
     assert.equal(spriteStats.builds - before, built, 'zweiter Frame baut nichts neu');
@@ -1385,4 +1385,22 @@ test('Stil 1 Effekte: Explosion mit Lichthof/Rauch unter und drei Sternen über 
   assert.ok(b.filter((c) => c.startsWith('lineTo')).length > 4, 'Zickzack');
   assert.notDeepEqual(bolt(0.2), bolt(0.15), 'flackert');
   assert.deepEqual(bolt(0.2), b, 'deterministisch');
+});
+
+// ---------- B-169: Panzerkäfer (Platzhalter-Darstellung) ----------
+test('B-169 Schicht-Anzeige: ein Segment je Schicht, ohne Schale nichts; shellBreak-Effekt zeichnet ausgewogen', async () => {
+  const { drawShellPips } = await import('../src/render-enemies.js');
+  const { drawEffectOver } = await import('../src/render-fx.js');
+  const { enemyFigure } = await import('../src/figures.js');
+  const { FX_STYLE: F } = await import('../src/config.js');
+  const f = enemyFigure('beetle', false);
+  const rects = (shell) => { const m = mockCtx(); drawShellPips(m.ctx, { x: 50, y: 50, shell }, f, 1); assert.equal(m.depth, 0); return m.counts.rect || 0; };
+  assert.equal(rects(5), 5);
+  assert.equal(rects(2), 2);
+  assert.equal(rects(0), 0);
+  assert.equal(rects(undefined), 0);
+  const m = mockCtx();
+  drawEffectOver(m.ctx, { kind: 'shellBreak', x: 50, y: 50, ttl: 0.2, max: 0.4 });
+  assert.equal(m.depth, 0);
+  assert.equal(m.counts.rect, F.shellBreak.count);
 });
