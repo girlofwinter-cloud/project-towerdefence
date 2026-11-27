@@ -391,7 +391,8 @@ canvas.addEventListener('click', (ev) => {
   const touch = lastPointerType !== 'mouse';
   // C4: ohne Baumodus trifft der Klick auch die Turmfigur (ragt über die Kachel nach oben)
   const pt = pointFromEvent(ev);
-  const existing = ui.buildType ? towerAt(state, col, row) : pickTower(state.towers, pt.x, pt.y);
+  const check = state.status === 'playing' ? canBuild(state, col, row) : { ok: false, reason: '' };
+  const existing = ui.buildType ? towerAt(state, col, row) : pickTower(state.towers, pt.x, pt.y, () => check.ok);
   if (existing) {
     ui.selectedTowerId = existing.id;
     ui.buildType = null;
@@ -402,7 +403,6 @@ canvas.addEventListener('click', (ev) => {
     const step = buildTapStep(ui.pending, col, row, touch);
     ui.pending = step.pending;
     if (step.action === 'preview') {
-      const check = canBuild(state, col, row);
       ui.hover = { col, row, ok: check.ok };
       if (check.ok) flash('Nochmal tippen zum Bauen', 'info');
       else { flash(check.reason); ui.pending = null; }
@@ -412,12 +412,13 @@ canvas.addEventListener('click', (ev) => {
       else if (res.tower.overheated) flash(`${overheatNote(res.tower)} (neben Lava)`, 'info'); // B-030
       if (touch) ui.hover = null;
     }
+  } else if (check.ok && ui.selectedTowerId !== null) {
+    openBuildRing(col, row);
   } else if (ui.selectedTowerId !== null) {
     closeRings(); // Turm-Ring offen: Klick daneben schließt
   } else if (ui.ring && (touch || (ui.ring.col === col && ui.ring.row === row))) {
     closeRings(); // Touch: Tipp daneben schließt; Maus: Klick auf dieselbe Kachel schließt
   } else {
-    const check = state.status === 'playing' ? canBuild(state, col, row) : { ok: false, reason: '' };
     if (check.ok) openBuildRing(col, row); // Maus: anderer freier Platz -> Ring springt dorthin
     else {
       closeRings();

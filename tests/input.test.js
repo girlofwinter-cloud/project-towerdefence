@@ -123,7 +123,7 @@ test('fieldPoint + canvasSize: Ecken-Kacheln treffen bei jeder Größe und Pixel
 // ---------- C4 Ringmenü (ring-menu.js) ----------
 import { ringRadius, tileCenterPx, ringCenter, infoOnLeft, towerHitBox, pickTower, buildRingView, towerRingView } from '../src/ring-menu.js';
 import { RING_MENU, TOWER_TYPES } from '../src/config.js';
-import { createGame, buildTower, upgradeTower } from '../src/game.js';
+import { createGame, buildTower, upgradeTower, canBuild } from '../src/game.js';
 
 test('C4 ringRadius: mindestens minRadius, sonst 1,55 Kacheln; kompakt fest', () => {
   assert.equal(ringRadius(20), RING_MENU.minRadius);
@@ -190,6 +190,23 @@ test('C4 pickTower: Treffer auch auf der Turmsilhouette über der Kachel, eigene
   const top = buildTower(s, 'arrow', c, r - 1).tower;
   assert.equal(pickTower(s.towers, x, (r - 0.5) * TILE)?.id, top.id);
   assert.equal(pickTower([], x, x), null);
+});
+
+test('C4 pickTower: freie Baufläche vor überragender Silhouette aller Turmtypen', () => {
+  for (const type of Object.keys(TOWER_TYPES)) {
+    const s = createGame({ gold: 99999 });
+    let spot = null;
+    for (let r = 1; r < ROWS && !spot; r++) for (let c = 0; c < COLS && !spot; c++) {
+      if (canBuild(s, c, r).ok && canBuild(s, c, r - 1).ok) spot = [c, r];
+    }
+    assert.ok(spot, `${type}: benachbarte freie Bauflächen gefunden`);
+    const [c, r] = spot;
+    const tower = buildTower(s, type, c, r).tower;
+    const x = (c + 0.5) * TILE, y = (r - 0.5) * TILE;
+    assert.equal(pickTower(s.towers, x, y)?.id, tower.id, `${type}: Silhouette bleibt auswählbar`);
+    assert.equal(pickTower(s.towers, x, y, (col, row) => canBuild(s, col, row).ok), null, `${type}: freie Nachbarkachel kann gebaut werden`);
+    assert.equal(pickTower(s.towers, tower.x, tower.y, (col, row) => canBuild(s, col, row).ok)?.id, tower.id, `${type}: Turm auf eigener Kachel bleibt auswählbar`);
+  }
 });
 
 test('C4 buildRingView: fünf Knöpfe in Tastenreihenfolge, zu teuer markiert mit eigenem Namen', () => {

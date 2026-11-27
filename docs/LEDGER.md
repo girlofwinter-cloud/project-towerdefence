@@ -874,3 +874,12 @@ Neue Einträge werden unten angehängt. Bestehende Einträge werden nie geänder
 - Ergebnis: Stil-1-Umbau umgesetzt. Auf ausdrücklichen Wunsch des Menschen gilt einmalig eine Merge-Ausnahme vor unabhängiger Tester-/Reviewer-Freigabe.
 - Entscheidungen: Copilot-Agenten konnten gpt-6-luna nicht starten (`400 model_not_supported`). Der Mensch holt Tester- und Review-Runde in Claude Code nach, sobald es wieder verfügbar ist.
 - Tests: `npm test` 534/534; `npm run test:e2e` 78/78; GitHub-CI für HEAD 3120a5b1 grün.
+
+## 2026-11-27 · Bugfix · Bauflächen hinter Turmsilhouetten
+- Rolle(n): orchestrator. Branch: agent/frost-tower-placement
+- Runden: 1 von max. 2
+- Ergebnis: fertig
+- Tests: `npm test` 535/535; gezielter Browser-Regressionstest für alle fünf Turmtypen bestanden.
+- Review: Diff selbst geprüft; kein separater Agentenreview.
+- Entscheidungen: Eine freie, bebaubare Kachel hat Vorrang vor überragenden Turmsilhouetten; ein Turm auf seiner eigenen Kachel bleibt auswählbar. Gilt für alle Turmtypen.
+- Offen: Vollständige Browser-Test-Suite nicht erneut ausgeführt.
