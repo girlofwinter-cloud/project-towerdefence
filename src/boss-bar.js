@@ -19,6 +19,7 @@ export function createBossBars(doc = document) {
   }));
   let last = [];
   let goneAt = null;
+  let lastState = null; // neues Spiel (Neustart): alte Leiste sofort verwerfen
 
   function place() {
     const hud = doc.getElementById('hud-bar')?.getBoundingClientRect();
@@ -31,6 +32,7 @@ export function createBossBars(doc = document) {
 
   // now: Sekunden (Echtzeit der Oberfläche, nur fürs Ausblenden)
   return function update(state, ui, now) {
+    if (state !== lastState) { lastState = state; last = []; goneAt = null; }
     let views = bossBarViews(state);
     if (views.length) { last = views; goneAt = null; }
     else if (last.length) {
