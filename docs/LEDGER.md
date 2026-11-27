@@ -39,3 +39,8 @@ Anhängen ohne die Datei zu lesen: `cat >> docs/LEDGER.md <<'EOF' … EOF`. Übe
 - Tests: npm test 557 grün, test:balance 20 grün, e2e 88 grün; Tester PASS, Reviewer APPROVE
 - Entscheidungen: Fledermaus/Irrlicht/Panzerkäfer/Glutling; Kanone+Frost gewinnt nirgends mehr ohne Lebensverlust; Kartenfaktoren Eiswelt/Zwei Fronten und Teständerungen vom Menschen freigegeben; zwei developer parallel, designer für Figuren
 - Offen: Fledermaus nimmt Lava-Schaden (Frage); Effekte ohne Logik-Ereignis (Dampf bei Frostturm-Treffer, Splitter je Schicht, Irrlicht-Zucken)
+
+## 2026-11-27 · B-178, B-179 · Vollbild auf dem Handy (Knopf und Web-App)
+- Ergebnis: fertig, Branch agent/vollbild. Runder Knopf „Vollbild“ (Fullscreen-API mit webkit-Präfix, auf Touch-Geräten Querformat festgehalten), nur sichtbar, wo der Browser es kann; Handy-Querformat in der freien Ecke links neben Ton. Web-App-Manifest (display fullscreen, landscape) plus Apple-Meta und Symbole 180/192/512 aus der Burg des Startbildschirms.
+- Tests: npm test grün, test:e2e grün (neu tests/fullscreen.test.js, tests/e2e/vollbild.test.mjs).
+- Entscheidungen: iPhone-Safari kann kein Vollbild für Seiten, dort nur „Zum Home-Bildschirm“. Kartenwahl am Desktop rückt um einen Knopf nach links. Kein Balancing berührt.

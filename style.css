@@ -122,6 +122,9 @@ canvas#game.over-flag { cursor: pointer; } /* Maus über der Wellenfahne */
   display: flex; gap: 8px; align-items: center;
 }
 #sound .ic-off, #sound[aria-pressed="false"] .ic-on { display: none; }
+#fullscreen[hidden] { display: none; }
+#fullscreen .ic-exit, #fullscreen[aria-pressed="true"] .ic-enter { display: none; }
+#fullscreen[aria-pressed="true"] .ic-exit { display: block; }
 #sound[aria-pressed="false"] .ic-off { display: block; }
 #pause .ic-play, #pause[data-paused="true"] .ic-pause { display: none; }
 #pause[data-paused="true"] .ic-play { display: block; }
@@ -196,8 +199,9 @@ kbd { font: 12px/1.4 ui-monospace, monospace; color: var(--cream); background: r
   border-radius: 17px; font: 15px/28px var(--display); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 #wave-preview[hidden] { display: none; }
-/* C-Abnahme 3: Kartenwahl vor Welle 1 im oberen Band zwischen Holzleiste und runden Knöpfen (4 Knöpfe à 48 + 3 x 8 Abstand) */
+/* C-Abnahme 3: Kartenwahl vor Welle 1 im oberen Band zwischen Holzleiste und runden Knöpfen (4 Knöpfe à 48 + 3 x 8 Abstand, mit Vollbild-Knopf 5 + 4) */
 .map-pick { position: absolute; z-index: 11; right: calc(var(--fr) + 4 * 48px + 3 * 8px + 16px); top: max(2px, calc((var(--fy) - 56px) / 2)); height: 56px; padding: 0 6px 0 12px; border-radius: 28px; /* Höhe wie Holzleiste: size-hud-h */ display: flex; align-items: center; gap: 8px; font-size: 16px; }
+body:has(#fullscreen:not([hidden])) .map-pick { right: calc(var(--fr) + 5 * 48px + 4 * 8px + 16px); } /* B-178: fünfter Knopf (Vollbild) */
 .map-pick select { font: 15px var(--display); color: var(--ink); background: #fff3d2; border: 2px solid var(--ink); border-radius: 12px; padding: 3px 6px; max-width: 170px; min-height: 44px; box-sizing: border-box; } /* Tippziel: size-touch-min */
 .map-pick:has(select:disabled) { display: none; } /* nur vor Welle 1 wählbar */
 
@@ -439,6 +443,7 @@ body.on-start .top-buttons { z-index: 41; } /* Ton und Hilfe bleiben erreichbar 
   .help { display: none; }
   #speed { grid-area: 1 / 1; } #pause { grid-area: 1 / 2; }
   #sound { grid-area: 2 / 2; width: 44px; height: 44px; } #sound > svg { width: 32px; height: 32px; }
+  #fullscreen { grid-area: 2 / 1; width: 44px; height: 44px; } #fullscreen > svg { width: 32px; height: 32px; } /* B-178: freie Ecke links neben Ton */
   /* Links unten: drei Fähigkeiten untereinander, nur Symbol (Name im aria-label) */
   .abilities { left: calc(var(--safe-l) + 18px); top: auto; bottom: calc(var(--safe-b) + 10px); height: auto; width: auto; flex-direction: column; gap: 16px;
     padding: 0; background: none; border: 0; border-radius: 0; box-shadow: none; }
