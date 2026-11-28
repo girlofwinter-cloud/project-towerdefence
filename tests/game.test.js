@@ -3712,11 +3712,11 @@ describe('B-182: Albtraum-Modus', () => {
     assert.ok(hpScale(15, NIGHTMARE.hpGrowthLate) > hpScale(15));
   });
 
-  // B-189: Gegner-Leben im Albtraum gestuft (vor Welle 8 gleich, 8-11 mal 1.2, ab 12 mal 1.4), auch beim Boss;
+  // B-189: Gegner-Leben im Albtraum gestuft (vor Welle 8 gleich, 8-11 mal 1.2, ab 12 mal 1.3), auch beim Boss;
   // Normalmodus immer Faktor 1
   test('nightmareHpFactor: gestufte Gegner-Leben im Albtraum', () => {
     const mods = modeModifiers('nightmare');
-    for (const [w, f] of [[1, 1], [7, 1], [8, 1.2], [11, 1.2], [12, 1.4], [20, 1.4]]) {
+    for (const [w, f] of [[1, 1], [7, 1], [8, 1.2], [11, 1.2], [12, 1.3], [20, 1.3]]) {
       assert.equal(nightmareHpFactor(w, mods), f, `Welle ${w}`);
       assert.equal(nightmareHpFactor(w, modeModifiers('normal')), 1, `normal Welle ${w}`);
       assert.equal(nightmareHpFactor(w, mapModifiers('volcano')), 1, `Karte Welle ${w}`);
@@ -3743,7 +3743,7 @@ describe('B-182: Albtraum-Modus', () => {
     for (const e of s.spawnQueue) spawnEnemy(s, e.type, e.wave, e.lane);
     s.spawnQueue = [];
     const alive = s.enemies.reduce((sum, e) => sum + e.hp, 0);
-    assert.equal(alive, waveHp(12, 'meadow', NIGHTMARE.hpGrowthLate, 1.4));
+    assert.equal(alive, waveHp(12, 'meadow', NIGHTMARE.hpGrowthLate, 1.3));
     assert.equal(earlyStartRisk(s), 1);
   });
 
@@ -3925,7 +3925,7 @@ describe('B-189: gestufte Albtraum-Leben im echten Spawn-Ablauf', () => {
     test(`Welle ${wave}: Leben, Kopfgeld und Elite je Modus`, () => {
       const n = spawnWave('normal', wave);
       const a = spawnWave('nightmare', wave);
-      const f = wave >= 12 ? 1.4 : wave >= 8 ? 1.2 : 1;
+      const f = wave >= 12 ? 1.3 : wave >= 8 ? 1.2 : 1;
       for (const e of n.enemies) {
         assert.equal(e.maxHp, Math.round(ENEMY_TYPES[e.type].hp * hpScale(wave)), `normal ${e.type}`);
       }
@@ -3943,7 +3943,7 @@ describe('B-189: gestufte Albtraum-Leben im echten Spawn-Ablauf', () => {
       for (const e of a.enemies.filter((x) => !x.elite)) assert.equal(e.reward, ENEMY_TYPES[e.type].reward, `Kopfgeld ${e.type}`);
       // Elite: normal erst ab ELITE.from, Albtraum ab Welle 8 mit zwei mehr
       assert.equal(n.enemies.filter((e) => e.elite).length, eliteCount(wave));
-      assert.equal(a.enemies.filter((e) => e.elite).length, wave >= 8 ? eliteCount(wave, { eliteBonus: 2, eliteEarlier: 2 }) : 0);
+      assert.equal(a.enemies.filter((e) => e.elite).length, wave >= 8 ? eliteCount(wave, { eliteBonus: 1, eliteEarlier: 2 }) : 0);
       if (wave < ELITE.from) assert.equal(n.enemies.filter((e) => e.elite).length, 0);
       // Frühstart-Risiko: frische Welle = 1, nach Halbierung aller Leben = 0.5 (beide Modi)
       for (const s of [n, a]) {
@@ -3970,12 +3970,12 @@ test('Albtraum: Elite höchstens specialHpCap mehr Leben, Bosse und normale Gegn
   const mods = nm.modifiers;
   assert.equal(nightmareHpFactor(15, mods, true), NIGHTMARE.specialHpCap);
   assert.equal(nightmareHpFactor(9, mods, true), 1.2, 'unter der Grenze unverändert');
-  assert.equal(nightmareHpFactor(15, mods), 1.4);
+  assert.equal(nightmareHpFactor(15, mods), 1.3);
   const g = (type, elite) => spawnEnemy(nm, type, 15, null, elite).maxHp;
   const base = (type) => ENEMY_TYPES[type].hp * hpScale(15, NIGHTMARE.hpGrowthLate);
-  assert.equal(g('boss'), Math.round(base('boss') * 1.4));
+  assert.equal(g('boss'), Math.round(base('boss') * 1.3));
   assert.equal(g('tank', 'regen'), Math.round(base('tank') * NIGHTMARE.specialHpCap));
-  assert.equal(g('tank'), Math.round(base('tank') * 1.4));
+  assert.equal(g('tank'), Math.round(base('tank') * 1.3));
   assert.equal(nightmareHpFactor(15, createGame().modifiers, true), 1, 'Normalmodus');
 });
 

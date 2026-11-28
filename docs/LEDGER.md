@@ -159,6 +159,11 @@ Anhängen ohne die Datei zu lesen: `cat >> docs/LEDGER.md <<'EOF' … EOF`. Übe
 - Klick pausiert und öffnet Kartenauswahl; Rückfrage beim Kartenwechsel wie bisher.
 - Review: Kompakt-Layout außerhalb des Bildschirms gefunden, nachgebessert; e2e um 390x844 und Rand-Prüfung ergänzt.
 
+## 2026-11-28 – Albtraum-Eliten schwächer
+- Spieltest: Albtraum Welle 15 kaum schaffbar, Eliten zu stark.
+- NIGHTMARE.elite: Schild 0.3 -> 0.2 maxHp, Heilung 0.025 -> 0.015 maxHp/s. Anzahl und Leben unverändert.
+- Unit- und Balancing-Tests grün.
+- Nachtrag: eliteBonus 2 -> 1, specialHpCap 1.3 -> 1.2, Leben ab Welle 12 mal 1.3, Elite-Schild 0.18 / Heilung 0.012 (knapp über Normalmodus), Nekromantin Phase 2 Takt 3 -> 5 s. Gold-Sim bis Welle 15: erster Lebensverlust Welle 14-15.
 ## 2026-11-28 · CI schlank · Doku zur bedingten CI
 - CLAUDE.md und Pipeline-Skill: Unit-Tests immer, Balancing/e2e nur bei passenden Dateiänderungen.
 - `ci.yml` selbst ändert der Mensch (geschützte Datei); Vorschlag liegt im PR.
