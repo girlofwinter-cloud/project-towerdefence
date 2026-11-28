@@ -171,3 +171,8 @@ Anhängen ohne die Datei zu lesen: `cat >> docs/LEDGER.md <<'EOF' … EOF`. Übe
 ### Fix Boss-Leiste Albtraum (2026-11-28)
 - Bug: Oger-König-Leiste neben der Albtraum-Plakette auf wenige px gequetscht ("Oger-").
 - Fix: Lücke < BOSS_BAR.minWidth (200) -> Leiste in voller Breite unter die HUD-Leiste (bossBarLayout in hud.js), Test in render.test.js.
+
+### Albtraum-Seen (agent/albtraum-seen)
+- Vulkan: Rand-Lavaseen mit Kern, Glutstrich, Schollen. Eiswelt: Eissee links rund statt gerader Kante.
+- Wiese: Fluss-Bézier knickfrei (gilt auch Tag), kein Glanz/Glitzern auf der Brücke.
+- Offen: Glutpuls an Lavasee-Spitze wird an der Feldkante abgeschnitten (Fix bräuchte Teständerung).
