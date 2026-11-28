@@ -1,5 +1,5 @@
 # Albtraum-Abzeichen (B-184): Medaille Bronze/Silber/Gold mit Oger-Kopf (Motiv A), dazu offen-Zustand und kleine Variante
-Fläche: Albtraum-Skizzen (Claude Design, Link setzt der Orchestrator)#Abzeichen. Backlog: B-184 (Optik), Logik B-183. Stand: agent/albtraum@f8d5826. Skizze, keine Feinarbeit.
+Fläche: [Albtraum-Skizzen #Abzeichen](https://claude.ai/artifact/1AQYMEJUnDuR5VUhpkaWbG#artboard-Abzeichen). Backlog: B-184 (Optik), Logik B-183. Stand: agent/albtraum@f8d5826. Skizze, keine Feinarbeit.
 
 ## Maße
 - Bezugsbox 100 × 100 (Entwurfs-Einheiten), skaliert auf die Zielgröße S: 200 (Siegbildschirm), 120 (Abzeichen-Wand/Übersicht), 44 (Slot auf der Kartenkarte), 36 (Zähler, HUD, Mini-Reihe Sieg).

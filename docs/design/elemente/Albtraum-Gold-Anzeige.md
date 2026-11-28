@@ -1,5 +1,5 @@
 # Albtraum-Gold-Anzeige (B-184): HUD-Chip mit der Gold-Bedingung der Karte, erfüllt oder verletzt
-Fläche: Albtraum-Skizzen (Claude Design, Link setzt der Orchestrator)#Abzeichen (rechte Spalte) und #Stimmung (HUD rechts). Backlog: B-184 (ersetzt die schlichte B-183-Optik von `#gold-goal`). Stand: agent/albtraum@f8d5826. Skizze, keine Feinarbeit.
+Fläche: [Albtraum-Skizzen #Abzeichen](https://claude.ai/artifact/1AQYMEJUnDuR5VUhpkaWbG#artboard-Abzeichen) (rechte Spalte) und #Stimmung (HUD rechts). Backlog: B-184 (ersetzt die schlichte B-183-Optik von `#gold-goal`). Stand: agent/albtraum@f8d5826. Skizze, keine Feinarbeit.
 
 ## Maße
 - Desktop 1280x800 und 1366x768: Chip in der HUD-Leiste (`.hud`, 56 hoch) direkt rechts von `#lives-box`; Höhe 36, Radius 18, Innenabstand 0/12/0/4, Lücke 6; Zeichen-Kreis 28 × 28; Text 15 px `font-display`, eine Zeile, max. 260 breit (Ellipse `…`, voller Text im `title`/`aria-label`).

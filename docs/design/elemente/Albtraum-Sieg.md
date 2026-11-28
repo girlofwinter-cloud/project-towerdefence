@@ -1,5 +1,5 @@
 # Albtraum-Sieg (B-184): Siegbildschirm im Albtraum mit einfliegendem Abzeichen, Stufenreihe, Werten und Hinweis auf neue Belohnung
-Fläche: Albtraum-Skizzen (Claude Design, Link setzt der Orchestrator)#Sieg (Eigenschaft „stufe“, Knopf „Nochmal abspielen“). Backlog: B-184. Stand: agent/albtraum@f8d5826. Skizze, keine Feinarbeit.
+Fläche: [Albtraum-Skizzen #Sieg](https://claude.ai/artifact/1AQYMEJUnDuR5VUhpkaWbG#artboard-Sieg) (Eigenschaft „stufe“, Knopf „Nochmal abspielen“). Backlog: B-184. Stand: agent/albtraum@f8d5826. Skizze, keine Feinarbeit.
 
 ## Maße
 Bei 1280x800, mittig im `#overlay` (Aufbau wie Overlay-Spielende.md):

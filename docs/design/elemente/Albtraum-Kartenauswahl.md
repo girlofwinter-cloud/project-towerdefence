@@ -1,5 +1,5 @@
 # Albtraum-Kartenauswahl (B-184): Umschalter Normal/Albtraum, Albtraum-Knopf, Abzeichen-Slots je Karte, Zähler, Sperre
-Fläche: Albtraum-Skizzen (Claude Design, Link setzt der Orchestrator)#Main. Backlog: B-184 (ersetzt die schlichte `.map-nightmare`-Optik aus B-182). Stand: agent/albtraum@f8d5826. Skizze, keine Feinarbeit.
+Fläche: [Albtraum-Skizzen #Main](https://claude.ai/artifact/1AQYMEJUnDuR5VUhpkaWbG#artboard-Main). Backlog: B-184 (ersetzt die schlichte `.map-nightmare`-Optik aus B-182). Stand: agent/albtraum@f8d5826. Skizze, keine Feinarbeit.
 
 ## Maße
 - Kopfleiste (`.plq`, links/rechts 40, oben 28, Höhe 72): Titel links, Umschalter Mitte, Zähler rechts.

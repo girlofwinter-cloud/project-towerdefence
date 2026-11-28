@@ -1,5 +1,5 @@
 # Albtraum-Stimmung (B-184, auch Nacht-Look B-185): Nacht-Tönung, rötliches Licht, Vignette und Glut am Weg, nur auf dem Spielfeld
-Fläche: Albtraum-Skizzen (Claude Design, Link setzt der Orchestrator)#Stimmung (Regler „nacht“ 0,75). Backlog: B-184; derselbe Look ist die Belohnung „Nacht-Look“ (B-185). Stand: agent/albtraum@f8d5826. Skizze, keine Feinarbeit.
+Fläche: [Albtraum-Skizzen #Stimmung](https://claude.ai/artifact/1AQYMEJUnDuR5VUhpkaWbG#artboard-Stimmung) (Regler „nacht“ 0,75). Backlog: B-184; derselbe Look ist die Belohnung „Nacht-Look“ (B-185). Stand: agent/albtraum@f8d5826. Skizze, keine Feinarbeit.
 
 ## Maße
 - Wirkt nur im Feldrechteck 0..WIDTH × 0..HEIGHT (20 × 14 Kacheln, Kachel 40 Spiel-px). Gemalter Rand, Holzleiste, HUD, Knöpfe, Panels bleiben unverändert hell (Clip auf das Feld).

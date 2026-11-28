@@ -1,5 +1,5 @@
 # Kosmetik-Aussehen (B-185): Menü „Aussehen“ mit Schaltern für Nacht-Look je Karte und goldene Türme, dazu die goldene Turm-Variante
-Fläche: Albtraum-Skizzen (Claude Design, Link setzt der Orchestrator)#Kosmetik. Backlog: B-185 (Logik in `src/cosmetics.js` fertig). Stand: agent/albtraum@f8d5826. Skizze, keine Feinarbeit.
+Fläche: [Albtraum-Skizzen #Kosmetik](https://claude.ai/artifact/1AQYMEJUnDuR5VUhpkaWbG#artboard-Kosmetik). Backlog: B-185 (Logik in `src/cosmetics.js` fertig). Stand: agent/albtraum@f8d5826. Skizze, keine Feinarbeit.
 
 ## Maße
 - Menü-Plakette 560 × ≤ 680 (Desktop), Innenabstand 24/28, `radius-card`; Zugang über Knopf „Aussehen“ im Startbildschirm (Holz-Textknopf, ≥ 44 hoch).
