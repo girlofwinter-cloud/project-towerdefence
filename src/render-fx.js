@@ -5,7 +5,7 @@ import {
   K_NONE, K_SMOKE, K_ICE, K_SPARK, K_FLASH, K_COIN, K_DUST, K_ROCK, K_SUMMON, coinHop, coinSpin, meteorPhase,
   T_ARROW, T_CANNON, T_FROST, T_SNIPER,
 } from './fx-system.js';
-import { BOSS_ENTRY, FX_STYLE, STYLE, WIDTH, HEIGHT, TILE, FIGURE_STYLE, MASTER_FX } from './config.js';
+import { BOSS_ENTRY, ENEMY_STYLE, FX_STYLE, STYLE, WIDTH, HEIGHT, TILE, FIGURE_STYLE, MASTER_FX } from './config.js';
 import { outlineOf, starPath, zigPath } from './draw-utils.js';
 import { enemyFigure } from './figures.js';
 import { drawElements } from './svg-figure.js';
@@ -389,6 +389,10 @@ export function drawEffectOver(ctx, e, reducedMotion = false) {
     drawMeteorOver(ctx, e);
   } else if (e.kind === 'explosion') {
     drawExplosionStars(ctx, e, a);
+  } else if (e.kind === 'steam') {
+    drawSteam(ctx, e, reducedMotion); // B-178: Frost trifft Glutling
+  } else if (e.kind === 'shellChip') {
+    drawShellBreak(ctx, e, reducedMotion, FX_STYLE.shellChip); // B-178: eine Schicht platzt ab
   } else if (e.kind === 'shellBreak') {
     drawShellBreak(ctx, e, reducedMotion);
   } else if (e.kind === 'eliteBreak') {
@@ -433,7 +437,10 @@ function drawDodge(ctx, e, reducedMotion) {
   if (!reducedMotion && age < DG.ghostLife) {
     ctx.save();
     ctx.globalAlpha = DG.ghostAlpha * (1 - age / DG.ghostLife);
-    ctx.translate(e.x, foot);
+    // B-178: seitliches Zucken (hin und zurück in dodgeTime), Richtung aus dem Effekt
+    const z = age < DG.dodgeTime ? Math.sin(Math.PI * age / DG.dodgeTime) * DG.dodgeDx * U : 0;
+    const zx = Number.isFinite(e.dx) ? e.dx : 0, zy = Number.isFinite(e.dy) ? e.dy : 0;
+    ctx.translate(e.x + zx * z, foot + zy * z);
     ctx.scale(U, U);
     ctx.translate(-f.w / 2, -f.h);
     drawElements(ctx, f.els);
@@ -458,6 +465,26 @@ function drawDodge(ctx, e, reducedMotion) {
   ctx.strokeText(DG.missText, e.x, ty);
   ctx.fillStyle = DG.missColor;
   ctx.fillText(DG.missText, e.x, ty);
+  ctx.restore();
+}
+
+// B-178: Dampfwölkchen beim Frost-Treffer auf einen Glutling (Werte aus ENEMY_STYLE.ember). reducedMotion: am Ort.
+function drawSteam(ctx, e, reducedMotion) {
+  const c = ENEMY_STYLE.ember;
+  const life = e.max > 0 ? e.max : FX_STYLE.steam.life;
+  const u = clamp01(ageOf(e) / life);
+  const foot = e.y + FIGURE_STYLE.enemyFoot * U;
+  ctx.save();
+  ctx.fillStyle = `rgba(${c.steamRgb},${(c.steamAlpha * (1 - u)).toFixed(3)})`;
+  ctx.strokeStyle = c.steamInk;
+  ctx.lineWidth = c.steamLine;
+  for (const [dx, dy] of c.steamPuffs) {
+    const r = (c.steamR[0] + (c.steamR[1] - c.steamR[0]) * u) * U;
+    ctx.beginPath();
+    ctx.arc(e.x + dx * U, foot + (dy - (reducedMotion ? 0 : u * c.steamRise)) * U, r, 0, TWO_PI);
+    ctx.fill();
+    ctx.stroke();
+  }
   ctx.restore();
 }
 

@@ -3604,3 +3604,50 @@ test('Auto-Start: Wahl wird gespeichert und gelesen, kaputter Speicher fällt au
   assert.doesNotThrow(() => saveAutoWave(broken, false));
   assert.equal(loadAutoWave(null), AUTO_WAVE_SETTING.defaultOn);
 });
+
+describe('B-178: Effekt-Ereignisse der neuen Gegner', () => {
+  const count = (s, kind) => s.effects.filter((f) => f.kind === kind).length;
+
+  test('Glutling: jeder Frost-Treffer erzeugt steam, Pfeil nicht, Goblin unter Frost nicht', () => {
+    const { s, tower } = specialSetup('frost', 'ember');
+    fireAndLand(s, tower);
+    assert.equal(count(s, 'steam'), 1);
+    fireAndLand(s, tower);
+    assert.ok(count(s, 'steam') >= 1, 'zweiter Treffer zischt ebenfalls');
+    const a = specialSetup('arrow', 'ember');
+    fireAndLand(a.s, a.tower);
+    assert.equal(count(a.s, 'steam'), 0, 'Pfeil: kein Dampf');
+    const g = specialSetup('frost', 'grunt');
+    fireAndLand(g.s, g.tower);
+    assert.equal(count(g.s, 'steam'), 0, 'Goblin: kein Dampf');
+  });
+
+  test('Panzerkäfer: shellChip bei jeder Schicht außer der letzten, dort shellBreak', () => {
+    const SHELL = ENEMY_TYPES.beetle.shellHits;
+    const { s, tower, e } = specialSetup('arrow', 'beetle');
+    for (let i = 0; i < SHELL; i++) {
+      s.effects.length = 0;
+      tower.cooldown = 0; update(s, 0.001);
+      for (let j = 0; j < 60 && s.projectiles.length; j++) { tower.cooldown = 99; update(s, 0.02); }
+      const last = e.shell === 0;
+      assert.equal(count(s, 'shellChip'), last ? 0 : 1, 'Schicht ' + i);
+      assert.equal(count(s, 'shellBreak'), last ? 1 : 0);
+    }
+  });
+
+  test('Lava auf Käfer erzeugt keinen shellChip', () => {
+    const { lost, s, e } = lavaBurn('beetle', 10, 8, 1, 1 / 60);
+    assert.ok(lost > 0);
+    assert.equal(e.shell, ENEMY_TYPES.beetle.shellHits);
+    assert.equal(count(s, 'shellChip'), 0);
+  });
+
+  test('Irrlicht: dodge trägt Gegner-ID und Einheitsrichtung, höchstens einer je Irrlicht', () => {
+    const { s, tower, e } = specialSetup('cannon', 'wisp');
+    for (let i = 1; i < ENEMY_TYPES.wisp.dodgeEvery; i++) fireAndLand(s, tower);
+    const ds = s.effects.filter((f) => f.kind === 'dodge');
+    assert.equal(ds.length, 1, 'kein Doppel-"Verfehlt"');
+    assert.equal(ds[0].enemyId, e.id);
+    assert.ok(Math.abs(Math.hypot(ds[0].dx, ds[0].dy) - 1) < 1e-9, 'Einheitsvektor');
+  });
+});

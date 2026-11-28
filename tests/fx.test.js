@@ -1899,3 +1899,28 @@ test('B-179 Elite: Schild bricht mit Splittern, Abzeichen fliegt beim Tod weg (E
   assert.equal(br.depth, 0);
   assert.ok(fills.length === FX_STYLE.eliteBreak.shards && fills.includes(ENEMY_STYLE.elite.shield), 'Splitter in Schildfarbe');
 });
+
+// ---------- B-178: Dampf, Schalen-Splitter, Zucken des Irrlichts ----------
+test('B-178: steam, shellChip und dodge mit Richtung zeichnen ausgewogen, robust, reduziert ohne Bewegung', async () => {
+  const { drawEffectOver } = await import('../src/render-fx.js');
+  const F = FX_STYLE_B127;
+  const draw = (e, reduced) => { const m = mockCtx(); const log = []; const ctx = new Proxy(m.ctx, { get: (t, k) => (k === 'arc' ? (...a) => { log.push(a); t.arc(...a); } : k === 'translate' ? (...a) => { log.push(a); t.translate(...a); } : t[k]), set: (t, k, v) => { t[k] = v; return true; } });
+    drawEffectOver(ctx, e, reduced); assert.equal(m.depth, 0); return { m, log }; };
+  // Dampf: je Wölkchen ein Kreis; reduziert bleibt y gleich, sonst steigt er
+  const steam = (age, r) => draw({ kind: 'steam', x: 50, y: 50, ttl: F.steam.life - age, max: F.steam.life }, r).log.map((a) => a[1]);
+  const n = (await import('../src/config.js')).ENEMY_STYLE.ember.steamPuffs.length;
+  assert.equal(steam(0.1, false).length, n);
+  assert.ok(steam(0.3, false)[0] < steam(0.1, false)[0], 'steigt');
+  assert.equal(steam(0.3, true)[0], steam(0.1, true)[0], 'reduziert am Ort');
+  // Splitter: shardCount Dreiecke, kein Ring
+  const chip = draw({ kind: 'shellChip', x: 50, y: 50, ttl: F.shellChip.life - 0.05, max: F.shellChip.life }, false).m.counts;
+  assert.equal(chip.closePath, F.shellChip.shards);
+  assert.ok(!chip.arc, 'kein Ring');
+  // Zucken: Nachbild seitlich versetzt in Richtung dx; reduziert kein Nachbild
+  const dodge = (r) => draw({ kind: 'dodge', x: 50, y: 50, dx: 1, dy: 0, ttl: F.dodge.life - F.dodge.dodgeTime / 2, max: F.dodge.life }, r).log;
+  const tx = dodge(false).find((a) => a.length === 2 && a[0] !== 0);
+  assert.ok(tx && tx[0] > 50, 'Nachbild zuckt zur Seite');
+  for (const kind of ['steam', 'shellChip', 'dodge']) {
+    for (const ttl of [NaN, -1, 5]) for (const r of [false, true]) draw({ kind, x: 1, y: 1, dx: NaN, dy: undefined, ttl, max: NaN }, r);
+  }
+});
