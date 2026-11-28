@@ -214,3 +214,61 @@ test('B-191 1280x800: Albtraum-Karten 224 x 420 mit Lücke 20, Lernzeile im Fens
   assert.deepEqual(errors, []);
   await ctx.close();
 });
+
+// ---------- B-192: Sieg und Niederlage im Albtraum ----------
+const endIn = async (page, mapId, patch) => {
+  await page.click(`.map-nightmare[data-map="${mapId}"]`);
+  await page.waitForSelector('#start-screen', { state: 'hidden' });
+  await page.evaluate(([w, p]) => { const s = window.__game(); s.wave = w; Object.assign(s, p.state); if (p.lost) s.track = { towerTypes: [], sells: 0, ...s.track, livesLost: 1 }; s.status = p.status; }, [MAX_WAVES, patch]);
+};
+test('B-192 1280x800: Gold mit Bedingungen, Belohnung und „Aussehen“, Silber mit nächstem Ziel, Niederlage mit Tipp', async () => {
+  const { ctx, page, errors } = await open({ width: 1280, height: 800 });
+  await endIn(page, LAST, { state: { lives: 5 }, status: 'won' });
+  await page.waitForSelector('#overlay.nightmare-win');
+  const medal = await box(page, '#end-badge');
+  const card = await box(page, '.end-card');
+  assert.ok(Math.abs(medal.x - 540) <= 2 && Math.abs(card.width - 560) <= 2 && card.y + card.height <= 724, `Lage ${JSON.stringify([medal, card])}`);
+  assert.equal(await page.locator('#end-conds li').count(), 3);
+  assert.equal(await page.locator('#end-conds li.ok').count(), 3);
+  assert.equal(await page.isVisible('#end-next'), false);
+  assert.equal(await page.evaluate(() => getComputedStyle(document.getElementById('end-badge')).animationName), 'none', 'reduced motion: kein Einflug');
+  await page.click('#end-look');
+  await page.waitForSelector('#cosmetics:not([hidden])');
+  await page.keyboard.press('Escape');
+  assert.equal(await page.isVisible('#overlay'), true, 'Menü zu, Siegbildschirm bleibt');
+  // Silber ohne neues Abzeichen (Leben verloren): nächstes Ziel Gold, keine Belohnung
+  await page.click('#to-maps');
+  await page.click('.start-mode [data-mode="nightmare"]');
+  await endIn(page, M1, { state: { lives: 4 }, status: 'won', lost: true });
+  await page.waitForFunction(() => !document.getElementById('end-next').hidden);
+  assert.match(await page.locator('#end-next').textContent(), /^Nächstes Ziel: Gold/);
+  assert.equal(await page.isVisible('#end-reward'), false);
+  assert.equal(await page.isVisible('#end-look'), false);
+  // Niederlage
+  await page.click('#to-maps');
+  await page.click('.start-mode [data-mode="nightmare"]');
+  await endIn(page, M1, { state: { wave: 9, lives: 0 }, status: 'lost' });
+  await page.waitForSelector('#overlay.nightmare-lose');
+  assert.equal(await page.locator('#overlay-title').textContent(), 'Der Albtraum war stärker');
+  assert.match(await page.locator('#end-nm-title').textContent(), /– Welle \d+ von 20$/);
+  assert.equal(await page.isVisible('#end-tip'), true);
+  for (const id of ['#restart', '#to-maps']) assert.ok((await box(page, id)).height >= 46);
+  const lc = await box(page, '.end-card');
+  assert.ok(lc.y >= 0 && lc.y + lc.height <= 800, 'Plakette im Fenster');
+  assert.equal(await page.locator('#restart').textContent(), 'Nochmal versuchen');
+  assert.deepEqual(errors, []);
+  await ctx.close();
+});
+
+test('B-192 844x390: Niederlage im Albtraum ohne Überlappung, Knöpfe >= 44', async () => {
+  const { ctx, page, errors } = await open({ width: 844, height: 390 });
+  await endIn(page, M1, { state: { lives: 0 }, status: 'lost' });
+  await page.waitForSelector('#overlay.nightmare-lose');
+  const ring = await box(page, '#end-badge');
+  const card = await box(page, '.end-card');
+  for (const r of [ring, card]) assert.ok(r.x >= 0 && r.y >= 0 && r.x + r.width <= 844 && r.y + r.height <= 390, 'im Fenster');
+  assert.equal(overlap(ring, card), false);
+  for (const id of ['#restart', '#to-maps']) assert.ok((await box(page, id)).height >= 44);
+  assert.deepEqual(errors, []);
+  await ctx.close();
+});

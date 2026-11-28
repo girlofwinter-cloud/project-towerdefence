@@ -2,10 +2,10 @@
 // Reine Funktionen (mapCards, endView, starSvg) sind in Node testbar; mountStartScreen braucht das DOM
 // und wird nur von main.js aufgerufen. Fortschritt wird hier nur gelesen, nie gespeichert.
 import { MAPS, MAX_WAVES, STAR_LIVES_SHARE, VIEW_WIDTH, VIEW_HEIGHT, FRAME_MARGIN, SCREENS, BADGE_TIERS, GOLD_CONDITIONS, COSMETICS, NM_STYLE_OF_MAP, NM_ENEMY_STYLE, TOWER_TYPES } from './config.js';
-import { NM_STYLE_NAME } from './nm-wood.js';
+import { NM_STYLE_NAME, NM_WOOD_OF_MAP } from './nm-wood.js';
 import { MAP_ORDER, mapProgress, isUnlocked, isNightmareUnlocked, nightmareProgress, badgeCount, BADGE_MAX } from './progress.js';
 import { isGoldTowersUnlocked, isNightUnlocked, goldMapsProgress, nightLookChosen, goldTowersChosen, setNightLook, setGoldTowers } from './cosmetics.js';
-import { badgeSvg } from './badge-art.js';
+import { badgeSvg, HORN_L, HORN_R, FACE, EYE_L, EYE_R } from './badge-art.js';
 import { createGame } from './game.js';
 import { drawTowerFigure, towerFootY } from './render-towers.js';
 import { buildPaintedSvg, rasterizePainted, paletteFor } from './render-painted.js';
@@ -87,14 +87,48 @@ export function nightmareWinView(progress, mapId, res = {}) {
   if (fresh === BADGE_TIERS.length) {
     reward = `Neue Belohnung freigeschaltet: ${isGoldTowersUnlocked(progress) ? COSMETICS.goldTowers.name : `${COSMETICS.night.name} ${name}`}`;
   }
+  const cond = badgeConditions(mapId);
   return {
     tier,
     fly: fresh > 0,
     title: `${name} – ${BADGE_TIERS[tier - 1]}-Abzeichen`,
-    condition: `${BADGE_TIERS[tier - 1]}: ${badgeConditions(mapId)[tier - 1]}`,
+    condition: `${BADGE_TIERS[tier - 1]}: ${cond[tier - 1]}`,
     slots: badgeSlots(progress, mapId),
     reward,
+    // B-192: Bedingungsliste (erreicht bis zur gezeigten Stufe) und nächstes Ziel (nur unter Gold)
+    conds: BADGE_TIERS.map((t, i) => ({ text: cond[i], tier: t, ok: i < tier })),
+    next: tier >= BADGE_TIERS.length ? null : { name: BADGE_TIERS[tier],
+      text: tier === 1 ? `Welle ${MAX_WAVES} schaffen, ohne ein Leben zu verlieren.` : `Silber plus: ${cond[2]}.` },
+    wood: NM_WOOD_OF_MAP[mapId] ?? 'moss',
   };
+}
+// B-192: Tipps für den Niederlage-Bildschirm im Albtraum (einer je Niederlage, nach der erreichten Welle)
+export const NM_TIPS = [
+  'Verbessere wenige Türme kräftig, statt viele schwache zu bauen.',
+  'Spar dir eine Fähigkeit für die Boss-Wellen auf.',
+  'Frost vor Kanonen: gebremste Gruppen stehen länger im Feuer.',
+  'Schau vor jeder Welle in die Vorschau und baue passend.',
+  'Baue an Kurven, dort sind Gegner am längsten in Reichweite.',
+];
+// B-192: Niederlage im Albtraum. run = { wave, lives, maxLives } des Spiels, progress = Stand danach. null = keine bekannte Karte.
+export function nightmareLoseView(progress, mapId, run = {}) {
+  if (!MAPS[mapId]) return null;
+  const wave = Math.max(0, Math.floor(run.wave) || 0);
+  const best = nightmareProgress(progress, mapId).bestWave ?? 0;
+  return {
+    title: `${MAPS[mapId].name} – Welle ${wave} von ${MAX_WAVES}`,
+    values: [['Welle', `${wave} / ${MAX_WAVES}`], ['Leben', `${Math.max(0, run.lives ?? 0)} / ${run.maxLives ?? 0}`], ['Bester Lauf', `Welle ${Math.max(best, wave)}`]],
+    tip: NM_TIPS[wave % NM_TIPS.length],
+    slots: badgeSlots(progress, mapId),
+  };
+}
+// B-192: leerer Ring mit Ogerkopf (Niederlage), Box 100, Augen pulsieren (.nm-pulse)
+export function loseRingSvg(size) {
+  const head = 'transform="translate(12,12) scale(0.76)"';
+  return `<svg class="end-lose-ring" width="${size}" height="${size}" viewBox="0 0 100 100" aria-hidden="true">`
+    + '<circle cx="50" cy="50" r="36" fill="var(--night-card-b)" stroke="var(--muted)" stroke-width="3" stroke-dasharray="7 6"/>'
+    + `<g ${head} fill="#5a4a6a" fill-opacity="0.55"><path d="${HORN_L}"/><path d="${HORN_R}"/><path d="${FACE}"/></g>`
+    + `<g class="nm-pulse" ${head} fill="var(--nm-eye-moss)"><path d="${EYE_L}"/><path d="${EYE_R}"/></g></svg>`;
 }
 
 // Neuer Fokus in der Kartenreihe bei Pfeil links/rechts: nur offene Karten, am Rand bleibt er stehen.

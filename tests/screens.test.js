@@ -220,6 +220,7 @@ test('B-185 toggleCosmetic: schaltet um, gesperrt/unbekannt bleibt unverändert'
 // ---------- B-191: Kartenauswahl und Menü „Aussehen“ im Albtraum ----------
 import { mapSlotHtml, starCounterText, nightmareCardInfo, nmStyleOf, startHeadView, cosPreviewView, NM_NEED } from '../src/screens.js';
 import { GOLD_CONDITIONS, NM_STYLE_OF_MAP, NM_ENEMY_STYLE } from '../src/config.js';
+import { nightmareWinView } from '../src/screens.js';
 import { NM_STYLE_NAME } from '../src/nm-wood.js';
 // alle Karten mit drei Sternen außer der letzten; erste Karte Bronze
 const threeStars = () => ({
@@ -286,4 +287,41 @@ test('B-191 cosmeticsHtml: Unterzeile mit Stilname (frei) bzw. eigener Stufe (ge
   assert.deepEqual([vg.kind, vg.state], ['gold', 'Gesperrt']);
   assert.match(vg.unlockText, /Gold auf 1 \/ 5 Karten/);
   assert.equal(cosPreviewView(view, 'quatsch').key, `night:${M0}`, 'unbekannt: erste Zeile');
+});
+
+// ---------- B-192: Sieg und Niederlage im Albtraum ----------
+import { nightmareLoseView, NM_TIPS, loseRingSvg } from '../src/screens.js';
+test('B-192 nightmareWinView: Bedingungsliste passend zur Stufe, nächstes Ziel bis Gold, Holz der Karte', async () => {
+  const { recordResult } = await import('../src/progress.js');
+  const p = emptyProgress();
+  let res = recordResult(p, { mapId: M0, status: 'won', wave: MAX_WAVES, lives: 3, mode: 'nightmare', goldOk: true, maxLives: 5, noLoss: false });
+  let v = nightmareWinView(p, M0, res);
+  assert.equal(v.tier, 1);
+  assert.deepEqual(v.conds.map((c) => [c.tier, c.ok]), [['Bronze', true], ['Silber', false], ['Gold', false]]);
+  assert.equal(v.conds[2].text, GOLD_CONDITIONS[M0].label);
+  assert.deepEqual(v.next, { name: 'Silber', text: `Welle ${MAX_WAVES} schaffen, ohne ein Leben zu verlieren.` });
+  assert.equal(v.wood, 'moss');
+  res = recordResult(p, { mapId: M0, status: 'won', wave: MAX_WAVES, lives: 5, mode: 'nightmare', goldOk: false, maxLives: 5 });
+  v = nightmareWinView(p, M0, res);
+  assert.deepEqual(v.conds.map((c) => c.ok), [true, true, false]);
+  assert.deepEqual(v.next, { name: 'Gold', text: `Silber plus: ${GOLD_CONDITIONS[M0].label}.` });
+  res = recordResult(p, { mapId: M0, status: 'won', wave: MAX_WAVES, lives: 5, mode: 'nightmare', goldOk: true, maxLives: 5 });
+  v = nightmareWinView(p, M0, res);
+  assert.deepEqual([v.conds.every((c) => c.ok), v.next], [true, null]);
+});
+
+test('B-192 nightmareLoseView: Titel mit Welle, Werte, Tipp aus NM_TIPS, Slots; Ring mit pulsierenden Augen', () => {
+  const p = emptyProgress();
+  p.nightmare = { [M1]: { bestWave: 15, badge: 1 } };
+  const v = nightmareLoseView(p, M1, { wave: 12, lives: 0, maxLives: 5 });
+  assert.equal(v.title, `${MAPS[M1].name} – Welle 12 von ${MAX_WAVES}`);
+  assert.deepEqual(v.values, [['Welle', `12 / ${MAX_WAVES}`], ['Leben', '0 / 5'], ['Bester Lauf', 'Welle 15']]);
+  assert.ok(NM_TIPS.includes(v.tip));
+  assert.notEqual(nightmareLoseView(p, M1, { wave: 13, lives: 0, maxLives: 5 }).tip, v.tip, 'anderer Tipp bei anderer Welle');
+  assert.deepEqual(v.slots.map((x) => x.reached), [true, false, false]);
+  assert.equal(nightmareLoseView(p, M2, { wave: 3 }).values[2][1], 'Welle 3', 'ohne Bestwert: diese Welle');
+  assert.equal(nightmareLoseView(p, 'quatsch', { wave: 3 }), null);
+  const ring = loseRingSvg(160);
+  assert.match(ring, /width="160"/);
+  assert.match(ring, /class="nm-pulse"/);
 });

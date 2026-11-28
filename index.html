@@ -25,18 +25,29 @@
       <div id="overlay" hidden>
         <div class="end-card plq">
           <svg class="end-ribbon" width="560" height="70" viewBox="0 0 560 70" role="heading" aria-level="2" aria-labelledby="overlay-title">
+            <!-- B-192: Zipfel des Albtraum-Bands (nur im Albtraum sichtbar; main.js stellt die Box auf 700 x 76 um) -->
+            <path class="end-tail" d="M0 20 H60 V72 H0 L18 46 Z" stroke="#2b1a10" stroke-width="4" stroke-linejoin="round"/>
+            <path class="end-tail" d="M700 20 H640 V72 H700 L682 46 Z" stroke="#2b1a10" stroke-width="4" stroke-linejoin="round"/>
             <path id="end-ribbon-band" d="M20 10 H540 L524 35 L540 60 H20 L36 35 Z" fill="#c4452f" stroke="#2b1a10" stroke-width="4" stroke-linejoin="round"/>
+            <path class="end-tail end-shine" d="M48 16 H652" stroke="#fff" stroke-width="3" opacity=".25" stroke-linecap="round"/>
             <text id="overlay-title" x="280" y="37" text-anchor="middle" dominant-baseline="middle" fill="#fff3d2" stroke="#2b1a10" stroke-width="6" stroke-linejoin="round" paint-order="stroke"></text>
           </svg>
-          <!-- B-184: Albtraum-Sieg (Strahlen, Medaille, Stufenreihe, Bedingung, Werte, Belohnung; main.js füllt) -->
+          <!-- B-184/B-192: Albtraum-Sieg und -Niederlage (Strahlen, Medaille bzw. leerer Ring, Funkeln, Titel, Stufenreihe, Bedingungen, Werte,
+               Belohnung bzw. nächstes Ziel, Tipp; main.js füllt) -->
           <div class="end-rays" aria-hidden="true"></div>
           <div class="end-badge" id="end-badge"></div>
+          <div class="end-sparks" aria-hidden="true"></div>
+          <p class="end-band-text" aria-hidden="true"></p>
           <div class="end-nm" id="end-nm" hidden>
             <h3 id="end-nm-title"></h3>
             <div class="end-badges" id="end-badges"></div>
-            <p class="end-cond" id="end-cond"></p>
+            <p class="end-cond sr" id="end-cond"></p>
+            <ul id="end-conds" class="end-conds"></ul>
             <div class="end-values" id="end-values"></div>
-            <p class="end-reward" id="end-reward" hidden><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path d="M14 3 A9 9 0 1 0 21 14 A7 7 0 1 1 14 3 Z" fill="#fff3d2" stroke="#2b1a10" stroke-width="2" stroke-linejoin="round"/></svg><span></span></p>
+            <p class="end-reward" id="end-reward" hidden><svg viewBox="0 0 24 24" width="38" height="38" aria-hidden="true"><path d="M14 3 A9 9 0 1 0 21 14 A7 7 0 1 1 14 3 Z" fill="#fff3d2" stroke="#2b1a10" stroke-width="2" stroke-linejoin="round"/></svg><span class="er-body"><span class="er-title"></span><small>Im Menü Aussehen ein- und ausschalten.</small></span></p>
+            <div id="end-next" class="end-next" hidden></div>
+            <p id="end-tip" class="end-tip" hidden><svg width="40" height="40" viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="16" r="11" fill="var(--gold-light)" stroke="var(--ink)" stroke-width="2.5"/><rect x="14" y="26" width="12" height="8" rx="2" fill="var(--stone-b)" stroke="var(--ink)" stroke-width="2.5"/><path d="M16 12 Q18 9 21 9" stroke="#fff" stroke-width="2.5" fill="none" stroke-linecap="round"/></svg><span><b>Tipp:</b> <span class="tip-text"></span></span></p>
+            <p class="end-keep">Deine Abzeichen hier bleiben:</p>
           </div>
           <div class="end-stars" id="end-stars" role="img"></div>
           <p id="overlay-stats"></p>
@@ -44,6 +55,7 @@
           <div class="end-actions">
             <button id="restart" class="wbtn wbtn-gold">Neues Spiel</button>
             <button id="to-maps" class="wbtn">Karten</button>
+            <button id="end-look" class="wbtn wbtn-night" hidden><svg width="22" height="22" viewBox="0 0 28 28" aria-hidden="true"><path d="M12 17 L23 5" stroke="var(--ink)" stroke-width="6" stroke-linecap="round"/><path d="M12 17 L23 5" stroke="var(--path-mid)" stroke-width="3" stroke-linecap="round"/><path d="M6 22 Q4 16 10 15 L14 19 Q13 25 6 22 Z" fill="var(--flag-red)" stroke="var(--ink)" stroke-width="2.4" stroke-linejoin="round"/></svg>Aussehen</button>
           </div>
         </div>
       </div>

@@ -1,5 +1,5 @@
 // Verbindet Spiel-Logik, Rendering und Bedienung (DOM, Maus, Tastatur).
-import { BADGE_TIERS, BADGE_STYLE, BOSS_BAR, TILE, FRAME_MARGIN, VIEW_WIDTH, VIEW_HEIGHT, PAINTED_STYLE, FIGURE_STYLE, SHOP_CARD, TOWER_TYPES, ENEMY_TYPES, MAX_WAVES, MAPS, SPEED_STEPS, TARGET_MODES, MAX_SUBSTEP, LOW_LIVES, ABILITIES, ICON, VIEW_FIT, COIN_BURST, HUD_BAR, SOUND, waveSummary, meteorText } from './config.js';
+import { BADGE_TIERS, BOSS_BAR, TILE, FRAME_MARGIN, VIEW_WIDTH, VIEW_HEIGHT, PAINTED_STYLE, FIGURE_STYLE, SHOP_CARD, TOWER_TYPES, ENEMY_TYPES, MAX_WAVES, MAPS, SPEED_STEPS, TARGET_MODES, MAX_SUBSTEP, LOW_LIVES, ABILITIES, ICON, VIEW_FIT, COIN_BURST, HUD_BAR, SOUND, waveSummary, meteorText } from './config.js';
 import {
   createGame, stepGame, togglePause, buildTower, upgradeTower, sellTower, setTargetMode, startWave, setAutoWave,
   useAbility, abilityCooldownLeft, abilityMaxUses, canBuild, towerAt, towerStats, masterInfo, checkGoldCondition, maxLives,
@@ -11,7 +11,7 @@ import { buildTapStep, aimStep, fieldPoint, canvasSize, moveFocusTile, rotatePau
 import { createSoundTracker, collectSounds, loadSoundOn, saveSoundOn, loadVolumes, saveVolumes } from './sound-events.js';
 import { unlockAudio, setSoundOn, setVolumes, playSound, updateMusic } from './audio.js';
 import { loadProgress, saveProgress, recordResult, isUnlocked, isNightmareUnlocked, nightmareResultLines, nightmareProgress, mapProgress, starText, resultLines, startMap, mapAfterResult, starsFor, MAP_ORDER } from './progress.js';
-import { mountStartScreen, mountCosmeticsMenu, endView, starsHtml, STAR_COUNT, nightmareWinView, mapSelectOptions, mapSelectValue, parseMapSelectValue } from './screens.js';
+import { mountStartScreen, mountCosmeticsMenu, endView, starsHtml, STAR_COUNT, nightmareWinView, nightmareLoseView, loseRingSvg, mapSelectOptions, mapSelectValue, parseMapSelectValue } from './screens.js';
 import { activeCosmetics } from './cosmetics.js';
 import { badgeSvg } from './badge-art.js';
 import { fullscreenControl } from './fullscreen.js';
@@ -164,6 +164,7 @@ for (const evName of ['pointerdown', 'keydown']) window.addEventListener(evName,
 let resultSaved = false;
 let resultText = []; // Zeilen fürs Overlay (resultLines)
 let winView = null; // B-184: Albtraum-Sieg (nightmareWinView), sonst null
+let loseView = null; // B-192: Albtraum-Niederlage (nightmareLoseView), sonst null
 // B-184: Zeichen der Gold-Anzeige (erfüllt: Haken, verletzt: Kreuz), Bauvorlage Albtraum-Gold-Anzeige
 const GG_MARK = {
   ok: '<svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="13" fill="var(--message-info)" stroke="var(--ink)" stroke-width="3"/><path d="M9 16.5 L14 21 L23 11" fill="none" stroke="var(--cream)" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
@@ -576,6 +577,7 @@ const cosMenu = mountCosmeticsMenu($('cosmetics'), {
   onChange: () => { if (!TEST_MODE) saveProgress(getStorage(), progress); applyCosmetics(); },
 });
 document.querySelector('#start-screen .cos-open')?.addEventListener('click', () => cosMenu.open());
+$('end-look').addEventListener('click', () => cosMenu.open()); // B-192: Belohnung gleich ansehen
 if (!TEST_MODE) startScreen.show();
 // B-137: Drehhinweis im Hochformat pausiert das Spiel; nach dem Drehen weiter, wenn die Pause vom Hinweis kam
 let pausedByRotate = false;
@@ -744,6 +746,7 @@ function restart() {
   resultSaved = false;
   resultText = [];
   winView = null;
+  loseView = null;
   Object.assign(ui, { buildType: null, selectedTowerId: null, pending: null, aiming: false, hoverPx: null, speed: SPEED_STEPS[0], ring: null, ringPreview: null, upgradeHover: false, upgradePreview: null });
   refreshUI();
 }
@@ -1007,29 +1010,82 @@ function refreshUI() {
   $('overlay-stats').textContent = `Welle ${state.wave} · ${state.kills} Gegner besiegt`;
   if (state.status !== 'playing' && !resultSaved) saveResult();
   renderResultLines($('overlay-progress'), resultText);
-  renderNightmareWin(state.status !== 'playing' ? winView : null);
+  renderNightmareEnd(state.status !== 'playing' ? winView : null, state.status !== 'playing' ? loseView : null);
 }
 
-// B-184: Siegbildschirm im Albtraum (Medaille fliegt nur bei neuem Abzeichen ein); v = nightmareWinView oder null
-function renderNightmareWin(v) {
+// B-184/B-192: Sieg- und Niederlagebildschirm im Albtraum (Bauvorlage Albtraum-Sieg). v = nightmareWinView, lose = nightmareLoseView, sonst null.
+// Medaille fliegt nur bei neuem Abzeichen ein; Band mit Zipfeln, Plakette im Holz der Karte (Niederlage: Eisen, gedimmt).
+const RIBBON_NORMAL = { box: '0 0 560 70', w: 560, h: 70, d: 'M20 10 H540 L524 35 L540 60 H20 L36 35 Z', x: 280, y: 37 };
+const RIBBON_NM = { box: '0 0 700 76', w: 700, h: 76, d: 'M40 8 H660 V64 H40 Z', x: 350, y: 36 };
+const SPARK = '<svg width="22" height="22" viewBox="0 0 22 22"><path d="M11 1 L13 9 L21 11 L13 13 L11 21 L9 13 L1 11 L9 9 Z" fill="var(--bolt)" stroke="var(--ink)" stroke-width="1.5" stroke-linejoin="round"/></svg>';
+function setRibbon(r, band, tail) {
+  const svg = document.querySelector('#overlay .end-ribbon');
+  svg.setAttribute('viewBox', r.box);
+  svg.setAttribute('width', r.w);
+  svg.setAttribute('height', r.h);
+  $('end-ribbon-band').setAttribute('d', r.d);
+  $('overlay-title').setAttribute('x', r.x);
+  $('overlay-title').setAttribute('y', r.y);
+  if (band) $('end-ribbon-band').setAttribute('fill', band);
+  for (const t of svg.querySelectorAll('.end-tail:not(.end-shine)')) t.setAttribute('fill', tail ?? 'none');
+}
+function renderNightmareEnd(v, lose) {
   const over = $('overlay');
-  if (v) { $('overlay-title').textContent = 'Albtraum besiegt!'; $('end-ribbon-band').setAttribute('fill', BADGE_STYLE.ribbon); }
-  const key = v ? `${v.title}|${v.fly}|${state.lives}` : '';
+  if (lose) v = null;
+  const title = v ? 'Albtraum besiegt!' : lose ? 'Der Albtraum war stärker' : null;
+  if (title) {
+    $('overlay-title').textContent = title;
+    $('end-ribbon-band').setAttribute('fill', v ? 'var(--flag-red)' : 'var(--nightmare-btn-a)');
+  }
+  const key = v ? `${v.title}|${v.fly}|${state.lives}` : lose ? `lose|${lose.title}` : '';
   if (over.dataset.nmKey === key) return;
   over.dataset.nmKey = key;
   over.classList.toggle('nightmare-win', !!v);
+  over.classList.toggle('nightmare-lose', !!lose);
   over.classList.toggle('fresh', !!v?.fly);
-  $('end-nm').hidden = !v;
-  if (!v) { setHtml($('end-badge'), ''); return; }
-  setHtml($('end-badge'), badgeSvg(200, v.tier, `${v.title}`));
-  $('end-badge').classList.remove('fly');
-  if (v.fly) { void $('end-badge').offsetWidth; $('end-badge').classList.add('fly'); }
-  $('end-nm-title').textContent = v.title;
-  setHtml($('end-badges'), v.slots.map((x) => badgeSvg(40, x.reached ? x.tier : 0, x.label)).join(''));
-  $('end-cond').textContent = v.condition;
-  setHtml($('end-values'), `<span>Welle ${state.wave} / ${MAX_WAVES}</span><span>Leben ${Math.max(0, state.lives)} / ${maxLives(state)}</span>`);
-  $('end-reward').hidden = !v.reward;
-  $('end-reward').querySelector('span').textContent = v.reward ?? '';
+  $('end-nm').hidden = !v && !lose;
+  const card = over.querySelector('.end-card');
+  card.querySelector(':scope > .plq-deco')?.remove();
+  $('end-look').hidden = !v?.reward;
+  if (!v && !lose) {
+    setHtml($('end-badge'), '');
+    delete card.dataset.wood;
+    setRibbon(RIBBON_NORMAL);
+    return;
+  }
+  setRibbon(RIBBON_NM, null, v ? 'var(--flag-red-dark)' : 'var(--nightmare-btn-b)');
+  over.querySelector('.end-band-text').textContent = title;
+  card.dataset.wood = v ? v.wood : 'iron';
+  const pill = ([word, num]) => `<span><small>${word}</small> ${num}</span>`;
+  $('end-reward').hidden = !v?.reward;
+  $('end-next').hidden = !v?.next || !!v?.reward;
+  $('end-tip').hidden = !lose;
+  if (lose) {
+    setHtml($('end-badge'), loseRingSvg(160));
+    $('end-badge').classList.remove('fly');
+    setHtml(over.querySelector('.end-sparks'), '');
+    $('end-nm-title').textContent = lose.title;
+    setHtml($('end-badges'), lose.slots.map((x) => badgeSvg(36, x.reached ? x.tier : 0, x.label)).join(''));
+    $('end-cond').textContent = '';
+    setHtml($('end-conds'), '');
+    setHtml($('end-values'), lose.values.map(pill).join(''));
+    over.querySelector('#end-tip .tip-text').textContent = lose.tip;
+  } else {
+    setHtml($('end-badge'), badgeSvg(200, v.tier, `${v.title}`));
+    $('end-badge').classList.remove('fly');
+    if (v.fly) { void $('end-badge').offsetWidth; $('end-badge').classList.add('fly'); }
+    setHtml(over.querySelector('.end-sparks'), v.tier === BADGE_TIERS.length ? SPARK.repeat(6) : '');
+    $('end-nm-title').textContent = v.title;
+    setHtml($('end-badges'), v.slots.map((x) => badgeSvg(40, x.reached ? x.tier : 0, x.label)).join(''));
+    $('end-cond').textContent = v.condition;
+    setHtml($('end-conds'), v.conds.map((c) => `<li class="${c.ok ? 'ok' : 'miss'}">${c.ok ? GG_MARK.ok : GG_MARK.broken}`
+      + `<span class="ec-text">${c.text}</span><span class="ec-tier">${c.tier}</span><span class="sr">${c.ok ? 'erreicht' : 'nicht erreicht'}</span></li>`).join(''));
+    setHtml($('end-values'), [['Welle', `${state.wave} / ${MAX_WAVES}`], ['Leben', `${Math.max(0, state.lives)} / ${maxLives(state)}`]].map(pill).join(''));
+    $('end-reward').querySelector('.er-title').textContent = v.reward ?? '';
+    if (v.next) setHtml($('end-next'), `${badgeSvg(44, 0)}<span><b>Nächstes Ziel: ${v.next.name}</b>${v.next.text}</span>`);
+    // Rand-Deko des Kartenstils oben auf der Plakette (Maß nach dem Füllen)
+    card.insertAdjacentHTML('afterbegin', nmWoodDeco(v.wood, card.offsetWidth, card.offsetHeight));
+  }
   $('restart').focus({ preventScroll: true });
 }
 
@@ -1060,8 +1116,9 @@ function saveResult() {
     saveProgress(getStorage(), progress);
     resultText = nightmareResultLines(progress, state.mapId, res, nightmareBefore);
     winView = state.status === 'won' ? nightmareWinView(progress, state.mapId, res) : null; // B-184
-    $('restart').textContent = winView ? 'Nochmal spielen' : 'Neues Spiel';
-    $('to-maps').textContent = winView ? 'Kartenauswahl' : 'Karten';
+    loseView = state.status === 'lost' ? nightmareLoseView(progress, state.mapId, { wave: state.wave, lives: state.lives, maxLives: maxLives(state) }) : null; // B-192
+    $('restart').textContent = loseView ? 'Nochmal versuchen' : 'Neues Spiel';
+    $('to-maps').textContent = winView || loseView ? 'Kartenauswahl' : 'Karten';
     return;
   }
   // Nach einem Sieg die nächste Karte vorwählen: „Neues Spiel“ startet dort, gemerkt auch fürs nächste Öffnen.
@@ -1070,6 +1127,7 @@ function saveResult() {
   saveProgress(getStorage(), progress);
   refreshMapOptions();
   winView = null;
+  loseView = null;
   $('to-maps').textContent = 'Karten';
   resultText = resultLines(progress, state.mapId, res, before);
   $('restart').textContent = mapId !== state.mapId ? `Weiter: ${MAPS[mapId].name}` : 'Neues Spiel';
@@ -1106,7 +1164,7 @@ if (TEST_MODE) {
     ui,
     restartOn: (id) => { mapId = id; restart(); },
     // Weiterspielen nach erzwungenem Spielende: Overlay-Text des alten Ergebnisses verwerfen.
-    resume: () => { resultSaved = false; resultText = []; winView = null; mapId = state.mapId; },
+    resume: () => { resultSaved = false; resultText = []; winView = null; loseView = null; mapId = state.mapId; },
     refresh: refreshUI,
   }));
 }
