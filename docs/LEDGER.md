@@ -144,3 +144,7 @@ Anhängen ohne die Datei zu lesen: `cat >> docs/LEDGER.md <<'EOF' … EOF`. Übe
 - Elite: Normalmodus leichter (Schild 15 %, Heilung 1 %/s nach 2 s), Albtraum eigene Werte (Heilung immer).
 - Albtraum-Bosse: Nekromantin mit Fledermäusen und stärkerer Phase 2, Oger-König Phase 2; Bosse ohne Leben-Deckel.
 - Tests: unit, balance, e2e grün.
+### 2026-11-28 – Scharfschütze: eigener Schuss-Ton
+- Scharfschütze: einzelner Gewehrknall (Free Firearm Sound Library, CC0; Tikka, Arisaka, Mosin), alter Ton war ~20x leiser als die Kanone.
+- Stufe 3 "Falkenauge": eigener Ton `shot:sniper:master` (Kenney laserLarge), über das vorhandene Geschoss-Feld `master`.
+- Blitz bleibt unverändert (Wunsch des Menschen). Neuer Test in `tests/sound.test.js`, Schlüsselliste im B-114-Test ergänzt.

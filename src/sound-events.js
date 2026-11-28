@@ -68,7 +68,7 @@ export function detectSoundEvents(tr, state) {
   for (const p of state.projectiles || []) {
     if (!p || typeof p !== 'object' || tr.seenProjectiles.has(p)) continue;
     tr.seenProjectiles.add(p);
-    if (shots && p.towerType) out.push({ kind: 'shot', tower: p.towerType });
+    if (shots && p.towerType) out.push(p.master ? { kind: 'shot', tower: p.towerType, master: true } : { kind: 'shot', tower: p.towerType });
   }
   for (const e of state.effects || []) {
     if (!e || typeof e !== 'object') continue;
@@ -153,8 +153,11 @@ export function createLimiter(limit = SOUND.limit, overrides = { ...SOUND.limitO
   return { limit, overrides, slots: new Map() };
 }
 
+// Schuss auf Stufe 3: eigener Schlüssel 'shot:<turm>:master', aber nur, wenn es dafür eine Aufnahme gibt
 export function soundKey(ev) {
-  return ev.kind === 'shot' ? `shot:${ev.tower}` : ev.kind;
+  if (ev.kind !== 'shot') return ev.kind;
+  const key = `shot:${ev.tower}`;
+  return ev.master && Object.hasOwn(SOUND.samples.sounds, `${key}:master`) ? `${key}:master` : key;
 }
 
 // true = Ton darf spielen; now in Sekunden Echtzeit

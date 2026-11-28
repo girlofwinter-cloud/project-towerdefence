@@ -1714,7 +1714,9 @@ export const SOUND = {
       // Kanone: Abschussknall (Aufnahme schon tiefer gestimmt und laut gemischt), deutlich lauter als andere Schüsse
       'shot:cannon':    { files: ['cannon-1', 'cannon-2', 'cannon-3'], gain: 0.5, pitchVar: 0.06 },
       'shot:frost':     { files: ['frost-1', 'frost-2', 'frost-3'], gain: 0.2, pitchVar: 0.06 },
-      'shot:sniper':    { files: ['sniper-1', 'sniper-2', 'sniper-3'], gain: 0.3, pitchVar: 0.06 },
+      // Scharfschütze: einzelner Gewehrknall (Free Firearm Sound Library, CC0); Stufe 3 "Falkenauge": schwerer Laser
+      'shot:sniper':    { files: ['sniper-1', 'sniper-2', 'sniper-3'], gain: 0.33, pitchVar: 0.05 },
+      'shot:sniper:master': { files: ['sniper-master-1', 'sniper-master-2', 'sniper-master-3'], gain: 0.22, pitchVar: 0.05 },
       'shot:lightning': { files: ['lightning-1', 'lightning-2', 'lightning-3'], gain: 0.18, pitchVar: 0.06 },
       // Tod: kurze Monster-Schreie (OpenGameArt, CC0); enemyRate = Tonhöhe je Gegnertyp (klein/schnell höher)
       death:            { files: ['death-1', 'death-2', 'death-3', 'death-4'], gain: 0.55, pitchVar: 0.08,

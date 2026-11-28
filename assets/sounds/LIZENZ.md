@@ -1,7 +1,7 @@
 # Herkunft und Lizenz der Töne
 
 Die Töne stammen von Kenney (https://kenney.nl), die Todesschreie aus dem „Monster Sound Effects Pack“
-von Ogrebane (OpenGameArt, https://opengameart.org/content/monster-sound-effects-pack), der Pfeil-Schuss aus
+von Ogrebane (OpenGameArt, https://opengameart.org/content/monster-sound-effects-pack), die Scharfschützen-Schüsse aus „The Free Firearm Sound Library“ (OpenGameArt, CC0), der Pfeil-Schuss aus
 „Battle Sound Effects“ von artisticdude (OpenGameArt, https://opengameart.org/content/battle-sound-effects,
 mehrfach lizenziert, wir nutzen CC0). Alle stehen unter der Lizenz
 **CC0 1.0** (Creative Commons Zero, gemeinfrei, http://creativecommons.org/publicdomain/zero/1.0/).
@@ -20,9 +20,12 @@ Bearbeitung: von Ogg Vorbis bzw. WAV nach AAC (.m4a, mono, 48 kbit/s) umgewandel
 | frost-1.m4a | Impact Sounds (kenney_impact-sounds) | impactGlass_light_000.ogg | CC0 |  |
 | frost-2.m4a | Impact Sounds (kenney_impact-sounds) | impactGlass_light_001.ogg | CC0 |  |
 | frost-3.m4a | Impact Sounds (kenney_impact-sounds) | impactGlass_light_002.ogg | CC0 |  |
-| sniper-1.m4a | Impact Sounds (kenney_impact-sounds) | impactGeneric_light_000.ogg | CC0 |  |
-| sniper-2.m4a | Impact Sounds (kenney_impact-sounds) | impactGeneric_light_001.ogg | CC0 |  |
-| sniper-3.m4a | Impact Sounds (kenney_impact-sounds) | impactGeneric_light_002.ogg | CC0 |  |
+| sniper-1.m4a | „The Free Firearm Sound Library“ (Prepared SFX Library, OpenGameArt, https://opengameart.org/content/the-free-firearm-sound-library) | Tikka/W_29P.wav (Tikka T3, Repetierer, Einzelschuss) | CC0 | Stereo 96 kHz zu Mono, ab Einsatz des Knalls auf 0,55 s gekürzt, Ausblenden 0,3 s, normalisiert |
+| sniper-2.m4a | „The Free Firearm Sound Library“ (Prepared SFX Library, OpenGameArt, https://opengameart.org/content/the-free-firearm-sound-library) | Arisaka/E_25P.wav (Arisaka, Repetierer, Einzelschuss) | CC0 | Stereo 96 kHz zu Mono, ab Einsatz des Knalls auf 0,55 s gekürzt, Ausblenden 0,3 s, normalisiert |
+| sniper-3.m4a | „The Free Firearm Sound Library“ (Prepared SFX Library, OpenGameArt, https://opengameart.org/content/the-free-firearm-sound-library) | Mosin Nagant/M_21P.wav (Mosin-Nagant, Repetierer, Einzelschuss) | CC0 | Stereo 96 kHz zu Mono, ab Einsatz des Knalls auf 0,55 s gekürzt, Ausblenden 0,3 s, normalisiert |
+| sniper-master-1.m4a | Sci-Fi Sounds (kenney_sci-fi-sounds) | laserLarge_000.ogg | CC0 | auf 0,6 s gekürzt, Ausblenden 0,15 s, normalisiert |
+| sniper-master-2.m4a | Sci-Fi Sounds (kenney_sci-fi-sounds) | laserLarge_001.ogg | CC0 | auf 0,6 s gekürzt, Ausblenden 0,15 s, normalisiert |
+| sniper-master-3.m4a | Sci-Fi Sounds (kenney_sci-fi-sounds) | laserLarge_002.ogg | CC0 | auf 0,6 s gekürzt, Ausblenden 0,15 s, normalisiert |
 | lightning-1.m4a | Sci-Fi Sounds (kenney_sci-fi-sounds) | forceField_000.ogg | CC0 | auf 0,3 s gekürzt, ausgeblendet |
 | lightning-2.m4a | Sci-Fi Sounds (kenney_sci-fi-sounds) | forceField_001.ogg | CC0 | auf 0,3 s gekürzt, ausgeblendet |
 | lightning-3.m4a | Sci-Fi Sounds (kenney_sci-fi-sounds) | forceField_002.ogg | CC0 | auf 0,3 s gekürzt, ausgeblendet |
