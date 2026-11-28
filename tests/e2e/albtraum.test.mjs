@@ -116,3 +116,202 @@ test('B-184 667x375: Kartenauswahl ohne Scrollen, Sieg-Medaille ganz im Fenster'
   assert.deepEqual(errors, []);
   await ctx.close();
 });
+
+// ---------- B-193: HUD im Albtraum (Holz je Karte, Rand-Deko, Plakette, Boss-Leiste, „Gold verpasst“) ----------
+async function openTest(viewport) {
+  const ctx = await browser.newContext({ viewport, reducedMotion: 'reduce' });
+  const page = await ctx.newPage();
+  const errors = [];
+  page.on('pageerror', (e) => errors.push(e.message));
+  await page.goto(`${url}?test`);
+  await page.waitForSelector('body.test-mode');
+  return { ctx, page, errors };
+}
+
+test('B-193 1280x800: Wiese im Albtraum mit Moos-Holz und Deko, Gold verpasst ohne Durchstreichen, Normalmodus ohne Deko', async () => {
+  const { ctx, page, errors } = await openTest({ width: 1280, height: 800 });
+  assert.equal(await page.locator('#app .plq-deco').count(), 0, 'Normalmodus: keine Deko');
+  assert.match(await page.evaluate(() => getComputedStyle(document.querySelector('.hud')).backgroundImage), /rgb\(164, 103, 47\)/, 'Normalmodus: heutiges Holz');
+  await page.selectOption('#map-select', 'meadow:nightmare');
+  await page.waitForSelector('#hud-bar > .plq-deco');
+  assert.match(await page.evaluate(() => getComputedStyle(document.querySelector('.hud')).backgroundImage), /rgb\(94, 78, 102\)/, 'nm-wood-moss-a');
+  assert.equal(await page.evaluate(() => getComputedStyle(document.querySelector('.plq-deco')).pointerEvents), 'none');
+  // Fähigkeit benutzt: Bedingung „ohne Fähigkeiten“ verpasst
+  await page.evaluate(() => { window.__game().abilities.freeze.uses = 1; });
+  await page.waitForSelector('#gold-goal.broken');
+  assert.equal(await page.isVisible('#gold-goal .gg-state'), true);
+  assert.equal(await page.locator('#gold-goal .gg-state').textContent(), 'Gold verpasst');
+  assert.equal(await page.locator('#gold-goal .gg-text').textContent(), 'ohne Fähigkeiten');
+  assert.equal(await page.evaluate(() => getComputedStyle(document.querySelector('#gold-goal .gg-state')).color), 'rgb(255, 154, 138)');
+  assert.equal(await page.evaluate(() => getComputedStyle(document.querySelector('#gold-goal .gg-text'), '::after').content), 'none', 'kein Strich');
+  const gg = await box(page, '#gold-goal');
+  assert.ok(Math.abs(gg.height - 36) <= 1 && gg.width <= 320, `Chip ${gg.width} x ${gg.height}`);
+  await page.waitForFunction(() => document.getElementById('message').textContent.includes('Gold verpasst – Silber ist noch möglich'));
+  // zurück auf Normal: Holz und Deko wieder weg
+  await page.selectOption('#map-select', 'meadow');
+  await page.waitForSelector('#gold-goal', { state: 'hidden' });
+  assert.equal(await page.locator('#app .plq-deco').count(), 0);
+  assert.deepEqual(errors, []);
+  await ctx.close();
+});
+
+test('B-193 1920x1080: Albtraum-Plakette 180 x 56 neben dem HUD, Boss-Leiste mit Prozentzahl und Krone', async () => {
+  const { ctx, page, errors } = await openTest({ width: 1920, height: 1080 });
+  await page.selectOption('#map-select', 'twin:nightmare');
+  await page.waitForSelector('#nm-plaque:not([hidden])');
+  const plq = await box(page, '#nm-plaque');
+  assert.deepEqual([Math.round(plq.width), Math.round(plq.height)], [180, 56]);
+  for (const sel of ['#gold-goal', '#hud-bar', '.top-buttons']) assert.equal(overlap(plq, await box(page, sel)), false, `überlappt ${sel} nicht`);
+  assert.match(await page.locator('#nm-plaque').getAttribute('aria-label'), /^Albtraum-Modus, Düstere Magie, bestes Abzeichen /);
+  // Eisenbänder (Zwei Fronten) liegen auf den Trennern
+  const straps = await page.evaluate(() => {
+    const seps = [...document.querySelectorAll('#hud-bar > .sep')].map((s) => { const r = s.getBoundingClientRect(); return r.left + r.width / 2; });
+    const bands = [...document.querySelectorAll('#hud-bar .nm-strap')].map((s) => { const r = s.getBoundingClientRect(); return r.left + r.width / 2; });
+    return { seps, bands };
+  });
+  assert.equal(straps.bands.length, straps.seps.length);
+  straps.seps.forEach((x, i) => assert.ok(Math.abs(straps.bands[i] - x) <= 2, `Band ${i} auf dem Trenner`));
+  // Oger-König mit 62 % Leben
+  await page.evaluate(async () => {
+    const g = await import('/src/game.js');
+    const s = window.__game();
+    g.spawnEnemy(s, 'boss', 20);
+    const e = s.enemies[s.enemies.length - 1];
+    e.hp = e.maxHp * 0.62;
+    s.paused = true;
+  });
+  await page.waitForSelector('#boss-bar:not([hidden])');
+  await page.waitForFunction(() => document.querySelector('#boss-bar .bb-pct').textContent === '62%');
+  assert.equal(await page.isVisible('#boss-bar .bb-crown'), true, 'Krone beim Oger-König');
+  assert.equal(await page.isVisible('#boss-bar .bb-skull'), false);
+  // Boss-Leiste hat Vorrang: Plakette nur, wenn daneben noch eine volle Leiste passt, sonst ausgeblendet
+  const bar = await box(page, '#boss-bar');
+  const plq2 = (await page.isVisible('#nm-plaque')) ? await box(page, '#nm-plaque') : null;
+  assert.ok(!plq2 || !overlap(bar, plq2), 'Boss-Leiste überdeckt die Plakette nicht');
+  assert.ok(bar.width >= 200, `Boss-Leiste breit genug (${bar.width})`);
+  assert.deepEqual(errors, []);
+  await ctx.close();
+});
+
+// ---------- B-191: Kartenauswahl im Albtraum (Karten 224 x 420, Lernzeile nur bei genug Höhe) ----------
+test('B-191 1280x800: Albtraum-Karten 224 x 420 mit Lücke 20, Lernzeile im Fenster; 1366x768 ohne Lernzeile, kein Scrollen', async () => {
+  const { ctx, page, errors } = await open({ width: 1280, height: 800 });
+  const cards = await page.$$eval('.map-card', (bs) => bs.map((b) => b.getBoundingClientRect().toJSON()));
+  assert.equal(cards.length, MAP_ORDER.length);
+  for (const r of cards) assert.ok(Math.abs(r.width - 224) <= 1 && Math.abs(r.height - 420) <= 1, `Karte ${r.width} x ${r.height}`);
+  assert.ok(Math.abs(cards[2].x - (cards[1].x + 224) - 20) <= 1, 'Lücke 20');
+  assert.equal(await page.isVisible('.nm-learn'), true, 'Lernzeile sichtbar');
+  assert.ok((await box(page, '.nm-learn')).y + (await box(page, '.nm-learn')).height <= 800, 'Lernzeile im Fenster');
+  assert.ok(await page.evaluate(() => document.scrollingElement.scrollHeight <= innerHeight && document.getElementById('start-screen').scrollHeight <= innerHeight));
+  await page.setViewportSize({ width: 1366, height: 768 });
+  assert.equal(await page.isVisible('.nm-learn'), false, 'Lernzeile versteckt');
+  assert.ok(await page.evaluate(() => document.scrollingElement.scrollHeight <= innerHeight && document.getElementById('start-screen').scrollHeight <= innerHeight), 'kein Scrollen');
+  // Normal: Lockplakette mit „Umschalten“ führt in den Albtraum
+  await page.click('.start-mode [data-mode="normal"]');
+  assert.equal(await page.isVisible('.nm-learn'), false);
+  await page.click('.nm-teaser .nt-switch');
+  assert.equal(await page.locator('#start-screen').getAttribute('class'), 'nightmare');
+  assert.deepEqual(errors, []);
+  await ctx.close();
+});
+
+// ---------- B-192: Sieg und Niederlage im Albtraum ----------
+const endIn = async (page, mapId, patch) => {
+  await page.click(`.map-nightmare[data-map="${mapId}"]`);
+  await page.waitForSelector('#start-screen', { state: 'hidden' });
+  await page.evaluate(([w, p]) => { const s = window.__game(); s.wave = w; Object.assign(s, p.state); if (p.lost) s.track = { towerTypes: [], sells: 0, ...s.track, livesLost: 1 }; s.status = p.status; }, [MAX_WAVES, patch]);
+};
+test('B-192 1280x800: Gold mit Bedingungen, Belohnung und „Aussehen“, Silber mit nächstem Ziel, Niederlage mit Tipp', async () => {
+  const { ctx, page, errors } = await open({ width: 1280, height: 800 });
+  await endIn(page, LAST, { state: { lives: 5 }, status: 'won' });
+  await page.waitForSelector('#overlay.nightmare-win');
+  const medal = await box(page, '#end-badge');
+  const card = await box(page, '.end-card');
+  assert.ok(Math.abs(medal.x - 540) <= 2 && Math.abs(card.width - 560) <= 2 && card.y + card.height <= 724, `Lage ${JSON.stringify([medal, card])}`);
+  assert.equal(await page.locator('#end-conds li').count(), 3);
+  assert.equal(await page.locator('#end-conds li.ok').count(), 3);
+  assert.equal(await page.isVisible('#end-next'), false);
+  assert.equal(await page.evaluate(() => getComputedStyle(document.getElementById('end-badge')).animationName), 'none', 'reduced motion: kein Einflug');
+  await page.click('#end-look');
+  await page.waitForSelector('#cosmetics:not([hidden])');
+  await page.keyboard.press('Escape');
+  assert.equal(await page.isVisible('#overlay'), true, 'Menü zu, Siegbildschirm bleibt');
+  // Silber ohne neues Abzeichen (Leben verloren): nächstes Ziel Gold, keine Belohnung
+  await page.click('#to-maps');
+  await page.click('.start-mode [data-mode="nightmare"]');
+  await endIn(page, M1, { state: { lives: 4 }, status: 'won', lost: true });
+  await page.waitForFunction(() => !document.getElementById('end-next').hidden);
+  assert.match(await page.locator('#end-next').textContent(), /^Nächstes Ziel: Gold/);
+  assert.equal(await page.isVisible('#end-reward'), false);
+  assert.equal(await page.isVisible('#end-look'), false);
+  // Niederlage
+  await page.click('#to-maps');
+  await page.click('.start-mode [data-mode="nightmare"]');
+  await endIn(page, M1, { state: { wave: 9, lives: 0 }, status: 'lost' });
+  await page.waitForSelector('#overlay.nightmare-lose');
+  assert.equal(await page.locator('#overlay-title').textContent(), 'Der Albtraum war stärker');
+  assert.match(await page.locator('#end-nm-title').textContent(), /– Welle \d+ von 20$/);
+  assert.equal(await page.isVisible('#end-tip'), true);
+  for (const id of ['#restart', '#to-maps']) assert.ok((await box(page, id)).height >= 46);
+  const lc = await box(page, '.end-card');
+  assert.ok(lc.y >= 0 && lc.y + lc.height <= 800, 'Plakette im Fenster');
+  assert.equal(await page.locator('#restart').textContent(), 'Nochmal versuchen');
+  assert.deepEqual(errors, []);
+  await ctx.close();
+});
+
+test('B-192 844x390: Niederlage im Albtraum ohne Überlappung, Knöpfe >= 44', async () => {
+  const { ctx, page, errors } = await open({ width: 844, height: 390 });
+  await endIn(page, M1, { state: { lives: 0 }, status: 'lost' });
+  await page.waitForSelector('#overlay.nightmare-lose');
+  const ring = await box(page, '#end-badge');
+  const card = await box(page, '.end-card');
+  for (const r of [ring, card]) assert.ok(r.x >= 0 && r.y >= 0 && r.x + r.width <= 844 && r.y + r.height <= 390, 'im Fenster');
+  assert.equal(overlap(ring, card), false);
+  for (const id of ['#restart', '#to-maps']) assert.ok((await box(page, id)).height >= 44);
+  assert.deepEqual(errors, []);
+  await ctx.close();
+});
+
+// Tester: Handy quer 844x390, sichtbare Knöpfe/Karten überlappen sich nicht und liegen im Fenster, Tippziele >= 44.
+// Ausnahme: Knöpfe auf einer Kartenfläche (Abzeichen, Albtraum spielen) liegen absichtlich über ihr; dann muss der Tipp
+// in der Mitte des Knopfs aber ihn selbst treffen (hit).
+async function visibleBoxes(page, sel) {
+  return page.evaluate((s) => {
+    const slots = [...document.querySelectorAll('.map-slot')];
+    return [...document.querySelectorAll(s)].filter((b) => b.offsetParent && getComputedStyle(b).visibility !== 'hidden' && !b.parentElement.closest(s))
+      .map((b) => {
+        const r = b.getBoundingClientRect();
+        const top = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
+        return { id: b.id || b.className || b.textContent.trim().slice(0, 20), card: b.classList.contains('map-card'), slot: slots.indexOf(b.closest('.map-slot')), hit: !!top && (top === b || b.contains(top)), x: r.x, y: r.y, width: r.width, height: r.height };
+      });
+  }, sel);
+}
+function noOverlap(list, what) {
+  for (let i = 0; i < list.length; i++) for (let k = i + 1; k < list.length; k++) {
+    const a = list[i], b = list[k];
+    if (a.slot >= 0 && a.slot === b.slot && (a.card || b.card)) continue; // Knopf auf seiner Karte
+    const ov = Math.min(a.x + a.width, b.x + b.width) - Math.max(a.x, b.x) > 1 && Math.min(a.y + a.height, b.y + b.height) - Math.max(a.y, b.y) > 1;
+    assert.equal(ov, false, `${what}: ${a.id} überlappt ${b.id}`);
+  }
+  for (const b of list) if (!b.card) assert.ok(b.hit, `${what}: Tipp auf ${b.id} trifft etwas anderes`);
+}
+test('Tester 844x390: Albtraum-Kartenauswahl und Gold-Sieg mit „Aussehen“ ohne Überlappung, alle Knöpfe >= 44 und im Fenster', async () => {
+  const { ctx, page, errors } = await open({ width: 844, height: 390 });
+  const sel = await visibleBoxes(page, '#start-screen button');
+  assert.ok(sel.length > 0);
+  for (const b of sel) assert.ok(b.height >= 44 && b.width >= 44 && b.x >= 0 && b.y >= 0 && b.x + b.width <= 844 && b.y + b.height <= 390, `Knopf ${b.id}: ${JSON.stringify(b)}`);
+  noOverlap(sel, 'Kartenauswahl');
+  noOverlap(await visibleBoxes(page, '.map-slot'), 'Karten');
+  await endIn(page, LAST, { state: { lives: 5 }, status: 'won' });
+  await page.waitForSelector('#overlay.nightmare-win');
+  assert.equal(await page.isVisible('#end-look'), true, 'Gold: Knopf „Aussehen“');
+  const btns = await visibleBoxes(page, '#overlay button');
+  for (const b of btns) assert.ok(b.height >= 44 && b.x >= 0 && b.y >= 0 && b.x + b.width <= 844 && b.y + b.height <= 390, `Sieg-Knopf ${b.id}: ${JSON.stringify(b)}`);
+  noOverlap(btns, 'Sieg-Knöpfe');
+  const medal = await box(page, '#end-badge');
+  for (const b of btns) assert.equal(overlap(medal, b), false, `Medaille überdeckt ${b.id}`);
+  assert.ok(await page.evaluate(() => document.documentElement.scrollHeight <= innerHeight), 'Seite scrollt nicht');
+  assert.deepEqual(errors, []);
+  await ctx.close();
+});

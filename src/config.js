@@ -1223,6 +1223,8 @@ export const PAINTED_STYLE = {
   fieldVignette: 0.15,     // Vignette im Feld höchstens so dunkel (Test)
   frameVignette: 0.72,     // starke Vignette nur im Rand (Entwurf Z.39)
   maxOverhang: 0.3,        // Randbäume dürfen höchstens so viele Kacheln ins Feld ragen (Stamm immer im Rand)
+  // B-194: Reihe 1 der Albtraum-Rand-Deko: Fuß 8–20 Spiel-px vor der Feldkante, höchstens 34 Spiel-px hoch; chance je Platz
+  nmSmall: { foot: [8, 20], maxH: 34, chance: 0.6 },
   treeChance: 0.85,        // Rahmenwald: Anteil besetzter Plätze
   treeScale: [0.8, 1.15],  // Größe der Randbäume
   river: [92, 76, 66],     // Fluss: Sand, Kontur, Wasser (Strichbreiten in Entwurfs-px, Z.66–68; schmaler als im Entwurf, Bauplätze frei)
@@ -1846,9 +1848,9 @@ export const SOUND = {
 export const GOLD_CONDITIONS = {
   meadow:  { kind: 'noAbilities', label: 'ohne Fähigkeiten' },
   ice:     { kind: 'noTower', tower: 'frost', label: 'ohne Frostturm' },
-  fork:    { kind: 'maxTowerTypes', max: 3, label: 'höchstens 3 Turmtypen' },
+  fork:    { kind: 'noTower', tower: 'cannon', label: 'ohne Kanone' },
   twin:    { kind: 'noSell', label: 'ohne Verkaufen' },
-  volcano: { kind: 'maxTowerTypes', max: 3, label: 'höchstens 3 Turmtypen' },
+  volcano: { kind: 'noTower', tower: 'lightning', label: 'ohne Blitzturm' },
 };
 
 // B-183: Albtraum-Abzeichen je Karte, Index + 1 = Stufe (1 Bronze: Welle 20 geschafft, 2 Silber: ohne Lebensverlust,
@@ -1875,6 +1877,44 @@ export const NIGHT_STYLE = {
   glowHot: '255,229,138', glowLava: '255,122,31', // lava-hot / lava
 };
 
+// B-190: Gegner im Albtraum-Look (Bauvorlage docs/design/elemente/Gegner-Albtraum.md), je Kartenstil A/B/C:
+// shade = Körper-Umfärbung (nm-shade-*), eye = Augen und Fußaura (nm-eye-*), rim = Randlicht (nm-rim-*)
+export const NM_ENEMY_STYLE = {
+  A: { shade: '#2a3448', eye: '#d8ff5a', rim: '#e8f4ff' }, // Verfluchter Wald
+  B: { shade: '#30201c', eye: '#ffb02a', rim: '#ffd0a0' }, // Verbrannte Erde
+  C: { shade: '#252d4c', eye: '#e6b8ff', rim: '#c8d8ff' }, // Düstere Magie
+};
+// Kartenstil je Karte (Entscheidung des Menschen; auch für HUD-Holz u. a.), unbekannte Karte: A
+export const NM_STYLE_OF_MAP = { meadow: 'A', ice: 'C', fork: 'B', twin: 'C', volcano: 'B' };
+// B-194: Bewegung der Albtraum-Karten (render-nightmare.js), Grundwerte je Art in Spiel-px und Sekunden.
+// Anzahl und Farben je Karte in src/nm-maps/<id>.js (motion). Obergrenze aller Teilchen je Karte: Desktop / Handy.
+// fog.rx/ry: Halbachsen eines Nebelbands; fall/rise.area: Streifen über dem Feld, in dem die Teilchen starten.
+export const NM_MOTION = {
+  fog: { bands: 3, sway: 50, period: 16, alpha: [0.08, 0.13], rx: 350, ry: 60 },
+  fall: { drop: 120, drift: 30, period: 7, r: [1.2, 2.6], fade: 0.15 },
+  rise: { lift: 110, period: 4.5, core: 1.6, halo: 4, haloAlpha: 0.25, shrink: 0.4 },
+  blink: { period: 5.5, closed: 0.2, rx: 2.2, ry: 1.7, gap: 2.5, shut: 0.08 },
+  glint: { speed: 40, dash: [16, 30], width: 2.4 },
+  ripple: { period: 6, dash: [26, 40], width: 2.4, alpha: 0.6 },
+  // B-194 Nachtrag: Glitzerstern (Vierzack, Radius r·s, Taille waist·s), Puls weicher Flecken, Rauch (steigt lift px,
+  // wächst grow), Wippen (±amp px); Zeiten in Sekunden
+  twinkle: { period: 2.2, alpha: [0.15, 1], size: [0.4, 1.15], r: 6, waist: 1.3 },
+  pulse: { period: 2.6, alpha: [0.45, 1], r: 14 },
+  smoke: { period: 3.6, lift: 60, grow: [0.6, 1.6], r: 10, fade: 0.15 },
+  bob: { period: 3.2, amp: 9 },
+  sprite: 32,
+  maxDesktop: 60,
+  maxCompact: 28,
+};
+// B-194: warme Lichtinsel unter jedem Turm im Albtraum (nm-warm-light #ffe2a0, radial α 0,42 -> 0), Halbachsen in Kacheln
+export const NM_WARM_LIGHT = { color: 'rgba(255,226,160,0.42)', rx: 0.9, ry: 0.6, dy: 0.2 };
+// Zusätze: Randlicht-Verlauf [Anteil, Deckkraft], Fußaura-Deckkraft, Dornen (bone), Elite-Innenring (Abstand
+// nach innen zum Goldring und Breite in Entwurfs-px), Umfärbung (Entsättigung, Anteil Schattenfarbe)
+export const NM_ENEMY_FX = {
+  rimStops: [[0, 0.5], [0.6, 0.16], [1, 0]], auraAlpha: 0.5, bone: '#e8dcc0',
+  eliteInset: 4, eliteWidth: 2, desat: 0.28, shadeMix: 0.36, wispMix: 0.45,
+};
+
 // B-184: Albtraum-Abzeichen (Medaille mit Oger-Kopf), Bauvorlage Albtraum-Abzeichen. Nur Aussehen.
 export const BADGE_STYLE = {
   ink: '#2b1a10', ribbon: '#c4452f', cream: '#fff3d2', eye: '#ffc22a', eyeGlow: '#ff7a1f', muted: '#e8d3a8', // ink, flag-red, cream, ogre-eye, lava, muted
@@ -1883,6 +1923,8 @@ export const BADGE_STYLE = {
   small: 44,     // bis zu dieser Größe: dicke Linien, ohne Augenschein, Nase, Mund, Hauer
   openFace: 56,  // offen: ab dieser Größe gestrichelter Kopf
   big: 100,      // ab dieser Größe: Rand 4 px, Band-Rand 3
+  // B-193: Funkeln (bolt) bei Gold ab sparkFrom; Schloss bei „gesperrt“ (gold, lock-shackle)
+  spark: '#fff6a8', sparkFrom: 120, lock: '#f2c14e', shackle: '#d9dde2',
 };
 
 // B-185: goldene Türme (nur Aussehen, Bauvorlage docs/design/elemente/Kosmetik-Aussehen.md).

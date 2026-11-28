@@ -120,3 +120,9 @@ Anhängen ohne die Datei zu lesen: `cat >> docs/LEDGER.md <<'EOF' … EOF`. Übe
 - Knopf „Kartenauswahl“ im Pause-Schild öffnet die Kartenauswahl mitten im Spiel.
 - „Zurück zum Spiel“ in der Auswahl kehrt ins pausierte Spiel zurück; neue Karte fragt vorher nach, wenn schon gespielt wurde.
 - Test: tests/e2e/menue-knopf.test.mjs; Unit- und e2e-Tests grün.
+
+## 2026-11-28 – Block Albtraum-Design (B-190 bis B-199)
+- Rollen: designer (Sonnet + ein Opus-Vergleich), developer (4 parallele Worktrees), tester, reviewer.
+- Neu: echter Albtraum-Look statt Filter: je Karte eigener Stil (A/B/C), Bewegung (Wellen, Glut, Nebel), Gegner-Look, Holz-HUD, Kartenauswahl/Sieg/Aussehen; keine Vignette.
+- Gold-Bedingung (Mensch): Zangenangriff ohne Kanone, Vulkan ohne Blitzturm statt "höchstens 3 Turmtypen"; Tests dazu angepasst.
+- Offen: Plakette bei 1280x800, nm-Tokens nach Claude Design abgleichen.

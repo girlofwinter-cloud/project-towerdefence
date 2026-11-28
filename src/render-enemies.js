@@ -2,7 +2,7 @@
 // Stil 1 (G7): Figuren aus dem Entwurf (Goblin Z.110, Flitzer Z.112, Troll Z.113, eingefroren Z.111), übrige
 // Typen auf Goblin-Basis (src/figures.js). Je Typ x Frost x Pixeldichte ein Sprite, pro Frame nur drawImage
 // mit Wippen, Schwanken und Spiegelung. Fußpunkt FIGURE_STYLE.enemyFoot unter der Wegmitte. Lebensbalken nur bei Schaden.
-import { ENEMY_TYPES, ENEMY_STYLE, FIGURE_STYLE as S, TILE, ABILITIES, isBoss } from './config.js';
+import { ENEMY_TYPES, ENEMY_STYLE, FIGURE_STYLE as S, TILE, ABILITIES, isBoss, NM_ENEMY_STYLE, NM_STYLE_OF_MAP } from './config.js';
 import { enemyFigure, shellStage, NECRO_VARIANT_P2 } from './figures.js';
 import { drawNecroBack, drawNecroSkulls, drawNecroShield, necroGlowOverflow } from './render-necro.js';
 import { drawEliteRing, drawEliteBadge, drawEliteTrait, eliteBadgeSize, eliteGlyph } from './render-elite.js';
@@ -21,6 +21,12 @@ const HEAL_AURA_RING = 'rgba(120,240,170,0.28)';
 const HEAL_AURA_WIDTH = 1.5;
 const HEAL_AURA_PULSE = 0.04; // relative Radius-Schwankung
 const HEAL_AURA_SPEED = 2; // Bogenmass pro Sekunde
+
+// B-190: Albtraum-Stil der Gegner ('A' | 'B' | 'C') je Karte, wenn der Albtraum- oder Nacht-Look an ist, sonst null
+export function nmEnemyStyle(mapId, on) {
+  if (!on) return null;
+  return Object.hasOwn(NM_STYLE_OF_MAP, mapId ?? '') ? NM_STYLE_OF_MAP[mapId] : 'A';
+}
 
 // Fußpunkt (y in Spiel-px) für die Tiefen-Sortierung
 export function enemyFootY(e) {
@@ -77,6 +83,51 @@ function iceLayer(c, f, els) {
   c.restore();
 }
 
+// B-190 Bildrate: Albtraum-Figur als Randlicht (ungedreht, schneller Blit) + ein Sprite (Eis-Schein, Fußaura, Körper,
+// Eis-Hülle). Das Randlicht liegt damit unter der Fußaura statt darüber (am Fuß Deckkraft ~0,1, kaum sichtbar).
+// Nekromantin: Randlicht, Fußaura, Live-Teil ohne Randlicht, Rest. false = ohne Sprites, Aufrufer zeichnet wie bisher.
+const unionBox = (a, b) => [Math.min(a[0], b[0]), Math.min(a[1], b[1]), Math.max(a[2], b[2]), Math.max(a[3], b[3])];
+function drawNmSplit(ctx, f, key, scale, e, time, still) {
+  const n = f.nm;
+  const box = f.cloak ? n.underBox : unionBox(n.underBox, f.body);
+  const sp = sprite(`enemy-nm:${key}`, box, scale, (c) => {
+    if (f.glow) iceLayer(c, f, f.glow);
+    drawElements(c, n.under);
+    if (f.cloak) return;
+    drawElements(c, n.els);
+    if (f.shell) iceLayer(c, f, f.shell);
+  });
+  if (!sp) return false;
+  drawRim(ctx, n.rim, key, scale);
+  drawSprite(ctx, sp);
+  if (!f.cloak) return true;
+  drawNecroBack(ctx, n.live, e, time, still);
+  const front = sprite(`enemy-nm-front:${key}`, f.body, scale, (c) => drawElements(c, f.front));
+  if (front) drawSprite(ctx, front);
+  return true;
+}
+// Randlicht (Kreis mit radialem Verlauf, dreh- und spiegelgleich): bei gleichmäßiger Skalierung ungedreht auf ganze
+// Geräte-px (schneller Blit ohne Neuabtastung), sonst (Lodern des Glutlings) als Sprite in Figur-Koordinaten
+function drawRim(ctx, rim, key, scale) {
+  const m = typeof ctx.getTransform === 'function' ? ctx.getTransform() : null;
+  const sx = m ? Math.hypot(m.a, m.b) : 0, sy = m ? Math.hypot(m.c, m.d) : 0;
+  if (!(sx > 0) || Math.abs(sx - sy) > 1e-3 * sx || Math.abs(m.a * m.c + m.b * m.d) > 1e-3 * sx * sx) {
+    const sp = sprite(`enemy-nm-rim:${key}`, rim.box, scale, (c) => drawElements(c, [rim]));
+    if (sp) drawSprite(ctx, sp);
+    return;
+  }
+  const ds = Math.round(sx * 100) / 100;
+  const [x0, y0, x1, y1] = rim.box;
+  const sp = sprite(`enemy-nm-rimd:${rim.grad}:${x1 - x0}:${ds}`, rim.box, ds, (c) => drawElements(c, [rim]));
+  if (!sp) return;
+  const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+  const X = m.a * cx + m.c * cy + m.e, Y = m.b * cx + m.d * cy + m.f;
+  ctx.save();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.drawImage(sp.canvas, Math.round(X - (cx - x0) * ds), Math.round(Y - (cy - y0) * ds));
+  ctx.restore();
+}
+
 // Lebensbalken (Z.113) in Weltkoordinaten über der Figur: dunkle Kapsel, farbige Füllung
 function capsule(ctx, x, y, w, h) {
   const r = h / 2;
@@ -90,7 +141,7 @@ function drawHpBar(ctx, e, f, k, rise = 0) {
   const frac = Math.max(0, Math.min(1, e.hp / e.maxHp));
   if (!Number.isFinite(frac)) return;
   const w = Math.max(HP.minW, HP.share * f.w) * k;
-  const top = enemyFootY(e) + (f.box[1] - f.h) * k - rise; // oberster Punkt der Figur (rise: Wippen, Lodern)
+  const top = enemyFootY(e) + ((f.body || f.box)[1] - f.h) * k - rise; // B-190: ohne Randlicht (f.body) // oberster Punkt der Figur (rise: Wippen, Lodern)
   const y = top - (HP.gap + HP.h) * U;
   const x = e.x - w / 2;
   ctx.fillStyle = HP.back;
@@ -119,13 +170,15 @@ function variantOf(e, type, time, still) {
 // path ist optional (state.path); ohne Weg blickt die Figur nach rechts. reduced: prefers-reduced-motion
 // (Fledermaus/Irrlicht wippen nicht, Glutling lodert nicht und sprüht keine Funken, Flügelschlag steht).
 // bossBar (B-180): die Boss-Leiste im HUD ist sichtbar, dann kein kleiner Lebensbalken über Bossen.
-export function drawEnemy(ctx, e, time, path, reduced = false, bossBar = false) {
+// nm (B-190): Albtraum-Stil der Karte (nmEnemyStyle), null = heutige Figuren
+export function drawEnemy(ctx, e, time, path, reduced = false, bossBar = false, nm = null) {
   const known = Object.hasOwn(ENEMY_TYPES, e.type) && enemyFigure(e.type, false);
   const type = known ? e.type : 'grunt'; // unbekannte Typen: Goblin
   const slowed = type !== 'ember' && time < e.slowUntil; // Glutling: nie Eis-Fassung
   const still = slowed || reduced;
   const variant = variantOf(e, type, time, still);
-  const f = enemyFigure(type, slowed, variant);
+  const style = nm && Object.hasOwn(NM_ENEMY_STYLE, nm) ? nm : null;
+  const f = enemyFigure(type, slowed, variant, style);
   const k = U * (f.big ? S[f.big] : 1);
   const angle = facingFor(path, e.dist);
   const flip = facingFlip(angle);
@@ -141,7 +194,7 @@ export function drawEnemy(ctx, e, time, path, reduced = false, bossBar = false) 
   const bob = slowed || floats ? 0 : Math.abs(s) * S.bob;
 
   const elite = e.elite && !isBoss(e) ? e.elite : null; // B-179: Bosse tragen nie ein Abzeichen
-  if (elite) drawEliteRing(ctx, e, enemyFootY(e), f.w * k, time, still);
+  if (elite) drawEliteRing(ctx, e, enemyFootY(e), f.w * k, time, still, style ? NM_ENEMY_STYLE[style].eye : null);
   if (type === 'bat') drawBatShadow(ctx, e, flip, lift);
   if (type === 'wisp' && !slowed) drawWispGlow(ctx, e, time, reduced, lift);
   if (type === 'necro') drawNecroSkulls(ctx, e, time, reduced, false); // hintere Schädel (Phase 2)
@@ -152,10 +205,13 @@ export function drawEnemy(ctx, e, time, path, reduced = false, bossBar = false) 
   ctx.rotate(facingTilt(angle) * S.tilt + sway);
   ctx.scale(k, k * stretch);
   ctx.translate(-f.w / 2, -f.h - bob - lift);
-  if (f.cloak) drawNecroBack(ctx, f, e, time, still); // B-180: Schatten, Kugelschein und Umhang live, Rest als Sprite
-  const sp = sprite(`enemy:${type}:${variant}:${slowed ? 1 : 0}:${dpr}`, f.box, k * dpr, (cx) => paintFigure(cx, f));
-  if (sp) drawSprite(ctx, sp);
-  else paintFigure(ctx, f);
+  const key = `${type}:${variant}:${slowed ? 1 : 0}:${style || ''}:${dpr}`;
+  if (!(f.nm && drawNmSplit(ctx, f, key, k * dpr, e, time, still))) {
+    if (f.cloak) drawNecroBack(ctx, f, e, time, still); // B-180: Schatten, Kugelschein und Umhang live, Rest als Sprite
+    const sp = sprite(`enemy:${key}`, f.box, k * dpr, (cx) => paintFigure(cx, f));
+    if (sp) drawSprite(ctx, sp);
+    else paintFigure(ctx, f);
+  }
   ctx.restore();
   if (type === 'necro') {
     drawNecroSkulls(ctx, e, time, reduced, true);

@@ -2,7 +2,7 @@
 
 Erzeugt aus `tokens.json` mit `node scripts/design-tokens.mjs`. Nicht von Hand ändern.
 
-## Farben (168)
+## Farben (316)
 
 | Token | Wert | Verwendung |
 |---|---|---|
@@ -173,7 +173,155 @@ Erzeugt aus `tokens.json` mit `node scripts/design-tokens.mjs`. Nicht von Hand �
 | `nightmare-btn-b` | `#2a1d40` | Albtraum-Knopf unten. |
 | `night-tint` | `rgba(20,12,40,0.62)` | Nacht-Tönung nur über dem Spielfeld (multiply), Albtraum und Nacht-Look. Nie über Rand oder HUD. |
 | `night-ember` | `#ff5a2a` | Rötliches Nachtlicht von unten über dem Spielfeld (α 0,35) und Glühen des aktiven Albtraum-Umschalters (α 0,6). |
-| `night-vignette` | `rgba(8,4,16,0.85)` | Rand-Vignette des Spielfelds im Albtraum (radial, innen 45 % durchsichtig). |
+| `night-vignette` | `rgba(8,4,16,0.85)` | VERALTET: Vignette entfällt mit B-194 (Regel: kein dunkler Rand). Nicht mehr verwenden. |
+| `nm-shade-a` | `#2a3448` | Albtraum-Körperschatten Gegner Stil A (Wald) (Albtraum-Design Runde 2, B-190–B-193). |
+| `nm-shade-b` | `#30201c` | Gegner-Körperschatten Stil B (Verbrannte Erde) (Albtraum-Design Runde 2, B-190–B-193). |
+| `nm-shade-c` | `#252d4c` | Gegner-Körperschatten Stil C (Düstere Magie) (Albtraum-Design Runde 2, B-190–B-193). |
+| `nm-eye-moss` | `#d8ff5a` | Glühende Gegner-Augen Stil A (Albtraum-Design Runde 2, B-190–B-193). |
+| `nm-eye-ember` | `#ffb02a` | Glühende Gegner-Augen Stil B (Albtraum-Design Runde 2, B-190–B-193). |
+| `nm-eye-rune` | `#e6b8ff` | Glühende Gegner-Augen Stil C (Albtraum-Design Runde 2, B-190–B-193). |
+| `nm-rim-a` | `#e8f4ff` | Randlicht Gegner Stil A (Albtraum-Design Runde 2, B-190–B-193). |
+| `nm-rim-b` | `#ffd0a0` | Randlicht Gegner Stil B (Albtraum-Design Runde 2, B-190–B-193). |
+| `nm-rim-c` | `#c8d8ff` | Randlicht Gegner Stil C (Albtraum-Design Runde 2, B-190–B-193). |
+| `bone` | `#e8dcc0` | Knochen/Skelett-Teile (Albtraum-Design Runde 2, B-190–B-193). |
+| `nm-wood-moss-a` | `#5e4e66` | HUD-Holz Wiese (Moos) oben (Albtraum-Design Runde 2, B-190–B-193). |
+| `nm-wood-moss-b` | `#30263a` | HUD-Holz Wiese unten (Albtraum-Design Runde 2, B-190–B-193). |
+| `nm-wood-ice-a` | `#4a5c8a` | HUD-Holz Eiswelt oben (Albtraum-Design Runde 2, B-190–B-193). |
+| `nm-wood-ice-b` | `#1c2648` | HUD-Holz Eiswelt unten (Albtraum-Design Runde 2, B-190–B-193). |
+| `nm-wood-rust-a` | `#7a4a22` | HUD-Holz Zangenangriff (Rost) oben (Albtraum-Design Runde 2, B-190–B-193). |
+| `nm-wood-rust-b` | `#3a1e0c` | HUD-Holz Zangenangriff unten (Albtraum-Design Runde 2, B-190–B-193). |
+| `nm-wood-iron-a` | `#4c3e6e` | HUD-Holz Zwei Fronten (Eisen) oben (Albtraum-Design Runde 2, B-190–B-193). |
+| `nm-wood-iron-b` | `#1e1836` | HUD-Holz Zwei Fronten unten (Albtraum-Design Runde 2, B-190–B-193). |
+| `nm-wood-ember-a` | `#6a3620` | HUD-Holz Vulkan (Glut) oben (Albtraum-Design Runde 2, B-190–B-193). |
+| `nm-wood-ember-b` | `#2a140a` | HUD-Holz Vulkan unten (Albtraum-Design Runde 2, B-190–B-193). |
+| `nm-moss` | `#8aa890` | Moos-Bart am HUD-Holz Stil A (Albtraum-Design Runde 2, B-190–B-193). |
+| `nm-moss-dark` | `#6a8a6a` | Moos Schatten (Albtraum-Design Runde 2, B-190–B-193). |
+| `nm-icicle` | `#dff4ff` | Eiszapfen am HUD Eiswelt (Albtraum-Design Runde 2, B-190–B-193). |
+| `nm-snow` | `#f2f8ff` | Schneehaube am HUD Eiswelt (Albtraum-Design Runde 2, B-190–B-193). |
+| `nm-char-edge` | `#1a0c06` | Brandkante am HUD Stil B (Albtraum-Design Runde 2, B-190–B-193). |
+| `nm-rust` | `#a0582e` | Rost-Akzent HUD Zangenangriff (Albtraum-Design Runde 2, B-190–B-193). |
+| `nm-iron` | `#8a92a8` | Eisenbänder HUD Stil C (Albtraum-Design Runde 2, B-190–B-193). |
+| `nm-iron-hi` | `#c8d0e0` | Eisen Glanzlicht (Albtraum-Design Runde 2, B-190–B-193). |
+| `nm-rune` | `#c58aff` | Leuchtende Runen Stil C (Albtraum-Design Runde 2, B-190–B-193). |
+| `nm-soulflame` | `#9fe8ff` | Seelenflamme/Irrlicht Stil C (Albtraum-Design Runde 2, B-190–B-193). |
+| `sky-a` | `#8fd0e8` | Himmel Kartenvorschau normal oben (Albtraum-Design Runde 2, B-190–B-193). |
+| `sky-b` | `#d8f0e8` | Himmel Kartenvorschau normal unten (Albtraum-Design Runde 2, B-190–B-193). |
+| `night-a-2` | `#3a2a5c` | Zwischenton Nachthimmel Albtraum-Menüs (Albtraum-Design Runde 2, B-190–B-193). |
+| `flag-red-dark` | `#8f2e20` | Fahne Schatten (Albtraum-Design Runde 2, B-190–B-193). |
+| `bad-soft` | `#ff9a8a` | Weiche Warnung: Gold verpasst auf dunklem Holz (Albtraum-Design Runde 2, B-190–B-193). |
+| `badge-silver-hi` | `#e6ecf2` | Glanzlicht Silber-Medaille (Albtraum-Design Runde 2, B-190–B-193). |
+| `nm-warm-light` | `#ffe2a0` | 42 → 0) unter jedem Turm im Albtraum: „deine Türme sind die Lichter“. (Karte-Albtraum-Grundlage, B-194–B-199). |
+| `nm-ice-1` | `#6a74aa` | Boden Dämmerblau (Karte-Eiswelt-Albtraum, B-194–B-199). |
+| `nm-ice-2` | `#454e86` | Boden Dämmerblau (Karte-Eiswelt-Albtraum, B-194–B-199). |
+| `nm-ice-3` | `#323a6e` | Boden Dämmerblau (Karte-Eiswelt-Albtraum, B-194–B-199). |
+| `nm-ice-path-groove` | `#1c2244` | heller Eisweg (Karte-Eiswelt-Albtraum, B-194–B-199). |
+| `nm-ice-path-edge` | `#3a4a7a` | heller Eisweg (Karte-Eiswelt-Albtraum, B-194–B-199). |
+| `nm-ice-path-earth` | `#a8c2e2` | heller Eisweg (Karte-Eiswelt-Albtraum, B-194–B-199). |
+| `nm-ice-path-mid` | `#d6e6f6` | heller Eisweg (Karte-Eiswelt-Albtraum, B-194–B-199). |
+| `nm-ice-path-dot` | `#ffffff` | heller Eisweg (Karte-Eiswelt-Albtraum, B-194–B-199). |
+| `nm-ice-shadow` | `#1c2050` | - neu: `nm-ice-shadow` = #1c2050, `nm-snow-ice` = #eef4ff, `nm-splinter` = #bff0ff, `nm-frost-light` = #bff0ff (Karte-Eiswelt-Albtraum, B-194–B-199). |
+| `nm-snow-ice` | `#eef4ff` | - neu: `nm-ice-shadow` = #1c2050, `nm-snow-ice` = #eef4ff, `nm-splinter` = #bff0ff, `nm-frost-light` = #bff0ff (Karte-Eiswelt-Albtraum, B-194–B-199). |
+| `nm-splinter` | `#bff0ff` | - neu: `nm-ice-shadow` = #1c2050, `nm-snow-ice` = #eef4ff, `nm-splinter` = #bff0ff, `nm-frost-light` = #bff0ff (Karte-Eiswelt-Albtraum, B-194–B-199). |
+| `nm-frost-light` | `#bff0ff` | - neu: `nm-ice-shadow` = #1c2050, `nm-snow-ice` = #eef4ff, `nm-splinter` = #bff0ff, `nm-frost-light` = #bff0ff (Karte-Eiswelt-Albtraum, B-194–B-199). |
+| `nm-fir-a` | `#1e2e4a` | - neu: `nm-fir-a` = #1e2e4a, `nm-fir-b` = #3a5a78, `nm-icicle-map` = #bfe8ff, `nm-grave-ice-a` = #b8c4dc, `nm-grave-ice-b` = #6a7494, `nm-ice-rock` = #6a7aa0, `nm-ice-rock-light` = #b8c8e6 (Karte-Eiswelt-Albtraum, B-194–B-199). |
+| `nm-fir-b` | `#3a5a78` | - neu: `nm-fir-a` = #1e2e4a, `nm-fir-b` = #3a5a78, `nm-icicle-map` = #bfe8ff, `nm-grave-ice-a` = #b8c4dc, `nm-grave-ice-b` = #6a7494, `nm-ice-rock` = #6a7aa0, `nm-ice-rock-light` = #b8c8e6 (Karte-Eiswelt-Albtraum, B-194–B-199). |
+| `nm-icicle-map` | `#bfe8ff` | - neu: `nm-fir-a` = #1e2e4a, `nm-fir-b` = #3a5a78, `nm-icicle-map` = #bfe8ff, `nm-grave-ice-a` = #b8c4dc, `nm-grave-ice-b` = #6a7494, `nm-ice-rock` = #6a7aa0, `nm-ice-rock-light` = #b8c8e6 (Karte-Eiswelt-Albtraum, B-194–B-199). |
+| `nm-grave-ice-a` | `#b8c4dc` | - neu: `nm-fir-a` = #1e2e4a, `nm-fir-b` = #3a5a78, `nm-icicle-map` = #bfe8ff, `nm-grave-ice-a` = #b8c4dc, `nm-grave-ice-b` = #6a7494, `nm-ice-rock` = #6a7aa0, `nm-ice-rock-light` = #b8c8e6 (Karte-Eiswelt-Albtraum, B-194–B-199). |
+| `nm-grave-ice-b` | `#6a7494` | - neu: `nm-fir-a` = #1e2e4a, `nm-fir-b` = #3a5a78, `nm-icicle-map` = #bfe8ff, `nm-grave-ice-a` = #b8c4dc, `nm-grave-ice-b` = #6a7494, `nm-ice-rock` = #6a7aa0, `nm-ice-rock-light` = #b8c8e6 (Karte-Eiswelt-Albtraum, B-194–B-199). |
+| `nm-ice-rock` | `#6a7aa0` | - neu: `nm-fir-a` = #1e2e4a, `nm-fir-b` = #3a5a78, `nm-icicle-map` = #bfe8ff, `nm-grave-ice-a` = #b8c4dc, `nm-grave-ice-b` = #6a7494, `nm-ice-rock` = #6a7aa0, `nm-ice-rock-light` = #b8c8e6 (Karte-Eiswelt-Albtraum, B-194–B-199). |
+| `nm-ice-rock-light` | `#b8c8e6` | - neu: `nm-fir-a` = #1e2e4a, `nm-fir-b` = #3a5a78, `nm-icicle-map` = #bfe8ff, `nm-grave-ice-a` = #b8c4dc, `nm-grave-ice-b` = #6a7494, `nm-ice-rock` = #6a7aa0, `nm-ice-rock-light` = #b8c8e6 (Karte-Eiswelt-Albtraum, B-194–B-199). |
+| `nm-froz-a` | `#d8f0ff` | - neu: `nm-froz-a` = #d8f0ff, `nm-froz-b` = #9cc8ea, `nm-froz-c` = #6a98c8, `nm-froz-block` = #cfeaf8, `nm-ice-water` = #1e3a6a (Karte-Eiswelt-Albtraum, B-194–B-199). |
+| `nm-froz-b` | `#9cc8ea` | - neu: `nm-froz-a` = #d8f0ff, `nm-froz-b` = #9cc8ea, `nm-froz-c` = #6a98c8, `nm-froz-block` = #cfeaf8, `nm-ice-water` = #1e3a6a (Karte-Eiswelt-Albtraum, B-194–B-199). |
+| `nm-froz-c` | `#6a98c8` | - neu: `nm-froz-a` = #d8f0ff, `nm-froz-b` = #9cc8ea, `nm-froz-c` = #6a98c8, `nm-froz-block` = #cfeaf8, `nm-ice-water` = #1e3a6a (Karte-Eiswelt-Albtraum, B-194–B-199). |
+| `nm-froz-block` | `#cfeaf8` | - neu: `nm-froz-a` = #d8f0ff, `nm-froz-b` = #9cc8ea, `nm-froz-c` = #6a98c8, `nm-froz-block` = #cfeaf8, `nm-ice-water` = #1e3a6a (Karte-Eiswelt-Albtraum, B-194–B-199). |
+| `nm-ice-water` | `#1e3a6a` | - neu: `nm-froz-a` = #d8f0ff, `nm-froz-b` = #9cc8ea, `nm-froz-c` = #6a98c8, `nm-froz-block` = #cfeaf8, `nm-ice-water` = #1e3a6a (Karte-Eiswelt-Albtraum, B-194–B-199). |
+| `nm-frost-rune` | `#7fe0ff` | - neu: `nm-frost-rune` = #7fe0ff, `nm-eye-frost` = #9fe8ff, `nm-rim-ice` = #e6f6ff, `nm-rune-deep` = #8a4aff (Karte-Eiswelt-Albtraum, B-194–B-199). |
+| `nm-eye-frost` | `#9fe8ff` | - neu: `nm-frost-rune` = #7fe0ff, `nm-eye-frost` = #9fe8ff, `nm-rim-ice` = #e6f6ff, `nm-rune-deep` = #8a4aff (Karte-Eiswelt-Albtraum, B-194–B-199). |
+| `nm-rim-ice` | `#e6f6ff` | - neu: `nm-frost-rune` = #7fe0ff, `nm-eye-frost` = #9fe8ff, `nm-rim-ice` = #e6f6ff, `nm-rune-deep` = #8a4aff (Karte-Eiswelt-Albtraum, B-194–B-199). |
+| `nm-rune-deep` | `#8a4aff` | - neu: `nm-frost-rune` = #7fe0ff, `nm-eye-frost` = #9fe8ff, `nm-rim-ice` = #e6f6ff, `nm-rune-deep` = #8a4aff (Karte-Eiswelt-Albtraum, B-194–B-199). |
+| `nm-volcano-1` | `#4a302c` | - neu: `nm-volcano-1` = #4a302c, `nm-volcano-2` = #33201e, `nm-volcano-3` = #2a1818, Kruste (deutlich dunkler als `map-volcano-*`) (Karte-Vulkan-Albtraum, B-194–B-199). |
+| `nm-volcano-2` | `#33201e` | - neu: `nm-volcano-1` = #4a302c, `nm-volcano-2` = #33201e, `nm-volcano-3` = #2a1818, Kruste (deutlich dunkler als `map-volcano-*`) (Karte-Vulkan-Albtraum, B-194–B-199). |
+| `nm-volcano-3` | `#2a1818` | - neu: `nm-volcano-1` = #4a302c, `nm-volcano-2` = #33201e, `nm-volcano-3` = #2a1818, Kruste (deutlich dunkler als `map-volcano-*`) (Karte-Vulkan-Albtraum, B-194–B-199). |
+| `nm-volcano-path-groove` | `#1c100e` | - neu: `nm-volcano-path-groove` = #1c100e, `-edge` = #3a2420, `-earth` = #9c8478, `-mid` = #b8a090, `-dot` = #ffd8b0 (Karte-Vulkan-Albtraum, B-194–B-199). |
+| `nm-volcano-path-edge` | `#3a2420` | - neu: `nm-volcano-path-groove` = #1c100e, `-edge` = #3a2420, `-earth` = #9c8478, `-mid` = #b8a090, `-dot` = #ffd8b0 (Karte-Vulkan-Albtraum, B-194–B-199). |
+| `nm-volcano-path-earth` | `#9c8478` | - neu: `nm-volcano-path-groove` = #1c100e, `-edge` = #3a2420, `-earth` = #9c8478, `-mid` = #b8a090, `-dot` = #ffd8b0 (Karte-Vulkan-Albtraum, B-194–B-199). |
+| `nm-volcano-path-mid` | `#b8a090` | - neu: `nm-volcano-path-groove` = #1c100e, `-edge` = #3a2420, `-earth` = #9c8478, `-mid` = #b8a090, `-dot` = #ffd8b0 (Karte-Vulkan-Albtraum, B-194–B-199). |
+| `nm-volcano-path-dot` | `#ffd8b0` | - neu: `nm-volcano-path-groove` = #1c100e, `-edge` = #3a2420, `-earth` = #9c8478, `-mid` = #b8a090, `-dot` = #ffd8b0 (Karte-Vulkan-Albtraum, B-194–B-199). |
+| `nm-lava-glow` | `#ff5a1a` | weiches Glühen um Rand-Lava und Risse (Karte-Vulkan-Albtraum, B-194–B-199). |
+| `nm-ash` | `#8a7c78` | - neu: `nm-ash` = #8a7c78, `nm-volcano-rock` = #5a4a48, `nm-volcano-rock-light` = #8a7a76 (Karte-Vulkan-Albtraum, B-194–B-199). |
+| `nm-volcano-rock` | `#5a4a48` | - neu: `nm-ash` = #8a7c78, `nm-volcano-rock` = #5a4a48, `nm-volcano-rock-light` = #8a7a76 (Karte-Vulkan-Albtraum, B-194–B-199). |
+| `nm-volcano-rock-light` | `#8a7a76` | - neu: `nm-ash` = #8a7c78, `nm-volcano-rock` = #5a4a48, `nm-volcano-rock-light` = #8a7a76 (Karte-Vulkan-Albtraum, B-194–B-199). |
+| `nm-meadow-1` | `#6e927c` | Boden (Karte-Wiese-Albtraum, B-194–B-199). |
+| `nm-meadow-2` | `#476a5e` | Boden (Karte-Wiese-Albtraum, B-194–B-199). |
+| `nm-meadow-3` | `#34504e` | Boden (Karte-Wiese-Albtraum, B-194–B-199). |
+| `nm-meadow-path-groove` | `#1f302c` | - neu: `nm-meadow-path-groove` = #1f302c, `-edge` = #5a4e4a, `-earth` = #b0a284, `-mid` = #d0c39e, `-dot` = #eef6e0 (Karte-Wiese-Albtraum, B-194–B-199). |
+| `nm-meadow-path-edge` | `#5a4e4a` | - neu: `nm-meadow-path-groove` = #1f302c, `-edge` = #5a4e4a, `-earth` = #b0a284, `-mid` = #d0c39e, `-dot` = #eef6e0 (Karte-Wiese-Albtraum, B-194–B-199). |
+| `nm-meadow-path-earth` | `#b0a284` | - neu: `nm-meadow-path-groove` = #1f302c, `-edge` = #5a4e4a, `-earth` = #b0a284, `-mid` = #d0c39e, `-dot` = #eef6e0 (Karte-Wiese-Albtraum, B-194–B-199). |
+| `nm-meadow-path-mid` | `#d0c39e` | - neu: `nm-meadow-path-groove` = #1f302c, `-edge` = #5a4e4a, `-earth` = #b0a284, `-mid` = #d0c39e, `-dot` = #eef6e0 (Karte-Wiese-Albtraum, B-194–B-199). |
+| `nm-meadow-path-dot` | `#eef6e0` | - neu: `nm-meadow-path-groove` = #1f302c, `-edge` = #5a4e4a, `-earth` = #b0a284, `-mid` = #d0c39e, `-dot` = #eef6e0 (Karte-Wiese-Albtraum, B-194–B-199). |
+| `nm-moon` | `#d8f0ff` | Licht (Karte-Wiese-Albtraum, B-194–B-199). |
+| `nm-glow-moss` | `#7dffb0` | Licht (Karte-Wiese-Albtraum, B-194–B-199). |
+| `nm-moss-deep` | `#2e4a44` | - neu: `nm-moss-deep` = #2e4a44, `nm-moss-light` = #7f9e8a, `nm-moss-strand` = #8aa890, `nm-bark` = #4e4060, `nm-bark-a` = #6a5a80, `nm-bark-b` = #2e2538, `nm-bark-light` = #8a7aa0 (Karte-Wiese-Albtraum, B-194–B-199). |
+| `nm-moss-light` | `#7f9e8a` | - neu: `nm-moss-deep` = #2e4a44, `nm-moss-light` = #7f9e8a, `nm-moss-strand` = #8aa890, `nm-bark` = #4e4060, `nm-bark-a` = #6a5a80, `nm-bark-b` = #2e2538, `nm-bark-light` = #8a7aa0 (Karte-Wiese-Albtraum, B-194–B-199). |
+| `nm-moss-strand` | `#8aa890` | - neu: `nm-moss-deep` = #2e4a44, `nm-moss-light` = #7f9e8a, `nm-moss-strand` = #8aa890, `nm-bark` = #4e4060, `nm-bark-a` = #6a5a80, `nm-bark-b` = #2e2538, `nm-bark-light` = #8a7aa0 (Karte-Wiese-Albtraum, B-194–B-199). |
+| `nm-bark` | `#4e4060` | - neu: `nm-moss-deep` = #2e4a44, `nm-moss-light` = #7f9e8a, `nm-moss-strand` = #8aa890, `nm-bark` = #4e4060, `nm-bark-a` = #6a5a80, `nm-bark-b` = #2e2538, `nm-bark-light` = #8a7aa0 (Karte-Wiese-Albtraum, B-194–B-199). |
+| `nm-bark-a` | `#6a5a80` | - neu: `nm-moss-deep` = #2e4a44, `nm-moss-light` = #7f9e8a, `nm-moss-strand` = #8aa890, `nm-bark` = #4e4060, `nm-bark-a` = #6a5a80, `nm-bark-b` = #2e2538, `nm-bark-light` = #8a7aa0 (Karte-Wiese-Albtraum, B-194–B-199). |
+| `nm-bark-b` | `#2e2538` | - neu: `nm-moss-deep` = #2e4a44, `nm-moss-light` = #7f9e8a, `nm-moss-strand` = #8aa890, `nm-bark` = #4e4060, `nm-bark-a` = #6a5a80, `nm-bark-b` = #2e2538, `nm-bark-light` = #8a7aa0 (Karte-Wiese-Albtraum, B-194–B-199). |
+| `nm-bark-light` | `#8a7aa0` | - neu: `nm-moss-deep` = #2e4a44, `nm-moss-light` = #7f9e8a, `nm-moss-strand` = #8aa890, `nm-bark` = #4e4060, `nm-bark-a` = #6a5a80, `nm-bark-b` = #2e2538, `nm-bark-light` = #8a7aa0 (Karte-Wiese-Albtraum, B-194–B-199). |
+| `nm-bush` | `#1e1a2c` | - neu: `nm-bush` = #1e1a2c, `nm-bush-light` = #3c3254, `nm-shroom` = #9effd9, `nm-eye-moss` = #d8ff5a, `nm-meadow-rock` = #7a7488, `nm-meadow-rock-light` = #a8a2b8 (Karte-Wiese-Albtraum, B-194–B-199). |
+| `nm-bush-light` | `#3c3254` | - neu: `nm-bush` = #1e1a2c, `nm-bush-light` = #3c3254, `nm-shroom` = #9effd9, `nm-eye-moss` = #d8ff5a, `nm-meadow-rock` = #7a7488, `nm-meadow-rock-light` = #a8a2b8 (Karte-Wiese-Albtraum, B-194–B-199). |
+| `nm-shroom` | `#9effd9` | - neu: `nm-bush` = #1e1a2c, `nm-bush-light` = #3c3254, `nm-shroom` = #9effd9, `nm-eye-moss` = #d8ff5a, `nm-meadow-rock` = #7a7488, `nm-meadow-rock-light` = #a8a2b8 (Karte-Wiese-Albtraum, B-194–B-199). |
+| `nm-meadow-rock` | `#7a7488` | - neu: `nm-bush` = #1e1a2c, `nm-bush-light` = #3c3254, `nm-shroom` = #9effd9, `nm-eye-moss` = #d8ff5a, `nm-meadow-rock` = #7a7488, `nm-meadow-rock-light` = #a8a2b8 (Karte-Wiese-Albtraum, B-194–B-199). |
+| `nm-meadow-rock-light` | `#a8a2b8` | - neu: `nm-bush` = #1e1a2c, `nm-bush-light` = #3c3254, `nm-shroom` = #9effd9, `nm-eye-moss` = #d8ff5a, `nm-meadow-rock` = #7a7488, `nm-meadow-rock-light` = #a8a2b8 (Karte-Wiese-Albtraum, B-194–B-199). |
+| `nm-water-a` | `#5fd6b8` | - neu: `nm-water-a` = #5fd6b8, `nm-water-b` = #183e50, `nm-bank` = #7e8478, `nm-glint` = #d8fff0, `nm-fog` = #c8d4f0, `nm-meadow-bridge` = #7a6a72 (Karte-Wiese-Albtraum, B-194–B-199). |
+| `nm-water-b` | `#183e50` | - neu: `nm-water-a` = #5fd6b8, `nm-water-b` = #183e50, `nm-bank` = #7e8478, `nm-glint` = #d8fff0, `nm-fog` = #c8d4f0, `nm-meadow-bridge` = #7a6a72 (Karte-Wiese-Albtraum, B-194–B-199). |
+| `nm-bank` | `#7e8478` | - neu: `nm-water-a` = #5fd6b8, `nm-water-b` = #183e50, `nm-bank` = #7e8478, `nm-glint` = #d8fff0, `nm-fog` = #c8d4f0, `nm-meadow-bridge` = #7a6a72 (Karte-Wiese-Albtraum, B-194–B-199). |
+| `nm-glint` | `#d8fff0` | - neu: `nm-water-a` = #5fd6b8, `nm-water-b` = #183e50, `nm-bank` = #7e8478, `nm-glint` = #d8fff0, `nm-fog` = #c8d4f0, `nm-meadow-bridge` = #7a6a72 (Karte-Wiese-Albtraum, B-194–B-199). |
+| `nm-fog` | `#c8d4f0` | - neu: `nm-water-a` = #5fd6b8, `nm-water-b` = #183e50, `nm-bank` = #7e8478, `nm-glint` = #d8fff0, `nm-fog` = #c8d4f0, `nm-meadow-bridge` = #7a6a72 (Karte-Wiese-Albtraum, B-194–B-199). |
+| `nm-meadow-bridge` | `#7a6a72` | - neu: `nm-water-a` = #5fd6b8, `nm-water-b` = #183e50, `nm-bank` = #7e8478, `nm-glint` = #d8fff0, `nm-fog` = #c8d4f0, `nm-meadow-bridge` = #7a6a72 (Karte-Wiese-Albtraum, B-194–B-199). |
+| `nm-rim` | `#e8f4ff` | - neu: `nm-rim` = #e8f4ff, `nm-wood-moss-a` = #5e4e66, `nm-wood-moss-b` = #30263a (Karte-Wiese-Albtraum, B-194–B-199). |
+| `nm-fork-1` | `#b48e56` | Boden verbrannte Steppe (Karte-Zangenangriff-Albtraum, B-194–B-199). |
+| `nm-fork-2` | `#86603a` | Boden verbrannte Steppe (Karte-Zangenangriff-Albtraum, B-194–B-199). |
+| `nm-fork-3` | `#664630` | Boden verbrannte Steppe (Karte-Zangenangriff-Albtraum, B-194–B-199). |
+| `nm-fork-path-groove` | `#3a2414` | - neu: `nm-fork-path-groove` = #3a2414, `-edge` = #5a3a26, `-earth` = #c9a682, `-mid` = #e0c49e, `-dot` = #fff0d0 (Karte-Zangenangriff-Albtraum, B-194–B-199). |
+| `nm-fork-path-edge` | `#5a3a26` | - neu: `nm-fork-path-groove` = #3a2414, `-edge` = #5a3a26, `-earth` = #c9a682, `-mid` = #e0c49e, `-dot` = #fff0d0 (Karte-Zangenangriff-Albtraum, B-194–B-199). |
+| `nm-fork-path-earth` | `#c9a682` | - neu: `nm-fork-path-groove` = #3a2414, `-edge` = #5a3a26, `-earth` = #c9a682, `-mid` = #e0c49e, `-dot` = #fff0d0 (Karte-Zangenangriff-Albtraum, B-194–B-199). |
+| `nm-fork-path-mid` | `#e0c49e` | - neu: `nm-fork-path-groove` = #3a2414, `-edge` = #5a3a26, `-earth` = #c9a682, `-mid` = #e0c49e, `-dot` = #fff0d0 (Karte-Zangenangriff-Albtraum, B-194–B-199). |
+| `nm-fork-path-dot` | `#fff0d0` | - neu: `nm-fork-path-groove` = #3a2414, `-edge` = #5a3a26, `-earth` = #c9a682, `-mid` = #e0c49e, `-dot` = #fff0d0 (Karte-Zangenangriff-Albtraum, B-194–B-199). |
+| `nm-steppe-sun` | `#ffd890` | - neu: `nm-steppe-sun` = #ffd890, `nm-dry-grass` = #4a2e18, `nm-dry-grass-light` = #d8b070 (Karte-Zangenangriff-Albtraum, B-194–B-199). |
+| `nm-dry-grass` | `#4a2e18` | - neu: `nm-steppe-sun` = #ffd890, `nm-dry-grass` = #4a2e18, `nm-dry-grass-light` = #d8b070 (Karte-Zangenangriff-Albtraum, B-194–B-199). |
+| `nm-dry-grass-light` | `#d8b070` | - neu: `nm-steppe-sun` = #ffd890, `nm-dry-grass` = #4a2e18, `nm-dry-grass-light` = #d8b070 (Karte-Zangenangriff-Albtraum, B-194–B-199). |
+| `nm-char-a` | `#4a3430` | - neu: `nm-char-a` = #4a3430, `nm-char-b` = #1a1210, `nm-hay` = #6a4a26, `nm-hay-light` = #a07a40, `nm-ash-steppe` = #6a5040, `nm-ash-steppe-light` = #a08870, `nm-fork-rock` = #6a5446, `nm-fork-rock-light` = #9a826e (Karte-Zangenangriff-Albtraum, B-194–B-199). |
+| `nm-char-b` | `#1a1210` | - neu: `nm-char-a` = #4a3430, `nm-char-b` = #1a1210, `nm-hay` = #6a4a26, `nm-hay-light` = #a07a40, `nm-ash-steppe` = #6a5040, `nm-ash-steppe-light` = #a08870, `nm-fork-rock` = #6a5446, `nm-fork-rock-light` = #9a826e (Karte-Zangenangriff-Albtraum, B-194–B-199). |
+| `nm-hay` | `#6a4a26` | - neu: `nm-char-a` = #4a3430, `nm-char-b` = #1a1210, `nm-hay` = #6a4a26, `nm-hay-light` = #a07a40, `nm-ash-steppe` = #6a5040, `nm-ash-steppe-light` = #a08870, `nm-fork-rock` = #6a5446, `nm-fork-rock-light` = #9a826e (Karte-Zangenangriff-Albtraum, B-194–B-199). |
+| `nm-hay-light` | `#a07a40` | - neu: `nm-char-a` = #4a3430, `nm-char-b` = #1a1210, `nm-hay` = #6a4a26, `nm-hay-light` = #a07a40, `nm-ash-steppe` = #6a5040, `nm-ash-steppe-light` = #a08870, `nm-fork-rock` = #6a5446, `nm-fork-rock-light` = #9a826e (Karte-Zangenangriff-Albtraum, B-194–B-199). |
+| `nm-ash-steppe` | `#6a5040` | - neu: `nm-char-a` = #4a3430, `nm-char-b` = #1a1210, `nm-hay` = #6a4a26, `nm-hay-light` = #a07a40, `nm-ash-steppe` = #6a5040, `nm-ash-steppe-light` = #a08870, `nm-fork-rock` = #6a5446, `nm-fork-rock-light` = #9a826e (Karte-Zangenangriff-Albtraum, B-194–B-199). |
+| `nm-ash-steppe-light` | `#a08870` | - neu: `nm-char-a` = #4a3430, `nm-char-b` = #1a1210, `nm-hay` = #6a4a26, `nm-hay-light` = #a07a40, `nm-ash-steppe` = #6a5040, `nm-ash-steppe-light` = #a08870, `nm-fork-rock` = #6a5446, `nm-fork-rock-light` = #9a826e (Karte-Zangenangriff-Albtraum, B-194–B-199). |
+| `nm-fork-rock` | `#6a5446` | - neu: `nm-char-a` = #4a3430, `nm-char-b` = #1a1210, `nm-hay` = #6a4a26, `nm-hay-light` = #a07a40, `nm-ash-steppe` = #6a5040, `nm-ash-steppe-light` = #a08870, `nm-fork-rock` = #6a5446, `nm-fork-rock-light` = #9a826e (Karte-Zangenangriff-Albtraum, B-194–B-199). |
+| `nm-fork-rock-light` | `#9a826e` | - neu: `nm-char-a` = #4a3430, `nm-char-b` = #1a1210, `nm-hay` = #6a4a26, `nm-hay-light` = #a07a40, `nm-ash-steppe` = #6a5040, `nm-ash-steppe-light` = #a08870, `nm-fork-rock` = #6a5446, `nm-fork-rock-light` = #9a826e (Karte-Zangenangriff-Albtraum, B-194–B-199). |
+| `nm-rim-ember` | `#ffd0a0` | - neu: `nm-rim-ember` = #ffd0a0, `nm-eye-ember` = #ffb02a (auch Vulkan) (Karte-Zangenangriff-Albtraum, B-194–B-199). |
+| `nm-twin-1` | `#66807c` | Friedhofsgras (Karte-ZweiFronten-Albtraum, B-194–B-199). |
+| `nm-twin-2` | `#4a6468` | Friedhofsgras (Karte-ZweiFronten-Albtraum, B-194–B-199). |
+| `nm-twin-3` | `#3a4a62` | Friedhofsgras (Karte-ZweiFronten-Albtraum, B-194–B-199). |
+| `nm-twin-path-groove` | `#161a32` | - neu: `nm-twin-path-groove` = #161a32, `-edge` = #3c3a5a, `-earth` = #a6acc6, `-mid` = #c8cde2, `-dot` = #f0f0ff (Karte-ZweiFronten-Albtraum, B-194–B-199). |
+| `nm-twin-path-edge` | `#3c3a5a` | - neu: `nm-twin-path-groove` = #161a32, `-edge` = #3c3a5a, `-earth` = #a6acc6, `-mid` = #c8cde2, `-dot` = #f0f0ff (Karte-ZweiFronten-Albtraum, B-194–B-199). |
+| `nm-twin-path-earth` | `#a6acc6` | - neu: `nm-twin-path-groove` = #161a32, `-edge` = #3c3a5a, `-earth` = #a6acc6, `-mid` = #c8cde2, `-dot` = #f0f0ff (Karte-ZweiFronten-Albtraum, B-194–B-199). |
+| `nm-twin-path-mid` | `#c8cde2` | - neu: `nm-twin-path-groove` = #161a32, `-edge` = #3c3a5a, `-earth` = #a6acc6, `-mid` = #c8cde2, `-dot` = #f0f0ff (Karte-ZweiFronten-Albtraum, B-194–B-199). |
+| `nm-twin-path-dot` | `#f0f0ff` | - neu: `nm-twin-path-groove` = #161a32, `-edge` = #3c3a5a, `-earth` = #a6acc6, `-mid` = #c8cde2, `-dot` = #f0f0ff (Karte-ZweiFronten-Albtraum, B-194–B-199). |
+| `nm-crypt-grass` | `#2e4448` | - neu: `nm-crypt-grass` = #2e4448, `nm-crypt-grass-light` = #8aa6a0 (Karte-ZweiFronten-Albtraum, B-194–B-199). |
+| `nm-crypt-grass-light` | `#8aa6a0` | - neu: `nm-crypt-grass` = #2e4448, `nm-crypt-grass-light` = #8aa6a0 (Karte-ZweiFronten-Albtraum, B-194–B-199). |
+| `nm-bark-grey-a` | `#5e5e7c` | - neu: `nm-bark-grey-a` = #5e5e7c, `nm-bark-grey-b` = #2a2a40, `nm-grave-a` = #aab0c8, `nm-grave-b` = #5a5f78, `nm-crypt-a` = #8a8ea8, `nm-crypt-b` = #4a4c66, `nm-iron-dark` = #4a4660, `nm-twin-rock` = #6a7090 (Karte-ZweiFronten-Albtraum, B-194–B-199). |
+| `nm-bark-grey-b` | `#2a2a40` | - neu: `nm-bark-grey-a` = #5e5e7c, `nm-bark-grey-b` = #2a2a40, `nm-grave-a` = #aab0c8, `nm-grave-b` = #5a5f78, `nm-crypt-a` = #8a8ea8, `nm-crypt-b` = #4a4c66, `nm-iron-dark` = #4a4660, `nm-twin-rock` = #6a7090 (Karte-ZweiFronten-Albtraum, B-194–B-199). |
+| `nm-grave-a` | `#aab0c8` | - neu: `nm-bark-grey-a` = #5e5e7c, `nm-bark-grey-b` = #2a2a40, `nm-grave-a` = #aab0c8, `nm-grave-b` = #5a5f78, `nm-crypt-a` = #8a8ea8, `nm-crypt-b` = #4a4c66, `nm-iron-dark` = #4a4660, `nm-twin-rock` = #6a7090 (Karte-ZweiFronten-Albtraum, B-194–B-199). |
+| `nm-grave-b` | `#5a5f78` | - neu: `nm-bark-grey-a` = #5e5e7c, `nm-bark-grey-b` = #2a2a40, `nm-grave-a` = #aab0c8, `nm-grave-b` = #5a5f78, `nm-crypt-a` = #8a8ea8, `nm-crypt-b` = #4a4c66, `nm-iron-dark` = #4a4660, `nm-twin-rock` = #6a7090 (Karte-ZweiFronten-Albtraum, B-194–B-199). |
+| `nm-crypt-a` | `#8a8ea8` | - neu: `nm-bark-grey-a` = #5e5e7c, `nm-bark-grey-b` = #2a2a40, `nm-grave-a` = #aab0c8, `nm-grave-b` = #5a5f78, `nm-crypt-a` = #8a8ea8, `nm-crypt-b` = #4a4c66, `nm-iron-dark` = #4a4660, `nm-twin-rock` = #6a7090 (Karte-ZweiFronten-Albtraum, B-194–B-199). |
+| `nm-crypt-b` | `#4a4c66` | - neu: `nm-bark-grey-a` = #5e5e7c, `nm-bark-grey-b` = #2a2a40, `nm-grave-a` = #aab0c8, `nm-grave-b` = #5a5f78, `nm-crypt-a` = #8a8ea8, `nm-crypt-b` = #4a4c66, `nm-iron-dark` = #4a4660, `nm-twin-rock` = #6a7090 (Karte-ZweiFronten-Albtraum, B-194–B-199). |
+| `nm-iron-dark` | `#4a4660` | - neu: `nm-bark-grey-a` = #5e5e7c, `nm-bark-grey-b` = #2a2a40, `nm-grave-a` = #aab0c8, `nm-grave-b` = #5a5f78, `nm-crypt-a` = #8a8ea8, `nm-crypt-b` = #4a4c66, `nm-iron-dark` = #4a4660, `nm-twin-rock` = #6a7090 (Karte-ZweiFronten-Albtraum, B-194–B-199). |
+| `nm-twin-rock` | `#6a7090` | - neu: `nm-bark-grey-a` = #5e5e7c, `nm-bark-grey-b` = #2a2a40, `nm-grave-a` = #aab0c8, `nm-grave-b` = #5a5f78, `nm-crypt-a` = #8a8ea8, `nm-crypt-b` = #4a4c66, `nm-iron-dark` = #4a4660, `nm-twin-rock` = #6a7090 (Karte-ZweiFronten-Albtraum, B-194–B-199). |
+| `nm-rune-violet` | `#c58aff` | - neu: `nm-rune-violet` = #c58aff, `nm-rune-core` = #f0dcff, `nm-soulflame` = #9fe8ff, `nm-soulflame-core` = #e6f6ff, `nm-eye-rune` = #e6b8ff, `nm-rim-crypt` = #c8d8ff (Karte-ZweiFronten-Albtraum, B-194–B-199). |
+| `nm-rune-core` | `#f0dcff` | - neu: `nm-rune-violet` = #c58aff, `nm-rune-core` = #f0dcff, `nm-soulflame` = #9fe8ff, `nm-soulflame-core` = #e6f6ff, `nm-eye-rune` = #e6b8ff, `nm-rim-crypt` = #c8d8ff (Karte-ZweiFronten-Albtraum, B-194–B-199). |
+| `nm-soulflame-core` | `#e6f6ff` | - neu: `nm-rune-violet` = #c58aff, `nm-rune-core` = #f0dcff, `nm-soulflame` = #9fe8ff, `nm-soulflame-core` = #e6f6ff, `nm-eye-rune` = #e6b8ff, `nm-rim-crypt` = #c8d8ff (Karte-ZweiFronten-Albtraum, B-194–B-199). |
+| `nm-rim-crypt` | `#c8d8ff` | - neu: `nm-rune-violet` = #c58aff, `nm-rune-core` = #f0dcff, `nm-soulflame` = #9fe8ff, `nm-soulflame-core` = #e6f6ff, `nm-eye-rune` = #e6b8ff, `nm-rim-crypt` = #c8d8ff (Karte-ZweiFronten-Albtraum, B-194–B-199). |
 
 ## Schrift
 

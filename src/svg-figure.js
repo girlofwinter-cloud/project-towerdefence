@@ -4,7 +4,7 @@
 // (Node, Tests) über einen eigenen Pfad-Leser mit moveTo/lineTo/... Reine Zeichen-Hilfe, keine Spiel-Logik.
 // Transparenz steckt in den Farben (rgba), globalAlpha bleibt unberührt.
 
-import { GOLD_TOWER_STYLE } from './config.js';
+import { GOLD_TOWER_STYLE, NM_ENEMY_STYLE, NM_ENEMY_FX } from './config.js';
 
 // Verläufe aus dem Entwurf (Z.42–48), objectBoundingBox wie in SVG: Werte relativ zur Form
 export const GRADIENTS = {
@@ -27,6 +27,9 @@ export const GRADIENTS = {
   's3-copper': { type: 'linear', x1: 0, y1: 0, x2: 1, y2: 0, stops: [[0, '#e8a070'], [0.55, '#c9794a'], [1, '#7a3f1e']] },
   // B-185: goldene Türme (Werte in GOLD_TOWER_STYLE, config.js), Tausch per GOLD_TOWER_STYLE.grads
   ...GOLD_TOWER_STYLE.gradients,
+  // B-190: Randlicht hinter Gegnern im Albtraum, je Stil (Farbe nm-rim-<stil>, Werte in config.js)
+  ...Object.fromEntries(Object.entries(NM_ENEMY_STYLE).map(([s, c]) => [`nm-rim-${s.toLowerCase()}`,
+    { type: 'radial', cx: 0.5, cy: 0.5, r: 0.5, stops: NM_ENEMY_FX.rimStops.map(([o, a]) => [o, withAlpha(c.rim, a)]) }])),
 };
 
 // Farbe mit Deckkraft: #rgb/#rrggbb/rgba(...) -> rgba(...) (einmal beim Laden)

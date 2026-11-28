@@ -1,7 +1,7 @@
 // Unit-Tests für Rendering mit Mock-Kontext (Gelände, Türme, Effekte)
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createGame, buildTower, towerStats } from '../src/game.js';
+import { createGame, buildTower, towerStats, spawnEnemy } from '../src/game.js';
 import { decorFor } from '../src/decor.js';
 
 import { recoilOffset } from '../src/tower-fx.js';
@@ -2106,10 +2106,16 @@ function nightRecorder() {
   return { ctx, fills, rects };
 }
 
-test('B-184 Render: Nacht-Tönung (multiply, night-tint) nur im Albtraum oder mit ui.night, nur im Feld 20 x 14', async () => {
+// B-194 (Entscheidung des Menschen): ersetzt den Test der Nacht-Tönung; im Albtraum keine Tönung und keine Vignette mehr
+test('B-194 Render: im Albtraum und mit ui.night keine Tönung (multiply) und keine Vignette, Spielfeld bleibt 20 x 14', async () => {
   const { render, nightOn } = await import('../src/render.js?nacht');
   const { WIDTH, HEIGHT } = await import('../src/config.js');
-  const isTint = (f) => f.op === 'multiply' && f.style.startsWith('rgba(20,12,40,');
+  const isTint = (f) => f.op === 'multiply' || f.style.startsWith('rgba(20,12,40,') || f.style.startsWith('rgba(8,4,16,');
+  const grads = (state, ui) => {
+    const m = mockCtx();
+    render(m.ctx, state, ui);
+    return (m.counts.createRadialGradient ?? 0) + (m.counts.createLinearGradient ?? 0);
+  };
   const normal = createGame({ mapId: 'meadow' });
   const a = nightRecorder();
   render(a.ctx, normal, {});
@@ -2119,13 +2125,82 @@ test('B-184 Render: Nacht-Tönung (multiply, night-tint) nur im Albtraum oder mi
   const b = nightRecorder();
   render(b.ctx, nm, {});
   assert.equal(nightOn(nm, {}), true);
-  assert.equal(b.fills.filter(isTint).length, 1, 'Albtraum: genau eine Tönung');
-  assert.ok(b.rects.some((r) => r.join() === `0,0,${WIDTH},${HEIGHT}`), 'Clip-Rechteck = Feld');
+  assert.equal(b.fills.some(isTint), false, 'Albtraum: keine Tönung, keine Vignette');
   const c = nightRecorder();
   render(c.ctx, normal, { night: true }); // Nacht-Look (B-185) im Normalmodus
-  assert.equal(c.fills.filter(isTint).length, 1);
-  // Spielfeld bleibt 20 x 14 Kacheln
+  assert.equal(c.fills.some(isTint), false);
+  // Vignette und rotes Licht waren Verläufe: im Albtraum nicht mehr als im Normalmodus
+  assert.equal(grads(nm, {}), grads(normal, {}), 'keine zusätzlichen Verläufe im Albtraum');
   assert.deepEqual([COLS, ROWS, WIDTH / TILE, HEIGHT / TILE], [20, 14, 20, 14]);
+});
+
+test('B-194 Bewegung: Teilchen je Karte höchstens 60 (Handy 28), reduced motion steht still, je Frame keine Verläufe', async () => {
+  const { motionParticles, drawNightmareMotion } = await import('../src/render-nightmare.js');
+  const { NM_MOTION } = await import('../src/config.js');
+  const { NM_MAPS } = await import('../src/nm-maps/index.js');
+  const eyes = Array.from({ length: 40 }, (_, i) => ({ x: -20, y: i * 10 }));
+  for (const id of Object.keys(MAPS)) {
+    assert.ok(NM_MAPS[id], `${id}: eigene Albtraum-Datei`);
+    const d = motionParticles(id, false, eyes), h = motionParticles(id, true, eyes);
+    assert.ok(d.length > 0 && d.length <= NM_MOTION.maxDesktop, `${id}: ${d.length} Teilchen`);
+    assert.ok(h.length <= NM_MOTION.maxCompact && h.length <= d.length, `${id}: Handy ${h.length}`);
+    assert.deepEqual(motionParticles(id, false, eyes), d, `${id}: deterministisch`);
+    const s = createGame({ mapId: id, mode: 'nightmare' });
+    const rec = (t) => {
+      const calls = [];
+      const ctx = new Proxy({}, { get: (_, k) => (...a) => { calls.push([k, ...a]); return { addColorStop() {} }; }, set: (_, k, v) => { calls.push(['=' + String(k), v]); return true; } });
+      drawNightmareMotion(ctx, s, t, true, false, eyes);
+      return calls;
+    };
+    assert.deepEqual(rec(0), rec(3), `${id}: reduced motion zeichnet t = 0 und t = 3 gleich`);
+    const m = mockCtx();
+    drawNightmareMotion(m.ctx, s, 1.7, false, false, eyes);
+    assert.equal(m.counts.createRadialGradient, undefined, `${id}: kein Verlauf je Frame`);
+    assert.equal(m.counts.createLinearGradient, undefined);
+  }
+  // Obergrenze greift auch bei zu vielen Einträgen
+  NM_MAPS.meadow.motion.push({ kind: 'fall', count: [99, 99], color: '#fff' });
+  try {
+    assert.equal(motionParticles('meadow', false, eyes).length, NM_MOTION.maxDesktop);
+    assert.equal(motionParticles('meadow', true, eyes).length, NM_MOTION.maxCompact);
+  } finally { NM_MAPS.meadow.motion.pop(); }
+});
+
+test('B-194 Nachtrag: Glitzern, Puls, Rauch und Wippen bewegen sich, reduced motion steht still, Obergrenze gilt', async () => {
+  const { motionParticles, drawNightmareMotion } = await import('../src/render-nightmare.js');
+  const { NM_MOTION } = await import('../src/config.js');
+  const { NM_MAPS } = await import('../src/nm-maps/index.js');
+  NM_MAPS.__t = { motion: [
+    { kind: 'twinkle', count: [2, 1], color: '#fff', at: [[10, 10], [20, 20]] },
+    { kind: 'pulse', count: [1, 1], color: '#c58aff', at: [[[30, 30], [40, 40]]] },
+    { kind: 'smoke', count: [1, 1], color: '#888', at: [[50, 50]] },
+    { kind: 'bob', count: [1, 0], color: '#fff', shape: 'flame', core: '#eef', at: [[60, 60]] },
+    { kind: 'bob', count: [1, 0], color: '#fff', shape: 'floe', at: [[70, 70]] },
+    { kind: 'smoke', count: [3, 3], color: '#888', on: 'vent' },
+    { kind: 'pulse', count: [5, 5], color: '#888' }, // ohne Punkte: nichts
+    { kind: 'blink', count: [1, 1], color: '#d8ff5a', at: [[80, 80]], rx: 5, ry: 2.5, gap: 7 },
+  ] };
+  try {
+    const d = motionParticles('__t');
+    assert.deepEqual(d.map((p) => p.kind), ['twinkle', 'twinkle', 'pulse', 'smoke', 'bob', 'bob', 'blink']);
+    assert.equal(d[2].pts.length, 2, 'Puls-Gruppe zählt als ein Teilchen');
+    assert.equal(motionParticles('__t', true).length, 4);
+    assert.equal(motionParticles('__t', false, [], { vent: [[1, 1], [2, 2]] }).filter((p) => p.kind === 'smoke').length, 3, 'Marken: höchstens so viele wie da');
+    const state = { mapId: '__t' };
+    const rec = (t, reduced) => {
+      const calls = [];
+      const ctx = new Proxy({}, { get: (_, k) => (...a) => { calls.push([k, ...a]); return { addColorStop() {} }; }, set: (_, k, v) => { calls.push(['=' + String(k), v]); return true; } });
+      drawNightmareMotion(ctx, state, t, reduced);
+      return calls;
+    };
+    assert.deepEqual(rec(0, true), rec(2.3, true), 'reduced motion steht');
+    assert.notDeepEqual(rec(0, false), rec(0.7, false), 'bewegt sich');
+    const kinds = new Set(rec(0.5, false).map(([k]) => k));
+    for (const k of ['lineTo', 'quadraticCurveTo', 'ellipse', 'stroke']) assert.ok(kinds.has(k), `zeichnet ${k}`);
+    assert.ok(!kinds.has('createRadialGradient') && !kinds.has('createLinearGradient'), 'keine Verläufe je Frame');
+    assert.ok(d.filter((p) => p.kind === 'bob').every((p) => p.amp === NM_MOTION.bob.amp), 'Wippen ±amp aus NM_MOTION');
+    for (const k of ['twinkle', 'pulse', 'smoke', 'bob']) assert.ok(NM_MOTION[k], `NM_MOTION.${k}`);
+  } finally { delete NM_MAPS.__t; }
 });
 
 test('B-184 Glut am Weg: 10 Punkte, deterministisch, neben der Wegmitte (höchstens 0,6 Kacheln)', async () => {
@@ -2291,4 +2366,240 @@ test('B-185 render(): goldene Türme nur mit ui.goldTowers (Spielfeld und Ring-V
   const ring = { ring: { col: 3, row: 3 }, ringPreview: 'cannon' };
   assert.ok(record({ ...ring, goldTowers: true }, s) > record(ring, s), 'Ring-Vorschau golden');
   assert.equal(JSON.stringify(s.towers), snap, 'Rendering ändert keine Spielwerte');
+});
+
+// ---------- B-190: Gegner im Albtraum-Look ----------
+test('B-190: Albtraum-Figur je Typ und Stil umschließt die normale Figur, Cache je Stil', async () => {
+  const { enemyFigure, ENEMY_KINDS } = await import('../src/figures.js');
+  for (const t of ENEMY_KINDS) {
+    const normal = enemyFigure(t, false);
+    for (const s of ['A', 'B', 'C']) {
+      const f = enemyFigure(t, false, undefined, s);
+      assert.ok(f && f.els.length > normal.els.length, `${t}/${s}: Figur`);
+      assert.ok(f.box[0] <= normal.box[0] && f.box[1] <= normal.box[1] && f.box[2] >= normal.box[2] && f.box[3] >= normal.box[3], `${t}/${s}: Box`);
+      assert.equal(f.w, normal.w); assert.equal(f.h, normal.h);
+      assert.equal(enemyFigure(t, false, undefined, s), f, `${t}/${s}: Cache`);
+      assert.ok(enemyFigure(t, true, undefined, s), `${t}/${s}: eingefroren`);
+    }
+    assert.notEqual(enemyFigure(t, false, undefined, 'A'), enemyFigure(t, false, undefined, null));
+    assert.equal(enemyFigure(t, false, undefined, null), normal, 'ohne Stil: heutige Figur');
+  }
+});
+
+test('B-190: nmColor nach Formel, NM_KEEP bleibt, Augen in Stilfarbe', async () => {
+  const { enemyFigure, ENEMY_KINDS, nmColor, NM_KEEP } = await import('../src/figures.js');
+  const { NM_ENEMY_STYLE } = await import('../src/config.js');
+  const { withAlpha } = await import('../src/svg-figure.js');
+  // #6cc03a = (108,192,58), L = 0.3*108 + 0.59*192 + 0.11*58 = 151.06; desat 0.28, dann 0.36 Richtung #2a3448
+  const L = 0.3 * 108 + 0.59 * 192 + 0.11 * 58;
+  const exp = [[108, 42], [192, 52], [58, 72]].map(([c, s]) => Math.round(c + (L - c) * 0.28 + (s - (c + (L - c) * 0.28)) * 0.36).toString(16).padStart(2, '0'));
+  assert.equal(nmColor('#6cc03a', '#2a3448'), '#' + exp.join(''));
+  const fills = (f) => new Set(f.els.flatMap((e) => [e.fill, e.stroke]).filter(Boolean));
+  const grunt = fills(enemyFigure('grunt', false, undefined, 'A'));
+  assert.ok(!grunt.has('#6cc03a'), 'Körper umgefärbt');
+  assert.ok(grunt.has('#2b1a10'), 'Kontur bleibt');
+  assert.ok(fills(enemyFigure('boss', false, undefined, 'B')).has('#f2c14e') && NM_KEEP.has('#f2c14e'), 'Krone bleibt Gold');
+  for (const s of ['A', 'B', 'C']) {
+    const eye = NM_ENEMY_STYLE[s].eye;
+    for (const t of ENEMY_KINDS) {
+      const f = enemyFigure(t, false, undefined, s);
+      assert.ok(f.els.some((e) => e.fill === withAlpha(eye, 0.5)), `${t}/${s}: Fußaura in Augenfarbe`);
+      if (t === 'wisp') assert.ok(fills(f).has(withAlpha(eye, 0.22)), `${s}: Irrlicht-Schein in Augenfarbe`);
+      else if (t !== 'necro') assert.ok(fills(f).has(eye), `${t}/${s}: Augenfarbe`);
+      if (t !== 'wisp' && t !== 'necro') assert.ok(enemyFigure(t, false, undefined, s).els.some((e) => e.fill === eye && e.d), `${t}/${s}: Augenschlitz`);
+    }
+  }
+  assert.ok(!enemyFigure('necro', false, undefined, 'A').els.some((e) => e.fill === NM_ENEMY_STYLE.A.eye && e.d), 'Nekromantin ohne Augen-Overlay');
+});
+
+test('B-190: Stil je Karte, Lebensbalken bleibt an der Figur', async () => {
+  const { nmEnemyStyle } = await import('../src/render-enemies.js');
+  assert.equal(nmEnemyStyle('meadow', false), null);
+  assert.deepEqual(['meadow', 'ice', 'fork', 'twin', 'volcano'].map((m) => nmEnemyStyle(m, true)), ['A', 'C', 'B', 'C', 'B']);
+  assert.equal(nmEnemyStyle('unbekannt', true), 'A');
+  const { enemyFigure } = await import('../src/figures.js');
+  const n = enemyFigure('tank', false), f = enemyFigure('tank', false, undefined, 'A');
+  assert.ok(f.box[1] < n.box[1] && Math.abs(f.body[1] - n.box[1]) <= 3, 'Box mit Randlicht, body ohne');
+});
+
+test('B-190: drawEliteRing mit nmEye zeichnet zusätzlich den Innenring', async () => {
+  const { drawEliteRing } = await import('../src/render-elite.js');
+  const e = { x: 100, y: 100 };
+  const a = mockCtx();
+  drawEliteRing(a.ctx, e, 120, 40, 1, false);
+  assert.equal(a.counts.ellipse, 1);
+  const b = mockCtx();
+  drawEliteRing(b.ctx, e, 120, 40, 1, false, '#d8ff5a');
+  assert.equal(b.counts.ellipse, 2);
+  assert.equal(b.props.strokeStyle, '#d8ff5a');
+  assert.equal(b.depth, 0);
+});
+
+test('B-190: Render im Albtraum zeichnet alle Typen ohne Fehler', async () => {
+  const { render } = await import('../src/render.js');
+  const { ENEMY_KINDS } = await import('../src/figures.js');
+  for (const mapId of ['meadow', 'fork', 'ice']) {
+    const s = createGame({ mode: 'nightmare', mapId });
+    ENEMY_KINDS.forEach((type, i) => s.enemies.push({ id: i + 1, type, x: 60 + i * 30, y: 100, dist: 10, radius: 10, hp: 5, maxHp: 10, slowUntil: i % 2 ? 99 : 0, elite: i === 0 ? 'swift' : null }));
+    const m = mockCtx();
+    render(m.ctx, s, {});
+    assert.equal(m.depth, 0);
+  }
+});
+
+// ---------- B-193: HUD im Albtraum ----------
+
+test('B-193 nmWoodDeco: SVG ohne NaN für alle 5 Holzarten, Eisenband je Trenner, Zuordnung Karte -> Holz', async () => {
+  const { nmWoodDeco, nmWoodKind, NM_WOOD_OF_MAP, NM_WOOD_KINDS, NM_WOOD_OVERHANG, NM_STYLE_NAME } = await import('../src/nm-wood.js');
+  const { MAP_ORDER } = await import('../src/progress.js');
+  assert.deepEqual(NM_WOOD_OF_MAP, { meadow: 'moss', ice: 'ice', fork: 'rust', twin: 'iron', volcano: 'ember' });
+  for (const id of MAP_ORDER) {
+    assert.ok(NM_WOOD_KINDS.includes(nmWoodKind(id, true)), `Holz für ${id}`);
+    assert.ok(NM_STYLE_NAME[id], `Stilname für ${id}`);
+    assert.equal(nmWoodKind(id, false), null, 'ohne Albtraum/Nacht-Look heutiges Holz');
+  }
+  for (const kind of NM_WOOD_KINDS) {
+    const svg = nmWoodDeco(kind, 420, 56, [150, 290]);
+    assert.match(svg, /^<svg class="plq-deco" aria-hidden="true" [^>]*>.*<\/svg>$/s, kind);
+    assert.doesNotMatch(svg, /NaN|undefined/, kind);
+    assert.match(svg, new RegExp(`height="${56 + NM_WOOD_OVERHANG[kind]}"`), `Höhe mit Überstand (${kind})`);
+    assert.doesNotMatch(nmWoodDeco(kind, 0, 0), /NaN/, `leer ohne NaN (${kind})`);
+  }
+  assert.equal((nmWoodDeco('iron', 420, 56, [150, 290]).match(/class="nm-strap"/g) || []).length, 2, 'ein Band je Trenner');
+  assert.match(nmWoodDeco('iron', 420, 56, [150]), /x="143"/, 'Band mittig auf dem Trenner (14 breit)');
+  assert.equal(nmWoodDeco('moss', 420, 56, [150]).includes('nm-strap'), false);
+  assert.equal(nmWoodDeco('holz', 420, 56), '', 'unbekannte Art: keine Deko');
+  assert.equal(nmWoodKind('unbekannt', true), 'moss');
+});
+
+test('B-193 nmPlaquePlacement: Plakette 180 rechts neben dem HUD (Lücke 12), sonst null', async () => {
+  const { nmPlaquePlacement } = await import('../src/nm-wood.js');
+  assert.equal(nmPlaquePlacement(909, 1343, 8), 921);
+  assert.equal(nmPlaquePlacement(909, 1343, 288), null, 'kein Platz für Plakette plus volle Boss-Leiste');
+  assert.equal(nmPlaquePlacement(755, 853, 8), null, '1280 breit: zu eng');
+  assert.equal(nmPlaquePlacement(100, 300, 0), 112, 'genau passend');
+  assert.equal(nmPlaquePlacement(NaN, 300), null);
+});
+
+test('B-193 badgeSvg: gesperrt mit Schloss, Funkeln nur bei Gold ab 120', async () => {
+  const { badgeSvg } = await import('../src/badge-art.js');
+  const locked = badgeSvg(44, 0, '', { locked: true });
+  assert.match(locked, /class="badge-lock"/);
+  assert.match(locked, /stroke-dasharray/, 'offener Ring bleibt');
+  assert.doesNotMatch(badgeSvg(44, 0), /badge-lock/, 'Standardaufruf unverändert');
+  assert.equal((badgeSvg(200, 3).match(/class="badge-spark"/g) || []).length, 4, 'Gold groß: 4 Funkeln');
+  assert.doesNotMatch(badgeSvg(44, 3), /badge-spark/);
+  assert.doesNotMatch(badgeSvg(200, 2), /badge-spark/, 'Silber ohne Funkeln');
+  assert.doesNotMatch(badgeSvg(200, 3), /NaN/);
+});
+
+test('B-193 goldMissedText: Silber noch möglich nur ohne Lebensverlust', async () => {
+  const { goldMissedText } = await import('../src/hud.js');
+  assert.equal(goldMissedText({ track: { livesLost: 0 } }), 'Gold verpasst – Silber ist noch möglich');
+  assert.equal(goldMissedText({}), 'Gold verpasst – Silber ist noch möglich');
+  assert.equal(goldMissedText({ track: { livesLost: 2 } }), 'Gold verpasst');
+});
+
+// ---------- Tester: Albtraum-Look im ganzen render() ----------
+function logCtx() {
+  const calls = [];
+  const props = {};
+  const ctx = new Proxy({}, {
+    get: (_, k) => (k in props ? props[k] : (...a) => { calls.push([k, ...a.map((v) => (typeof v === 'object' ? '#' : v))]); return k.startsWith('create') ? { addColorStop() {} } : undefined; }),
+    set: (_, k, v) => { props[k] = v; calls.push(['=' + String(k), v]); return true; },
+  });
+  return { ctx, calls };
+}
+const withEnemies = (mapId, mode) => {
+  const s = createGame({ mapId, mode });
+  s.gold = 99999;
+  buildTower(s, 'arrow', 0, 0);
+  buildTower(s, 'cannon', COLS - 1, ROWS - 1);
+  for (const type of ['grunt', 'runner', 'tank', 'grunt', 'runner', 'tank']) spawnEnemy(s, type, 5);
+  s.enemies.forEach((e, i) => { e.dist += i * 20; });
+  return s;
+};
+
+test('Tester: reduced motion im ganzen render() steht still (alle Karten, Albtraum und Nacht-Look, mit Gegnern)', async () => {
+  const { render } = await import('../src/render.js?tester-still');
+  for (const id of Object.keys(MAPS)) {
+    for (const [mode, ui] of [['nightmare', {}], [undefined, { night: true }]]) {
+      const s = withEnemies(id, mode);
+      const frame = () => { const m = logCtx(); render(m.ctx, s, { ...ui, reducedMotion: true }); return m.calls; };
+      frame(); // Effekte einschwingen
+      const a = frame();
+      await new Promise((r) => setTimeout(r, 40));
+      const b = frame();
+      const i = a.findIndex((c, k) => JSON.stringify(c) !== JSON.stringify(b[k]));
+      assert.equal(i, -1, `${id}/${mode || 'night'}: zwei Frames mit 40 ms Abstand gleich, erster Unterschied bei ${i}: ${JSON.stringify(a[i])} vs ${JSON.stringify(b[i])} (Länge ${a.length}/${b.length})`);
+    }
+  }
+});
+
+test('Tester: Normalmodus ohne Nacht-Look zeichnet keine Albtraum-Lichtinsel und keine Albtraum-Gegner (alle Karten)', async () => {
+  const { render } = await import('../src/render.js?tester-normal');
+  const { NM_WARM_LIGHT } = await import('../src/config.js');
+  const { nmEnemyStyle } = await import('../src/render-enemies.js');
+  for (const id of Object.keys(MAPS)) {
+    assert.equal(nmEnemyStyle(id, false), null, `${id}: Gegner normal`);
+    const s = withEnemies(id);
+    const m = logCtx();
+    render(m.ctx, s, {});
+    assert.ok(!m.calls.some(([k, v]) => k === '=fillStyle' && v === NM_WARM_LIGHT.color), `${id}: keine Lichtinsel im Normalmodus`);
+    const n = logCtx();
+    render(n.ctx, s, { night: true });
+    assert.ok(n.calls.some(([k, v]) => k === '=fillStyle' && v === NM_WARM_LIGHT.color), `${id}: Gegenprobe Nacht-Look`);
+  }
+});
+
+test('B-190 Bildrate: Albtraum-Figur getrennt in Fußaura, Randlicht und Körper (Nekromantin-Live-Teil ohne Randlicht)', async () => {
+  const { enemyFigure, ENEMY_KINDS } = await import('../src/figures.js');
+  const { NM_ENEMY_STYLE } = await import('../src/config.js');
+  const { withAlpha } = await import('../src/svg-figure.js');
+  for (const t of ENEMY_KINDS) for (const s of ['A', 'B', 'C']) {
+    const f = enemyFigure(t, false, undefined, s);
+    assert.ok(f.nm, `${t}/${s}: Aufteilung`);
+    assert.equal(f.nm.under[0].fill, withAlpha(NM_ENEMY_STYLE[s].eye, 0.5), `${t}/${s}: Fußaura`);
+    assert.equal(f.nm.rim.grad, `nm-rim-${s.toLowerCase()}`);
+    assert.equal(f.nm.els.length, f.els.length - 2, `${t}/${s}: Körper ohne Aura und Randlicht`);
+    assert.ok(!f.nm.els.includes(f.nm.rim) && !f.nm.els.includes(f.nm.under[0]));
+    if (f.cloak) assert.ok(!f.nm.live.back.some((el) => el.grad), `${t}/${s}: Live-Teil ohne Randlicht`);
+  }
+  assert.equal(enemyFigure('grunt', false).nm, undefined, 'ohne Stil: keine Aufteilung');
+});
+
+test('B-190 Bildrate: Albtraum-Gegner je Frame nur aus Sprites, Randlicht ungedreht auf ganzen Geräte-px', async () => {
+  const { setSpriteFactory } = await import('../src/sprites.js');
+  const { drawEnemy } = await import('../src/render-enemies.js');
+  setSpriteFactory((w, h) => { const m = mockCtx(); return { width: w, height: h, getContext: () => m.ctx }; });
+  try {
+    for (const type of ['grunt', 'tank', 'necro']) {
+      const e = { id: 1, type, x: 200, y: 150, dist: 20, hp: 10, maxHp: 10, slowUntil: 0 };
+      const draw = () => {
+        const m = mockCtx();
+        const blits = [];
+        m.props.getTransform = () => ({ a: 1.5, b: 0, c: 0, d: 1.5, e: 3, f: 4 });
+        m.props.drawImage = (...a) => { blits.push(a); };
+        drawEnemy(m.ctx, e, 1, null, true, false, 'A');
+        assert.equal(m.depth, 0);
+        return { counts: m.counts, blits };
+      };
+      draw(); // Sprites bauen
+      const { counts, blits } = draw();
+      assert.ok(!counts.createRadialGradient && !counts.createLinearGradient, `${type}: kein Verlauf je Frame`);
+      assert.ok(blits.some((a) => a.length === 3 && Number.isInteger(a[1]) && Number.isInteger(a[2])), `${type}: Randlicht als ganzzahliger Blit`);
+      assert.ok(counts.setTransform >= 1, `${type}: Randlicht ohne Drehung`);
+      if (type !== 'necro') assert.equal(blits.length, 2, `${type}: Randlicht + ein Sprite`);
+    }
+  } finally { setSpriteFactory(); }
+});
+
+test('B-194 Bildrate: Nebelbänder werden ohne Canvas einmal geclippt, nicht je Band', async () => {
+  const { drawNightmareMotion, motionParticles } = await import('../src/render-nightmare.js');
+  const s = createGame({ mapId: 'ice' });
+  assert.ok(motionParticles('ice').filter((p) => p.kind === 'fog').length > 1);
+  const m = mockCtx();
+  drawNightmareMotion(m.ctx, s, 1);
+  assert.equal(m.counts.clip, 1);
+  assert.equal(m.depth, 0);
 });

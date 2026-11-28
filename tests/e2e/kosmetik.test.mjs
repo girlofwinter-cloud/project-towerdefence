@@ -4,7 +4,7 @@ import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 import { createServer } from '../../scripts/serve.mjs';
-import { PROGRESS_KEY, MAX_WAVES, BADGE_TIERS } from '../../src/config.js';
+import { PROGRESS_KEY, MAX_WAVES, BADGE_TIERS, MAPS } from '../../src/config.js';
 import { MAP_ORDER } from '../../src/progress.js';
 import { enterGame } from './tile.mjs';
 
@@ -88,15 +88,18 @@ test('Aussehen: Tastatur (Enter öffnet, Leertaste schaltet, Escape schließt), 
   assert.deepEqual(errors, []);
 });
 
-// Mittlere Helligkeit der Feldmitte (Nacht-Tönung dunkelt deutlich ab)
-const fieldBrightness = (page) => page.evaluate(() => {
+// Pixel der Feldmitte (B-194: der Nacht-Look ist ein eigener Look je Karte, nicht nur dunkler)
+const fieldPixels = (page) => page.evaluate(() => {
   const c = document.getElementById('game');
-  const d = c.getContext('2d').getImageData(c.width * 0.3, c.height * 0.3, c.width * 0.4, c.height * 0.4).data;
-  let sum = 0;
-  for (let i = 0; i < d.length; i += 4) sum += d[i] + d[i + 1] + d[i + 2];
-  return sum / (d.length / 4) / 3;
+  return Array.from(c.getContext('2d').getImageData(c.width * 0.3, c.height * 0.3, c.width * 0.4, c.height * 0.4).data);
 });
-test('Aussehen: Nacht-Look wirkt im Normalmodus nur, wenn an (Spielfeld dunkler)', async () => {
+// Mittlere Abweichung je Farbkanal (0–255) zwischen zwei gleich großen Ausschnitten
+const meanDiff = (a, b) => {
+  let sum = 0, n = 0;
+  for (let i = 0; i < a.length; i += 4) { sum += Math.abs(a[i] - b[i]) + Math.abs(a[i + 1] - b[i + 1]) + Math.abs(a[i + 2] - b[i + 2]); n += 3; }
+  return sum / n;
+};
+test('Aussehen: Nacht-Look wirkt im Normalmodus nur, wenn an (Spielfeld sichtbar anders)', async () => {
   const [A] = MAP_ORDER;
   const on = await openWith(seed([A]));
   await enterGame(on, A);
@@ -104,8 +107,8 @@ test('Aussehen: Nacht-Look wirkt im Normalmodus nur, wenn an (Spielfeld dunkler)
   const off = await openWith(seed([A], { night: { [A]: false } }));
   await enterGame(off, A);
   await off.waitForTimeout(300);
-  const [bOn, bOff] = [await fieldBrightness(on), await fieldBrightness(off)];
-  assert.ok(bOn < bOff * 0.8, `Nacht-Look an dunkler (${bOn.toFixed(0)} < ${bOff.toFixed(0)})`);
+  const d = meanDiff(await fieldPixels(on), await fieldPixels(off));
+  assert.ok(d > 20, `Nacht-Look an sichtbar anders als aus (mittlere Abweichung ${d.toFixed(1)} > 20)`);
   assert.deepEqual(errors, []);
 });
 
@@ -151,5 +154,27 @@ test('Testseite: Kartenwahl bleibt im Albtraum sichtbar (zurück auf Normal), Go
   await page.selectOption('#map-select', MAP_ORDER[0]);
   await page.waitForSelector('#gold-goal', { state: 'hidden' });
   assert.equal(await page.evaluate(() => document.body.classList.contains('mode-nightmare')), false, 'zurück im Normalmodus');
+  assert.deepEqual(errors, []);
+});
+
+test('B-191 Aussehen 1280x800: Vorschau rechts 612 breit, Zeile wählen wechselt die Vorschau; 844x390 ohne Vorschau', async () => {
+  const [A, B] = MAP_ORDER;
+  const page = await openWith(seed([A]));
+  await page.click('#start-screen .cos-open');
+  await page.waitForSelector('#cosmetics:not([hidden])');
+  const [card, prev] = [await page.locator('.cos-card').boundingBox(), await page.locator('.cos-preview').boundingBox()];
+  assert.ok(Math.abs(card.width - 560) <= 2 && Math.abs(prev.width - 612) <= 2, `Breiten ${card.width} / ${prev.width}`);
+  for (const r of [card, prev]) assert.ok(Math.abs(r.y - 36) <= 4 && r.y + r.height <= 768, `Lage ${JSON.stringify(r)}`);
+  assert.equal(await page.textContent('.cos-preview .cp-title'), `Vorschau: ${MAPS[A].name}`);
+  await page.click(`.cos-row[data-row="night:${B}"] .cos-name`);
+  assert.equal(await page.textContent('.cos-preview .cp-title'), `Vorschau: ${MAPS[B].name}`);
+  assert.equal(await page.textContent('.cos-preview .cp-state'), 'Gesperrt');
+  assert.equal(await page.isVisible(`.cos-row[data-row="night:${B}"] .sw svg`), true, 'Schloss im gesperrten Schalter');
+  await page.click('.cos-row[data-row="gold"] .cos-name');
+  assert.equal(await page.isVisible('.cos-preview .cp-towers'), true, 'Turm-Vorschau');
+  const phone = await openWith(seed([A]), { viewport: { width: 844, height: 390 }, hasTouch: true, isMobile: true });
+  await phone.locator('#start-screen .cos-open').tap();
+  await phone.waitForSelector('#cosmetics:not([hidden])');
+  assert.equal(await phone.isVisible('.cos-preview'), false, 'keine Vorschau auf dem Handy');
   assert.deepEqual(errors, []);
 });

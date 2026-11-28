@@ -3842,16 +3842,16 @@ describe('B-183: checkGoldCondition', () => {
     assert.equal(checkGoldCondition(s, 'ice').ok, false, 'verkaufter Frostturm zählt trotzdem');
   });
 
-  test('Gabelung und Vulkan: 3 Turmtypen erfüllt, der 4. verletzt, auch wenn verkauft', () => {
-    for (const mapId of ['fork', 'volcano']) {
-      const { s, towers } = goldGame(mapId, ['arrow', 'arrow', 'cannon', 'frost', 'frost']);
-      assert.deepEqual(checkGoldCondition(s, mapId), { ok: true, label: 'höchstens 3 Turmtypen' });
+  test('Gabelung ohne Kanone, Vulkan ohne Blitzturm: erfüllt; gebaut und verkauft bleibt verletzt', () => {
+    for (const [mapId, banned, label] of [['fork', 'cannon', 'ohne Kanone'], ['volcano', 'lightning', 'ohne Blitzturm']]) {
+      const others = ['arrow', 'cannon', 'frost', 'sniper', 'lightning'].filter((t) => t !== banned);
+      const { s } = goldGame(mapId, others);
+      assert.deepEqual(checkGoldCondition(s, mapId), { ok: true, label });
       const tile = [...Array(COLS * ROWS).keys()].map((i) => [i % COLS, Math.floor(i / COLS)]).find(([c, r]) => canBuild(s, c, r).ok);
-      const { tower } = buildTower(s, 'sniper', ...tile);
+      const { tower } = buildTower(s, banned, ...tile);
       assert.equal(checkGoldCondition(s, mapId).ok, false, mapId);
       sellTower(s, tower.id);
-      for (const t of towers) sellTower(s, t.id);
-      assert.equal(checkGoldCondition(s, mapId).ok, false, `${mapId}: verkaufte Typen zählen weiter`);
+      assert.equal(checkGoldCondition(s, mapId).ok, false, `${mapId}: verkaufter ${banned} zählt weiter`);
     }
   });
 

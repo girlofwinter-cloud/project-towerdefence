@@ -77,15 +77,14 @@ test('Randfall: Gold-Bedingung bleibt verletzt, auch wenn der Turm wieder verkau
   assert.equal(checkGoldCondition(s, 'ice').ok, false);
   sellTower(s, t.tower.id);
   assert.equal(checkGoldCondition(s, 'ice').ok, false, 'Frostturm gebaut zählt auch nach dem Verkauf');
-  // Gold-Bedingung "höchstens 3 Turmtypen": vierten Typ bauen und verkaufen -> verletzt
+  // Gold-Bedingung "ohne Kanone": Kanone neben anderen Typen bauen und verkaufen -> verletzt
   const f = createGame({ mapId: 'fork', mode: 'nightmare' });
   f.gold = 100000;
-  const types = ['arrow', 'cannon', 'frost', 'lightning'];
-  for (const type of types) {
+  for (const type of ['arrow', 'cannon', 'frost']) {
     const [cc, rr] = freeTileNearPath(f);
     const b = buildTower(f, type, cc, rr);
     assert.equal(b.ok, true, type);
-    if (type === 'lightning') sellTower(f, b.tower.id);
+    if (type === 'cannon') sellTower(f, b.tower.id);
   }
   assert.equal(checkGoldCondition(f, 'fork').ok, false);
 });

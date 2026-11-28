@@ -25,18 +25,29 @@
       <div id="overlay" hidden>
         <div class="end-card plq">
           <svg class="end-ribbon" width="560" height="70" viewBox="0 0 560 70" role="heading" aria-level="2" aria-labelledby="overlay-title">
+            <!-- B-192: Zipfel des Albtraum-Bands (nur im Albtraum sichtbar; main.js stellt die Box auf 700 x 76 um) -->
+            <path class="end-tail" d="M0 20 H60 V72 H0 L18 46 Z" stroke="#2b1a10" stroke-width="4" stroke-linejoin="round"/>
+            <path class="end-tail" d="M700 20 H640 V72 H700 L682 46 Z" stroke="#2b1a10" stroke-width="4" stroke-linejoin="round"/>
             <path id="end-ribbon-band" d="M20 10 H540 L524 35 L540 60 H20 L36 35 Z" fill="#c4452f" stroke="#2b1a10" stroke-width="4" stroke-linejoin="round"/>
+            <path class="end-tail end-shine" d="M48 16 H652" stroke="#fff" stroke-width="3" opacity=".25" stroke-linecap="round"/>
             <text id="overlay-title" x="280" y="37" text-anchor="middle" dominant-baseline="middle" fill="#fff3d2" stroke="#2b1a10" stroke-width="6" stroke-linejoin="round" paint-order="stroke"></text>
           </svg>
-          <!-- B-184: Albtraum-Sieg (Strahlen, Medaille, Stufenreihe, Bedingung, Werte, Belohnung; main.js füllt) -->
+          <!-- B-184/B-192: Albtraum-Sieg und -Niederlage (Strahlen, Medaille bzw. leerer Ring, Funkeln, Titel, Stufenreihe, Bedingungen, Werte,
+               Belohnung bzw. nächstes Ziel, Tipp; main.js füllt) -->
           <div class="end-rays" aria-hidden="true"></div>
           <div class="end-badge" id="end-badge"></div>
+          <div class="end-sparks" aria-hidden="true"></div>
+          <p class="end-band-text" aria-hidden="true"></p>
           <div class="end-nm" id="end-nm" hidden>
             <h3 id="end-nm-title"></h3>
             <div class="end-badges" id="end-badges"></div>
-            <p class="end-cond" id="end-cond"></p>
+            <p class="end-cond sr" id="end-cond"></p>
+            <ul id="end-conds" class="end-conds"></ul>
             <div class="end-values" id="end-values"></div>
-            <p class="end-reward" id="end-reward" hidden><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path d="M14 3 A9 9 0 1 0 21 14 A7 7 0 1 1 14 3 Z" fill="#fff3d2" stroke="#2b1a10" stroke-width="2" stroke-linejoin="round"/></svg><span></span></p>
+            <p class="end-reward" id="end-reward" hidden><svg viewBox="0 0 24 24" width="38" height="38" aria-hidden="true"><path d="M14 3 A9 9 0 1 0 21 14 A7 7 0 1 1 14 3 Z" fill="#fff3d2" stroke="#2b1a10" stroke-width="2" stroke-linejoin="round"/></svg><span class="er-body"><span class="er-title"></span><small>Im Menü Aussehen ein- und ausschalten.</small></span></p>
+            <div id="end-next" class="end-next" hidden></div>
+            <p id="end-tip" class="end-tip" hidden><svg width="40" height="40" viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="16" r="11" fill="var(--gold-light)" stroke="var(--ink)" stroke-width="2.5"/><rect x="14" y="26" width="12" height="8" rx="2" fill="var(--stone-b)" stroke="var(--ink)" stroke-width="2.5"/><path d="M16 12 Q18 9 21 9" stroke="#fff" stroke-width="2.5" fill="none" stroke-linecap="round"/></svg><span><b>Tipp:</b> <span class="tip-text"></span></span></p>
+            <p class="end-keep">Deine Abzeichen hier bleiben:</p>
           </div>
           <div class="end-stars" id="end-stars" role="img"></div>
           <p id="overlay-stats"></p>
@@ -44,6 +55,7 @@
           <div class="end-actions">
             <button id="restart" class="wbtn wbtn-gold">Neues Spiel</button>
             <button id="to-maps" class="wbtn">Karten</button>
+            <button id="end-look" class="wbtn wbtn-night" hidden><svg width="22" height="22" viewBox="0 0 28 28" aria-hidden="true"><path d="M12 17 L23 5" stroke="var(--ink)" stroke-width="6" stroke-linecap="round"/><path d="M12 17 L23 5" stroke="var(--path-mid)" stroke-width="3" stroke-linecap="round"/><path d="M6 22 Q4 16 10 15 L14 19 Q13 25 6 22 Z" fill="var(--flag-red)" stroke="var(--ink)" stroke-width="2.4" stroke-linejoin="round"/></svg>Aussehen</button>
           </div>
         </div>
       </div>
@@ -82,22 +94,28 @@
         <span class="sr">Leben</span><b id="lives" class="num">0</b>
       </span>
       <!-- B-183/B-184: Gold-Bedingung im Albtraum (src/hud.js goldGoalView), Chip mit Zeichen (main.js) -->
-      <span class="gold-goal" id="gold-goal" hidden><span class="gg-text"></span><b class="gg-mark" aria-hidden="true"></b></span>
+      <span class="gold-goal" id="gold-goal" hidden><span class="gg-text"></span><span class="gg-state" aria-hidden="true">Gold verpasst</span><b class="gg-mark" aria-hidden="true"></b></span>
     </div>
+    <!-- B-193: Albtraum-Plakette (Medaille der Karte, Stilname), nur im Albtraum und nur wenn neben der HUD-Leiste Platz ist (main.js) -->
+    <div id="nm-plaque" class="plq" role="img" hidden><span class="nmp-badge"></span><span class="nmp-title">Albtraum</span><span class="nmp-style"></span></div>
 
     <!-- B-180: Boss-Lebensleiste (nur Anzeige, nicht anklickbar), je Boss eine Leiste, höchstens zwei (src/boss-bar.js) -->
     <div id="boss-bars" hidden aria-live="polite">
       <div id="boss-bar" class="plq boss-bar" hidden>
         <svg class="bb-skull" viewBox="0 0 34 34" aria-hidden="true"><path d="M17 4 C8 4 4 10 4 16 C4 21 7 23 9 24 V29 H25 V24 C27 23 30 21 30 16 C30 10 26 4 17 4 Z" fill="#f2e9d8" stroke="#2b1a10" stroke-width="3" stroke-linejoin="round"/><circle cx="12" cy="16" r="3.6" fill="#2b1a10"/><circle cx="22" cy="16" r="3.6" fill="#2b1a10"/><path d="M17 20 L15 23 H19 Z" fill="#2b1a10"/><path d="M13 25 V29 M17 25 V29 M21 25 V29" stroke="#2b1a10" stroke-width="2"/></svg>
+        <svg class="bb-crown" viewBox="0 0 34 30" aria-hidden="true"><path d="M3 26 L1 6 L10 14 L17 2 L24 14 L33 6 L31 26 Z" fill="var(--gold)" stroke="var(--ink)" stroke-width="3" stroke-linejoin="round"/><circle cx="17" cy="19" r="3.5" fill="var(--nm-eye, var(--gold))" stroke="var(--ink)" stroke-width="1.8"/></svg>
         <span class="bb-name"></span><span class="bb-phase"></span>
         <svg class="bb-shield-ico" viewBox="0 0 26 28" aria-hidden="true"><path d="M13 2 L23 6 V13 Q23 22 13 26 Q3 22 3 13 V6 Z" fill="#bff6ff" stroke="#2b1a10" stroke-width="3" stroke-linejoin="round"/></svg>
         <div class="bb-track" role="progressbar" aria-label="Leben des Bosses" aria-valuemin="0" aria-valuemax="100"><div class="bb-trail"></div><div class="bb-fill"></div><div class="bb-shield"></div><i class="bb-notch"></i></div>
+        <span class="bb-pct" aria-hidden="true"></span>
       </div>
       <div id="boss-bar-2" class="plq boss-bar" hidden>
         <svg class="bb-skull" viewBox="0 0 34 34" aria-hidden="true"><path d="M17 4 C8 4 4 10 4 16 C4 21 7 23 9 24 V29 H25 V24 C27 23 30 21 30 16 C30 10 26 4 17 4 Z" fill="#f2e9d8" stroke="#2b1a10" stroke-width="3" stroke-linejoin="round"/><circle cx="12" cy="16" r="3.6" fill="#2b1a10"/><circle cx="22" cy="16" r="3.6" fill="#2b1a10"/><path d="M17 20 L15 23 H19 Z" fill="#2b1a10"/><path d="M13 25 V29 M17 25 V29 M21 25 V29" stroke="#2b1a10" stroke-width="2"/></svg>
+        <svg class="bb-crown" viewBox="0 0 34 30" aria-hidden="true"><path d="M3 26 L1 6 L10 14 L17 2 L24 14 L33 6 L31 26 Z" fill="var(--gold)" stroke="var(--ink)" stroke-width="3" stroke-linejoin="round"/><circle cx="17" cy="19" r="3.5" fill="var(--nm-eye, var(--gold))" stroke="var(--ink)" stroke-width="1.8"/></svg>
         <span class="bb-name"></span><span class="bb-phase"></span>
         <svg class="bb-shield-ico" viewBox="0 0 26 28" aria-hidden="true"><path d="M13 2 L23 6 V13 Q23 22 13 26 Q3 22 3 13 V6 Z" fill="#bff6ff" stroke="#2b1a10" stroke-width="3" stroke-linejoin="round"/></svg>
         <div class="bb-track" role="progressbar" aria-label="Leben des Bosses" aria-valuemin="0" aria-valuemax="100"><div class="bb-trail"></div><div class="bb-fill"></div><div class="bb-shield"></div><i class="bb-notch"></i></div>
+        <span class="bb-pct" aria-hidden="true"></span>
       </div>
     </div>
 
@@ -163,31 +181,45 @@
 
     <!-- C5: Startbildschirm mit Kartenkarten (screens.js baut die Karten) -->
     <section id="start-screen" aria-labelledby="start-title" hidden>
-      <div class="start-head">
-      <h1 id="start-title" class="start-title plq">
-        <svg class="start-castle" width="64" height="72" viewBox="0 -20 108 146" aria-hidden="true"><path d="M10 122 V50 H30 V36 H40 V50 H58 V122 Z" fill="#b9b2a6" stroke="#2b1a10" stroke-width="5" stroke-linejoin="round"/><path d="M22 122 V90 a14 16 0 0 1 28 0 V122" fill="#33211a" stroke="#2b1a10" stroke-width="3"/><path d="M56 122 V30 H72 V20 H80 V30 H96 V122 Z" fill="#cfc8bb" stroke="#2b1a10" stroke-width="5" stroke-linejoin="round"/><path d="M70 30 L84 -4 L98 30 Z" fill="#c4452f" stroke="#2b1a10" stroke-width="4" stroke-linejoin="round"/><rect x="76" y="48" width="8" height="18" rx="4" fill="#33211a"/><path d="M84 -4 V-18" stroke="#2b1a10" stroke-width="3"/><path d="M84 -18 L104 -12 L84 -6 Z" fill="#3a7bd5" stroke="#2b1a10" stroke-width="2.5" stroke-linejoin="round"/></svg>
-        <span>Project TowerDefence</span>
-      </h1>
-        <!-- B-184: Umschalter Normal/Albtraum und Abzeichen-Zähler (screens.js) -->
+      <!-- B-191: Kopf-Plakette mit Symbol, Titel und Untertitel, Umschalter Normal/Albtraum und Zähler (screens.js füllt) -->
+      <div class="start-head plq">
+        <span class="start-sym" aria-hidden="true"></span>
+        <div class="start-titles">
+          <h1 id="start-title" class="start-title">Wähle deine Karte</h1>
+          <p class="start-sub">Hol 3 Sterne, um den Albtraum zu öffnen</p>
+        </div>
         <div class="start-mode" role="radiogroup" aria-label="Spielmodus">
           <button type="button" role="radio" data-mode="normal" aria-checked="true">Normal</button>
-          <button type="button" role="radio" data-mode="nightmare" aria-checked="false">Albtraum</button>
+          <button type="button" role="radio" data-mode="nightmare" aria-checked="false"><svg class="moon" width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3 A9 9 0 1 0 21 14 A7 7 0 1 1 14 3 Z" fill="var(--cream)" stroke="var(--ink)" stroke-width="2" stroke-linejoin="round"/></svg>Albtraum</button>
         </div>
         <span class="badge-count" role="status"></span>
-        <!-- B-185: Menü „Aussehen“ (Kosmetik-Belohnungen) -->
+        <!-- B-185/B-191: Menü „Aussehen“ (Kosmetik-Belohnungen), unten links -->
         <button type="button" class="wbtn start-back" hidden>Zurück zum Spiel</button>
-        <button type="button" class="wbtn cos-open" aria-haspopup="dialog" aria-controls="cosmetics">Aussehen</button>
+        <button type="button" class="wbtn cos-open" aria-haspopup="dialog" aria-controls="cosmetics"><svg width="26" height="26" viewBox="0 0 28 28" aria-hidden="true"><path d="M12 17 L23 5" stroke="var(--ink)" stroke-width="6" stroke-linecap="round"/><path d="M12 17 L23 5" stroke="var(--path-mid)" stroke-width="3" stroke-linecap="round"/><path d="M6 22 Q4 16 10 15 L14 19 Q13 25 6 22 Z" fill="var(--flag-red)" stroke="var(--ink)" stroke-width="2.4" stroke-linejoin="round"/></svg>Aussehen</button>
       </div>
       <div class="map-cards" role="list"></div>
-      <p class="start-hint"><span class="no-touch">Klicke eine Karte zum Starten</span><span class="touch-hint">Tippe eine Karte zum Starten</span></p>
-      <p class="start-keys key"><kbd>←</kbd> <kbd>→</kbd> Karte wählen · <kbd>Enter</kbd> starten · Im Spiel: <kbd>1</kbd>–<kbd>5</kbd> Türme, <kbd>Leertaste</kbd> Welle, <kbd>P</kbd> Pause · alle Tasten unter ? oben rechts</p>
+      <!-- B-191: Lernzeile (nur Albtraum, nur bei genug Höhe) und Lockplakette (nur Normal, ab einer Karte mit 3 Sternen) -->
+      <div class="nm-learn plq" hidden></div>
+      <div class="nm-teaser" hidden></div>
+      <div class="start-foot">
+        <p class="start-hint"><span class="no-touch">Klicke eine Karte zum Starten</span><span class="touch-hint">Tippe eine Karte zum Starten</span></p>
+        <p class="start-keys key"><kbd>←</kbd> <kbd>→</kbd> Karte wählen · <kbd>Enter</kbd> starten · Im Spiel: <kbd>1</kbd>–<kbd>5</kbd> Türme, <kbd>Leertaste</kbd> Welle, <kbd>P</kbd> Pause · alle Tasten unter ? oben rechts</p>
+      </div>
     </section>
     <!-- B-185: Menü „Aussehen“ (screens.js baut die Zeilen aus cosmetics.js) -->
     <div id="cosmetics" role="dialog" aria-modal="true" aria-labelledby="cos-title" hidden>
       <div class="cos-card plq">
-        <div class="cos-head"><h2 id="cos-title">Aussehen</h2><button type="button" class="wbtn wbtn-gold cos-close">Fertig</button></div>
+        <div class="cos-head"><div><h2 id="cos-title">Aussehen</h2><p class="cos-intro">Belohnungen aus dem Albtraum. Nur Optik, keine Spielwerte.</p></div><button type="button" class="wbtn wbtn-gold cos-close">Fertig</button></div>
         <div class="cos-body"></div>
       </div>
+      <!-- B-191: Vorschau der gewählten Zeile (nur ab 1200 px Breite; screens.js füllt) -->
+      <aside class="cos-preview" aria-live="polite">
+        <div class="cp-head"><h3 class="cp-title"></h3><span class="cp-state"></span></div>
+        <div class="cp-night"><figure><canvas class="cp-day" width="540" height="378"></canvas><figcaption>Normal</figcaption></figure><figure class="cp-nightfig"><canvas class="cp-nightcv" width="540" height="378"></canvas><figcaption></figcaption></figure></div>
+        <div class="cp-gold"><canvas class="cp-towers" width="1128" height="580"></canvas><span class="cp-lab">Normal</span><span class="cp-lab cp-lab-g">Golden</span></div>
+        <p class="cp-text"></p>
+        <div class="cp-unlock"><span class="cp-medal"></span><div><b class="cp-utitle"></b><p class="cp-utext"></p></div></div>
+      </aside>
     </div>
   </div>
   <!-- B-137: Handy im Hochformat: nur dieser Hinweis (style.css), Spiel pausiert solange (main.js) -->

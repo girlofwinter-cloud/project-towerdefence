@@ -431,3 +431,91 @@ test('Reviewer A2: gescheitertes Neu-Rastern bei vorhandenem Bild wird nicht jed
     assert.equal(mock.decodes, after + 1, 'neue Größe wird wieder gerastert');
   });
 });
+
+// ---------- B-194: Albtraum-Karten (Palette und Rand-Deko je Karte aus src/nm-maps/<id>.js) ----------
+test('B-194 (alle Karten): Albtraum-SVG deterministisch, ohne Vignette, mit Albtraum-Palette; normal behält die Vignette', async () => {
+  const { NM_MAPS } = await import('../src/nm-maps/index.js');
+  for (const id of MAP_IDS) {
+    const s = createGame({ mapId: id, mode: 'nightmare' });
+    const a = buildPaintedSvg(s, { look: 'nightmare' });
+    assert.equal(a, buildPaintedSvg(s, { look: 'nightmare' }), `${id}: deterministisch`);
+    assert.ok(!a.includes('vignette-field') && !a.includes('vignette-frame'), `${id}: keine Vignette`);
+    assert.ok(a.includes('url(#p-sun)') && a.includes('url(#p-grain)'), `${id}: Licht und Korn bleiben`);
+    assert.ok(a.includes(NM_MAPS[id].painted.ground[0]), `${id}: Albtraum-Boden`);
+    assert.equal(paletteFor(id, 'nightmare').ground[0], NM_MAPS[id].painted.ground[0]);
+    const n = buildPaintedSvg(createGame({ mapId: id }));
+    assert.ok(n.includes('id="vignette-field"') && n.includes('id="vignette-frame"'), `${id}: normal mit Vignette`);
+    assert.deepEqual(paletteFor(id), paletteFor(id, 'normal'));
+  }
+});
+
+test('B-194 (alle Karten): keine Albtraum-Rand-Deko auf einer bebaubaren Kachel (Reihe 1 klein und niedrig, Augen in der Szene)', async () => {
+  const { NM_MAPS } = await import('../src/nm-maps/index.js');
+  const bush = { w: 80, h: 50, svg: () => '<path d="M2 48 H78"/>', eyes: [[34, 30]] };
+  const tall = { w: 120, h: 180, svg: () => '<path d="M60 180 V0"/>', eyes: [[59, 136]] };
+  for (const id of MAP_IDS) {
+    const nm = NM_MAPS[id];
+    const saved = { shapes: nm.shapes, frame: nm.frame, obstacle: nm.obstacle };
+    // Probe-Formen wie in den Kartenvorlagen (Busch, Spukbaum), damit Reihe 1, Rahmen und Hindernisse geprüft werden
+    Object.assign(nm, { shapes: { nmBush: bush, nmTree: tall }, frame: { big: ['nmTree'], mid: [], small: ['nmBush'], edge: [] }, obstacle: { tree: 'nmTree', rock: 'nmBush' } });
+    try {
+      const s = createGame({ mapId: id, mode: 'nightmare' });
+      const sc = buildPaintedScene(s, 'nightmare');
+      assert.equal(sc.look, 'nightmare');
+      const small = sc.trees.filter((t) => t.kind === 'nmBush');
+      assert.ok(small.length > 10, `${id}: Reihe 1 vorhanden (${small.length})`);
+      for (const t of small) {
+        const [, y0, , y1] = toGame(t.box);
+        assert.ok(y1 - y0 <= PAINTED_STYLE.nmSmall.maxH + 2 * t.s + 1e-6, `${id}: Reihe 1 niedrig`);
+      }
+      const buildable = buildableOf(s);
+      for (const t of [...sc.trees, ...sc.rocks]) {
+        const [fx, fy] = [t.x * (TILE / PAINTED_STYLE.unit), t.y * (TILE / PAINTED_STYLE.unit)];
+        if (inField(fx, fy - 1)) { assert.ok(s.obstacles.has(`${Math.floor(fx / TILE)},${Math.floor((fy - 1) / TILE)}`), `${id}: ${t.kind} im Feld`); continue; }
+        for (const [c, r] of buildable) assert.ok(depth(toGame(t.box), c, r) <= OVER + 1e-9, `${id}: ${t.kind} ragt ${depth(toGame(t.box), c, r).toFixed(1)} px in ${c},${r}`);
+      }
+      assert.equal(sc.eyes.length, sc.trees.length + sc.rocks.length, `${id}: je Probe-Form ein Augenpaar`);
+      const svg = buildPaintedSvg(s, { scene: sc, ext: { l: 200, t: 0, r: 200, b: 0 } });
+      assert.ok(svg.includes('class="nmTree"') && svg.includes('class="nmBush"'), `${id}: Albtraum-Formen im Bild`);
+    } finally { Object.assign(nm, saved); }
+  }
+});
+
+// ---------- Tester: Cache des Looks (normal <-> Albtraum <-> Nacht-Look) ----------
+const lookOf = (img) => img?.key.split('+').pop();
+test('Tester: Look-Wechsel normal -> Albtraum -> Nacht-Look -> normal liefert jeweils das passende Bild', async () => {
+  const { renderView, paintedImage, setPaintedExtent } = await import('../src/render.js?tester-look');
+  await withRasterMock(async () => {
+    setPaintedExtent(null);
+    const normal = createGame({ mapId: 'volcano' });
+    const nm = createGame({ mapId: 'volcano', mode: 'nightmare' });
+    const steps = [[normal, {}, 'normal'], [nm, {}, 'nightmare'], [normal, { night: true }, 'nightmare'], [normal, {}, 'normal']];
+    for (const [s, ui, want] of steps) {
+      renderView(mockCtx().ctx, s, ui);
+      await settle();
+      const img = paintedImage('volcano');
+      assert.equal(lookOf(img), want, `Raster-Schlüssel ${want}`);
+      assert.equal(img.look, want, `paintedImage.look ${want}`);
+    }
+  });
+});
+
+test('Tester: schnelles Hin- und Zurückschalten (Albtraum-Raster noch unterwegs) lässt kein Albtraum-Bild im Normalmodus stehen', async () => {
+  const { renderView, paintedImage, setPaintedExtent } = await import('../src/render.js?tester-look-race');
+  await withRasterMock(async () => {
+    setPaintedExtent(null);
+    const s = createGame({ mapId: 'meadow' });
+    renderView(mockCtx().ctx, s, {});
+    await settle();
+    assert.equal(lookOf(paintedImage('meadow')), 'normal');
+    // Nacht-Look an (Albtraum-Raster startet) und im selben Frame-Takt wieder aus, bevor es fertig ist
+    renderView(mockCtx().ctx, s, { night: true });
+    renderView(mockCtx().ctx, s, {});
+    await settle();
+    renderView(mockCtx().ctx, s, {});
+    const img = paintedImage('meadow');
+    // Bild und gemeldeter Look müssen zusammenpassen und zum aktuellen Modus (normal) gehören
+    assert.equal(lookOf(img), img.look, 'paintedImage.look passt nicht zum gezeigten Raster');
+    assert.equal(lookOf(img), 'normal', 'Albtraum-Raster überschreibt das normale Bild');
+  });
+});

@@ -2,6 +2,7 @@
 // Türme Z.105–109, Gegner Z.110–113. <g data-part="turn"> markiert drehende Teile (Kanonenrohr, Gewehr).
 // Gegnertypen ohne eigenen Entwurf entstehen aus dem Goblin (Plan G7). Nur Daten, keine Spiel-Logik.
 import { parseFigure, boxOf } from './svg-figure.js';
+import { NM_ENEMY_STYLE, NM_ENEMY_FX } from './config.js';
 
 const K = '#2b1a10'; // Kontur
 
@@ -234,6 +235,62 @@ function variantDef(type, variant) {
   return null;
 }
 
+// ---------- B-190: Albtraum-Look (Bauvorlage docs/design/elemente/Gegner-Albtraum.md) ----------
+const hexRgb = (hex) => {
+  const h = hex.length === 4 ? hex.slice(1).split('').map((c) => c + c).join('') : hex.slice(1);
+  const n = parseInt(h, 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+};
+const rgbHex = (c) => '#' + c.map((v) => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0')).join('');
+const mixRgb = (a, b, t) => a.map((v, i) => v + (b[i] - v) * t);
+// Richtung Grauwert L = 0.3 R + 0.59 G + 0.11 B
+const desatRgb = (c, t) => { const L = 0.3 * c[0] + 0.59 * c[1] + 0.11 * c[2]; return c.map((v) => v + (L - v) * t); };
+export function nmMix(a, b, t) { return rgbHex(mixRgb(hexRgb(a), hexRgb(b), t)); }
+// Regel 1: Körperfarbe entsättigen und Richtung Schattenfarbe des Stils ziehen (gerundet erst am Ende)
+export function nmColor(hex, shade) {
+  return rgbHex(mixRgb(desatRgb(hexRgb(hex), NM_ENEMY_FX.desat), hexRgb(shade), NM_ENEMY_FX.shadeMix));
+}
+// Bleiben unverändert (Eigenlicht, Gold, Knochen, Kontur; #ff5fd0 = Leuchten der Nekromantin Phase 2)
+export const NM_KEEP = new Set(['#2b1a10', '#ff7a1f', '#ffc23a', '#ffe58a', '#2a1a17', '#7dff9a', '#9fe8ff', '#f2c14e', '#d6483a',
+  '#fff3d2', '#ffffff', '#fff', '#f6edd0', '#f2e3b8', '#a8c8a0', '#f2e9d8', NECRO_GLOW_2]);
+const HEX_RE = /#(?:[0-9a-fA-F]{6}|[0-9a-fA-F]{3})(?![0-9a-zA-Z-])/g;
+// Regel 2: Augen [x, y, s, d] in Box-Einheiten (d = -1 links, +1 rechts); wisp und necro ohne
+const GOBLIN_EYES = [[19, 16.5, 1, -1], [29, 16.5, 1, 1]];
+const TROLL_EYES = [[41, 28.5, 0.9, -1], [55, 28.5, 0.9, 1]];
+export const NM_EYES = {
+  grunt: GOBLIN_EYES, healer: GOBLIN_EYES, shielded: GOBLIN_EYES, mage: GOBLIN_EYES, skeleton: GOBLIN_EYES,
+  runner: [[41, 13, 0.95, 1]], tank: TROLL_EYES, boss: TROLL_EYES,
+  bat: [[22.5, 18, 0.72, -1], [29.5, 18, 0.72, 1]], beetle: [[24.5, 38, 0.55, -1], [31.5, 38, 0.55, 1]],
+  ember: [[16.5, 30, 0.72, -1], [25.5, 30, 0.72, 1]],
+};
+function nmEye(x, y, s, d, E) {
+  const ix = x - 3 * s * d, iy = y + 0.8 * s, ox = x + 3.2 * s * d, oy = y - 1.4 * s;
+  return `<circle cx="${x}" cy="${y}" r="${6.4 * s}" fill="${E}" opacity=".4"/>` // Schein
+    + `<ellipse cx="${x}" cy="${y + 0.2 * s}" rx="${3.9 * s}" ry="${3.3 * s}" fill="${K}"/>` // Höhle (deckt alte Augen)
+    + `<path d="M${ix} ${iy} L${ox} ${oy} Q${x + 1.2 * s * d} ${y + 3 * s} ${ix} ${iy} Z" fill="${E}"/>` // Schlitz
+    + `<circle cx="${x + 0.6 * s * d}" cy="${y + 0.3 * s}" r="${0.8 * s}" fill="#ffffff" opacity=".9"/>` // Glanzpunkt
+    + (s >= 0.85 ? `<path d="M${x - 4 * s * d} ${y - 2.6 * s} L${x + 3.8 * s * d} ${y - 5.4 * s}" stroke="${K}" stroke-width="${2.4 * s}" stroke-linecap="round"/>` : ''); // Braue
+}
+// Regel 3: Fußaura und Randlicht (vor dem Körper); Regel 4: Dornen an Troll und Oger-König (Box 96 x 104)
+const nmBehind = (w, h, E, nm) =>
+  `<ellipse cx="${w / 2}" cy="${h - 3}" rx="${0.44 * w}" ry="${0.12 * w}" fill="${E}" opacity="${NM_ENEMY_FX.auraAlpha}"/>`
+  + `<circle cx="${w / 2}" cy="${0.52 * h}" r="${0.58 * Math.max(w, h)}" fill="url(#nm-rim-${nm.toLowerCase()})"/>`;
+const NM_BEHIND_COUNT = 2; // Elemente aus nmBehind (gehören nicht zur Figur-Box für den Lebensbalken)
+const NM_SPIKES = 'M6 54 L-2 44 L10 48 Z M90 54 L98 44 L86 48 Z M10 66 L0 66 L8 58 Z M86 66 L96 66 L88 58 Z';
+// Albtraum-Fassung eines SVG: nmBehind -> Dornen -> umgefärbter Körper -> Augen -> Kronenstein
+function nmSvg(type, def, nm) {
+  const S = NM_ENEMY_STYLE[nm], E = S.eye;
+  const body = type === 'wisp'
+    ? def.svg.replaceAll('#c9fff0', nmMix('#c9fff0', E, NM_ENEMY_FX.wispMix)).replaceAll('#9effd9', E)
+    : def.svg.replace(HEX_RE, (c) => (NM_KEEP.has(c.toLowerCase()) ? c : nmColor(c, S.shade)));
+  const spikes = type === 'tank' || type === 'boss'
+    ? `<path d="${NM_SPIKES}" fill="${NM_ENEMY_FX.bone}" stroke="${K}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>` : '';
+  const eyes = (Object.hasOwn(NM_EYES, type) ? NM_EYES[type] : []).map(([x, y, s, d]) => nmEye(x, y, s, d, E)).join('');
+  const crown = type === 'boss' ? `<circle cx="48" cy="5" r="3" fill="${E}" stroke="${K}" stroke-width="1.5"/>` : '';
+  return nmBehind(def.w, def.h, E, nm) + spikes + body + eyes + crown;
+}
+export const NM_STYLES = Object.keys(NM_ENEMY_STYLE);
+
 const enemyCache = new Map();
 // Eis-Teile (Rahmen 54 x 56 des Entwurfs) auf die Figur gestreckt; Box der Figur wächst mit
 function withIce(f, shell) {
@@ -243,12 +300,16 @@ function withIce(f, shell) {
   const ice = { origin: [f.w / 2, f.h], scale: [sx, sy], size: [ICED.w, ICED.h] };
   const b = boxOf(sh ? glow.concat(sh) : glow);
   const tx = (x) => f.w / 2 + (x - ICED.w / 2) * sx, ty = (y) => f.h + (y - ICED.h) * sy;
-  const box = pad([Math.min(f.box[0], tx(b[0])), Math.min(f.box[1], ty(b[1])), Math.max(f.box[2], tx(b[2])), Math.max(f.box[3], ty(b[3]))], 1);
-  return { ...f, box, glow, shell: sh, ice };
+  const grow = (r) => pad([Math.min(r[0], tx(b[0])), Math.min(r[1], ty(b[1])), Math.max(r[2], tx(b[2])), Math.max(r[3], ty(b[3]))], 1);
+  const out = { ...f, box: grow(f.box), glow, shell: sh, ice };
+  if (f.body) out.body = grow(f.body);
+  return out;
 }
-function build(def, extra = '') {
-  const parsed = parseFigure(def.svg + extra);
+// nm (B-190): Albtraum-Stil 'A' | 'B' | 'C'; body = Box ohne Randlicht und Aura (Lage des Lebensbalkens)
+function build(def, extra = '', type = '', nm = null) {
+  const parsed = parseFigure((nm ? nmSvg(type, def, nm) : def.svg) + extra);
   const f = { w: def.w, h: def.h, big: def.big || null, els: parsed.all, box: pad(boxOf(parsed.all), 2) };
+  if (nm) f.body = pad(boxOf(parsed.all.slice(NM_BEHIND_COUNT)), 2);
   // B-180: Umhang (<g data-part="cloak">) weht live: back = davor (Schatten), cloak, front = Rest (Sprite)
   const ci = parsed.groups.findIndex((g) => g.name === 'cloak');
   if (ci >= 0) {
@@ -256,23 +317,33 @@ function build(def, extra = '') {
     f.cloak = parsed.groups[ci].els;
     f.front = parsed.groups.slice(ci + 1).flatMap((g) => g.els);
   }
+  // Bildrate: Aura, Randlicht und Körper getrennt (render-enemies.js zeichnet das Randlicht ungedreht auf ganze Geräte-px,
+  // die Nekromantin ohne Randlicht im Live-Teil). Reihenfolge bleibt: Aura, Randlicht, Körper.
+  const rim = nm && parsed.all[1];
+  if (rim && rim.grad === `nm-rim-${nm.toLowerCase()}` && (!f.back || f.back[1] === rim)) {
+    const under = parsed.all.slice(0, 1);
+    f.nm = { under, underBox: pad(boxOf(under), 2), rim, els: parsed.all.slice(NM_BEHIND_COUNT) };
+    if (f.back) f.nm.live = { ...f, back: f.back.slice(NM_BEHIND_COUNT) };
+  }
   return f;
 }
 // Figur eines Gegnertyps; frozen: eingefrorene Fassung (Goblin eigener Entwurf, sonst mit Eis-Überzug, Glutling nie).
 // variant: Zusatzbild (Fledermaus 1 = Flügel oben, Panzerkäfer = Schalen-Stufe), sonst Grundbild
-export function enemyFigure(type, frozen, variant) {
+// nm (B-190): Albtraum-Stil 'A' | 'B' | 'C' (null = heutige Figur)
+export function enemyFigure(type, frozen, variant, nm = null) {
   const base = Object.hasOwn(ENEMY_SVG, type) ? ENEMY_SVG[type] : null;
   if (!base) return null;
   const alt = variantDef(type, variant);
   const ice = !!frozen && type !== 'ember';
-  const key = `${type}:${ice ? 1 : 0}:${alt ? variant : ''}`;
+  const style = nm && Object.hasOwn(NM_ENEMY_STYLE, nm) ? nm : null;
+  const key = `${type}:${ice ? 1 : 0}:${alt ? variant : ''}${style ? `:${style}` : ''}`;
   let f = enemyCache.get(key);
   if (f) return f;
   const def = alt || base;
-  if (!ice) f = build(def);
-  else if (type === 'necro') f = build(def, NECRO_RIME); // B-180: nie Eisblock, nur Reif am Saum
-  else if (type === 'grunt') f = withIce(build(ICED), false); // eigener Entwurf (54 x 56)
-  else f = withIce(build(def), true);
+  if (!ice) f = build(def, '', type, style);
+  else if (type === 'necro') f = build(def, NECRO_RIME, type, style); // B-180: nie Eisblock, nur Reif am Saum
+  else if (type === 'grunt' && !style) f = withIce(build(ICED), false); // eigener Entwurf (54 x 56)
+  else f = withIce(build(def, '', type, style), true); // Albtraum-Goblin: Eis-Überzug über der umgefärbten Figur
   enemyCache.set(key, f);
   return f;
 }

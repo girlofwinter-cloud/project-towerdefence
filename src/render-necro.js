@@ -83,7 +83,7 @@ export function drawNecroBack(ctx, f, e, time, still) {
 
 // So weit ragt der größte Kugelschein über die Box der Figur hinaus (Entwurfs-px), damit der Lebensbalken darüber bleibt
 export function necroGlowOverflow(f) {
-  return Math.max(0, f.box[1] - (N.orb[1] - N.orbR * (1 + N.orbPulse)));
+  return Math.max(0, (f.body || f.box)[1] - (N.orb[1] - N.orbR * (1 + N.orbPulse)));
 }
 
 // Lage der kreisenden Schädel (Phase 2) relativ zur Kopfmitte in Spiel-px; reduced: stehen links und rechts.

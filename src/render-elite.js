@@ -2,7 +2,7 @@
 // Eigenschaft über der Figur, gestrichelter Goldring am Fuß und kleine Eigenschaftszeichen an der Figur
 // (schnell: Tempostriche, Schild: Bogen in Laufrichtung, Selbstheilung: steigende Pluszeichen).
 // Transparenz nur über Farben mit Alpha (kein globalAlpha). Bosse tragen nie ein Abzeichen.
-import { ENEMY_STYLE, FIGURE_STYLE as S, FX_STYLE, TILE } from './config.js';
+import { ENEMY_STYLE, FIGURE_STYLE as S, FX_STYLE, TILE, NM_ENEMY_FX } from './config.js';
 import { enemyFigure } from './figures.js';
 import { withAlpha } from './svg-figure.js';
 
@@ -24,7 +24,8 @@ export function eliteBadgeSize(scale = 1) {
 const wave01 = (time, period, still) => (still || !Number.isFinite(time) ? 1 : 0.5 + 0.5 * Math.cos((TWO_PI * time) / period));
 
 // Fußring (vor der Figur zeichnen): Ellipse rx = halbe Figurbreite + 4, flach, gestrichelt, pulsiert (still: fest)
-export function drawEliteRing(ctx, e, footY, figW, time, still) {
+// nmEye (B-190): im Albtraum zusätzlich ein durchgezogener Innenring in Augenfarbe des Stils, ohne Pulsieren
+export function drawEliteRing(ctx, e, footY, figW, time, still, nmEye = null) {
   const rx = figW / 2 + E.ringPad;
   const a = E.ringPulse[0] + (E.ringPulse[1] - E.ringPulse[0]) * wave01(time, E.ringPeriod, still);
   ctx.save();
@@ -35,6 +36,14 @@ export function drawEliteRing(ctx, e, footY, figW, time, still) {
   ctx.ellipse(e.x, footY, rx, rx * E.ringFlat, 0, 0, TWO_PI);
   ctx.stroke();
   ctx.setLineDash([]);
+  if (nmEye) {
+    const ri = Math.max(0, rx - NM_ENEMY_FX.eliteInset);
+    ctx.strokeStyle = nmEye;
+    ctx.lineWidth = NM_ENEMY_FX.eliteWidth * U; // Elite sind nie Bosse: Maßstab k = U
+    ctx.beginPath();
+    ctx.ellipse(e.x, footY, ri, ri * E.ringFlat, 0, 0, TWO_PI);
+    ctx.stroke();
+  }
   ctx.restore();
 }
 

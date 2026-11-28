@@ -1,19 +1,20 @@
 // Zeichnet den Spielzustand auf ein Canvas. Keine Spiel-Logik hier!
-import { TILE, COLS, ROWS, WIDTH, HEIGHT, FRAME_MARGIN, VIEW_WIDTH, VIEW_HEIGHT, TOWER_TYPES, MAPS, MAX_WAVES, PAINTED_STYLE, ABILITIES, RANGE_STYLE, RING_MENU, TREE_FRAME, GROUND_STYLE, LIGHT_STYLE, DECOR_STYLE, PAINT_STYLE, SELECT_RING, NIGHT_STYLE, themed } from './config.js';
+import { TILE, COLS, ROWS, WIDTH, HEIGHT, FRAME_MARGIN, VIEW_WIDTH, VIEW_HEIGHT, TOWER_TYPES, MAPS, MAX_WAVES, PAINTED_STYLE, ABILITIES, RANGE_STYLE, RING_MENU, TREE_FRAME, GROUND_STYLE, LIGHT_STYLE, DECOR_STYLE, PAINT_STYLE, SELECT_RING, themed } from './config.js';
 import { towerStats, enemyPath } from './game.js';
 import { disc, shd } from './draw-utils.js';
 import { buildPaintedSvg, buildPaintedScene, rasterizePainted, canRasterize, extentOf } from './render-painted.js';
 import { drawPathStyled } from './render-path.js';
 import { drawTowerFigure, drawTowerBadge, towerFootY } from './render-towers.js';
 import { recoilOffset } from './tower-fx.js';
-import { drawEnemy, drawHealAura, enemyFootY } from './render-enemies.js';
+import { drawEnemy, drawHealAura, enemyFootY, nmEnemyStyle } from './render-enemies.js';
 import { drawNecroAura } from './render-necro.js';
 import { updateFx, shakeX, shakeY, drawProjectileFx, drawParticles, drawBossEntry, drawEffectUnder, drawEffectOver } from './render-fx.js';
 import { drawTreeFrame } from './render-trees.js';
 import { beginMasterFx, drawMasterUnder, drawMasterOver, drawMasterTrails, displayLevel } from './render-master.js';
 import * as flat from './render-decor.js';
 import { drawAccents } from './render-accents.js';
-import { drawTreeShadows, drawLight, drawNightTint, drawNightGlow, emberPoints, drawEmbers } from './render-light.js';
+import { drawTreeShadows, drawLight } from './render-light.js';
+import { drawNightmareMotion, drawWarmLights } from './render-nightmare.js';
 import { drawGround as drawGroundFill, drawGroundTufts, drawMottle } from './render-ground.js';
 import { waterGeometry, drawWater, drawBridges } from './render-water.js';
 import { lavaGeometry, drawLava, drawLavaBridges, lavaGlowSpots, drawLavaGlow } from './render-lava.js';
@@ -22,6 +23,7 @@ import { tileHash, tileRand, decorFor, obstacleKind, treeFrame, groundPatches, a
 // Stil 1: ganzer Canvas (Feld + Rand). Zeichnet den Rand und verschiebt das Feld um FRAME_MARGIN;
 // render() selbst rechnet weiter in Feldkoordinaten (Eingabe: main.js zieht den Rand ab).
 export function renderView(ctx, state, ui) {
+  paintLook = nightOn(state, ui) ? 'nightmare' : 'normal';
   if (!paintedFor(state, ctx)) drawFramePlain(ctx, state);
   ctx.save();
   ctx.translate(FRAME_MARGIN, FRAME_MARGIN);
@@ -84,7 +86,10 @@ export function bgCacheKey(id, scale) {
 // PAINTED_STYLE.rasterDelay ms Ruhe neu gerastert; bis das neue Bild fertig ist, bleibt das alte (skaliert) sichtbar.
 // Nur die aktuelle Karte wird behalten (neuestes Bild); beim Kartenwechsel werden die Raster der anderen freigegeben.
 // Gleiche Größe: Ausschnitt 1:1 ohne Skalierung (schnell, scharf).
-const paintedCache = new Map(); // mapId -> { status, canvas, key, size, loading, wantKey, wantSince, scene, failedKey }
+const paintedCache = new Map(); // mapId -> { status, canvas, key, size, loading, wantKey, wantSince, scene, look, failedKey }
+// B-194: Look des gemalten Bilds ('normal' oder 'nightmare' = Albtraum bzw. Nacht-Look), gesetzt von renderView/render
+let paintLook = 'normal';
+const NO_EYES = [], NO_MARKS = {}; // feste Leer-Werte (Schlüssel-Cache der Bewegungsschicht)
 // Karten im Cache (Tests: nach einem Kartenwechsel nur noch die aktuelle)
 export function paintedCacheIds() {
   return [...paintedCache.keys()];
@@ -110,7 +115,7 @@ export function setPaintedExtent(ext) {
 // Fertiges Bild einer Karte samt Lage des Canvas darin (Geräte-px), für #backdrop in main.js; null solange keins da ist
 export function paintedImage(mapId) {
   const e = paintedCache.get(mapId);
-  return e?.status === 'ready' ? { canvas: e.canvas, key: e.key, ...e.size } : null;
+  return e?.status === 'ready' ? { canvas: e.canvas, key: e.key, look: e.look, ...e.size } : null;
 }
 // Größe des Canvas in Geräte-px aus der aktuellen Transformation (1 je Canvas-Einheit ohne getTransform)
 export function deviceSizeOf(ctx) {
@@ -127,17 +132,19 @@ function paintedFor(state, ctx) {
   if (!e) {
     if (!canRasterize()) return null;
     releasePaintedExcept(id);
-    e = { status: 'loading', canvas: null, key: null, size: null, loading: null, wantKey: null, wantSince: 0, scene: buildPaintedScene(state), failedKey: null };
+    e = { status: 'loading', canvas: null, key: null, size: null, loading: null, wantKey: null, wantSince: 0, scene: buildPaintedScene(state, paintLook), look: paintLook, failedKey: null };
     paintedCache.set(id, e);
   }
+  // B-194: Moduswechsel (Albtraum, Nacht-Look): neue Szene, neu rastern (Schlüssel hängt am Look); altes Bild bleibt bis dahin
+  if (e.look !== paintLook) { e.look = paintLook; e.scene = buildPaintedScene(state, paintLook); e.failedKey = null; e.loading = null; if (e.status === 'failed') e.status = 'loading'; }
   const { w, h } = deviceSizeOf(ctx);
   const x = paintedExt;
-  const key = `${bgCacheKey(id, `${w}x${h}`)}+${x.l},${x.t},${x.r},${x.b}`;
+  const key = `${bgCacheKey(id, `${w}x${h}`)}+${x.l},${x.t},${x.r},${x.b}+${e.look}`;
   // failedKey: diese Größe ist schon einmal gescheitert, nicht jedes Frame neu versuchen (erst wieder bei anderer Größe)
   if (e.status !== 'failed' && e.key !== key && e.loading !== key && e.failedKey !== key) {
     // Entprellen: erst rastern, wenn der Wunsch PAINTED_STYLE.rasterDelay ms besteht (ohne Bild sofort)
     if (e.wantKey !== key) { e.wantKey = key; e.wantSince = now(); }
-    if (!e.canvas || now() - e.wantSince >= PAINTED_STYLE.rasterDelay) {
+    if (!e.canvas || now() - e.wantSince >= PAINTED_STYLE.rasterDelay || !e.key?.endsWith(`+${e.look}`)) {
       e.loading = key;
       const size = { w, h, l: x.l, t: x.t, r: x.r, b: x.b };
       const kx = VIEW_WIDTH / w, ky = VIEW_HEIGHT / h; // Geräte-px -> Spiel-px
@@ -168,6 +175,7 @@ function drawPainted(ctx, e) {
 
 export function render(ctx, state, ui) {
   const reduced = !!(ui && ui.reducedMotion);
+  paintLook = nightOn(state, ui) ? 'nightmare' : 'normal';
   // Partikel aus dem Zustand ableiten (nur lesen), danach Shake-Versatz bestimmen.
   updateFx(state, reduced);
   const sx = shakeX();
@@ -182,7 +190,12 @@ export function render(ctx, state, ui) {
     ctx.translate(sx, sy);
     drawGround(ctx, state, reduced);
   }
-  if (nightOn(state, ui)) drawNightLayer(ctx, state, reduced); // B-184: über dem Boden, unter allen Figuren
+  // B-194: Albtraum-Bewegung statt Tönung und Vignette, über dem Boden, unter allen Figuren
+  if (nightOn(state, ui)) {
+    const scene = paintedCache.get(state.mapId)?.scene;
+    drawNightmareMotion(ctx, state, now() / 1000, reduced, !!ui?.compactMotion, scene?.eyes ?? NO_EYES, scene?.marks ?? NO_MARKS);
+    drawWarmLights(ctx, state.towers);
+  }
   drawHover(ctx, state, ui);
   for (const e of state.enemies) drawHealAura(ctx, e, state.time);
   for (const e of state.enemies) drawNecroAura(ctx, e, state.time, reduced); // B-180: Boden-Aura unter allen Figuren
@@ -272,36 +285,11 @@ function drawGround(ctx, state, reduced = false) {
   ctx.drawImage(bgCanvas, 0, 0, WIDTH, HEIGHT);
 }
 
-// ---------- B-184: Albtraum-Stimmung (Nacht-Tönung, rotes Licht, Vignette, Glut am Weg) ----------
+// ---------- B-184/B-194: Albtraum-Stimmung (eigene Palette je Karte, Bewegung in render-nightmare.js) ----------
 // An im Albtraum oder mit ui.night (Nacht-Look, B-185 schaltet ihn im Normalmodus als Belohnung ein).
 export function nightOn(state, ui) {
   return state?.mode === 'nightmare' || !!ui?.night;
 }
-// Licht und Vignette (Gradienten) einmal je Maßstab in ein eigenes Canvas; die Tönung (multiply) läuft pro Frame
-// direkt auf dem Feld, weil ein Cache-Bild nicht multipliziert. Alles nur im Feld (Clip), Rand und HUD bleiben hell.
-let nightCanvas = null;
-let nightScale = 0;
-const emberCache = new WeakMap(); // Weg -> Glutpunkte
-function drawNightLayer(ctx, state, reduced) {
-  drawNightTint(ctx, NIGHT_STYLE);
-  const scale = bgScaleOf(ctx);
-  if (nightScale !== scale) {
-    const w = Math.round(WIDTH * scale), h = Math.round(HEIGHT * scale);
-    const cv = makeCanvas(w, h);
-    if (cv) {
-      const c = cv.getContext('2d');
-      if (typeof c.setTransform === 'function') c.setTransform(scale, 0, 0, scale, 0, 0);
-      drawNightGlow(c, NIGHT_STYLE);
-      nightCanvas = cv;
-      nightScale = scale;
-    }
-  }
-  if (nightCanvas && nightScale === scale) ctx.drawImage(nightCanvas, 0, 0, WIDTH, HEIGHT);
-  else drawNightGlow(ctx, NIGHT_STYLE); // ohne Canvas (Node): direkt
-  if (!emberCache.has(state.path)) emberCache.set(state.path, emberPoints(state.path, NIGHT_STYLE, TILE));
-  drawEmbers(ctx, emberCache.get(state.path), now() / 1000, NIGHT_STYLE, reduced);
-}
-
 function paintBackground(ctx, state) {
   ctx.save();
   // Wiese (theme.ground): Flecken und Plateaus statt Schachbrett; Büschel nach dem Weg (nie auf Wegkacheln)
@@ -599,9 +587,10 @@ function drawFigures(ctx, state, ui) {
   for (const t of state.towers) figures.push(t);
   for (const e of state.enemies) figures.push(e);
   figures.sort(byFoot);
+  const nm = nmEnemyStyle(state.mapId, nightOn(state, ui)); // B-190: Gegner im Albtraum-Look
   for (const o of figures) {
     if (o.hp === undefined) drawTower(ctx, o, ui.selectedTowerId === o.id, state.time, !!ui.reducedMotion, displayLevel(state, o), ui.goldTowers ? GOLD_OPT : null);
-    else drawEnemy(ctx, o, state.time, enemyPath(state, o), !!ui.reducedMotion, !!ui.bossBarShown); // B-180: Leiste im HUD
+    else drawEnemy(ctx, o, state.time, enemyPath(state, o), !!ui.reducedMotion, !!ui.bossBarShown, nm); // B-180: Leiste im HUD
   }
   figures.length = 0;
 }
