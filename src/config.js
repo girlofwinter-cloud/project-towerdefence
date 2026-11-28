@@ -1790,3 +1790,14 @@ export const SOUND = {
     minLoop: 1,          // kürzeste Schleife in s
   },
 };
+
+// B-183: Gold-Bedingungen im Albtraum (je Karten-ID eine Bedingung, geprüft von checkGoldCondition in game.js).
+// kind: 'noAbilities' (keine Fähigkeit benutzt), 'noTower' (Turmtyp tower nie gebaut),
+// 'maxTowerTypes' (höchstens max verschiedene Turmtypen im ganzen Spiel), 'noSell' (nie verkauft).
+export const GOLD_CONDITIONS = {
+  meadow:  { kind: 'noAbilities', label: 'ohne Fähigkeiten' },
+  ice:     { kind: 'noTower', tower: 'frost', label: 'ohne Frostturm' },
+  fork:    { kind: 'maxTowerTypes', max: 3, label: 'höchstens 3 Turmtypen' },
+  twin:    { kind: 'noSell', label: 'ohne Verkaufen' },
+  volcano: { kind: 'maxTowerTypes', max: 3, label: 'höchstens 3 Turmtypen' },
+};

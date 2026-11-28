@@ -6,6 +6,7 @@ import {
 import { buildPath, pointAt, pathTiles } from './path.js';
 import { ELITE, UPGRADE_COST_FACTOR, LEVEL_DAMAGE } from './config.js'; // B-179: Elite-Gegner, Aufrüstkosten
 import { MASTER_FX } from './config.js'; // B-173/B-174: Lebensdauer reiner Darstellungs-Ereignisse
+import { GOLD_CONDITIONS } from './config.js'; // B-183: Gold-Bedingungen im Albtraum
 
 // Map-Modifikatoren mit Standardwerten (1 = unverändert); unbekannte Karte = Standardkarte.
 export function mapModifiers(mapId) {
@@ -151,6 +152,9 @@ export function buildTower(state, type, col, row) {
     overheated: nearLava(state.lava, col, row), // B-030: neben Lava, Feuerintervall mal LAVA.overheat
   };
   state.towers.push(tower);
+  // B-183: gebaute Turmtypen über das ganze Spiel merken (auch später verkaufte)
+  state.track ??= { towerTypes: [], sells: 0 };
+  if (!state.track.towerTypes.includes(type)) state.track.towerTypes.push(type);
   return { ok: true, tower };
 }
 
@@ -184,7 +188,25 @@ export function sellTower(state, id) {
   const [tower] = state.towers.splice(idx, 1);
   const value = sellValue(tower);
   state.gold += value;
+  // B-183: Verkäufe zählen (Gold-Bedingung "ohne Verkaufen")
+  state.track ??= { towerTypes: [], sells: 0 };
+  state.track.sells += 1;
   return { ok: true, value };
+}
+
+// B-183: Gold-Bedingung der Karte im Albtraum prüfen (rein, ohne DOM).
+// Unbekannte Karte oder unbekannte Bedingungsart: { ok: false, label: '' }.
+export function checkGoldCondition(state, mapId) {
+  const cond = Object.hasOwn(GOLD_CONDITIONS, mapId) ? GOLD_CONDITIONS[mapId] : null;
+  if (!cond) return { ok: false, label: '' };
+  const types = state.track?.towerTypes ?? [];
+  let ok;
+  if (cond.kind === 'noAbilities') ok = Object.values(state.abilities || {}).every((a) => !a.uses);
+  else if (cond.kind === 'noTower') ok = !types.includes(cond.tower);
+  else if (cond.kind === 'maxTowerTypes') ok = types.length <= cond.max;
+  else if (cond.kind === 'noSell') ok = !(state.track?.sells > 0);
+  else return { ok: false, label: '' };
+  return { ok, label: cond.label };
 }
 
 // ---------- Wellen ----------

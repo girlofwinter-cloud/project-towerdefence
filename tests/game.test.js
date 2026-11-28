@@ -3651,3 +3651,74 @@ describe('B-178: Effekt-Ereignisse der neuen Gegner', () => {
     assert.ok(Math.abs(Math.hypot(ds[0].dx, ds[0].dy) - 1) < 1e-9, 'Einheitsvektor');
   });
 });
+
+// ---------- B-183: Gold-Bedingungen im Albtraum ----------
+import { checkGoldCondition } from '../src/game.js';
+import { GOLD_CONDITIONS } from '../src/config.js';
+
+describe('B-183: checkGoldCondition', () => {
+  // Baut der Reihe nach Türme der angegebenen Typen auf freie Felder (viel Gold, damit nichts scheitert).
+  const goldGame = (mapId, types = []) => {
+    const s = createGame({ mapId, gold: 1e6 });
+    const tiles = [];
+    for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) if (canBuild(s, c, r).ok) tiles.push([c, r]);
+    const towers = types.map((t, i) => {
+      const res = buildTower(s, t, ...tiles[i]);
+      assert.ok(res.ok, res.reason);
+      return res.tower;
+    });
+    return { s, towers };
+  };
+
+  test('jede Karte hat eine Bedingung mit deutschem Label', () => {
+    for (const id of Object.keys(MAPS)) {
+      assert.ok(GOLD_CONDITIONS[id], id);
+      assert.ok(GOLD_CONDITIONS[id].label.length > 0, id);
+    }
+  });
+
+  test('Wiese: ohne Fähigkeiten erfüllt, nach einer Fähigkeit verletzt', () => {
+    const { s } = goldGame('meadow', ['arrow']);
+    assert.deepEqual(checkGoldCondition(s, 'meadow'), { ok: true, label: 'ohne Fähigkeiten' });
+    assert.ok(useAbility(s, 'freeze').ok);
+    assert.equal(checkGoldCondition(s, 'meadow').ok, false);
+  });
+
+  test('Eis: ohne Frostturm erfüllt; Frostturm gebaut und verkauft bleibt verletzt', () => {
+    const { s } = goldGame('ice', ['arrow', 'cannon', 'sniper', 'lightning']);
+    assert.deepEqual(checkGoldCondition(s, 'ice'), { ok: true, label: 'ohne Frostturm' });
+    const tile = [...Array(COLS * ROWS).keys()].map((i) => [i % COLS, Math.floor(i / COLS)]).find(([c, r]) => canBuild(s, c, r).ok);
+    const { tower } = buildTower(s, 'frost', ...tile);
+    assert.equal(checkGoldCondition(s, 'ice').ok, false);
+    assert.ok(sellTower(s, tower.id).ok);
+    assert.equal(checkGoldCondition(s, 'ice').ok, false, 'verkaufter Frostturm zählt trotzdem');
+  });
+
+  test('Gabelung und Vulkan: 3 Turmtypen erfüllt, der 4. verletzt, auch wenn verkauft', () => {
+    for (const mapId of ['fork', 'volcano']) {
+      const { s, towers } = goldGame(mapId, ['arrow', 'arrow', 'cannon', 'frost', 'frost']);
+      assert.deepEqual(checkGoldCondition(s, mapId), { ok: true, label: 'höchstens 3 Turmtypen' });
+      const tile = [...Array(COLS * ROWS).keys()].map((i) => [i % COLS, Math.floor(i / COLS)]).find(([c, r]) => canBuild(s, c, r).ok);
+      const { tower } = buildTower(s, 'sniper', ...tile);
+      assert.equal(checkGoldCondition(s, mapId).ok, false, mapId);
+      sellTower(s, tower.id);
+      for (const t of towers) sellTower(s, t.id);
+      assert.equal(checkGoldCondition(s, mapId).ok, false, `${mapId}: verkaufte Typen zählen weiter`);
+    }
+  });
+
+  test('Zwillingspfad: ohne Verkaufen erfüllt, einmal verkauft verletzt', () => {
+    const { s, towers } = goldGame('twin', ['arrow', 'cannon']);
+    assert.deepEqual(checkGoldCondition(s, 'twin'), { ok: true, label: 'ohne Verkaufen' });
+    assert.ok(sellTower(s, towers[0].id).ok);
+    assert.equal(checkGoldCondition(s, 'twin').ok, false);
+  });
+
+  test('frisches Spiel ohne Zähler: Bedingungen erfüllt; unbekannte Karte: ok false, leeres Label', () => {
+    const s = createGame({ mapId: 'twin' });
+    assert.equal(s.track, undefined);
+    for (const id of Object.keys(GOLD_CONDITIONS)) assert.equal(checkGoldCondition(s, id).ok, true, id);
+    assert.deepEqual(checkGoldCondition(s, 'gibtsnicht'), { ok: false, label: '' });
+    assert.deepEqual(checkGoldCondition(s, 'toString'), { ok: false, label: '' });
+  });
+});
