@@ -786,7 +786,7 @@ export const NIGHTMARE = {
   // kaum spürbar): schnellerer Takt, mehr Skelette und Wut-Tempo.
   bossBuff: {
     necroBats: 1, necroBatsP2: 2,
-    ogrePhase2: { at: 0.5, shieldDuration: 2, speedFactor: 1.35 },
+    ogrePhase2: { at: 0.5, shieldDuration: 1.5, speedFactor: 1.2 }, // Spieltest 28.11.: Schild 2 -> 1.5 s, Wut 1.35 -> 1.2
     necroPhase2: { summonInterval: 5, summonCount: 4, speedFactor: 1.3 }, // Spieltest 28.11.: Takt 3 -> 5 s (zu oft)
     // Spieltest 28.11. (Welle 10 zu schwer): Bosse dieser Wellen ohne zweite Phase, ohne Heilung und ohne Magier-Schild
     plainBossWaves: [10],

@@ -176,3 +176,6 @@ Anhängen ohne die Datei zu lesen: `cat >> docs/LEDGER.md <<'EOF' … EOF`. Übe
 - Vulkan: Rand-Lavaseen mit Kern, Glutstrich, Schollen. Eiswelt: Eissee links rund statt gerader Kante.
 - Wiese: Fluss-Bézier knickfrei (gilt auch Tag), kein Glanz/Glitzern auf der Brücke.
 - Offen: Glutpuls an Lavasee-Spitze wird an der Feldkante abgeschnitten (Fix bräuchte Teständerung).
+## 2026-11-28 – Albtraum: Oger-König schwächer
+- Spieltest: Oger-König zu stark. NIGHTMARE.bossBuff.ogrePhase2: Schild 2 -> 1.5 s, Wut-Tempo 1.35 -> 1.2.
+- Unit- und Balancing-Tests grün.
