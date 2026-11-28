@@ -61,3 +61,49 @@ Zwei developer parallel (je eigene Sitzung, eigener Unter-Branch von `agent/stuf
 - Akzeptanzkriterien:
   - Je Turm ein eigener `l2`-Eintrag in `src/figures.js`; Stufe 2 auf 1280x800 sichtbar höher als Stufe 1, Fuß bleibt auf der Kachel.
   - Werte aus dem Design-System, Screenshot Desktop und Handy.
+
+## Albtraum-Design (freigegeben vom Menschen am 28.11.2026, Entwurf: https://claude.ai/artifact/VqZn7kT4pfFTkE1mmTScE4)
+Ersetzt die Skizzen-Optik (Filter) durch das ausgearbeitete Design. Nur Optik, Mechanik unverändert. Kein dunkler Rand/Vignette. Ein Branch `agent/albtraum-design`.
+
+### B-190: Gegner im Albtraum-Look
+- Status: offen
+- Aufwand: M
+- Idee: Alle 13 Gegner und Elite im Albtraum nach Bauvorlage `docs/design/elemente/Gegner-Albtraum.md` (dunklerer Körper, glühende Augen, Randlicht, Fußaura je Kartenstil).
+- Akzeptanzkriterien:
+  - Werte aus der Bauvorlage, Zahlen in config.js, Zeichnen nur in render*.
+  - Normalmodus unverändert; reduced motion beachtet; `npm test` und e2e grün.
+
+### B-191: Kartenauswahl und Menü Aussehen im Albtraum
+- Status: offen
+- Aufwand: M
+- Idee: Nach `Albtraum-Kartenauswahl.md` und `Kosmetik-Aussehen.md`. Vorschaubilder im Nacht-Look folgen den Karten (B-194ff).
+- Akzeptanzkriterien:
+  - Bestehende IDs/Klassen bleiben, e2e `albtraum`/`kosmetik` grün; Tippziele ≥ 44 px, Kontrast ≥ 4,5:1.
+
+### B-192: Sieg- und Niederlage-Bildschirm im Albtraum
+- Status: offen
+- Aufwand: M
+- Idee: Nach `Albtraum-Sieg.md` (einfliegende Medaille, Bedingungen mit Haken/Kreuz, Belohnung, Niederlage mit Tipp).
+- Akzeptanzkriterien:
+  - `#end-look` öffnet das Menü Aussehen; Desktop und Handy quer; e2e grün.
+
+### B-193: HUD im Albtraum: Holz je Kartenstil, Plakette, Boss-Leiste, Gold-Anzeige, Medaille
+- Status: offen
+- Aufwand: M
+- Idee: Nach `HUD-Albtraum-Holz.md`, `Albtraum-Gold-Anzeige.md`, `Albtraum-Abzeichen.md`. „Gold verpasst · ohne Fähigkeiten“ statt Durchstreichen, auch auf dem Desktop.
+- Akzeptanzkriterien:
+  - HUD-Holz wechselt je Karte nur im Albtraum/Nacht-Look; Normalmodus unverändert; e2e grün.
+
+### B-194: Albtraum-Karten: Grundlage statt Filter
+- Status: offen
+- Aufwand: M
+- Idee: Nach `Karte-Albtraum-Grundlage.md`: eigener Look je Karte statt Nacht-Filter, Vignette entfernen, Rand-Deko, Flüsse/Wege laufen über den Rand, Animationen mit reduced motion und Partikel-Obergrenze. Nacht-Look-Kosmetik nutzt denselben Look.
+- Akzeptanzkriterien:
+  - Keine Vignette/Abdunkelung; keine Deko auf Bauplätzen (Test); Normalmodus ohne Nacht-Look unverändert.
+
+### B-195 bis B-199: Albtraum-Karten Wiese, Eiswelt, Zangenangriff, Zwei Fronten, Vulkan
+- Status: offen
+- Aufwand: je M
+- Idee: Je Karte nach `Karte-<Name>-Albtraum.md` (Wiese A, Eiswelt C kalt, Zangenangriff B Steppe, Zwei Fronten C Gruft, Vulkan B Lava). Reichweitenanzeige bleibt wie heute.
+- Akzeptanzkriterien:
+  - Weg, Wasser/Lava, Hindernisse und Bauplätze exakt wie `MAPS`; Animationen laufen, bei reduced motion aus; Bildrate auf Handy nicht spürbar schlechter.

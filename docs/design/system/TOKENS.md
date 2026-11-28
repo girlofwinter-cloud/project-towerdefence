@@ -2,7 +2,7 @@
 
 Erzeugt aus `tokens.json` mit `node scripts/design-tokens.mjs`. Nicht von Hand ändern.
 
-## Farben (168)
+## Farben (204)
 
 | Token | Wert | Verwendung |
 |---|---|---|
@@ -173,7 +173,43 @@ Erzeugt aus `tokens.json` mit `node scripts/design-tokens.mjs`. Nicht von Hand �
 | `nightmare-btn-b` | `#2a1d40` | Albtraum-Knopf unten. |
 | `night-tint` | `rgba(20,12,40,0.62)` | Nacht-Tönung nur über dem Spielfeld (multiply), Albtraum und Nacht-Look. Nie über Rand oder HUD. |
 | `night-ember` | `#ff5a2a` | Rötliches Nachtlicht von unten über dem Spielfeld (α 0,35) und Glühen des aktiven Albtraum-Umschalters (α 0,6). |
-| `night-vignette` | `rgba(8,4,16,0.85)` | Rand-Vignette des Spielfelds im Albtraum (radial, innen 45 % durchsichtig). |
+| `night-vignette` | `rgba(8,4,16,0.85)` | VERALTET: Vignette entfällt mit B-194 (Regel: kein dunkler Rand). Nicht mehr verwenden. |
+| `nm-shade-a` | `#2a3448` | Albtraum-Körperschatten Gegner Stil A (Wald) (Albtraum-Design Runde 2, B-190–B-193). |
+| `nm-shade-b` | `#30201c` | Gegner-Körperschatten Stil B (Verbrannte Erde) (Albtraum-Design Runde 2, B-190–B-193). |
+| `nm-shade-c` | `#252d4c` | Gegner-Körperschatten Stil C (Düstere Magie) (Albtraum-Design Runde 2, B-190–B-193). |
+| `nm-eye-moss` | `#d8ff5a` | Glühende Gegner-Augen Stil A (Albtraum-Design Runde 2, B-190–B-193). |
+| `nm-eye-ember` | `#ffb02a` | Glühende Gegner-Augen Stil B (Albtraum-Design Runde 2, B-190–B-193). |
+| `nm-eye-rune` | `#e6b8ff` | Glühende Gegner-Augen Stil C (Albtraum-Design Runde 2, B-190–B-193). |
+| `nm-rim-a` | `#e8f4ff` | Randlicht Gegner Stil A (Albtraum-Design Runde 2, B-190–B-193). |
+| `nm-rim-b` | `#ffd0a0` | Randlicht Gegner Stil B (Albtraum-Design Runde 2, B-190–B-193). |
+| `nm-rim-c` | `#c8d8ff` | Randlicht Gegner Stil C (Albtraum-Design Runde 2, B-190–B-193). |
+| `bone` | `#e8dcc0` | Knochen/Skelett-Teile (Albtraum-Design Runde 2, B-190–B-193). |
+| `nm-wood-moss-a` | `#5e4e66` | HUD-Holz Wiese (Moos) oben (Albtraum-Design Runde 2, B-190–B-193). |
+| `nm-wood-moss-b` | `#30263a` | HUD-Holz Wiese unten (Albtraum-Design Runde 2, B-190–B-193). |
+| `nm-wood-ice-a` | `#4a5c8a` | HUD-Holz Eiswelt oben (Albtraum-Design Runde 2, B-190–B-193). |
+| `nm-wood-ice-b` | `#1c2648` | HUD-Holz Eiswelt unten (Albtraum-Design Runde 2, B-190–B-193). |
+| `nm-wood-rust-a` | `#7a4a22` | HUD-Holz Zangenangriff (Rost) oben (Albtraum-Design Runde 2, B-190–B-193). |
+| `nm-wood-rust-b` | `#3a1e0c` | HUD-Holz Zangenangriff unten (Albtraum-Design Runde 2, B-190–B-193). |
+| `nm-wood-iron-a` | `#4c3e6e` | HUD-Holz Zwei Fronten (Eisen) oben (Albtraum-Design Runde 2, B-190–B-193). |
+| `nm-wood-iron-b` | `#1e1836` | HUD-Holz Zwei Fronten unten (Albtraum-Design Runde 2, B-190–B-193). |
+| `nm-wood-ember-a` | `#6a3620` | HUD-Holz Vulkan (Glut) oben (Albtraum-Design Runde 2, B-190–B-193). |
+| `nm-wood-ember-b` | `#2a140a` | HUD-Holz Vulkan unten (Albtraum-Design Runde 2, B-190–B-193). |
+| `nm-moss` | `#8aa890` | Moos-Bart am HUD-Holz Stil A (Albtraum-Design Runde 2, B-190–B-193). |
+| `nm-moss-dark` | `#6a8a6a` | Moos Schatten (Albtraum-Design Runde 2, B-190–B-193). |
+| `nm-icicle` | `#dff4ff` | Eiszapfen am HUD Eiswelt (Albtraum-Design Runde 2, B-190–B-193). |
+| `nm-snow` | `#f2f8ff` | Schneehaube am HUD Eiswelt (Albtraum-Design Runde 2, B-190–B-193). |
+| `nm-char-edge` | `#1a0c06` | Brandkante am HUD Stil B (Albtraum-Design Runde 2, B-190–B-193). |
+| `nm-rust` | `#a0582e` | Rost-Akzent HUD Zangenangriff (Albtraum-Design Runde 2, B-190–B-193). |
+| `nm-iron` | `#8a92a8` | Eisenbänder HUD Stil C (Albtraum-Design Runde 2, B-190–B-193). |
+| `nm-iron-hi` | `#c8d0e0` | Eisen Glanzlicht (Albtraum-Design Runde 2, B-190–B-193). |
+| `nm-rune` | `#c58aff` | Leuchtende Runen Stil C (Albtraum-Design Runde 2, B-190–B-193). |
+| `nm-soulflame` | `#9fe8ff` | Seelenflamme/Irrlicht Stil C (Albtraum-Design Runde 2, B-190–B-193). |
+| `sky-a` | `#8fd0e8` | Himmel Kartenvorschau normal oben (Albtraum-Design Runde 2, B-190–B-193). |
+| `sky-b` | `#d8f0e8` | Himmel Kartenvorschau normal unten (Albtraum-Design Runde 2, B-190–B-193). |
+| `night-a-2` | `#3a2a5c` | Zwischenton Nachthimmel Albtraum-Menüs (Albtraum-Design Runde 2, B-190–B-193). |
+| `flag-red-dark` | `#8f2e20` | Fahne Schatten (Albtraum-Design Runde 2, B-190–B-193). |
+| `bad-soft` | `#ff9a8a` | Weiche Warnung: Gold verpasst auf dunklem Holz (Albtraum-Design Runde 2, B-190–B-193). |
+| `badge-silver-hi` | `#e6ecf2` | Glanzlicht Silber-Medaille (Albtraum-Design Runde 2, B-190–B-193). |
 
 ## Schrift
 
