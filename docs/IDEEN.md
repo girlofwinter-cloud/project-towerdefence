@@ -102,7 +102,7 @@ Neue Vorschläge unten anhängen (`cat >> docs/IDEEN.md`); Überblick: `grep "^#
   - Render-Test: N Kreise bei N Türmen; auf dem Handy per Knopf erreichbar (Screenshot).
 
 ### B-109: Herausforderungen je Karte (Abzeichen)
-- Status: vorschlag
+- Status: ersetzt durch Paket „Albtraum“ (B-182 bis B-186, im Backlog)
 - Aufwand: M
 - Idee: Je Karte 2 bis 3 optionale Bedingungen mit Abzeichen, z. B. „ohne Fähigkeiten“, „höchstens 2 Turmtypen“, „ohne Verkaufen“; gespeichert im Fortschritt. Wiederspielwert ohne neue Inhalte, macht nichts leichter. Risiko: jede Herausforderung per Simulation als schaffbar belegen. (Ideator, Spaß 4/5)
 - Akzeptanzkriterien:
@@ -110,7 +110,7 @@ Neue Vorschläge unten anhängen (`cat >> docs/IDEEN.md`); Überblick: `grep "^#
   - Abzeichen im Fortschritt gespeichert und in der Kartenauswahl sichtbar; alte Speicherstände laden (Test).
 
 ### B-110: Tagesherausforderung mit Zufalls-Modifikatoren
-- Status: vorschlag
+- Status: ersetzt durch Paket „Albtraum“ (B-182 bis B-186, im Backlog)
 - Aufwand: M
 - Idee: Ein Seed aus dem Datum wählt Karte und 1 bis 2 Erschwernisse (z. B. Gegner +10 % Tempo, Kanone −15 %, Start-Gold −20), dazu ein lokaler Tagesrekord. Nur Erschwernisse, also nie leichter. Risiko: unschaffbare Kombinationen, daher feste, per Simulation geprüfte Liste. (Ideator, Spaß 4/5)
 - Akzeptanzkriterien:
