@@ -5,7 +5,7 @@ import { prepareWave, clearEnemies, applyCheats, resetCooldowns, forceEnd, clamp
 
 // api: { getState, ui, restartOn(mapId), resume(), refresh }
 export function mountTestPanel(api) {
-  const opts = { infiniteGold: true, invincible: false };
+  const opts = { infiniteGold: false, invincible: false };
   document.body.classList.add('test-mode');
   document.title = '🧪 Test · Project TowerDefence';
 
@@ -20,7 +20,7 @@ export function mountTestPanel(api) {
       <button id="tp-jump" title="Türme bleiben stehen, Gegner werden entfernt">Zu Welle springen</button>
     </div>
     <div class="tp-row">
-      <label><input id="tp-gold" type="checkbox" checked /> Unbegrenztes Gold</label>
+      <label><input id="tp-gold" type="checkbox" /> Unbegrenztes Gold</label>
       <label><input id="tp-lives" type="checkbox" /> Unverwundbar</label>
       <span class="tp-speeds" id="tp-speeds">Tempo </span>
     </div>

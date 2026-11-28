@@ -39,6 +39,9 @@ test('test.html leitet auf die Testseite, Panel da, Gold unbegrenzt', async () =
   await page.goto(`${url}test.html`);
   await page.waitForSelector('#test-panel');
   assert.ok(page.url().endsWith('/?test'));
+  // Unbegrenztes Gold ist standardmäßig aus und lässt sich einschalten
+  assert.equal(await page.isChecked('#tp-gold'), false);
+  await page.click('#tp-gold');
   await page.waitForFunction((g) => window.__game().gold >= g, TEST_TOOLS.gold);
   assert.deepEqual(errors, []);
 });

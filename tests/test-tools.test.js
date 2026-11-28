@@ -134,3 +134,16 @@ test('B-121: prepareWave und forceEnd beenden einen laufenden Countdown (kein un
   forceEnd(s, 'won');
   assert.equal(s.autoWaveIn, null);
 });
+
+// B-189 (Tester): Unbegrenztes Gold ist ein Schalter; aus = Gold bleibt, an = auffüllen, wieder aus = nichts zurücksetzen
+test('B-189: applyCheats Gold-Schalter aus/an/aus', () => {
+  const s = createGame();
+  s.gold = 0;
+  applyCheats(s, {});
+  assert.equal(s.gold, 0, 'Standard aus');
+  applyCheats(s, { infiniteGold: true });
+  assert.equal(s.gold, TEST_TOOLS.gold);
+  s.gold = 5;
+  applyCheats(s, { infiniteGold: false });
+  assert.equal(s.gold, 5, 'Ausschalten lässt Gold unverändert');
+});

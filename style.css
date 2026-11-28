@@ -129,7 +129,9 @@ canvas#game.over-flag { cursor: pointer; } /* Maus über der Wellenfahne */
 .gold-goal .gg-mark { flex: none; display: block; width: 28px; height: 28px; }
 .gold-goal .gg-mark svg { display: block; width: 100%; height: 100%; }
 .gold-goal.broken { background: linear-gradient(var(--darkwood-a), var(--darkwood-b)); }
-.gold-goal.broken .gg-text { text-decoration: line-through 2px; }
+/* B-189: Durchstreichen als dünne rote Linie ohne Tinten-Schatten (text-decoration bekam die Kontur ab und verdeckte den Text) */
+.gold-goal.broken .gg-text { position: relative; }
+.gold-goal.broken .gg-text::after { content: ''; position: absolute; left: 0; right: 0; top: calc(50% - 1px); height: 2px; background: var(--bad); border-radius: 1px; }
 .gold-goal.flash { animation: gg-flash .4s ease-out; }
 @keyframes gg-flash { 0% { border-color: var(--bad); transform: scale(1.1); } 100% { border-color: var(--ink); transform: none; } }
 @media (prefers-reduced-motion: reduce) { .gold-goal.flash { animation: none; } }

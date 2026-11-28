@@ -99,3 +99,9 @@ Anhängen ohne die Datei zu lesen: `cat >> docs/LEDGER.md <<'EOF' … EOF`. Übe
 - Tests: npm test 708, test:balance 26 (neu: albtraum.test.js), E2E 129 grün
 - Entscheidungen/Abweichungen: Mensch: feste Stufe, Abzeichen + Kosmetik (sofort an), Motiv Oger-Kopf, Musik je Karte (Eiswelt vorerst Kartentitel), Asset-Grenze 15 MB. Balancing grob: Start-Gold nicht gekürzt (sonst Einbruch Welle 2–3). Tester: Silber trotz Reparatur und Medaille bei 667x375 behoben; Reviewer APPROVE.
 - Offen: Feinabstimmung durch den Menschen; Albtraum-Titel Eiswelt; Vorschau normal/golden im Menü „Aussehen“; Bauteile (Medaille, Aussehen, Ton-Feld) in die Claude-Design-Bibliothek.
+
+## 2026-11-28 · B-189 · Albtraum deutlich schwerer
+- Ergebnis: fertig, Branch agent/albtraum-haerter, PR folgt
+- Tests: npm test 717, test:balance 26, E2E 129 grün
+- Entscheidungen/Abweichungen: Zwei Spieltests des Menschen: +40 % ab Welle 1 zu schwer → gestuft (8–11 ×1,2, ab 12 ×1,4), Kopfgeld normal, mehr Elite ab Welle 8. Oger-König kostet im Albtraum weiter alle Leben (Mensch: so lassen). Skript-Strategien schaffen den Albtraum nicht mehr (Regel „perfektes Spiel“ gilt hier bewusst nicht). Mit Gold-Anzeige-Fix und Testmodus-Gold aus. Tester PASS, Reviewer APPROVE.
+- Offen: Albtraum-Design (Runde 1 Stilrichtung in Claude Design, Auswahl durch den Menschen).

@@ -1,7 +1,7 @@
 // Spiel-Logik: kompletter Zustand + update(). Kein DOM, kein Canvas -> in Node testbar.
 import {
   TILE, COLS, ROWS, START_GOLD, START_LIVES, MAX_WAVES, SELL_RATIO, MAX_LEVEL, MAX_SUBSTEP, TARGET_MODES,
-  MAPS, DEFAULT_MAP_ID, LANE_ASYNC, TOWER_TYPES, ABILITIES, WIDTH, HEIGHT, ENEMY_TYPES, LAVA, FX_STYLE, AUTO_WAVE_DELAY, earlyStartBonus, waveFor, waveBonus, hpScale, meteorDamage, isBoss,
+  MAPS, DEFAULT_MAP_ID, LANE_ASYNC, TOWER_TYPES, ABILITIES, WIDTH, HEIGHT, ENEMY_TYPES, LAVA, FX_STYLE, AUTO_WAVE_DELAY, earlyStartBonus, waveFor, waveBonus, hpScale, nightmareHpFactor, meteorDamage, isBoss,
 } from './config.js';
 import { buildPath, pointAt, pathTiles } from './path.js';
 import { ELITE, UPGRADE_COST_FACTOR, LEVEL_DAMAGE } from './config.js'; // B-179: Elite-Gegner, Aufrüstkosten
@@ -20,8 +20,8 @@ export function mapModifiers(mapId) {
 export const MODES = ['normal', 'nightmare'];
 export function modeModifiers(mode) {
   if (mode !== 'nightmare') return {};
-  const { rewardFactor, lives: maxLives, repairUses, hpGrowthLate, eliteBonus, eliteEarlier } = NIGHTMARE;
-  return { rewardFactor, maxLives, repairUses, hpGrowthLate, eliteBonus, eliteEarlier };
+  const { rewardFactor, lives: maxLives, repairUses, hpGrowthLate, eliteBonus, eliteEarlier, hpSteps } = NIGHTMARE;
+  return { rewardFactor, maxLives, repairUses, hpGrowthLate, eliteBonus, eliteEarlier, hpSteps };
 }
 // Höchstleben (Start und Grenze der Reparatur)
 export function maxLives(state) {
@@ -236,16 +236,16 @@ export function checkGoldCondition(state, mapId) {
 export { earlyStartBonus };
 
 // B-123: Gesamt-HP einer Welle beim Spawn (ohne Heilung), Grundlage fürs Frühstart-Risiko.
-// lateGrowth (B-182): spätes HP-Wachstum des Modus (Standard HP_GROWTH.late)
-export function waveHp(wave, mapId, lateGrowth) {
-  return waveFor(wave, mapId).reduce((sum, e) => sum + Math.round(ENEMY_TYPES[e.type].hp * hpScale(Math.max(1, wave), lateGrowth)), 0);
+// lateGrowth (B-182): spätes HP-Wachstum des Modus (Standard HP_GROWTH.late); hpFactor (B-189): Leben-Faktor des Modus für diese Welle
+export function waveHp(wave, mapId, lateGrowth, hpFactor = 1) {
+  return waveFor(wave, mapId).reduce((sum, e) => sum + Math.round(ENEMY_TYPES[e.type].hp * hpScale(Math.max(1, wave), lateGrowth) * hpFactor), 0);
 }
 
 // B-123: Risiko eines Frühstarts = Gegner-HP auf dem Feld (alle Wellen) im Verhältnis zur HP der laufenden Welle,
 // gekappt auf 0..1. Ohne laufende Welle 0.
 export function earlyStartRisk(state) {
   if (!state.waveActive || state.wave < 1) return 0;
-  const total = waveHp(state.wave, state.mapId, state.modifiers?.hpGrowthLate);
+  const total = waveHp(state.wave, state.mapId, state.modifiers?.hpGrowthLate, nightmareHpFactor(state.wave, state.modifiers));
   const alive = state.enemies.reduce((sum, e) => sum + Math.max(0, e.hp), 0);
   return total > 0 ? Math.min(1, alive / total) : 0;
 }
@@ -321,7 +321,8 @@ export function planLanes(state, list, wave) {
 
 export function spawnEnemy(state, type, wave = state.wave, lane = null, elite = null) {
   const def = ENEMY_TYPES[type];
-  const hp = Math.round(def.hp * hpScale(Math.max(1, wave), state.modifiers?.hpGrowthLate));
+  // B-189: gestufter Leben-Faktor (Albtraum) nur auf die Gegner-Leben, nicht auf Lava- und Meteor-Schaden
+  const hp = Math.round(def.hp * hpScale(Math.max(1, wave), state.modifiers?.hpGrowthLate) * nightmareHpFactor(wave, state.modifiers));
   const paths = state.paths || [state.path];
   // B-124: vorgeplante Seite aus der Spawn-Liste, sonst Wechsel wie bisher
   if (!(Number.isInteger(lane) && lane >= 0 && lane < paths.length)) lane = laneFor(state, type, paths.length);
