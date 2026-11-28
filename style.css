@@ -383,6 +383,11 @@ body.on-start .top-buttons { z-index: 41; } /* Ton und Hilfe bleiben erreichbar 
 .map-card:focus-visible, .map-card.current { transform: translateY(-6px); box-shadow: 0 0 0 4px #ffe266, 0 10px 0 rgba(30,15,5,.45); outline: none; }
 .map-card:disabled { cursor: default; } .map-card:disabled .map-thumb { filter: grayscale(1) brightness(.45); } .map-card:disabled .map-name { color: #c9b89a; }
 .map-lock { position: absolute; left: calc(50% - 22px); top: 50px; }
+/* B-182: Hülle je Karte und schlichter Knopf „Albtraum“ oben rechts auf der Karte (große Optik folgt in B-184) */
+.map-slot { position: relative; flex: none; }
+.map-nightmare { position: absolute; top: 18px; right: 18px; font: 13px/18px var(--display); padding: 0 5px; border-radius: 6px; border: 0; background: var(--ink); color: var(--cream); cursor: pointer; transition: transform .12s ease-out; }
+.map-slot:has(.map-card.current) .map-nightmare, .map-slot:has(.map-card:focus-visible) .map-nightmare { transform: translateY(-6px); }
+.map-nightmare:focus-visible { box-shadow: 0 0 0 4px var(--hl); outline: none; }
 .start-hint { margin: 26px 0 0; font: 16px 'Trebuchet MS', sans-serif; color: #fff3d2; text-shadow: 0 2px 0 #2b1a10; }
 .start-keys { margin: 8px 0 0; font: 14px 'Trebuchet MS', sans-serif; color: #e8d3a8; text-shadow: 0 2px 0 #2b1a10; text-align: center; }
 .start-keys kbd { font: 13px/18px var(--display); padding: 0 5px; border-radius: 6px; background: #2b1a10; color: #fff3d2; }

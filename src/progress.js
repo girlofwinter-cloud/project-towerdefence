@@ -5,6 +5,8 @@ import { MAPS, START_LIVES, PROGRESS_KEY, STAR_LIVES_SHARE } from './config.js';
 // Freischalt-Reihenfolge = Reihenfolge der Karten in MAPS.
 export const MAP_ORDER = Object.keys(MAPS);
 
+// B-182: Albtraum-Ergebnisse liegen getrennt in progress.nightmare[mapId] = { bestWave } (fehlt, solange leer);
+// Platz für die Abzeichen aus B-183 im selben Eintrag. Normal-Rekorde und -Sterne bleiben davon unberührt.
 export function emptyProgress() {
   return { maps: {} };
 }
@@ -26,7 +28,19 @@ export function sanitizeProgress(raw) {
     const stars = isCount(entry.stars) ? Math.min(STAR_LIVES_SHARE.length, Math.floor(entry.stars)) : 0;
     progress.maps[id] = { bestWave, stars };
   }
+  sanitizeNightmare(raw.nightmare, progress);
   return progress;
+}
+
+// B-182: Albtraum-Bereich bereinigen (alte Spielstände ohne Bereich bleiben ohne)
+function sanitizeNightmare(raw, progress) {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return;
+  for (const id of MAP_ORDER) {
+    const entry = Object.prototype.hasOwnProperty.call(raw, id) ? raw[id] : null;
+    if (!entry || typeof entry !== 'object' || !isCount(entry.bestWave)) continue;
+    progress.nightmare ??= {};
+    progress.nightmare[id] = { bestWave: Math.floor(entry.bestWave) };
+  }
 }
 
 // Lädt den Fortschritt; jeder Fehler (kein Speicher, werfender Speicher, kaputtes JSON) ergibt leeren Fortschritt.
@@ -62,6 +76,16 @@ export function mapProgress(progress, mapId) {
   return progress.maps[mapId] ?? { bestWave: 0, stars: 0 };
 }
 
+// B-182: Albtraum-Stand einer Karte
+export function nightmareProgress(progress, mapId) {
+  return progress.nightmare?.[mapId] ?? { bestWave: 0 };
+}
+
+// B-182: Albtraum-Modus einer Karte ist offen, sobald sie im Normalmodus alle Sterne hat.
+export function isNightmareUnlocked(progress, mapId) {
+  return MAP_ORDER.includes(mapId) && mapProgress(progress, mapId).stars >= STAR_LIVES_SHARE.length;
+}
+
 // Erste Karte ist immer offen, jede weitere nach einem Sieg (mind. 1 Stern) auf der vorherigen.
 export function isUnlocked(progress, mapId) {
   const i = MAP_ORDER.indexOf(mapId);
@@ -88,9 +112,11 @@ export function mapAfterResult(progress, mapId, status) {
 
 // Trägt ein Spielende ein (verändert progress). Rekord und Sterne werden nie schlechter.
 // Rückgabe: newRecord (Wellenrekord verbessert), newStars (Sterne verbessert), unlockedMap (neu freigeschaltete Karten-ID oder null).
-export function recordResult(progress, { mapId, status, wave, lives }) {
+// mode 'nightmare' (B-182): nur der Albtraum-Rekord zählt; keine Sterne, keine Freischaltung, Normal-Stand bleibt.
+export function recordResult(progress, { mapId, status, wave, lives, mode }) {
   const none = { newRecord: false, newStars: false, unlockedMap: null };
   if (!MAP_ORDER.includes(mapId)) return none;
+  if (mode === 'nightmare') return recordNightmare(progress, mapId, wave);
   const old = mapProgress(progress, mapId);
   const next = MAP_ORDER[MAP_ORDER.indexOf(mapId) + 1] ?? null;
   const wasUnlocked = next !== null && isUnlocked(progress, next);
@@ -108,6 +134,15 @@ export function recordResult(progress, { mapId, status, wave, lives }) {
   };
 }
 
+function recordNightmare(progress, mapId, wave) {
+  const old = nightmareProgress(progress, mapId);
+  const reached = isCount(wave) ? Math.floor(wave) : 0;
+  const entry = { ...old, bestWave: Math.max(old.bestWave, reached) };
+  progress.nightmare ??= {};
+  progress.nightmare[mapId] = entry;
+  return { newRecord: entry.bestWave > old.bestWave, newStars: false, unlockedMap: null };
+}
+
 // Texte fürs Overlay am Spielende (B-094): erste Zeile Rekord und Sterne, danach Hervorhebungen.
 // before = Stand der Karte vor recordResult. Beim ersten Ergebnis ist jeder Rekord „neu“: keine Meldung.
 export function resultLines(progress, mapId, res, before = { bestWave: 0, stars: 0 }) {
@@ -116,6 +151,14 @@ export function resultLines(progress, mapId, res, before = { bestWave: 0, stars:
   if (res.newRecord && before.bestWave > 0) lines.push('Neuer Rekord!');
   if (res.newStars) lines.push('Neue Sterne!');
   if (res.unlockedMap) lines.push(`Neue Karte freigeschaltet: ${MAPS[res.unlockedMap].name}`);
+  return lines;
+}
+
+// B-182: Overlay-Texte nach einem Albtraum-Spiel
+// before = Albtraum-Stand vor recordResult (erstes Ergebnis: keine Rekord-Meldung, wie resultLines)
+export function nightmareResultLines(progress, mapId, res, before = { bestWave: 0 }) {
+  const lines = [`Albtraum-Rekord: Welle ${nightmareProgress(progress, mapId).bestWave}`];
+  if (res.newRecord && before.bestWave > 0) lines.push('Neuer Rekord!');
   return lines;
 }
 

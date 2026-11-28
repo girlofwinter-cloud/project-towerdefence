@@ -5,7 +5,8 @@ import {
 } from './config.js';
 import { buildPath, pointAt, pathTiles } from './path.js';
 import { ELITE, UPGRADE_COST_FACTOR, LEVEL_DAMAGE } from './config.js'; // B-179: Elite-Gegner, Aufrüstkosten
-import { MASTER_FX } from './config.js'; // B-173/B-174: Lebensdauer reiner Darstellungs-Ereignisse
+import { MASTER_FX } from './config.js';
+import { NIGHTMARE } from './config.js'; // B-182: Albtraum-Modus // B-173/B-174: Lebensdauer reiner Darstellungs-Ereignisse
 
 // Map-Modifikatoren mit Standardwerten (1 = unverändert); unbekannte Karte = Standardkarte.
 export function mapModifiers(mapId) {
@@ -13,15 +14,35 @@ export function mapModifiers(mapId) {
   return { enemySpeed: m.enemySpeed ?? 1, towerDamage: { ...(m.towerDamage || {}) }, slowStrength: m.slowStrength ?? 1 };
 }
 
-export function createGame({ mapId, ...overrides } = {}) {
+// B-182: Spielmodi. 'nightmare' ergänzt die Karten-Modifikatoren um die NIGHTMARE-Werte (config.js);
+// im Normalmodus bleiben die Modifikatoren unverändert.
+export const MODES = ['normal', 'nightmare'];
+export function modeModifiers(mode) {
+  if (mode !== 'nightmare') return {};
+  const { rewardFactor, lives: maxLives, repairUses, hpGrowthLate, eliteBonus, eliteEarlier } = NIGHTMARE;
+  return { rewardFactor, maxLives, repairUses, hpGrowthLate, eliteBonus, eliteEarlier };
+}
+// Höchstleben (Start und Grenze der Reparatur)
+export function maxLives(state) {
+  return state.modifiers?.maxLives ?? START_LIVES;
+}
+// Elite-Felder für waveFor (leer im Normalmodus)
+function waveMods(state) {
+  const m = state.modifiers || {};
+  return m.eliteBonus || m.eliteEarlier ? { eliteBonus: m.eliteBonus, eliteEarlier: m.eliteEarlier } : {};
+}
+
+export function createGame({ mapId, mode, ...overrides } = {}) {
   const id = Object.hasOwn(MAPS, mapId) ? mapId : DEFAULT_MAP_ID;
+  const nightmare = mode === 'nightmare';
   const waypoints = MAPS[id].waypoints;
   const extraPaths = MAPS[id].extraPaths || [];
   const state = {
     mapId: id,
-    modifiers: mapModifiers(id),
-    gold: START_GOLD,
-    lives: START_LIVES,
+    mode: nightmare ? 'nightmare' : 'normal', // B-182
+    modifiers: { ...mapModifiers(id), ...modeModifiers(mode) },
+    gold: nightmare ? Math.round(START_GOLD * NIGHTMARE.goldFactor) : START_GOLD,
+    lives: nightmare ? NIGHTMARE.lives : START_LIVES,
     wave: 0,
     waveActive: false,
     waveTime: 0,
@@ -193,15 +214,16 @@ export function sellTower(state, id) {
 export { earlyStartBonus };
 
 // B-123: Gesamt-HP einer Welle beim Spawn (ohne Heilung), Grundlage fürs Frühstart-Risiko.
-export function waveHp(wave, mapId) {
-  return waveFor(wave, mapId).reduce((sum, e) => sum + Math.round(ENEMY_TYPES[e.type].hp * hpScale(Math.max(1, wave))), 0);
+// lateGrowth (B-182): spätes HP-Wachstum des Modus (Standard HP_GROWTH.late)
+export function waveHp(wave, mapId, lateGrowth) {
+  return waveFor(wave, mapId).reduce((sum, e) => sum + Math.round(ENEMY_TYPES[e.type].hp * hpScale(Math.max(1, wave), lateGrowth)), 0);
 }
 
 // B-123: Risiko eines Frühstarts = Gegner-HP auf dem Feld (alle Wellen) im Verhältnis zur HP der laufenden Welle,
 // gekappt auf 0..1. Ohne laufende Welle 0.
 export function earlyStartRisk(state) {
   if (!state.waveActive || state.wave < 1) return 0;
-  const total = waveHp(state.wave, state.mapId);
+  const total = waveHp(state.wave, state.mapId, state.modifiers?.hpGrowthLate);
   const alive = state.enemies.reduce((sum, e) => sum + Math.max(0, e.hp), 0);
   return total > 0 ? Math.min(1, alive / total) : 0;
 }
@@ -230,11 +252,11 @@ export function startWave(state) {
   if (!early) {
     state.waveActive = true;
     state.waveTime = 0;
-    state.spawnQueue = planLanes(state, waveFor(wave, state.mapId), wave).map((e) => ({ ...e, wave }));
+    state.spawnQueue = planLanes(state, waveFor(wave, state.mapId, waveMods(state)), wave).map((e) => ({ ...e, wave }));
     return { ok: true, wave, bonus: 0 };
   }
   const offset = state.waveTime;
-  const added = planLanes(state, waveFor(wave, state.mapId), wave).map((e) => ({ ...e, at: e.at + offset, wave }));
+  const added = planLanes(state, waveFor(wave, state.mapId, waveMods(state)), wave).map((e) => ({ ...e, at: e.at + offset, wave }));
   // Stabil nach Zeit sortieren: spawnStep arbeitet die Liste von vorne ab
   state.spawnQueue = [...state.spawnQueue, ...added].sort((a, b) => a.at - b.at);
   const bonus = earlyStartBonus(wave, risk);
@@ -277,7 +299,7 @@ export function planLanes(state, list, wave) {
 
 export function spawnEnemy(state, type, wave = state.wave, lane = null, elite = null) {
   const def = ENEMY_TYPES[type];
-  const hp = Math.round(def.hp * hpScale(Math.max(1, wave)));
+  const hp = Math.round(def.hp * hpScale(Math.max(1, wave), state.modifiers?.hpGrowthLate));
   const paths = state.paths || [state.path];
   // B-124: vorgeplante Seite aus der Spawn-Liste, sonst Wechsel wie bisher
   if (!(Number.isInteger(lane) && lane >= 0 && lane < paths.length)) lane = laneFor(state, type, paths.length);
@@ -289,7 +311,7 @@ export function spawnEnemy(state, type, wave = state.wave, lane = null, elite = 
     hp,
     maxHp: hp,
     speed: def.speed * (state.modifiers?.enemySpeed ?? 1),
-    reward: def.reward,
+    reward: state.modifiers?.rewardFactor ? Math.max(1, Math.round(def.reward * state.modifiers.rewardFactor)) : def.reward, // B-182
     leak: def.leak,
     radius: def.radius,
     dist: 0,
@@ -335,13 +357,20 @@ export function abilityCooldownLeft(state, id) {
   return a ? Math.max(0, a.readyAt - state.time) : 0;
 }
 
+// B-182: Einsätze je Spiel (Albtraum: Reparatur seltener); undefined = unbegrenzt
+export function abilityMaxUses(state, id) {
+  const def = ABILITIES[id];
+  return id === 'repair' ? (state.modifiers?.repairUses ?? def.maxUses) : def.maxUses;
+}
+
 export function useAbility(state, id, x, y) {
   const def = Object.hasOwn(ABILITIES, id) ? ABILITIES[id] : null;
   if (!def) return { ok: false, reason: 'Unbekannte Fähigkeit' };
   if (state.status !== 'playing') return { ok: false, reason: 'Spiel ist vorbei' };
   if (state.paused) return { ok: false, reason: 'Spiel ist pausiert' };
   const a = state.abilities[id];
-  if (def.maxUses !== undefined && a.uses >= def.maxUses) return { ok: false, reason: `${def.name} ist aufgebraucht` };
+  const maxUses = abilityMaxUses(state, id);
+  if (maxUses !== undefined && a.uses >= maxUses) return { ok: false, reason: `${def.name} ist aufgebraucht` };
   if (state.time < a.readyAt) return { ok: false, reason: `${def.name} lädt noch (${Math.ceil(a.readyAt - state.time)} s)` };
   if (id === 'meteor') {
     if (!Number.isFinite(x) || !Number.isFinite(y) || x < 0 || y < 0 || x > WIDTH || y > HEIGHT) return { ok: false, reason: 'Ziel liegt außerhalb des Spielfelds' };
@@ -365,8 +394,8 @@ export function useAbility(state, id, x, y) {
     }
     state.effects.push({ kind: 'chill', ttl: 0.4, max: 0.4 });
   } else if (id === 'repair') {
-    if (state.lives >= START_LIVES) return { ok: false, reason: 'Leben sind bereits voll' };
-    state.lives = Math.min(START_LIVES, state.lives + def.heal);
+    if (state.lives >= maxLives(state)) return { ok: false, reason: 'Leben sind bereits voll' };
+    state.lives = Math.min(maxLives(state), state.lives + def.heal);
   }
   a.uses += 1;
   a.readyAt = state.time + def.cooldown;

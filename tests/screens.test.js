@@ -95,3 +95,13 @@ test('B-180 Boss-Leiste: erscheint mit dem Boss, Phase-Text und Schild, steht na
   // ohne Element im DOM: nichts tun, nicht crashen
   createBossBars({ getElementById: () => null })(state, ui, 0);
 });
+
+// B-182: Knopf „Albtraum“ nur auf Karten mit allen Sternen (Testseite: auf allen)
+test('B-182: mapCards zeigt den Albtraum nur bei allen Sternen', () => {
+  const p = { maps: { [M0]: { bestWave: MAX_WAVES, stars: STAR_COUNT }, [M1]: { bestWave: MAX_WAVES, stars: STAR_COUNT - 1 } } };
+  const cards = mapCards(p);
+  assert.equal(cards[0].nightmare, true);
+  assert.equal(cards[1].nightmare, false);
+  assert.equal(cards[2].nightmare, false);
+  assert.ok(mapCards(emptyProgress(), { allOpen: true }).every((c) => c.nightmare));
+});

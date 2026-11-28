@@ -2,7 +2,7 @@
 // Reine Funktionen (mapCards, endView, starSvg) sind in Node testbar; mountStartScreen braucht das DOM
 // und wird nur von main.js aufgerufen. Fortschritt wird hier nur gelesen, nie gespeichert.
 import { MAPS, MAX_WAVES, STAR_LIVES_SHARE, VIEW_WIDTH, VIEW_HEIGHT, FRAME_MARGIN, SCREENS } from './config.js';
-import { MAP_ORDER, mapProgress, isUnlocked } from './progress.js';
+import { MAP_ORDER, mapProgress, isUnlocked, isNightmareUnlocked } from './progress.js';
 import { createGame } from './game.js';
 import { buildPaintedSvg, rasterizePainted, paletteFor } from './render-painted.js';
 
@@ -20,7 +20,8 @@ export function mapCards(progress, { allOpen = false } = {}) {
     const label = open
       ? `${name}, ${stars} von ${STAR_COUNT} Sternen, ${bestWave > 0 ? `beste Welle ${bestWave}` : 'noch nicht gespielt'}`
       : `${name}, gesperrt: gewinne erst ${lockedBy}`;
-    return { id, name, open, stars, bestWave, line, label };
+    const nightmare = open && (allOpen || isNightmareUnlocked(progress, id)); // B-182: Knopf „Albtraum“
+    return { id, name, open, stars, bestWave, line, label, nightmare };
   });
 }
 
@@ -74,7 +75,7 @@ function paintThumb(cv, mapId) {
 }
 
 // ---------- Startbildschirm (DOM) ----------
-// opts: getProgress(), allOpen, currentMap() (vorgewählte Karte), onPick(id).
+// opts: getProgress(), allOpen, currentMap() (vorgewählte Karte), onPick(id, mode) (mode 'normal' | 'nightmare').
 // Rückgabe: show(closable), hide(), isOpen(), handleKey(ev) (true = Taste verbraucht).
 export function mountStartScreen(root, opts) {
   const list = root.querySelector('.map-cards');
@@ -88,7 +89,6 @@ export function mountStartScreen(root, opts) {
       const btn = document.createElement('button');
       btn.className = 'map-card plq';
       btn.dataset.map = card.id;
-      btn.setAttribute('role', 'listitem');
       btn.setAttribute('aria-label', card.label);
       btn.disabled = !card.open;
       btn.classList.toggle('current', card.id === current);
@@ -97,18 +97,33 @@ export function mountStartScreen(root, opts) {
         + `<span class="map-name">${card.name}</span><span class="map-stars">${starsHtml(card.stars, 24)}</span><span class="map-best">${card.line}</span>`;
       paintThumb(btn.querySelector('canvas'), card.id);
       btn.addEventListener('click', () => pick(card.id));
-      return btn;
+      // B-182: Karte und Albtraum-Knopf in einer Hülle (kein Knopf im Knopf); der Knopf liegt oben rechts auf der Karte
+      const slot = document.createElement('div');
+      slot.className = 'map-slot';
+      slot.setAttribute('role', 'listitem');
+      slot.append(btn);
+      if (card.nightmare) {
+        const nm = document.createElement('button');
+        nm.className = 'map-nightmare';
+        nm.dataset.map = card.id;
+        nm.textContent = 'Albtraum';
+        nm.setAttribute('aria-label', `${card.name} im Albtraum-Modus spielen`);
+        nm.addEventListener('click', () => pick(card.id, 'nightmare'));
+        slot.append(nm);
+      }
+      return slot;
     }));
   }
   const cardBtn = (id) => list.querySelector(`.map-card[data-map="${id}"]`);
   function focusCard(id) {
-    for (const b of list.children) b.classList.toggle('current', b.dataset.map === id);
+    for (const b of list.querySelectorAll('.map-card')) b.classList.toggle('current', b.dataset.map === id);
     cardBtn(id)?.focus({ preventScroll: true });
   }
-  function pick(id) {
-    if (!cards.find((c) => c.id === id)?.open) return;
+  function pick(id, mode = 'normal') {
+    const card = cards.find((c) => c.id === id);
+    if (!card?.open || (mode === 'nightmare' && !card.nightmare)) return;
     hide();
-    opts.onPick(id);
+    opts.onPick(id, mode);
   }
   function show(canClose = false) {
     closable = canClose;
@@ -133,6 +148,8 @@ export function mountStartScreen(root, opts) {
     if (key === 'ArrowLeft' || key === 'ArrowRight') { ev.preventDefault(); focusCard(moveFocus(cards, current(), key === 'ArrowLeft' ? -1 : 1)); }
     else if (key === 'Enter' || key === ' ') {
       ev.preventDefault();
+      const nm = ev.target instanceof Element ? ev.target.closest('.map-nightmare') : null;
+      if (nm) { pick(nm.dataset.map, 'nightmare'); return true; }
       const focused = ev.target instanceof Element ? ev.target.closest('.map-card') : null;
       pick(focused?.dataset.map ?? current());
     } else if (key === 'Escape') close();
@@ -142,7 +159,7 @@ export function mountStartScreen(root, opts) {
   // Fokus per Tab/Maus zieht den gelben Ring mit
   list.addEventListener('focusin', (ev) => {
     const b = ev.target.closest('.map-card');
-    if (b && !b.disabled) for (const x of list.children) x.classList.toggle('current', x === b);
+    if (b && !b.disabled) for (const x of list.querySelectorAll('.map-card')) x.classList.toggle('current', x === b);
   });
   return { show, hide, handleKey, isOpen: () => !root.hidden };
 }

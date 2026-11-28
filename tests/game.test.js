@@ -3651,3 +3651,81 @@ describe('B-178: Effekt-Ereignisse der neuen Gegner', () => {
     assert.ok(Math.abs(Math.hypot(ds[0].dx, ds[0].dy) - 1) < 1e-9, 'Einheitsvektor');
   });
 });
+
+// ---------- B-182: Albtraum-Modus ----------
+import { NIGHTMARE, HP_GROWTH } from '../src/config.js';
+import { modeModifiers, abilityMaxUses, maxLives } from '../src/game.js';
+
+describe('B-182: Albtraum-Modus', () => {
+  test('Normalmodus bleibt unverändert (auch ohne mode)', () => {
+    for (const mode of [undefined, 'normal', 'quatsch']) {
+      const s = createGame({ mapId: 'meadow', mode });
+      assert.equal(s.mode, 'normal');
+      assert.equal(s.gold, START_GOLD);
+      assert.equal(s.lives, START_LIVES);
+      assert.deepEqual(s.modifiers, mapModifiers('meadow'));
+      assert.equal(abilityMaxUses(s, 'repair'), ABILITIES.repair.maxUses);
+      assert.equal(spawnEnemy(s, 'grunt', 15).reward, ENEMY_TYPES.grunt.reward);
+      assert.equal(spawnEnemy(s, 'grunt', 15).maxHp, Math.round(ENEMY_TYPES.grunt.hp * hpScale(15)));
+    }
+    assert.deepEqual(modeModifiers('normal'), {});
+  });
+
+  test('Start-Gold, Leben und Karten-Modifikatoren', () => {
+    const s = createGame({ mapId: 'ice', mode: 'nightmare' });
+    assert.equal(s.mode, 'nightmare');
+    assert.equal(s.gold, Math.round(START_GOLD * NIGHTMARE.goldFactor));
+    assert.equal(s.lives, NIGHTMARE.lives);
+    assert.equal(maxLives(s), NIGHTMARE.lives);
+    assert.equal(s.modifiers.enemySpeed, mapModifiers('ice').enemySpeed, 'Karten-Modifikatoren bleiben');
+  });
+
+  test('Kopfgeld mal rewardFactor, gerundet, mindestens 1', () => {
+    const s = createGame({ mode: 'nightmare' });
+    for (const type of Object.keys(ENEMY_TYPES)) {
+      const want = Math.max(1, Math.round(ENEMY_TYPES[type].reward * NIGHTMARE.rewardFactor));
+      assert.equal(spawnEnemy(s, type, 1).reward, want, type);
+    }
+    const tiny = createGame({ mode: 'nightmare', modifiers: { ...modeModifiers('nightmare'), rewardFactor: 0.01 } });
+    assert.equal(spawnEnemy(tiny, 'grunt', 1).reward, 1);
+  });
+
+  test('Reparatur: nur repairUses Einsätze, Obergrenze sind die Albtraum-Leben', () => {
+    const s = createGame({ mode: 'nightmare' });
+    assert.equal(abilityMaxUses(s, 'repair'), NIGHTMARE.repairUses);
+    assert.equal(useAbility(s, 'repair').ok, false, 'volle Albtraum-Leben');
+    s.lives = NIGHTMARE.lives - 1;
+    assert.equal(useAbility(s, 'repair').ok, true);
+    assert.equal(s.lives, NIGHTMARE.lives);
+    s.lives = 1;
+    s.time += ABILITIES.repair.cooldown + 1;
+    const r = useAbility(s, 'repair');
+    assert.equal(r.ok, NIGHTMARE.repairUses > 1);
+  });
+
+  test('spätes HP-Wachstum hpGrowthLate', () => {
+    const s = createGame({ mode: 'nightmare' });
+    assert.equal(spawnEnemy(s, 'grunt', 10).maxHp, Math.round(ENEMY_TYPES.grunt.hp * hpScale(10)), 'bis Welle 10 gleich');
+    assert.equal(spawnEnemy(s, 'grunt', 15).maxHp, Math.round(ENEMY_TYPES.grunt.hp * hpScale(15, NIGHTMARE.hpGrowthLate)));
+    assert.ok(NIGHTMARE.hpGrowthLate > HP_GROWTH.late);
+    assert.ok(hpScale(15, NIGHTMARE.hpGrowthLate) > hpScale(15));
+  });
+
+  test('mehr und frühere Elite-Gegner', () => {
+    const mods = { eliteBonus: NIGHTMARE.eliteBonus, eliteEarlier: NIGHTMARE.eliteEarlier };
+    const from = ELITE.from - NIGHTMARE.eliteEarlier;
+    assert.equal(eliteCount(from - 1, mods), 0);
+    assert.equal(eliteCount(from, mods), ELITE.count + NIGHTMARE.eliteBonus);
+    assert.equal(eliteCount(MAX_WAVES, mods), Math.min(ELITE.max + NIGHTMARE.eliteBonus, ELITE.count + NIGHTMARE.eliteBonus + Math.floor((MAX_WAVES - from) / ELITE.every)));
+    for (let w = 1; w <= MAX_WAVES; w++) assert.ok(eliteCount(w, mods) >= eliteCount(w), `Welle ${w}`);
+    // Die Spawn-Liste im Spiel nutzt die Albtraum-Werte
+    const s = createGame({ mode: 'nightmare' });
+    s.wave = from - 1;
+    startWave(s);
+    assert.equal(s.spawnQueue.filter((e) => e.elite).length, eliteCount(from, mods));
+    const n = createGame();
+    n.wave = from - 1;
+    startWave(n);
+    assert.equal(n.spawnQueue.filter((e) => e.elite).length, eliteCount(from));
+  });
+});

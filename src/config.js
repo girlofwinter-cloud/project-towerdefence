@@ -692,11 +692,12 @@ export function waveBonus(wave) {
 
 // HP-Multiplikator pro Welle: Gegner werden mit jeder Welle zäher.
 // Welle 1-5 moderat (+15 %), Welle 5-10 steil (+26 %), danach +11 % (B-125: vorher +7 %, Spätphase war zu leicht).
-export function hpScale(wave) {
+// B-182: lateGrowth ersetzt HP_GROWTH.late (Albtraum-Modus: NIGHTMARE.hpGrowthLate).
+export function hpScale(wave, lateGrowth = HP_GROWTH.late) {
   const early = Math.min(wave, 5) - 1;
   const mid = Math.max(Math.min(wave, 10) - 5, 0);
   const late = Math.max(wave - 10, 0);
-  return Math.pow(HP_GROWTH.early, early) * Math.pow(HP_GROWTH.mid, mid) * Math.pow(HP_GROWTH.late, late);
+  return Math.pow(HP_GROWTH.early, early) * Math.pow(HP_GROWTH.mid, mid) * Math.pow(lateGrowth, late);
 }
 
 // Spätphase (B-013): ab dieser Welle laufen Heiler in der Troll-Gruppe mit, ab der Welle danach kommen
@@ -753,23 +754,31 @@ export const ELITE = {
   rewardFactor: 1.5,
 };
 
-// B-179: Anzahl der Elite-Gegner in Welle `wave` (0 vor ELITE.from)
-export function eliteCount(wave) {
-  if (wave < ELITE.from) return 0;
-  return Math.min(ELITE.max, ELITE.count + Math.floor((wave - ELITE.from) / ELITE.every));
+// B-182: Albtraum-Modus (vorläufige Werte, Balancing in B-186). Gilt zusätzlich zu den Karten-Modifikatoren.
+// goldFactor: mal START_GOLD (gerundet); rewardFactor: mal Kopfgeld (gerundet, mindestens 1); lives: Start- und Höchstleben
+// (auch Grenze der Reparatur); repairUses: Einsätze der Reparatur; hpGrowthLate: ersetzt HP_GROWTH.late;
+// eliteBonus: Elite-Gegner mehr je Welle (auch über ELITE.max hinaus); eliteEarlier: so viele Wellen früher ab ELITE.from.
+export const NIGHTMARE = { goldFactor: 0.7, rewardFactor: 0.8, lives: 5, repairUses: 1, hpGrowthLate: 1.18, eliteBonus: 1, eliteEarlier: 2 };
+
+// B-179: Anzahl der Elite-Gegner in Welle `wave` (0 vor ELITE.from). mods (B-182): { eliteBonus, eliteEarlier }.
+export function eliteCount(wave, mods = {}) {
+  const bonus = mods.eliteBonus ?? 0;
+  const from = ELITE.from - (mods.eliteEarlier ?? 0);
+  if (wave < from) return 0;
+  return Math.min(ELITE.max + bonus, ELITE.count + bonus + Math.floor((wave - from) / ELITE.every));
 }
 
 // B-179: markiert eliteCount(wave) Einträge der Spawn-Liste (gleichmäßig verteilt unter ELITE.types) mit elite = Eigenschaft.
-function markElites(list, wave) {
-  const n = eliteCount(wave);
+function markElites(list, wave, mods) {
+  const n = eliteCount(wave, mods);
   const pool = list.filter((e) => ELITE.types.includes(e.type));
   const k = Math.min(n, pool.length);
   for (let i = 0; i < k; i++) pool[Math.floor(((i + 0.5) * pool.length) / k)].elite = ELITE.traits[(wave + i) % ELITE.traits.length];
 }
 
 // Erzeugt die Spawn-Liste einer Welle: [{ type, at, elite? }] (at = Sekunden nach Wellenstart).
-// mapId (B-171) nur für die kartenabhängige Anzahl der neuen Gegner.
-export function waveFor(wave, mapId) {
+// mapId (B-171) nur für die kartenabhängige Anzahl der neuen Gegner. mods (B-182): Elite-Felder des Albtraum-Modus.
+export function waveFor(wave, mapId, mods = {}) {
   const list = [];
   let t = 0;
   const extras = WAVE_EXTRAS[wave] || {};
@@ -814,7 +823,7 @@ export function waveFor(wave, mapId) {
   const finalNecros = wave === MAX_WAVES ? FINAL_WAVE_NECROS : 0;
   if (wave % 5 === 0) add(wave === NECRO_WAVE ? 'necro' : 'boss', Math.floor(wave / 10) + 1 - finalNecros, 3);
   add('necro', finalNecros, 3);
-  markElites(list, wave);
+  markElites(list, wave, mods);
   return list;
 }
 

@@ -335,3 +335,57 @@ test('mapAfterResult: Sieg → nächste Karte, sonst gleiche Karte', () => {
   assert.equal(mapAfterResult(won(...MAP_ORDER), last, 'won'), last);
   assert.equal(mapAfterResult(p, 'gibtsnicht', 'won'), 'gibtsnicht');
 });
+
+// ---------- B-182: Albtraum-Modus ----------
+import { isNightmareUnlocked, nightmareProgress, nightmareResultLines } from '../src/progress.js';
+
+test('B-182: Albtraum erst bei allen Sternen im Normalmodus', () => {
+  const p = emptyProgress();
+  assert.equal(isNightmareUnlocked(p, 'meadow'), false);
+  recordResult(p, { mapId: 'meadow', status: 'won', wave: MAX_WAVES, lives: 1 });
+  assert.equal(isNightmareUnlocked(p, 'meadow'), false, 'weniger als alle Sterne');
+  recordResult(p, { mapId: 'meadow', status: 'won', wave: MAX_WAVES, lives: START_LIVES });
+  assert.equal(mapProgress(p, 'meadow').stars, STAR_LIVES_SHARE.length);
+  assert.equal(isNightmareUnlocked(p, 'meadow'), true);
+  assert.equal(isNightmareUnlocked(p, 'ice'), false);
+  assert.equal(isNightmareUnlocked(p, 'mond'), false);
+});
+
+test('B-182: Albtraum-Ergebnisse überschreiben keine Normal-Rekorde oder -Sterne', () => {
+  const p = emptyProgress();
+  recordResult(p, { mapId: 'meadow', status: 'lost', wave: 4, lives: 0 });
+  const normal = structuredClone(p.maps);
+  const r = recordResult(p, { mapId: 'meadow', status: 'won', wave: MAX_WAVES, lives: 5, mode: 'nightmare' });
+  assert.deepEqual(p.maps, normal);
+  assert.deepEqual(r, { newRecord: true, newStars: false, unlockedMap: null });
+  assert.equal(isUnlocked(p, 'ice'), false, 'kein Freischalten über den Albtraum');
+  assert.deepEqual(nightmareProgress(p, 'meadow'), { bestWave: MAX_WAVES });
+  // Rekord wird nie schlechter
+  assert.equal(recordResult(p, { mapId: 'meadow', status: 'lost', wave: 3, lives: 0, mode: 'nightmare' }).newRecord, false);
+  assert.equal(nightmareProgress(p, 'meadow').bestWave, MAX_WAVES);
+  assert.deepEqual(nightmareProgress(p, 'ice'), { bestWave: 0 });
+});
+
+test('B-182: alte Spielstände ohne Albtraum laden weiter, Albtraum-Bereich übersteht Speichern', () => {
+  const old = fakeStorage({ [PROGRESS_KEY]: JSON.stringify({ maps: { meadow: { bestWave: 20, stars: 3 } } }) });
+  const p = loadProgress(old);
+  assert.deepEqual(p, { maps: { meadow: { bestWave: 20, stars: 3 } } });
+  assert.equal(isNightmareUnlocked(p, 'meadow'), true);
+  recordResult(p, { mapId: 'meadow', status: 'lost', wave: 7, lives: 0, mode: 'nightmare' });
+  const s = fakeStorage();
+  saveProgress(s, p);
+  assert.deepEqual(loadProgress(s), p);
+  // kaputte Albtraum-Daten fallen weg
+  const bad = sanitizeProgress({ maps: {}, nightmare: { meadow: { bestWave: -1 }, mond: { bestWave: 3 }, ice: 'x', twin: { bestWave: 2.7 } } });
+  assert.deepEqual(bad, { maps: {}, nightmare: { twin: { bestWave: 2 } } });
+  assert.deepEqual(sanitizeProgress({ maps: {}, nightmare: [] }), emptyProgress());
+});
+
+test('B-182: Overlay-Texte nach einem Albtraum-Spiel', () => {
+  const p = emptyProgress();
+  const r1 = recordResult(p, { mapId: 'meadow', status: 'lost', wave: 5, lives: 0, mode: 'nightmare' });
+  assert.deepEqual(nightmareResultLines(p, 'meadow', r1), ['Albtraum-Rekord: Welle 5']);
+  const before = { ...nightmareProgress(p, 'meadow') };
+  const r2 = recordResult(p, { mapId: 'meadow', status: 'lost', wave: 8, lives: 0, mode: 'nightmare' });
+  assert.deepEqual(nightmareResultLines(p, 'meadow', r2, before), ['Albtraum-Rekord: Welle 8', 'Neuer Rekord!']);
+});

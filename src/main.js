@@ -2,7 +2,7 @@
 import { TILE, FRAME_MARGIN, VIEW_WIDTH, VIEW_HEIGHT, PAINTED_STYLE, FIGURE_STYLE, SHOP_CARD, TOWER_TYPES, ENEMY_TYPES, MAX_WAVES, MAPS, SPEED_STEPS, TARGET_MODES, MAX_SUBSTEP, LOW_LIVES, ABILITIES, ICON, VIEW_FIT, COIN_BURST, HUD_BAR, waveSummary, meteorText } from './config.js';
 import {
   createGame, stepGame, togglePause, buildTower, upgradeTower, sellTower, setTargetMode, startWave, setAutoWave,
-  useAbility, abilityCooldownLeft, canBuild, towerAt, towerStats, masterInfo,
+  useAbility, abilityCooldownLeft, abilityMaxUses, canBuild, towerAt, towerStats, masterInfo,
 } from './game.js';
 import { renderView, drawTower, paintedStatus, paintedImage, setPaintedExtent, flagBoxes } from './render.js';
 import { abilityView, overheatNote, startButtonView, waveProgress, loadAutoWave, saveAutoWave } from './hud.js';
@@ -10,7 +10,7 @@ import { drawIcon } from './render-icons.js';
 import { buildTapStep, aimStep, fieldPoint, canvasSize, moveFocusTile, rotatePauseStep, fullscreenGate } from './input.js';
 import { createSoundTracker, collectSounds, loadSoundOn, saveSoundOn } from './sound-events.js';
 import { unlockAudio, setSoundOn, playSound, updateMusic } from './audio.js';
-import { loadProgress, saveProgress, recordResult, isUnlocked, mapProgress, starText, resultLines, startMap, mapAfterResult, starsFor, MAP_ORDER } from './progress.js';
+import { loadProgress, saveProgress, recordResult, isUnlocked, isNightmareUnlocked, nightmareResultLines, nightmareProgress, mapProgress, starText, resultLines, startMap, mapAfterResult, starsFor, MAP_ORDER } from './progress.js';
 import { mountStartScreen, endView, starsHtml, STAR_COUNT } from './screens.js';
 import { fullscreenControl } from './fullscreen.js';
 import { createBossBars } from './boss-bar.js';
@@ -116,6 +116,7 @@ landscapeQuery.addEventListener('change', measureExtent);
 const $ = (id) => document.getElementById(id);
 const ui = { hudDim: false, buildType: null, selectedTowerId: null, ring: null, ringPreview: null, upgradeHover: false, upgradePreview: null, hover: null, pending: null, aiming: false, hoverPx: null, speed: SPEED_STEPS[0], message: '', messageKind: 'error', messageTtl: 0 };
 let mapId;
+let mode = 'normal'; // B-182: Spielmodus ('normal' | 'nightmare'), bleibt beim Neustart erhalten
 let state = createGame();
 
 // prefers-reduced-motion (B-067): schaltet das Wackeln beim Boss-Auftritt aus (render liest ui.reducedMotion)
@@ -524,8 +525,9 @@ const startScreen = mountStartScreen($('start-screen'), {
   getProgress: () => progress,
   allOpen: TEST_MODE,
   currentMap: () => (TEST_MODE ? state.mapId : startMap(progress)),
-  onPick: (id) => {
+  onPick: (id, pickedMode = 'normal') => {
     mapId = id;
+    mode = pickedMode;
     progress.lastMap = id;
     saveProgress(getStorage(), progress);
     // Handy: Vollbild schon bei der Kartenwahl, damit Chromes Vollbild-Hinweis vor Welle 1 wieder verschwindet
@@ -661,7 +663,9 @@ function doSell() {
 function restart() {
   // Gesperrte Karte: auf die erste Karte zurückfallen.
   if (mapId !== undefined && !mapOpen(mapId)) mapId = MAP_ORDER[0];
-  state = createGame({ mapId, autoWave: ui.autoWave });
+  // B-182: Albtraum nur auf Karten mit allen Sternen (Testseite: immer)
+  if (mode === 'nightmare' && !TEST_MODE && !isNightmareUnlocked(progress, mapId)) mode = 'normal';
+  state = createGame({ mapId, mode, autoWave: ui.autoWave });
   resultSaved = false;
   resultText = [];
   Object.assign(ui, { buildType: null, selectedTowerId: null, pending: null, aiming: false, hoverPx: null, speed: SPEED_STEPS[0], ring: null, ringPreview: null, upgradeHover: false, upgradePreview: null });
@@ -772,7 +776,7 @@ function refreshUI() {
 
   for (const [id, def] of Object.entries(ABILITIES)) {
     const btn = abilityBtns[id];
-    const v = abilityView(def, state.abilities[id].uses, abilityCooldownLeft(state, id));
+    const v = abilityView({ ...def, maxUses: abilityMaxUses(state, id) }, state.abilities[id].uses, abilityCooldownLeft(state, id)); // B-182: Albtraum
     btn.setAttribute('aria-label', v.aria);
     if (btn.dataset.state === 'charging' && v.state === 'ready') { btn.classList.remove('pop'); void btn.offsetWidth; btn.classList.add('pop'); }
     btn.dataset.state = v.state;
@@ -831,6 +835,7 @@ function refreshUI() {
   // C5: Plakette mit Band (Titel) und erreichten Sternen dieses Spiels
   if (state.status !== 'playing') {
     const end = endView(state.status, starsFor(state.status, state.lives));
+    if (state.mode === 'nightmare') end.showStars = false; // B-182: keine Sterne im Albtraum
     $('overlay-title').textContent = end.title;
     $('end-ribbon-band').setAttribute('fill', end.ribbon);
     setHtml($('end-stars'), end.showStars ? starsHtml(end.stars, 52) : '');
@@ -858,7 +863,14 @@ function renderResultLines(el, lines) {
 function saveResult() {
   resultSaved = true;
   const before = { ...mapProgress(progress, state.mapId) };
-  const res = recordResult(progress, { mapId: state.mapId, status: state.status, wave: state.wave, lives: state.lives });
+  const nightmareBefore = { ...nightmareProgress(progress, state.mapId) };
+  const res = recordResult(progress, { mapId: state.mapId, status: state.status, wave: state.wave, lives: state.lives, mode: state.mode });
+  if (state.mode === 'nightmare') { // B-182: Albtraum bleibt auf der Karte, Normal-Stand unberührt
+    saveProgress(getStorage(), progress);
+    resultText = nightmareResultLines(progress, state.mapId, res, nightmareBefore);
+    $('restart').textContent = 'Neues Spiel';
+    return;
+  }
   // Nach einem Sieg die nächste Karte vorwählen: „Neues Spiel“ startet dort, gemerkt auch fürs nächste Öffnen.
   mapId = mapAfterResult(progress, state.mapId, state.status);
   if (mapId !== state.mapId) progress.lastMap = mapId;
