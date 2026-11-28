@@ -179,3 +179,7 @@ Anhängen ohne die Datei zu lesen: `cat >> docs/LEDGER.md <<'EOF' … EOF`. Übe
 ## 2026-11-28 – Albtraum: Oger-König schwächer
 - Spieltest: Oger-König zu stark. NIGHTMARE.bossBuff.ogrePhase2: Schild 2 -> 1.5 s, Wut-Tempo 1.35 -> 1.2.
 - Unit- und Balancing-Tests grün.
+
+### Regel Optik-Tests (agent/regel-optik-tests)
+- CLAUDE.md Regel 2 + Pipeline-Merge: Optik-Zähltests dürfen Agenten bei gewollter Optikänderung anpassen, im PR begründet.
+- Logik/Balancing/Eingabe-Tests und Abschwächen bleiben beim Menschen. Merge durch Mensch (.claude/ geändert).
