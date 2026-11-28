@@ -106,3 +106,28 @@ Zwei developer parallel (je eigene Sitzung, eigener Unter-Branch von `agent/stuf
 - Idee: Je Karte zuerst ein S-Element: Eis – schwache Augen hinter Eisblöcken (alpha 0,5) oder Atemwölkchen aus dem Tannendickicht; Zangenangriff – Glutaugen in verkohlten Baumstümpfen; Zwei Fronten – Augen in den Gruftfenstern blinzeln echt, Geisterschleier zwischen Grabsteinen; Vulkan – Augenpaare mit Lid in Basaltspalten.
 - Akzeptanzkriterien:
   - Je Karte sichtbar im Screenshot, nicht auf dem Weg (Test), Teilchenbudget eingehalten, Augen nicht mit Glutpunkten/Gegnern verwechselbar.
+
+## Neue Karte "Nachtfriedhof" (freigegeben 2026-11-28, neue Mechanik, eine Sitzung je Eintrag, in dieser Reihenfolge)
+
+### B-210: Mechanik: Nebenwege mit Start mitten auf der Karte (Friedhof-Spawns)
+- Status: offen
+- Aufwand: M
+- Idee: `MAPS.<id>.graveyards`: Liste von Nebenwegen (Wegpunkte ab einem Friedhof im Feld bis in den Hauptweg oder zum Ausgang). Unabhängig von der Welle kommt alle `GRAVEYARD.interval` Sekunden je Friedhof ein Trupp von `GRAVEYARD.size` Skeletten (Zahlen in `config.js`, ab Welle `GRAVEYARD.fromWave`). Reine Logik in `game.js`, nutzt bestehende `paths`/`lane`.
+- Akzeptanzkriterien:
+  - Tests in `tests/game`: Trupps erscheinen am Friedhof-Startpunkt, im Takt, nur während einer laufenden Welle; Karten ohne `graveyards` unverändert.
+  - Friedhofkacheln sind nicht bebaubar; Welle gilt erst als beendet, wenn auch Trupps besiegt/durch sind.
+
+### B-211: Karte Nachtfriedhof: Wege und Balancing
+- Status: offen
+- Aufwand: M
+- Idee: Neue Karte `graveyard` (20x14): ein langer Hauptweg vom Rand, zwei kurze Nebenwege ab je einem Friedhof, die erst spät in den Hauptweg münden, sodass man an jedem Nebenweg 1-2 Türme braucht. Wenige Hindernisse.
+- Akzeptanzkriterien:
+  - Balancing-Sim: Welle 20 ohne Lebensverlust mit optimalem Spiel möglich; ohne Türme an den Nebenwegen gehen Leben verloren. Kanonen-Mix mitmessen.
+  - Karte in der Kartenauswahl wählbar.
+
+### B-212: Karte Nachtfriedhof: Optik
+- Status: offen
+- Aufwand: M
+- Idee: Dunkles Moor, Nebel, Grabsteine und Gruft an den Friedhöfen, Farben aus dem Design-System (Tokens). Rand mit Bäumen, keine Vignette. Friedhof leuchtet kurz, wenn ein Trupp kommt.
+- Akzeptanzkriterien:
+  - Weg-Kontrast zum Boden mindestens 25 % Luminanz; Friedhöfe auf Desktop und Handy klar erkennbar (Screenshots).
