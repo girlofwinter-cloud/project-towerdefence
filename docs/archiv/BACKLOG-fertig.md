@@ -154,3 +154,54 @@
   - Musik-Schieber wirkt auf die Musik-Lautstärke, Effekte-Schieber auf alle Effekte; 0 % ist still, ohne den Ton-Schalter zu ändern.
   - Tastatur und Touch bedienbar, Tippziele ≥ 44 px, Desktop 1280x800 und Handy quer ohne Überlappung (Screenshots); e2e grün.
   - Farben und Maße aus dem Design-System (Bauteile Holzleiste/Plakette, runder Knopf).
+
+### B-182: Albtraum-Modus: Grundlage
+- Status: fertig
+- Aufwand: M
+- Idee: Neuer Spielmodus `nightmare`, der je Karte freigeschaltet wird, sobald sie normal mit 3 Sternen geschafft ist. Die Stufe ist fest und liegt als `NIGHTMARE` in `config.js` (vorläufige Werte): Start-Gold −30 %, Kopfgeld −20 %, 5 statt 10 Leben, Reparatur nur einmal, höheres spätes HP-Wachstum, mehr Elite-Gegner. Umsetzung über den vorhandenen `modifiers`-Mechanismus. Wählbar in der Kartenauswahl (Knopf „Albtraum“ auf freigeschalteten Karten).
+- Akzeptanzkriterien:
+  - Neues Spiel mit `mode: 'nightmare'` übernimmt alle `NIGHTMARE`-Werte (Unit-Test je Wert); der Normalmodus bleibt unverändert (Test).
+  - Freischaltung nur bei 3 Sternen normal (Test); alte Spielstände laden weiter (Test).
+  - Albtraum-Ergebnisse überschreiben keine Normal-Rekorde oder -Sterne.
+
+### B-183: Albtraum-Abzeichen Bronze/Silber/Gold
+- Status: fertig
+- Aufwand: M
+- Idee: Drei Abzeichen je Karte: Bronze = Welle 20 geschafft, Silber = ohne Lebensverlust, Gold = ohne Lebensverlust plus eine Kartenbedingung. Die Bedingungen liegen in `config.js` (Vorschläge: Wiese „ohne Fähigkeiten“, Eis „ohne Frostturm“, Gabelung „höchstens 3 Turmtypen“, Zwillinge „ohne Verkaufen“, Vulkan „höchstens 3 Turmtypen“). Die Prüfung läuft rein in der Logik und zählt während des Spiels mit.
+- Akzeptanzkriterien:
+  - `checkGoldCondition(state, mapId)` in Node getestet (erfüllt und verletzt, je Bedingungsart).
+  - Abzeichen werden im Fortschritt gespeichert, nur verbessert und nie verschlechtert (Test); alte Spielstände laden (Test).
+  - Während des Spiels ist sichtbar, ob die Gold-Bedingung noch erfüllt ist (kleine Anzeige im HUD).
+
+### B-184: Albtraum-Optik: Stimmung, Siegbildschirm, Abzeichen-Wand
+- Status: fertig
+- Aufwand: M
+- Idee: Der Modus soll sich sofort anders anfühlen: dunklerer Himmel und rötliches Licht über dem vorhandenen Licht-System, eigener Siegbildschirm mit groß einfliegendem Abzeichen (ähnlich wie das Elite-Abzeichen aus B-179) und Sound. In der Kartenauswahl tragen die Karten ihre Abzeichen, dazu ein Zähler „Abzeichen 7 / 15“. Farben und Maße kommen aus dem Design-System. Vorher baut der designer einen Prototyp mit `/design`.
+- Akzeptanzkriterien:
+  - Render-Test: Nacht-Tönung ist nur im Albtraum aktiv; das Spielfeld bleibt 20x14.
+  - Screenshots Desktop 1280x800 und Handy quer ohne Überlappung; e2e grün.
+  - Siegbildschirm zeigt das höchste neue Abzeichen; ohne neues Abzeichen gibt es den normalen Albtraum-Siegbildschirm.
+
+### B-185: Kosmetik-Belohnungen
+- Status: fertig
+- Aufwand: M
+- Idee: Belohnungen, die nichts leichter machen: Gold-Abzeichen auf einer Karte schaltet für diese Karte einen Nacht-Look auch im Normalmodus frei. Gold auf allen Karten schaltet goldene Turm-Varianten frei. Beides lässt sich in einem kleinen Menü an- und abschalten und wird im Fortschritt gespeichert.
+- Akzeptanzkriterien:
+  - Freischaltlogik rein und in Node getestet; Spielwerte bleiben unverändert (Test: gleiche Simulation mit und ohne Kosmetik ergibt das gleiche Ergebnis).
+  - Auswahl bleibt nach Neuladen erhalten (Test); Render-Test der goldenen Variante.
+
+### B-186: Albtraum-Balancing (grob)
+- Status: fertig
+- Aufwand: M
+- Idee: Die `NIGHTMARE`-Werte grob einstellen, nicht perfekt: Der Kanonen-Mix (stärkste Strategie) soll im Albtraum Leben verlieren oder knapp scheitern, und Silber soll mit angepasstem Spiel möglich bleiben. Danach testet der Mensch selbst und gibt Rückmeldung zu den Werten.
+- Akzeptanzkriterien:
+  - Simulation in `tests/balance/` misst je Karte den Kanonen-Mix im Albtraum und gibt Welle und Leben aus (Messung, keine harte Grenze).
+  - `npm run test:balance` für den Normalmodus bleibt grün und unverändert.
+
+### B-187: Eigene Musik im Albtraum
+- Status: fertig
+- Aufwand: S
+- Idee: Wunsch des Menschen (28.11.): Der Albtraum braucht eine eigene, dunklere Musik. Ein Titel für alle Karten im Albtraum, z. B. `SOUND.music.nightmare` neben `byMap` in `config.js`, mit Lautstärkefaktor per RMS-Messung wie bei B-118. Die Datei lädt der Mensch selbst herunter (CC0, Lizenz bestätigt er), Umwandlung per `afconvert` nach `assets/music/`, Nachweis in `assets/sounds/LIZENZ.md`. Bis die Datei da ist, wird die Mechanik mit dem normalen Kartentitel als Rückfall gebaut.
+- Akzeptanzkriterien:
+  - `pickMusicUrl` (src/sound-events.js) wählt im Albtraum den Albtraum-Titel und sonst den Kartentitel (Unit-Test); ohne Albtraum-Datei gilt der Kartentitel.
+  - Asset-Grenzen im Test bleiben eingehalten (3 MB je Musikdatei, 15 MB gesamt (vom Menschen am 28.11. angehoben)).
