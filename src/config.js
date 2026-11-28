@@ -744,14 +744,15 @@ export const WAVE_EXTRAS = {
 // B-179: Elite-Gegner ab Welle `from`: count in Welle from, danach +1 je `every` Wellen, höchstens max. Gewählt werden
 // gleichmäßig verteilte Gegner der Typen `types` (feste Auswahl, kein Zufall); die Eigenschaft wechselt reihum (traits).
 // swift: Tempo mal speed; shield: einmaliger Schild (wie der Magier-Schild) von wardShare * maxHp;
-// regen: heilt healPerSec * maxHp pro Sekunde. Elite-Gegner bringen rewardFactor mal so viel Gold. Flag enemy.elite fürs Abzeichen.
+// regen: heilt healPerSec * maxHp pro Sekunde, aber erst pauseAfterHit Sekunden nach dem letzten HP-Schaden (Spieltest 28.11.:
+// im Albtraum ohne Pause zu stark). Elite-Gegner bringen rewardFactor mal so viel Gold. Flag enemy.elite fürs Abzeichen.
 export const ELITE = {
   from: 10, count: 1, every: 3, max: 3,
   types: ['grunt', 'runner', 'tank', 'shielded'],
   traits: ['shield', 'regen'], // 'swift' (Werte unten) zu stark gegen Zwei Fronten, Balancing 27.11.
   swift: { speed: 1.35 },
   shield: { wardShare: 0.3 },
-  regen: { healPerSec: 0.03 },
+  regen: { healPerSec: 0.03, pauseAfterHit: 2 },
   rewardFactor: 1.5,
 };
 
@@ -773,14 +774,16 @@ export const ELITE = {
 export const NIGHTMARE = {
   goldFactor: 1, rewardFactor: 1, lives: 5, repairUses: 1, hpGrowthLate: 1.16, eliteBonus: 2, eliteEarlier: 2,
   hpSteps: [{ from: 8, factor: 1.2 }, { from: 12, factor: 1.4 }],
+  // Spieltest 28.11. (Welle 15 mit 2 Bossen und Elite zu schwer): Bosse und Elite höchstens mal specialHpCap
+  specialHpCap: 1.3,
 };
 
 // B-189: Leben-Faktor der Gegner in Welle `wave`: factor der letzten Stufe aus mods.hpSteps mit from <= wave, sonst 1
-// (Normalmodus ohne hpSteps immer 1).
-export function nightmareHpFactor(wave, mods = {}) {
+// (Normalmodus ohne hpSteps immer 1). special = Boss oder Elite: höchstens mods.specialHpCap.
+export function nightmareHpFactor(wave, mods = {}, special = false) {
   let f = 1;
   for (const step of mods?.hpSteps || []) if (wave >= step.from) f = step.factor;
-  return f;
+  return special && mods?.specialHpCap ? Math.min(f, mods.specialHpCap) : f;
 }
 
 // B-179: Anzahl der Elite-Gegner in Welle `wave` (0 vor ELITE.from). mods (B-182): { eliteBonus, eliteEarlier }.

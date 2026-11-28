@@ -20,8 +20,8 @@ export function mapModifiers(mapId) {
 export const MODES = ['normal', 'nightmare'];
 export function modeModifiers(mode) {
   if (mode !== 'nightmare') return {};
-  const { rewardFactor, lives: maxLives, repairUses, hpGrowthLate, eliteBonus, eliteEarlier, hpSteps } = NIGHTMARE;
-  return { rewardFactor, maxLives, repairUses, hpGrowthLate, eliteBonus, eliteEarlier, hpSteps };
+  const { rewardFactor, lives: maxLives, repairUses, hpGrowthLate, eliteBonus, eliteEarlier, hpSteps, specialHpCap } = NIGHTMARE;
+  return { rewardFactor, maxLives, repairUses, hpGrowthLate, eliteBonus, eliteEarlier, hpSteps, specialHpCap };
 }
 // Höchstleben (Start und Grenze der Reparatur)
 export function maxLives(state) {
@@ -245,7 +245,10 @@ export function waveHp(wave, mapId, lateGrowth, hpFactor = 1) {
 // gekappt auf 0..1. Ohne laufende Welle 0.
 export function earlyStartRisk(state) {
   if (!state.waveActive || state.wave < 1) return 0;
-  const total = waveHp(state.wave, state.mapId, state.modifiers?.hpGrowthLate, nightmareHpFactor(state.wave, state.modifiers));
+  // Albtraum: Faktor je Gegner (Bosse und Elite gedeckelt, specialHpCap), wie in spawnEnemy
+  const mods = state.modifiers;
+  const total = waveFor(state.wave, state.mapId, mods).reduce((sum, e) => sum + Math.round(ENEMY_TYPES[e.type].hp
+    * hpScale(state.wave, mods?.hpGrowthLate) * nightmareHpFactor(state.wave, mods, isBoss(e.type) || Boolean(e.elite && ELITE[e.elite]))), 0);
   const alive = state.enemies.reduce((sum, e) => sum + Math.max(0, e.hp), 0);
   return total > 0 ? Math.min(1, alive / total) : 0;
 }
@@ -322,7 +325,9 @@ export function planLanes(state, list, wave) {
 export function spawnEnemy(state, type, wave = state.wave, lane = null, elite = null) {
   const def = ENEMY_TYPES[type];
   // B-189: gestufter Leben-Faktor (Albtraum) nur auf die Gegner-Leben, nicht auf Lava- und Meteor-Schaden
-  const hp = Math.round(def.hp * hpScale(Math.max(1, wave), state.modifiers?.hpGrowthLate) * nightmareHpFactor(wave, state.modifiers));
+  // Bosse und Elite höchstens mal specialHpCap (Elite wie bei makeElite unten)
+  const special = isBoss(type) || Boolean(elite && ELITE[elite]);
+  const hp = Math.round(def.hp * hpScale(Math.max(1, wave), state.modifiers?.hpGrowthLate) * nightmareHpFactor(wave, state.modifiers, special));
   const paths = state.paths || [state.path];
   // B-124: vorgeplante Seite aus der Spawn-Liste, sonst Wechsel wie bisher
   if (!(Number.isInteger(lane) && lane >= 0 && lane < paths.length)) lane = laneFor(state, type, paths.length);
@@ -546,10 +551,12 @@ function healStep(state) {
 }
 
 // B-179: Selbstheilung der Elite-Gegner mit regen: healPerSec * maxHp pro Sekunde (Rate mal dt), nie über maxHp.
+// Heilpause: erst pauseAfterHit Sekunden nach dem letzten HP-Schaden (enemy.hurtAt).
 function regenStep(state, dt) {
   const rate = ELITE.regen.healPerSec * dt;
   for (const e of state.enemies) {
     if (e.elite !== 'regen' || e.hp <= 0 || e.hp >= e.maxHp) continue;
+    if (state.time - (e.hurtAt ?? -Infinity) < ELITE.regen.pauseAfterHit) continue;
     e.hp = Math.min(e.maxHp, e.hp + e.maxHp * rate);
   }
 }
@@ -917,6 +924,7 @@ function damage(state, enemy, p, direct = false) {
     }
   }
   enemy.hp -= dmg;
+  if (dmg > 0) enemy.hurtAt = state.time; // B-179: Heilpause der Elite-Selbstheilung
   phaseCheck(state, enemy);
   if (p.slow && !isSlowImmune(enemy)) { // B-170: Glutlinge ignorieren den Frost-Slow, der Schaden wirkt
     enemy.slowFactor = 1 - p.slow;
