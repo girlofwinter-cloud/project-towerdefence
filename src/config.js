@@ -1790,6 +1790,10 @@ export const SOUND = {
       twin:    { file: 'music-twin', gain: 0.55 },
       volcano: { file: 'music-volcano', gain: 0.6 },
     },
+    // B-187: eigener Titel im Albtraum-Modus (Vorrang vor dem Kartentitel). Datei folgt: CC0-Aufnahme, der Mensch
+    // lädt sie herunter und trägt hier den Dateinamen ohne Endung ein (z. B. 'music-nightmare'). file: null = kein
+    // eigener Titel, dann läuft der Kartentitel. gain wie bei byMap.
+    nightmare: { file: null, gain: 1 },
     gain: 0.025,         // Lautstärke im laufenden Spiel
     pausedFactor: 0.6,   // bei Pause etwas leiser (Anteil von gain)
     fadeIn: 2,           // Einblenden in s (Start, Ton wieder an, neues Spiel)

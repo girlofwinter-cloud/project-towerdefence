@@ -255,17 +255,27 @@ export function musicUrl(cfg = SOUND.music, mapId) {
 // B-118: Lautstärkefaktor eines Titels (nach URL, damit der Rückfalltitel seinen eigenen Faktor behält);
 // Titel ohne Eintrag oder ohne gültigen Faktor -> 1
 export function musicGainFactor(url, cfg = SOUND.music) {
+  const nm = nightmareMusicUrl(cfg);
+  if (nm && nm === url && Number.isFinite(cfg.nightmare.gain) && cfg.nightmare.gain >= 0) return cfg.nightmare.gain;
   for (const [id, entry] of Object.entries(cfg.byMap || {})) {
     if (musicUrl(cfg, id) === url && Number.isFinite(entry.gain) && entry.gain >= 0) return entry.gain;
   }
   return 1;
 }
 
+// B-187: URL des Albtraum-Titels; ohne Eintrag oder ohne Datei (file: null) -> null
+export function nightmareMusicUrl(cfg = SOUND.music) {
+  const name = cfg.nightmare?.file;
+  return name ? `${cfg.base}${name}.m4a` : null;
+}
+
 // B-118: welcher Titel laufen soll. failed: URLs, deren Laden gescheitert ist.
 // Kartentitel gescheitert -> Rückfalltitel; auch der gescheitert -> null (keine Musik).
-export function pickMusicUrl(mapId, failed = [], cfg = SOUND.music) {
+// B-187: mode 'nightmare' -> zuerst der Albtraum-Titel (falls konfiguriert), dann wie oben.
+export function pickMusicUrl(mapId, failed = [], cfg = SOUND.music, mode = 'normal') {
   const bad = new Set(failed);
-  for (const url of [musicUrl(cfg, mapId), musicUrl(cfg)]) if (!bad.has(url)) return url;
+  const nm = mode === 'nightmare' ? nightmareMusicUrl(cfg) : null;
+  for (const url of [nm, musicUrl(cfg, mapId), musicUrl(cfg)]) if (url && !bad.has(url)) return url;
   return null;
 }
 

@@ -906,7 +906,7 @@ function frame(now) {
   // Töne: Ereignisse immer erkennen (sonst käme nach dem Einschalten ein Schwall), nur bei Ton an abspielen
   for (const ev of collectSounds(soundTracker, state, now / 1000)) if (ui.soundOn) playSound(ev);
   // B-116/B-118: Musik der Karte laden/starten und je nach Spielstatus ein- oder ausblenden
-  updateMusic({ status: state.status, paused: state.paused, mapId: state.mapId });
+  updateMusic({ status: state.status, paused: state.paused, mapId: state.mapId, mode: state.mode });
   ui.messageTtl -= dt;
   ctx.setTransform(view.sx, 0, 0, view.sy, 0, 0); // HiDPI: Canvas-Einheiten (VIEW_WIDTH x VIEW_HEIGHT) -> Geräte-px
   renderView(ctx, state, ui);

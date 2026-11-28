@@ -972,6 +972,35 @@ test('B-118: Lautstärkefaktor je Titel wirkt auf musicLevel, Rückfall behält 
   assert.equal(musicGainFactor(`${M.base}x.m4a`, { ...M, byMap: { a: { file: 'x', gain: NaN } } }), 1);
 });
 
+test('B-187: Albtraum-Titel hat Vorrang, sonst Kartentitel, Normalmodus unverändert', () => {
+  const base = { ...SOUND.music, byMap: { ice: { file: 'music-ice', gain: 2 } } };
+  const cfg = { ...base, nightmare: { file: 'music-nightmare', gain: 0.7 } };
+  const nm = 'assets/music/music-nightmare.m4a';
+  const ice = musicUrl(cfg, 'ice');
+  const fallback = musicUrl(cfg);
+  // Albtraum mit Titel -> Albtraum-Titel (auch ohne Kartentitel)
+  assert.equal(pickMusicUrl('ice', [], cfg, 'nightmare'), nm);
+  assert.equal(pickMusicUrl('fork', [], cfg, 'nightmare'), nm);
+  // Albtraum-Titel gescheitert -> Kartentitel, dann Rückfall, dann keine Musik
+  assert.equal(pickMusicUrl('ice', [nm], cfg, 'nightmare'), ice);
+  assert.equal(pickMusicUrl('ice', [nm, ice], cfg, 'nightmare'), fallback);
+  assert.equal(pickMusicUrl('ice', [nm, ice, fallback], cfg, 'nightmare'), null);
+  // Albtraum ohne Titel (file: null oder kein Eintrag) -> Kartentitel
+  assert.equal(pickMusicUrl('ice', [], { ...base, nightmare: { file: null, gain: 1 } }, 'nightmare'), ice);
+  assert.equal(pickMusicUrl('ice', [], { ...base, nightmare: undefined }, 'nightmare'), ice);
+  // Normalmodus (und ohne mode) unverändert
+  assert.equal(pickMusicUrl('ice', [], cfg, 'normal'), ice);
+  assert.equal(pickMusicUrl('ice', [], cfg), ice);
+  // Lautstärkefaktor des Albtraum-Titels
+  assert.equal(musicGainFactor(nm, cfg), 0.7);
+  assert.equal(musicGainFactor(ice, cfg), 2);
+  assert.equal(musicGainFactor(nm, { ...cfg, nightmare: { file: 'music-nightmare', gain: NaN } }), 1);
+  // Auslieferungsstand: Eintrag vorhanden, Datei folgt (null) oder gültiger Name mit gültigem Faktor
+  const N = SOUND.music.nightmare;
+  assert.ok(N && (N.file === null || /^[a-z0-9-]+$/.test(N.file)));
+  assert.ok(Number.isFinite(N.gain) && N.gain > 0 && N.gain <= 3);
+});
+
 test('B-118: Kartenwechsel blendet aus und wieder ein, Cache je Titel, Ladefehler -> Rückfalltitel', async () => {
   const M = SOUND.music;
   const saved = M.byMap;

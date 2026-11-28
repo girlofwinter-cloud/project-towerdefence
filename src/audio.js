@@ -149,11 +149,12 @@ function musicSilence() {
 
 // Pro Frame aus main.js: lädt den Titel der Karte (nach den Effekten), wechselt bei neuer Karte, sobald
 // der neue Titel geladen ist (alten aus-, neuen einblenden), und blendet je nach Spielstatus.
-export function updateMusic({ status, paused, mapId } = {}) {
+// B-187: mode 'nightmare' wählt den Albtraum-Titel; Moduswechsel wechselt den Titel wie ein Kartenwechsel.
+export function updateMusic({ status, paused, mapId, mode } = {}) {
   const ctx = audio.ctx;
   if (!audio.on || !ctx || ctx.state !== 'running' || music.broken || !audio.samplesSettled) return;
   try {
-    const url = pickMusicUrl(mapId, failedMusicUrls());
+    const url = pickMusicUrl(mapId, failedMusicUrls(), undefined, mode);
     const track = url ? music.tracks.get(url) : null;
     if (url && !track) loadMusic(ctx, url);
     // Wechsel erst, wenn der neue Titel bereit ist (bis dahin läuft der alte weiter; scheitert das Laden,
