@@ -78,3 +78,8 @@ Anhängen ohne die Datei zu lesen: `cat >> docs/LEDGER.md <<'EOF' … EOF`. Übe
 - Neu: Knopf neben "Welle starten" (Handy quer: über dem runden Wellenknopf), Taste A. Aus = kein Countdown nach Wellenende; Wahl in localStorage (`td-auto-wave`), Standard an.
 - Logik `setAutoWave` in game.js (aus beendet Countdown, an startet ihn nur zwischen zwei Wellen), Laden/Speichern in hud.js.
 - Tests: 5 unit, neuer e2e `auto-wave` (Desktop 1280/1920, Handy 844x390/667x375). unit 638, e2e 105, balance 21 grün. Reviewer: APPROVE.
+
+### 2026-11-28 – Pflicht-Start im Vollbild auf dem Handy
+- Wunsch des Menschen: zuerst "Im Vollbild spielen" tippen, nicht zuerst drehen. Tippen: Vollbild + Querformat festhalten, Spiel dreht sich selbst.
+- Hinweis bleibt quer, bis getippt wurde (dann nur der Knopf). Nur wo Vollbild geht (nicht iPhone), nicht bei installierter App. fullscreenGate in input.js.
+- PR #121 (versehentlich mit fremden Änderungen) geschlossen, neu im eigenen Worktree. Unit- und e2e-Tests neu, alle grün.

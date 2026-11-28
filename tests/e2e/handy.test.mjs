@@ -271,3 +271,41 @@ test('Start im Hochformat, dann quer: keine Fehler beim Laden, Vollbild-Knopf si
   assert.deepEqual(errors, []);
   await ctx.close();
 });
+
+// Pflicht-Start: zuerst "Im Vollbild spielen" tippen; Drehen allein lässt den Hinweis nicht verschwinden (?vollbild schaltet
+// den Knopf im automatisierten Browser ein)
+test('Pflicht-Start: Knopf im Hochformat, bleibt nach dem Drehen, Tippen startet Vollbild und gibt das Spiel frei', async () => {
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+  const page = await ctx.newPage();
+  const errors = [];
+  page.on('pageerror', (e) => errors.push(e.message));
+  await page.goto(`${url}?vollbild`);
+  const btn = page.locator('#fs-start');
+  await btn.waitFor({ state: 'visible' });
+  assert.match(await page.locator('#rotate-hint').innerText(), /Bitte Handy drehen/);
+  // drehen ohne Tippen: Hinweis bleibt, nur noch der Knopf, Spiel nicht bedienbar
+  await page.setViewportSize({ width: 844, height: 390 });
+  await page.waitForTimeout(300);
+  assert.ok(await btn.isVisible(), 'Knopf bleibt quer');
+  assert.ok(await page.locator('#rotate-hint .plq').isHidden(), 'quer kein "Bitte drehen"');
+  assert.equal(await page.evaluate(() => document.getElementById('app').inert), true, 'Spiel gesperrt bis zum Tippen');
+  const b = await btn.boundingBox();
+  assert.ok(b.height >= MIN_TOUCH && b.y >= 0 && b.y + b.height <= 390, `Knopf im Bild: ${JSON.stringify(b)}`);
+  await btn.tap();
+  await page.waitForFunction(() => document.fullscreenElement !== null, null, { timeout: 3000 });
+  await page.waitForSelector('#rotate-hint', { state: 'hidden' });
+  assert.equal(await page.evaluate(() => document.getElementById('app').inert), false, 'nach dem Tippen bedienbar');
+  await enterGame(page, 'meadow');
+  await page.waitForSelector('#abilities .ability-btn');
+  assert.deepEqual(errors, []);
+  await ctx.close();
+});
+
+test('Ohne ?vollbild im automatisierten Browser und auf dem Desktop: kein Pflicht-Knopf', async () => {
+  const ctx = await browser.newContext({ viewport: { width: 844, height: 390 }, hasTouch: true, isMobile: true });
+  const page = await ctx.newPage();
+  await page.goto(url);
+  await page.waitForSelector('#start-screen:not([hidden]) .map-card');
+  assert.ok(await page.locator('#rotate-hint').isHidden());
+  await ctx.close();
+});

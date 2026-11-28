@@ -314,3 +314,15 @@ test('rotatePauseStep: ohne laufendes Spiel (Spielende) nichts pausieren; Querfo
   // Neustart im Hochformat: neues Spiel ist nicht pausiert, Merker fällt weg
   assert.deepEqual(rotatePauseStep({ portrait: false, paused: false, playing: true, byHint: true }), { pause: null, byHint: false });
 });
+
+// Pflicht-Start im Vollbild: Knopf nur auf Touch-Geräten, die Vollbild können, bis einmal getippt wurde
+import { fullscreenGate } from '../src/input.js';
+test('fullscreenGate: Handy mit Vollbild muss zuerst tippen, sonst kein Pflicht-Knopf', () => {
+  const base = { coarse: true, supported: true, tapped: false, fullscreenOn: false, installed: false };
+  assert.equal(fullscreenGate(base), true);
+  assert.equal(fullscreenGate({ ...base, tapped: true }), false, 'nach dem Tippen weg');
+  assert.equal(fullscreenGate({ ...base, supported: false }), false, 'iPhone: kein Vollbild, kein Knopf');
+  assert.equal(fullscreenGate({ ...base, coarse: false }), false, 'Desktop: kein Knopf');
+  assert.equal(fullscreenGate({ ...base, fullscreenOn: true }), false, 'schon Vollbild');
+  assert.equal(fullscreenGate({ ...base, installed: true }), false, 'als App installiert');
+});

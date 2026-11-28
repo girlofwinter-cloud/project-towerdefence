@@ -69,3 +69,9 @@ export function rotatePauseStep({ portrait, paused, playing, byHint }) {
   if (byHint && paused && playing) return { pause: false, byHint: false };
   return { pause: null, byHint: false };
 }
+
+// Pflicht-Start im Vollbild (Handy): Browser erlauben Vollbild nur nach einem Tippen. Wo es geht, muss man vor dem Spiel
+// einmal "Im Vollbild spielen" antippen; Drehen allein reicht nicht. Nicht nötig, wenn schon Vollbild oder als App installiert.
+export function fullscreenGate({ coarse, supported, tapped, fullscreenOn, installed }) {
+  return coarse && supported && !tapped && !fullscreenOn && !installed;
+}
