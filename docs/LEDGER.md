@@ -158,3 +158,8 @@ Anhängen ohne die Datei zu lesen: `cat >> docs/LEDGER.md <<'EOF' … EOF`. Übe
 - Haus-Knopf aus dem Pause-Schild in die HUD-Leiste: Desktop links neben der Holzleiste, Kompakt als erstes Element der Leiste, Handy quer unter dem Ton-Knopf.
 - Klick pausiert und öffnet Kartenauswahl; Rückfrage beim Kartenwechsel wie bisher.
 - Review: Kompakt-Layout außerhalb des Bildschirms gefunden, nachgebessert; e2e um 390x844 und Rand-Prüfung ergänzt.
+
+## 2026-11-28 – Albtraum-Eliten schwächer
+- Spieltest: Albtraum Welle 15 kaum schaffbar, Eliten zu stark.
+- NIGHTMARE.elite: Schild 0.3 -> 0.2 maxHp, Heilung 0.025 -> 0.015 maxHp/s. Anzahl und Leben unverändert.
+- Unit- und Balancing-Tests grün.
