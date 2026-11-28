@@ -202,3 +202,5 @@ Anhängen ohne die Datei zu lesen: `cat >> docs/LEDGER.md <<'EOF' … EOF`. Übe
 
 - 2026-11-28 designer: Bauvorlagen Karte-Nachtfriedhof und Karte-Nachtfriedhof-Albtraum (Wegpunkte nach Skizze Variante B, Theme, Deko, Trupp-Aufleuchten). Fehlende Tokens (map-graveyard-*, nm-graveyard-*) sind vorgeschlagen und werden mit B-212/B-216 ins Design-System übernommen. Kein Code geändert.
 - 2026-11-28 B-210 Friedhof-Spawns (developer, reviewer ohne Tester: APPROVE): MAPS.<id>.graveyards als Nebenwege ab Feldmitte, Skelett-Trupps per GRAVEYARD in config.js, Wellengegner nur auf Eingängen. 8 neue Tests, Unit und Balancing grün. Noch keine Karte nutzt es (B-211).
+
+- 2026-11-28 designer: Bauvorlagen Gegner-Totengraeber (digger, Grabhügel) und Gegner-Klagegeist (wail, Lähm-Puls mit Vorwarnung, Plakette am Turm) für B-213/B-214. Logik-Namen und neue Tokens sind Vorschläge. Kein Code.
