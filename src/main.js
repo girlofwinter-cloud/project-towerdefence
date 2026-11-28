@@ -7,7 +7,7 @@ import {
 import { renderView, drawTower, paintedStatus, paintedImage, setPaintedExtent, flagBoxes } from './render.js';
 import { abilityView, overheatNote, startButtonView, waveProgress, loadAutoWave, saveAutoWave } from './hud.js';
 import { drawIcon } from './render-icons.js';
-import { buildTapStep, aimStep, fieldPoint, canvasSize, moveFocusTile, rotatePauseStep } from './input.js';
+import { buildTapStep, aimStep, fieldPoint, canvasSize, moveFocusTile, rotatePauseStep, fullscreenGate } from './input.js';
 import { createSoundTracker, collectSounds, loadSoundOn, saveSoundOn } from './sound-events.js';
 import { unlockAudio, setSoundOn, playSound, updateMusic } from './audio.js';
 import { loadProgress, saveProgress, recordResult, isUnlocked, mapProgress, starText, resultLines, startMap, mapAfterResult, starsFor, MAP_ORDER } from './progress.js';
@@ -538,11 +538,14 @@ $('to-maps').addEventListener('click', () => startScreen.show(true));
 if (!TEST_MODE) startScreen.show();
 // B-137: Drehhinweis im Hochformat pausiert das Spiel; nach dem Drehen weiter, wenn die Pause vom Hinweis kam
 let pausedByRotate = false;
+let fsGate = false; // Pflicht-Knopf "Im Vollbild spielen" noch nicht angetippt (gesetzt unten beim Vollbild)
 function applyRotateHint() {
-  const s = rotatePauseStep({ portrait: rotateQuery.matches, paused: state.paused, playing: state.status === 'playing', byHint: pausedByRotate });
+  const hint = rotateQuery.matches || fsGate;
+  const s = rotatePauseStep({ portrait: hint, paused: state.paused, playing: state.status === 'playing', byHint: pausedByRotate });
   if (s.pause !== null && s.pause !== state.paused) togglePause(state);
   pausedByRotate = s.byHint;
-  $('app').inert = rotateQuery.matches; // Tastaturfokus nicht unter dem Hinweis
+  document.body.classList.toggle('fs-gate', fsGate);
+  $('app').inert = hint; // Tastaturfokus nicht unter dem Hinweis
   refreshUI();
 }
 rotateQuery.addEventListener('change', applyRotateHint);
@@ -553,6 +556,18 @@ $('auto-wave').addEventListener('click', toggleAutoWave);
 const fullscreen = fullscreenControl(document, window.screen);
 $('fullscreen').hidden = !fullscreen.supported;
 $('fullscreen').addEventListener('click', () => fullscreen.toggle(document.documentElement, window.matchMedia('(pointer: coarse)').matches));
+// Pflicht-Start: auf dem Handy erst "Im Vollbild spielen" antippen, dann Vollbild und Querformat festhalten (dreht von selbst).
+// Im automatisierten Browser nur mit ?vollbild (e2e), sonst bleiben die übrigen Handy-Tests ohne Knopf.
+fsGate = fullscreenGate({
+  coarse: window.matchMedia('(pointer: coarse)').matches && (!navigator.webdriver || new URLSearchParams(location.search).has('vollbild')),
+  supported: fullscreen.supported, tapped: false, fullscreenOn: fullscreen.isOn(),
+  installed: window.matchMedia('(display-mode: fullscreen), (display-mode: standalone)').matches,
+});
+$('fs-start').addEventListener('click', () => {
+  fullscreen.enter(document.documentElement, true); // sofort im Tipp-Ereignis, sonst lehnt der Browser ab
+  fsGate = false; // auch wenn der Browser ablehnt: nie festhängen
+  applyRotateHint();
+});
 fullscreen.onChange(() => {
   const on = fullscreen.isOn();
   $('fullscreen').setAttribute('aria-pressed', String(on));
@@ -874,7 +889,7 @@ function frame(now) {
   requestAnimationFrame(frame);
 }
 // Start im Hochformat: Hinweis erst hier anwenden, wenn alles initialisiert ist (vorher brach das Laden ab, z. B. ohne Vollbild-Knopf)
-if (rotateQuery.matches) applyRotateHint();
+if (rotateQuery.matches || fsGate) applyRotateHint();
 refreshUI();
 requestAnimationFrame(frame);
 
