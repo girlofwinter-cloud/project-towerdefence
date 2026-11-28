@@ -199,3 +199,5 @@ Anhängen ohne die Datei zu lesen: `cat >> docs/LEDGER.md <<'EOF' … EOF`. Übe
 - Nachtrag: Gruselelemente B-206 bis B-209 (mehr Baumaugen Wiese, folgende Pupillen, Schattenhand/Irrlichter, Elemente je Karte).
 
 - 2026-11-28 designer: Nachtfriedhof skizziert (normal, Albtraum, 2 neue Gegner + Rotation), Design-Fläche https://claude.ai/artifact/5VwK9kA9Eze6fY4KAQmjz9. Vorschläge B-213 bis B-216 in IDEEN.md, Karte B-210 bis B-212 im Backlog. Kein Code geändert.
+
+- 2026-11-28 designer: Bauvorlagen Karte-Nachtfriedhof und Karte-Nachtfriedhof-Albtraum (Wegpunkte nach Skizze Variante B, Theme, Deko, Trupp-Aufleuchten). Fehlende Tokens (map-graveyard-*, nm-graveyard-*) sind vorgeschlagen und werden mit B-212/B-216 ins Design-System übernommen. Kein Code geändert.
