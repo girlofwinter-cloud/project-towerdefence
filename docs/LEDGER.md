@@ -187,3 +187,7 @@ Anhängen ohne die Datei zu lesen: `cat >> docs/LEDGER.md <<'EOF' … EOF`. Übe
 ### Lava-Puls (agent/lava-puls)
 - Vulkan-Albtraum: Glutpuls an den Rand-Lavaseen entfernt (lag außerhalb des Felds, hart abgeschnitten).
 - Optik-Zähltest nach Regel 2 angepasst: Partikel Desktop 51 -> 49.
+
+### Wiese Brücke Glanz (agent/wiese-bruecke-glanz)
+- Glanzlinien des Flusses bekommen an der Brücke eine Lücke (null im Punktzug), keine Striche mehr über der Brücke.
+- Optik-Test nach Regel 2 angepasst: Lücken zugelassen, neu geprüft, dass die Lücke existiert.
