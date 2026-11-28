@@ -101,3 +101,16 @@ test('B-197: Wegrisse alle 3,5 Kacheln auf dem Weg, jeder dritte glüht, geteilt
   assert.ok(svg.includes('id="nm-path-cracks"') && svg.includes('id="nm-rim-cracks"'));
   assert.ok(!buildPaintedSvg(createGame({ mapId: 'fork' })).includes('nm-path-cracks'), 'Normalmodus unverändert');
 });
+
+test('B-195 Nachtrag: Wiese mit Wasser nm-water-a/-b, Moosfäden an der Brücke, Grasbüscheln und Seeaugen; Normalmodus unverändert', () => {
+  const s = createGame({ mapId: 'meadow' });
+  const nm = buildPaintedSvg(s, { look: 'nightmare' }), normal = buildPaintedSvg(s, {});
+  for (const c of ['#5fd6b8', '#183e50', '#8aa890']) assert.ok(nm.includes(c), `Albtraum: ${c}`);
+  assert.ok(nm.includes('dot-tuft'), 'Tupfen als Grasbüschel');
+  assert.ok(normal.includes('#6fcbe0') && !normal.includes('#5fd6b8') && !normal.includes('#8aa890') && !normal.includes('dot-tuft'), 'Normalmodus wie bisher');
+  const lake = motionParticles('meadow').filter((p) => p.kind === 'blink' && p.rx);
+  assert.equal(lake.length, 1, 'ein Augenpaar im See');
+  const [lx, ly] = nightmareOf('meadow').reserve[0];
+  assert.ok(lake[0].x > lx * TILE / PAINTED_STYLE.unit && lake[0].y > ly * TILE / PAINTED_STYLE.unit, 'Seeaugen im See');
+  assert.ok(motionParticles('meadow').some((p) => p.kind === 'twinkle'), 'Glitzern auf dem Wasser');
+});

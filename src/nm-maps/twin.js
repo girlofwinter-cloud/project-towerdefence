@@ -54,18 +54,16 @@ const shapes = {
   cryptRockObstacle: form(36, 26, ROCK, null, (SC * 1.25) / PAINTED_STYLE.obstacleRock),
 };
 
-// Seelenflamme (Fläche-px, Fuß unten Mitte, 20 x 30): Schein, Flamme, Kern
-const FLAME = '<ellipse cx="10" cy="16" rx="12" ry="14" fill="#9fe8ff" opacity=".35" filter="url(#nm-soft)"/><path d="M10 0 Q18 12 16 20 Q14 30 10 30 Q6 30 4 20 Q2 12 10 0 Z" fill="#9fe8ff"/><path d="M10 12 Q14 19 12 24 Q10 28 8 24 Q6 19 10 12 Z" fill="#e6f6ff"/>';
+// Seelenflamme (Fläche-px, Fuß unten Mitte, 20 x 30): wippt in der Bewegungsschicht (render-nightmare.js, drawFlame)
 // Runenkreis am Boden (Fläche-px, 80 x 32)
 const CIRCLE = `<ellipse cx="40" cy="16" rx="38" ry="14" fill="none" stroke="#c58aff" stroke-width="5" opacity=".45" filter="url(#nm-soft)"/><ellipse cx="40" cy="16" rx="38" ry="14" fill="none" stroke="#c58aff" stroke-width="2" stroke-dasharray="8 7"/><ellipse cx="40" cy="16" rx="24" ry="8" fill="none" stroke="#f0dcff" stroke-width="1.6"/>`;
 
-// Feste Landmarken im Rand (Fläche-px, Fuß unten Mitte): Gruft-Tore an den Eingängen, Runenkreise, Seelenflammen
+// Feste Landmarken im Rand (Fläche-px, Fuß unten Mitte): Gruft-Tore an den Eingängen, Runenkreise (Seelenflammen wippen in der Bewegungsschicht)
 const mark = (body, w, h, x, y, s) => ({ body, w, h, x, y, s, box: [ex(x) - (w / 2) * SC * s, ey(y) - h * SC * s, ex(x) + (w / 2) * SC * s, ey(y)] });
 export const GATES = [mark(GATE, 120, 152, 44, 96, 0.74), mark(GATE, 120, 152, 40, 646, 0.72)];
 const FLAMES_AT = [[24, 330], [130, 560], [1150, 330], [1262, 480], [1150, 720], [400, 770], [960, 772], [24, 760], [1240, 120]];
 export const LANDMARKS = [
   ...[[74, 400, 0.9], [1210, 220, 0.75], [1210, 640, 0.75]].map(([x, y, s]) => mark(CIRCLE, 80, 32, x, y, s)),
-  ...FLAMES_AT.map(([x, y]) => mark(FLAME, 20, 30, x, y, 1)),
   ...GATES,
 ];
 const put = (m) => `<g transform="translate(${r1(m.box[0])} ${r1(m.box[1])}) scale(${r1(SC * m.s * 1000) / 1000})">${m.body}</g>`;
@@ -103,6 +101,12 @@ const DEFS = '<linearGradient id="nm-grave" x1="0" y1="0" x2="1" y2="0"><stop of
   + '<linearGradient id="nm-bark" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#5e5e7c"/><stop offset="1" stop-color="#2a2a40"/></linearGradient>'
   + '<filter id="nm-soft" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="4"/></filter>';
 
+// Spiel-px der Bewegungsschicht
+const toGame = ([x, y]) => [r1(x * K), r1(y * K)];
+// Tür der Gruft (Form-px (60, 100) im Tor), Lichtschein pulsiert
+const DOORS = GATES.map((g) => toGame([g.box[0] + 60 * SC * g.s, g.box[1] + 100 * SC * g.s]));
+const FLAMES = FLAMES_AT.map(([x, y]) => toGame([ex(x), ey(y)]));
+
 export default {
   painted: {
     ground: ['#66807c', '#4a6468', '#3a4a62'],
@@ -110,7 +114,7 @@ export default {
     lit: [0.62, 0.84, 0.86], litOpacity: 0.24,
     sun: ['#9fe8ff', '#8a4aff'],
     path: ['#161a32', '#2b1a10', '#3c3a5a', '#a6acc6', '#c8cde2'], pathDots: ['#f0f0ff', '#3c3a5a'],
-    dotKind: 'leaf', dots: ['#2e4448', '#8aa6a0', '#c58aff'],
+    dotKind: 'tuft', dots: ['#2e4448', '#8aa6a0', '#c58aff'],
     pineShare: 0, leafy: 'bare',
     trunk: ['#2a2a40', '#5e5e7c'], pine: ['#2a2a40', '#5e5e7c', '#5e5e7c', '#8a8ab0'],
     rock: ['#6a7090', '#a6acc8'],
@@ -127,14 +131,20 @@ export default {
   defs: DEFS,
   svgUnder,
   svgOver,
-  // Bewegung (Spiel-px, Feld ab 0,0); Tür-Puls, Seelenflammen-Wippen und Runenpuls gibt es in der Bewegungsschicht noch nicht,
-  // sie stehen statisch im Bild. Glitzern als langsam sinkende Funken.
+  // Gruft-Tore ohne Rand-Deko (Seitenzonen)
+  reserve: GATES.map((g) => [g.box[0] - 20, g.box[1] - 20, g.box[2] + 20, g.box[3] + 20]),
+  // Marken der Szene: Runen am Weg (Spiel-px)
+  marks: (sc) => ({ rune: pathRunes(sc.paths).map(toGame) }),
+  // Bewegung (Spiel-px, Feld ab 0,0), Reihenfolge = Wichtigkeit; Summe Desktop 51, Handy 26
   motion: [
+    { kind: 'pulse', count: [2, 2], color: '#8a4aff', base: 0.45, r: [22, 16], at: DOORS },
     { kind: 'blink', count: [2, 2], color: '#e6b8ff' },
+    { kind: 'bob', count: [9, 5], color: '#9fe8ff', core: '#e6f6ff', halo: '#9fe8ff', shape: 'flame', scale: r1(SC * K * 100) / 100, at: FLAMES },
+    { kind: 'pulse', count: [18, 8], color: '#c58aff', r: 12, on: 'rune' },
     { kind: 'ripple', count: [1, 1], color: '#c58aff', at: [-25, gy(400), 26, 9] },
     { kind: 'ripple', count: [1, 0], color: '#c58aff', at: [825, gy(220), 22, 8] },
     { kind: 'ripple', count: [1, 0], color: '#c58aff', at: [825, gy(640), 22, 8] },
     { kind: 'fog', count: [3, 2], color: '#a8c0ff', alpha: [0.08, 0.12] },
-    { kind: 'fall', count: [14, 6], color: '#e6f6ff', alpha: 0.6, r: [0.8, 1.6], period: 14 },
+    { kind: 'twinkle', count: [14, 6], color: '#e6f6ff', alpha: [0.45, 1] },
   ],
 };

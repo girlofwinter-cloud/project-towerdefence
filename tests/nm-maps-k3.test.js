@@ -53,8 +53,9 @@ test('B-199: keine Rand-Deko auf Rand-Lava, keine Deko-Box mehr als maxOverhang 
 
 test('B-199: Bewegung Vulkan im Rahmen, Glanz auf dem Lavafluss', () => {
   const d = motionParticles('volcano'), h = motionParticles('volcano', true);
-  assert.equal(d.length, 40);
-  assert.equal(h.length, 16);
+  // B-194 Nachtrag: Puls (Tümpel, Seen, Risse) und Rauch dazu; Schlot-Rauch nur mit Szenen-Marken
+  assert.equal(d.length, 51);
+  assert.equal(h.length, 23);
   assert.ok(d.length <= 60 && h.length <= 28);
   assert.equal(d.filter((p) => p.kind === 'glint').length, 2);
 });

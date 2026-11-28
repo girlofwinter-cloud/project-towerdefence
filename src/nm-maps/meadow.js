@@ -7,10 +7,11 @@ const DRAFT = PAINTED_STYLE.unit / 48;
 const K = TILE / PAINTED_STYLE.unit; // Entwurfs-px -> Spiel-px
 const r2 = (v) => Math.round(v * 100) / 100;
 // Form in Entwurfs-px umrechnen (k: Maßstab zusätzlich zu Fläche -> Entwurf), Fuß bleibt unten Mitte
-const draft = ({ w, h, svg, eyes }, k = DRAFT) => ({
+const draft = ({ w, h, svg, eyes, marks }, k = DRAFT) => ({
   w: r2(w * k), h: r2(h * k),
   svg: (c) => `<g transform="scale(${r2(k * 1000) / 1000})">${svg(c)}</g>`,
   ...(eyes ? { eyes: eyes.map(([x, y]) => [r2(x * k), r2(y * k)]) } : {}),
+  ...(marks ? { marks: Object.fromEntries(Object.entries(marks).map(([n, l]) => [n, l.map(([x, y]) => [r2(x * k), r2(y * k)])])) } : {}),
 });
 
 // Formen aus der Bauvorlage (Fläche-px, unverändert übernommen)
@@ -26,6 +27,8 @@ const RAW = {
 // Augenpaare (Mitte) der Vorlage: Baum (55,5|136)+(62,5|136), Busch (31,30)+(38,30) und (58,38)+(65,38)
 RAW.twistedTreeEyes.eyes = [[59, 136]];
 RAW.bushEyes.eyes = [[34.5, 30], [61.5, 38]];
+// Pilzschein (Mitte des Hofs, Puls in der Bewegungsschicht)
+RAW.mushrooms.marks = { shroom: [[22, 18]] };
 
 // Hindernisse: Vorlage Baum s 0,44 und Fels s 1,25 (Fläche), der Renderer setzt obstacleTree bzw. obstacleRock
 const shapes = Object.fromEntries(Object.entries(RAW).map(([n, s]) => [n, draft(s)]));
@@ -53,6 +56,12 @@ const lakeRing = (a) => {
   const [x, y, rx, ry] = MAPS.meadow.paintedWater.lake;
   return [r2(x * K), r2(y * K), r2(rx * a * K), r2(ry * a * K)];
 };
+const LAKE = MAPS.meadow.paintedWater.lake;
+// Glitzern auf Fluss (im Bild) und See, Spiel-px
+const SPARKLE = [
+  ...riverLine(0).filter(([x, y], i) => i % 3 === 1 && x > 0 && y > 0).slice(0, 3),
+  ...[[-0.5, -0.3], [0.45, 0.1], [-0.1, 0.45]].map(([a, b]) => [r2((LAKE[0] + a * LAKE[2]) * K), r2((LAKE[1] + b * LAKE[3]) * K)]),
+];
 
 export default {
   painted: {
@@ -61,11 +70,13 @@ export default {
     lit: [0.75, 0.90, 1.00], litOpacity: 0.2,
     sun: ['#d8f0ff', '#8a7ad0'],
     path: ['#1f302c', '#2b1a10', '#5a4e4a', '#b0a284', '#d0c39e'], pathDots: ['#eef6e0', '#5a4e4a'],
-    dotKind: 'leaf', dots: ['#2e4a44', '#7f9e8a', '#2e4a44', '#7f9e8a', '#2e4a44', '#9effd9'],
+    dotKind: 'tuft', dots: ['#2e4a44', '#7f9e8a', '#2e4a44', '#7f9e8a', '#2e4a44', '#9effd9'],
     pineShare: 0, leafy: 'bare',
     trunk: ['#2e2538', '#4e4060'], pine: ['#2e2538', '#4e4060', '#6a5a80', '#8a7aa0'],
     rock: ['#7a7488', '#a8a2b8'],
     bridge: ['#7a6a72', '#463a46', '#2b1a10', '#342a36'],
+    bridgeMoss: '#8aa890', // nm-moss-strand
+    water: ['#5fd6b8', '#183e50'], // nm-water-a / -b
   },
   shapes,
   // Rand-Deko: big jeder dritte Baum mit Augen, small jeder zweite Busch mit Augen
@@ -81,15 +92,20 @@ export default {
     + '<radialGradient id="nm-glow-moss"><stop offset="0" stop-color="#7dffb0" stop-opacity=".14"/><stop offset="1" stop-color="#7dffb0" stop-opacity="0"/></radialGradient>',
   // Grünschein unten links (nm-glow-moss), über dem Boden
   svgUnder: () => '<ellipse cx="120" cy="700" rx="420" ry="300" fill="url(#nm-glow-moss)"/>',
-  // Reihenfolge = Wichtigkeit (Handy schneidet ab); Summe Desktop 43, Handy 19
+  // See ohne Rand-Deko (Seitenzonen)
+  reserve: [[LAKE[0] - LAKE[2] - 30, LAKE[1] - LAKE[3] - 30, LAKE[0] + LAKE[2] + 30, LAKE[1] + LAKE[3] + 30]],
+  // Reihenfolge = Wichtigkeit (Handy schneidet ab); Summe Desktop 54, Handy 23
   motion: [
     { kind: 'glint', count: [1, 1], color: '#d8fff0', alpha: 0.7, points: riverLine(-12) },
     { kind: 'glint', count: [1, 1], color: '#d8fff0', alpha: 0.6, points: riverLine(12) },
     { kind: 'glint', count: [1, 0], color: '#ffffff', alpha: 0.8, points: riverLine(0) },
     { kind: 'ripple', count: [1, 1], color: '#d8fff0', alpha: 0.6, at: lakeRing(0.55) },
     { kind: 'ripple', count: [1, 0], color: '#d8fff0', alpha: 0.5, at: lakeRing(0.8) },
+    { kind: 'twinkle', count: [6, 3], color: '#ffffff', at: SPARKLE },
+    { kind: 'blink', count: [1, 1], color: '#d8ff5a', at: [[r2(LAKE[0] * K), r2(LAKE[1] * K)]], rx: 5, ry: 2.5, gap: 7 }, // Seeaugen, Mandeln 12 x 6
     { kind: 'fog', count: [4, 2], color: '#c8d4f0', alpha: [0.13, 0.16] },
     { kind: 'blink', count: [10, 4], color: '#d8ff5a' },
     { kind: 'rise', count: [24, 10], color: '#efffc8', halo: '#d8ff9a' },
+    { kind: 'pulse', count: [4, 0], color: '#9effd9', base: 0.22, on: 'shroom' }, // nm-shroom
   ],
 };

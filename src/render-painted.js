@@ -168,7 +168,7 @@ export function buildPaintedScene(state, look = 'normal') {
   const water = state.water || new Set();
   const lavaTiles = state.lava || new Set();
   const pal = paletteFor(mapId, look);
-  const scene = { mapId, look, eyes: [], paths: paths.map(pathPoints), trees: [], rocks: [], flowers: [], cliffs: [], castles: [], flags: [], river: null, lakes: [], bridges: [], lava: null };
+  const scene = { mapId, look, eyes: [], marks: {}, paths: paths.map(pathPoints), trees: [], rocks: [], flowers: [], cliffs: [], castles: [], flags: [], river: null, lakes: [], bridges: [], lava: null };
 
   // Lava (Plan G9): aus den Lavakacheln der Karte (Geometrie wie render-lava.js), Enden bis über den Canvas-Rand
   const lg = pal.lava ? lavaGeometry(mapId, blocked) : null;
@@ -315,7 +315,17 @@ export function buildPaintedScene(state, look = 'normal') {
     for (const t of [...scene.trees, ...scene.rocks]) {
       const sh = shapeOf(t.kind, nm);
       for (const [ex, ey] of sh.eyes || []) scene.eyes.push({ x: f((t.x + (ex - sh.w / 2) * t.s) * K), y: f((t.y + (ey - sh.h) * t.s) * K) });
+      // Marken der Form (z. B. Rauch über dem Schlot), nur im sichtbaren Bild
+      for (const [name, pts] of Object.entries(sh.marks || {})) {
+        for (const [mx, my] of pts) {
+          const x = f((t.x + (mx - sh.w / 2) * t.s) * K), y = f((t.y + (my - sh.h) * t.s) * K);
+          if (x < -FRAME_MARGIN || x > COLS * TILE + FRAME_MARGIN || y < -FRAME_MARGIN || y > ROWS * TILE + FRAME_MARGIN) continue;
+          (scene.marks[name] ||= []).push([x, y]);
+        }
+      }
     }
+    // Marken aus der Szene (z. B. Runen am Weg), Spiel-px
+    Object.assign(scene.marks, nm.marks?.(scene) || {});
   }
   return scene;
 }
@@ -425,6 +435,9 @@ const DOTS = {
   // Laub: drei kleine Blätter
   leaf: ({ x, y, colors: [a, b, c] }) => `<g class="dot-leaf"><ellipse cx="${x}" cy="${y}" rx="4.5" ry="2.2" fill="${a}" transform="rotate(-30 ${x} ${y})"/>`
     + `<ellipse cx="${f(x + 8)}" cy="${f(y + 4)}" rx="4" ry="2" fill="${b}" transform="rotate(25 ${f(x + 8)} ${f(y + 4)})"/><ellipse cx="${f(x - 6)}" cy="${f(y + 6)}" rx="3.5" ry="1.8" fill="${c}" transform="rotate(70 ${f(x - 6)} ${f(y + 6)})"/></g>`,
+  // Grasbüschel: zwei kleine Halmbüschel und ein Glühpunkt (B-195)
+  tuft: ({ x, y, colors: [a, b, c] }) => `<g class="dot-tuft"><path d="M${x} ${y} q-2 -6 -5 -9 M${x} ${y} q0 -7 1 -11 M${x} ${y} q2 -6 6 -8" stroke="${a}" stroke-width="2.2" fill="none" stroke-linecap="round"/>`
+    + `<path d="M${f(x + 8)} ${f(y + 4)} q-2 -5 -4 -7 M${f(x + 8)} ${f(y + 4)} q2 -5 5 -6" stroke="${b}" stroke-width="2" fill="none" stroke-linecap="round"/><circle cx="${f(x - 7)}" cy="${f(y + 5)}" r="1.6" fill="${c}"/></g>`,
   // Glut: schwach leuchtender Punkt mit Asche daneben
   ember: ({ x, y, colors: [a, b, c] }) => `<g class="dot-ember"><circle cx="${x}" cy="${y}" r="5" fill="${b}" opacity=".25"/><circle cx="${x}" cy="${y}" r="2" fill="${a}"/>`
     + `<circle cx="${f(x + 8)}" cy="${f(y + 4)}" r="1.6" fill="${a}" opacity=".8"/><circle cx="${f(x - 7)}" cy="${f(y + 5)}" r="2.2" fill="${c}"/></g>`,
@@ -448,7 +461,7 @@ function defs(c, box, extra = '') {
     // Maske der Rand-Vignette: weiß im Rand, schwarz im Feld, weich über die Feldkante (kein sichtbarer Kasten)
     + `<filter id="p-soft" x="-10%" y="-10%" width="120%" height="120%"><feGaussianBlur stdDeviation="10"/></filter>`
     + `<mask id="p-ring" maskUnits="userSpaceOnUse" x="${f(box.x)}" y="${f(box.y)}" width="${f(box.w)}" height="${f(box.h)}"><rect x="${f(box.x)}" y="${f(box.y)}" width="${f(box.w)}" height="${f(box.h)}" fill="#fff"/><rect x="${-RING_INSET}" y="${-RING_INSET}" width="${FW + 2 * RING_INSET}" height="${FH + 2 * RING_INSET}" fill="#000" filter="url(#p-soft)"/></mask>`
-    + '<linearGradient id="p-wat" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6fcbe0"/><stop offset="1" stop-color="#2e86a8"/></linearGradient>'
+    + `<linearGradient id="p-wat" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${c.water?.[0] ?? '#6fcbe0'}"/><stop offset="1" stop-color="${c.water?.[1] ?? '#2e86a8'}"/></linearGradient>`
     + `<linearGradient id="p-cliff" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="${c.cliff[2]}"/><stop offset="1" stop-color="${c.cliff[3]}"/></linearGradient>`
     + `<linearGradient id="p-stone" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="${c.stone[0]}"/><stop offset=".6" stop-color="${c.stone[1]}"/><stop offset="1" stop-color="${c.stone[2]}"/></linearGradient>`
     + `<linearGradient id="p-wood" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="${c.bridge[0]}"/><stop offset="1" stop-color="${c.bridge[1]}"/></linearGradient>`
@@ -540,7 +553,10 @@ export function buildPaintedSvg(state, opts = {}) {
       + '<rect x="-52" y="-34" width="104" height="68" rx="6" fill="url(#p-wood)" stroke="#2b1a10" stroke-width="4"/>'
       + `<path d="M-52 -22 H52 M-52 -10 H52 M-52 2 H52 M-52 14 H52 M-52 26 H52" stroke="${c.bridge[2]}" stroke-width="2" opacity=".7"/>`
       + `<rect x="-52" y="-40" width="104" height="9" rx="4" fill="${c.bridge[3]}" stroke="#2b1a10" stroke-width="3"/>`
-      + `<rect x="-52" y="31" width="104" height="9" rx="4" fill="${c.bridge[1]}" stroke="#2b1a10" stroke-width="3"/></g>`);
+      + `<rect x="-52" y="31" width="104" height="9" rx="4" fill="${c.bridge[1]}" stroke="#2b1a10" stroke-width="3"/>`
+      // B-195: zwei Moosfäden an der Brüstung (nm-moss-strand), nur wenn die Palette sie hat
+      + (c.bridgeMoss ? `<path d="M-30 -36 q-3 10 1 18 q2 4 -1 8 M24 36 q3 9 -1 16" stroke="${c.bridgeMoss}" stroke-width="2.6" fill="none" stroke-linecap="round" opacity=".9"/>` : '')
+      + '</g>');
   }
   // Blumen-Tupfen (Z.232): vier Punkte je Tupfen
   for (const fl of sc.flowers) out.push(DOTS[fl.kind || 'flower'](fl));

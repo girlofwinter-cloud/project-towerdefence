@@ -191,7 +191,7 @@ export function render(ctx, state, ui) {
   }
   // B-194: Albtraum-Bewegung statt Tönung und Vignette, über dem Boden, unter allen Figuren
   if (nightOn(state, ui)) {
-    drawNightmareMotion(ctx, state, now() / 1000, reduced, !!ui?.compactMotion, paintedCache.get(state.mapId)?.scene?.eyes ?? []);
+    drawNightmareMotion(ctx, state, now() / 1000, reduced, !!ui?.compactMotion, paintedCache.get(state.mapId)?.scene?.eyes ?? [], paintedCache.get(state.mapId)?.scene?.marks ?? {});
     drawWarmLights(ctx, state.towers);
   }
   drawHover(ctx, state, ui);

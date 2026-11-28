@@ -105,7 +105,7 @@ const bez = (p, t) => { const u = 1 - t; return [0, 1].map((i) => u * u * u * p[
 export const waterSamples = (n = 12) => Array.from({ length: n + 1 }, (_, i) => { const v = (2 * i) / n, seg = Math.min(1, Math.floor(v)); return bez(WATER.slice(seg * 3, seg * 3 + 4), v - seg); });
 const dOf = (pts) => `M${pts[0].map(r1).join(' ')} C${pts.slice(1).map((p) => p.map(r1).join(' ')).join(' ')}`;
 
-function svgUnder(sc) {
+function svgUnder(sc, c = {}) {
   const out = [];
   const lines = sc.paths.map((pts) => 'M ' + pts.map((p) => `${r1(p[0])} ${r1(p[1])}`).join(' L ')).join(' ');
   // Schneewall am Weg: Schatten, darüber weicher Schnee (liegt unter dem Weg)
@@ -147,10 +147,10 @@ function svgUnder(sc) {
     + '<path d="M-240 260 l30 -30 M-222 270 l30 -30 M-204 280 l30 -30" stroke="#ffffff" stroke-width="3" stroke-linecap="round" opacity=".55"/></g>');
   // Offenes Wasser mit Schollen (rechts unten): Schneeufer, Kontur, Eisrand, Wasser
   const wd = dOf(WATER.slice(0, 4)) + ' ' + `C${WATER.slice(4).map((p) => p.map(r1).join(' ')).join(' ')}`;
-  const layers = [[70, '#eef4ff'], [54, OL], [48, '#9cc8ea'], [30, '#1e3a6a']];
-  const floes = waterSamples(10).filter((_, i) => i % 2 === 1).slice(0, 4)
-    .map(([x, y], i) => `<path transform="translate(${r1(x)} ${r1(y)}) rotate(${i * 37}) scale(${SC})" d="M-11 0 L-6 -6.5 L6 -6.5 L11 0 L6 6.5 L-6 6.5 Z" fill="#f6fbff" stroke="${OL}" stroke-width="2" stroke-linejoin="round"/>`);
-  out.push(`<g id="nm-open-water">${layers.map(([w, col]) => `<path d="${wd}" fill="none" stroke="${col}" stroke-width="${r1(w * SC)}" stroke-linecap="round"/>`).join('')}${floes.join('')}</g>`);
+  // Eisrand nm-froz-b, Wasser nm-ice-water (Palette water); Schollen wippen in der Bewegungsschicht
+  const [rim, wat] = c.water || ['#9cc8ea', '#1e3a6a'];
+  const layers = [[70, '#eef4ff'], [54, OL], [48, rim], [30, wat]];
+  out.push(`<g id="nm-open-water">${layers.map(([w, col]) => `<path d="${wd}" fill="none" stroke="${col}" stroke-width="${r1(w * SC)}" stroke-linecap="round"/>`).join('')}</g>`);
   return out.join('');
 }
 
@@ -173,6 +173,14 @@ const DEFS = '<linearGradient id="nm-fir" x1="0" y1="0" x2="1" y2="0"><stop offs
   + '<linearGradient id="nm-ice" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#e8fbff"/><stop offset=".5" stop-color="#8fd8f2"/><stop offset="1" stop-color="#3b8fcb"/></linearGradient>'
   + '<filter id="nm-soft" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="4"/></filter>';
 
+// Spiel-px der Bewegungsschicht
+const toGame = ([x, y]) => [r1(x * K), r1(y * K)];
+const FLOES = waterSamples(10).filter((_, i) => i % 2 === 1).slice(0, 4).map(toGame);
+// Glitzern: über Relikten und Obelisk, auf dem gefrorenen See (sichtbarer Teil im Rand)
+const SPARKLE = [...LANDMARKS.map((m) => toGame([(m.box[0] + m.box[2]) / 2, m.box[1] + (m.box[3] - m.box[1]) * 0.3])),
+  ...[[-60, 180], [-40, 260], [-90, 300], [-30, 140]].map(toGame)];
+const lakeBox = (d, pad) => { const n = d.match(/-?\d+(\.\d+)?/g).map(Number), xs = n.filter((_, i) => !(i % 2)), ys = n.filter((_, i) => i % 2); return [Math.min(...xs) - pad, Math.min(...ys) - pad, Math.max(...xs) + pad, Math.max(...ys) + pad]; };
+
 export default {
   painted: {
     ground: ['#6a74aa', '#454e86', '#323a6e'],
@@ -184,6 +192,7 @@ export default {
     pineShare: 1,
     pine: ['#1e2e4a', '#3a5a78', '#3a5a78', '#bfe8ff'], snow: '#eef4ff',
     rock: ['#6a7aa0', '#b8c8e6'],
+    water: ['#9cc8ea', '#1e3a6a'], // nm-froz-b, nm-ice-water
   },
   shapes,
   frame: {
@@ -197,13 +206,17 @@ export default {
   defs: DEFS,
   svgUnder,
   svgOver,
-  // Bewegung (Spiel-px, Feld ab 0,0); Glitzern, Runenpuls und Schollen-Wippen gibt es in der Bewegungsschicht noch nicht,
-  // sie stehen statisch im Bild (Sterne an den Relikten, Runen am Weg, Schollen)
+  // Gefrorener See, Bach und offenes Wasser ohne Rand-Deko (Seitenzonen)
+  reserve: [lakeBox(LAKE, 30), lakeBox(BROOK, 30), lakeBox(dOf(WATER), 45)],
+  // Bewegung (Spiel-px, Feld ab 0,0), Reihenfolge = Wichtigkeit; Summe Desktop 59, Handy 28
   motion: [
     { kind: 'fall', count: [10, 6], color: '#ffffff', alpha: 0.95, r: [2.4, 4], period: 5 },
     { kind: 'fall', count: [18, 8], color: '#ffffff', alpha: 0.55, r: [0.9, 1.8], period: 11 },
-    { kind: 'glint', count: [1, 1], color: '#9fe8ff', points: waterSamples(12).map(([x, y]) => [r1(x * K), r1(y * K)]) },
+    { kind: 'twinkle', count: [10, 4], color: '#ffffff', at: SPARKLE },
+    { kind: 'pulse', count: [7, 4], color: '#7fe0ff', r: 12, at: pathRunes().filter((_, i) => i % 2).map(toGame) }, // nm-frost-rune, jede zweite Rune
     { kind: 'fog', count: [5, 2], color: '#ffffff', alpha: [0.08, 0.12] },
+    { kind: 'bob', count: [4, 2], color: '#f6fbff', shape: 'floe', scale: r1(SC * K * 100) / 100, at: FLOES },
+    { kind: 'glint', count: [1, 1], color: '#9fe8ff', points: waterSamples(12).map(toGame) },
     { kind: 'ripple', count: [1, 1], color: '#7fe0ff', at: [-25, 260, 16, 6] },
     { kind: 'ripple', count: [1, 0], color: '#7fe0ff', at: [825, 420, 16, 6] },
     { kind: 'blink', count: [2, 0], color: '#9fe8ff' },

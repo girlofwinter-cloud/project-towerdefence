@@ -21,7 +21,7 @@ const shapes = {
   charTree: shape(100, 170, TREE_SHADOW + '<ellipse cx="54" cy="164" rx="40" ry="10" fill="#ff5a2a" opacity=".2"/>' + BRANCHES + TREE_GLOW),
   charTreeCold: shape(100, 170, TREE_SHADOW + BRANCHES, FL * OBST),
   spire: shape(44, 74, SPIRE),
-  vent: shape(68, 56, '<ellipse cx="34" cy="52" rx="32" ry="5" fill="rgba(10,4,2,.45)"/><circle cx="34" cy="22" r="22" fill="#ff7a1f" opacity=".18" filter="url(#nm-soft)"/><path d="M4 52 L14 30 L22 26 Q34 20 46 26 L54 30 L64 52 Z" fill="url(#nm-char)" stroke="#2b1a10" stroke-width="3" stroke-linejoin="round"/><ellipse cx="34" cy="27" rx="12" ry="4" fill="#2a1a17" stroke="#2b1a10" stroke-width="2.5"/><ellipse cx="34" cy="27" rx="9" ry="2.6" fill="#ff7a1f"/><ellipse cx="34" cy="27" rx="4.5" ry="1.4" fill="#ffe58a"/><path d="M14 46 L20 38 L18 32 M52 44 L48 36" stroke="#ff7a1f" stroke-width="2.4" fill="none" stroke-linecap="round"/><circle cx="34" cy="16" r="9" fill="#6e6460" opacity=".8"/><circle cx="30" cy="16" r="7" fill="#8a7c78" opacity=".7"/><circle cx="38" cy="16" r="8" fill="#5a504c" opacity=".7"/>'),
+  vent: { ...shape(68, 56, '<ellipse cx="34" cy="52" rx="32" ry="5" fill="rgba(10,4,2,.45)"/><circle cx="34" cy="22" r="22" fill="#ff7a1f" opacity=".18" filter="url(#nm-soft)"/><path d="M4 52 L14 30 L22 26 Q34 20 46 26 L54 30 L64 52 Z" fill="url(#nm-char)" stroke="#2b1a10" stroke-width="3" stroke-linejoin="round"/><ellipse cx="34" cy="27" rx="12" ry="4" fill="#2a1a17" stroke="#2b1a10" stroke-width="2.5"/><ellipse cx="34" cy="27" rx="9" ry="2.6" fill="#ff7a1f"/><ellipse cx="34" cy="27" rx="4.5" ry="1.4" fill="#ffe58a"/><path d="M14 46 L20 38 L18 32 M52 44 L48 36" stroke="#ff7a1f" stroke-width="2.4" fill="none" stroke-linecap="round"/><circle cx="34" cy="16" r="9" fill="#6e6460" opacity=".8"/><circle cx="30" cy="16" r="7" fill="#8a7c78" opacity=".7"/><circle cx="38" cy="16" r="8" fill="#5a504c" opacity=".7"/>'), marks: { smoke: [[34 * FL, 20 * FL]] } }, // Rauch über dem Schlot (Bewegungsschicht)
   stump: shape(60, 50, '<ellipse cx="30" cy="48" rx="24" ry="5" fill="rgba(10,4,2,.45)"/><path d="M8 48 L12 22 L18 26 L22 14 L30 22 L36 12 L42 24 L48 20 L52 48 Z" fill="url(#nm-char)" stroke="#2b1a10" stroke-width="3" stroke-linejoin="round"/><path d="M30 46 L28 34 L32 26" stroke="#ff7a1f" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M30 46 L28 34 L32 26" stroke="#ffe58a" stroke-width="1.3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>'),
   ashPile: shape(70, 30, '<ellipse cx="35" cy="28" rx="34" ry="4" fill="rgba(10,4,2,.4)"/><path d="M2 28 Q14 8 34 10 Q56 8 68 28 Z" fill="#5a4a46" stroke="#2b1a10" stroke-width="3" stroke-linejoin="round"/><path d="M14 18 Q24 12 34 14 M44 13 Q52 12 58 18" stroke="#8a7a74" stroke-width="3" fill="none" stroke-linecap="round"/><circle cx="24" cy="22" r="2.5" fill="#ff7a1f"/><circle cx="40" cy="20" r="2" fill="#ffc23a"/><circle cx="52" cy="24" r="2.2" fill="#ff7a1f"/>'),
   rock: shape(36, 26, ROCK),
@@ -133,6 +133,15 @@ function under(sc, c) {
   return out.join('');
 }
 
+// Bewegungsschicht (Spiel-px): Tümpel und sichtbare Enden der Rand-Seen pulsieren, Rauch über Fluss und Seen,
+// Bodenrisse in zwei Gruppen (jeder dritte Riss, abwechselnd), Rest statisch
+const KD = TILE / 48 / FL; // Entwurfs-px -> Spiel-px (Kachel 48 Fläche-px = 57 Entwurfs-px)
+const mid = (c, r) => [(c + 0.5) * TILE, (r + 0.5) * TILE];
+const POOLS = [[mid(4, 6), mid(4, 7)], [mid(9, 8)], [mid(17, 7)], [[-70 * KD, 480 * KD]], [[1230 * KD, 340 * KD]]];
+const SMOKE = [[(790 - 160) * FL * KD, (200 - 64) * FL * KD], [(770 - 160) * FL * KD, (420 - 64) * FL * KD], [-70 * KD, 470 * KD], [1230 * KD, 330 * KD]];
+const crackMid = (e) => (e.vertical ? [(e.c + 1) * TILE, (e.r + 0.5) * TILE] : [(e.c + 0.5) * TILE, (e.r + 1) * TILE]);
+const CRACK_GROUPS = [0, 3].map((k) => crackEdges().filter((_, i) => i % 6 === k).map(crackMid));
+
 // Lavafluss der Karte in Spiel-px (Kachelmitten) für den Glanz
 const riverLine = (dx) => (MAPS.volcano.lavaRiver || []).map(([c, r]) => [(c + 0.5) * TILE + dx, (r + 0.5) * TILE]);
 
@@ -162,5 +171,9 @@ export default {
     { kind: 'glint', count: 1, color: '#ffe58a', alpha: 0.7, points: riverLine(7) },
     { kind: 'rise', count: [26, 10], color: '#ffe58a', halo: '#ff7a1f', haloAlpha: 0.35 },
     { kind: 'fall', count: [12, 4], color: '#d8cfc4', alpha: 0.7, r: [1.4, 2.8] },
+    { kind: 'pulse', count: [5, 3], color: '#ffe58a', r: 18, at: POOLS }, // lava-hot
+    { kind: 'smoke', count: [4, 2], color: '#8a7c78', alpha: 0.55, at: SMOKE },
+    { kind: 'smoke', count: [1, 1], color: '#8a7c78', alpha: 0.55, on: 'smoke' }, // Schlote, falls im Bild
+    { kind: 'pulse', count: [2, 2], color: '#ff5a1a', r: 10, at: CRACK_GROUPS }, // nm-lava-glow
   ],
 };

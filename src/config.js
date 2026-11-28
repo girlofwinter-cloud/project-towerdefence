@@ -1896,6 +1896,12 @@ export const NM_MOTION = {
   blink: { period: 5.5, closed: 0.2, rx: 2.2, ry: 1.7, gap: 2.5, shut: 0.08 },
   glint: { speed: 40, dash: [16, 30], width: 2.4 },
   ripple: { period: 6, dash: [26, 40], width: 2.4, alpha: 0.6 },
+  // B-194 Nachtrag: Glitzerstern (Vierzack, Radius r·s, Taille waist·s), Puls weicher Flecken, Rauch (steigt lift px,
+  // wächst grow), Wippen (±amp px); Zeiten in Sekunden
+  twinkle: { period: 2.2, alpha: [0.15, 1], size: [0.4, 1.15], r: 6, waist: 1.3 },
+  pulse: { period: 2.6, alpha: [0.45, 1], r: 14 },
+  smoke: { period: 3.6, lift: 60, grow: [0.6, 1.6], r: 10, fade: 0.15 },
+  bob: { period: 3.2, amp: 9 },
   sprite: 32,
   maxDesktop: 60,
   maxCompact: 28,

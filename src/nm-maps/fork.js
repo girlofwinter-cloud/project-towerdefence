@@ -7,9 +7,10 @@ const DRAFT = PAINTED_STYLE.unit / 48;
 const K = TILE / PAINTED_STYLE.unit; // Entwurfs-px -> Spiel-px
 const r2 = (v) => Math.round(v * 100) / 100;
 // Form in Entwurfs-px umrechnen (k: Maßstab zusätzlich zu Fläche -> Entwurf), Fuß bleibt unten Mitte
-const draft = ({ w, h, svg }, k = DRAFT) => ({
+const draft = ({ w, h, svg, marks }, k = DRAFT) => ({
   w: r2(w * k), h: r2(h * k),
   svg: (c) => `<g transform="scale(${r2(k * 1000) / 1000})">${svg(c)}</g>`,
+  ...(marks ? { marks: Object.fromEntries(Object.entries(marks).map(([n, l]) => [n, l.map(([x, y]) => [r2(x * k), r2(y * k)])])) } : {}),
 });
 
 // Formen aus der Bauvorlage (Fläche-px, unverändert übernommen)
@@ -23,6 +24,10 @@ const RAW = {
   ashPile: { w: 70, h: 30, foot: [35, 30], svg: (c) => `<ellipse cx="35" cy="28" rx="34" ry="4" fill="rgba(10,4,2,.4)"/><path d="M2 28 Q14 8 34 10 Q56 8 68 28 Z" fill="#6a5040" stroke="#2b1a10" stroke-width="3" stroke-linejoin="round"/><path d="M14 18 Q24 12 34 14 M44 13 Q52 12 58 18" stroke="#a08870" stroke-width="3" fill="none" stroke-linecap="round"/><circle cx="24" cy="22" r="2.5" fill="#ff7a1f"/><circle cx="40" cy="20" r="2" fill="#ffc23a"/><circle cx="52" cy="24" r="2.2" fill="#ff7a1f"/>` },
   rock: { w: 36, h: 26, foot: [18, 26], svg: (c) => `<ellipse cx="20" cy="23" rx="15" ry="3.5" fill="rgba(6,4,14,.4)"/><path d="M3 22 L6 10 L16 3 L28 6 L33 17 L30 23 Z" fill="#6a5446" stroke="#2b1a10" stroke-width="2.5" stroke-linejoin="round"/><path d="M7 11 L16 5 L18 12 L8 20 Z" fill="#9a826e"/>` },
 };
+
+// Rauch über dem glimmenden Baum und dem Heuhaufen (Bewegungsschicht)
+RAW.charTree.marks = { smoke: [[54, 60]] };
+RAW.hay.marks = { smoke: [[40, 14]] };
 
 // Hindernisse: Vorlage Baum s 0,42 und Fels s 1,25 (Fläche), der Renderer setzt obstacleTree bzw. obstacleRock
 const shapes = Object.fromEntries(Object.entries(RAW).map(([n, s]) => [n, draft(s)]));
@@ -80,7 +85,7 @@ export default {
     sun: ['#ffd890', '#ffb060'],
     path: ['#3a2414', '#2b1a10', '#5a3a26', '#c9a682', '#e0c49e'], pathDots: ['#fff0d0', '#5a3a26'],
     // verbrannte Halme, jeder siebte ein Glutpunkt
-    dotKind: 'leaf', dots: ['#4a2e18', '#d8b070', '#4a2e18', '#d8b070', '#4a2e18', '#d8b070', '#ff7a1f'],
+    dotKind: 'tuft', dots: ['#4a2e18', '#d8b070', '#4a2e18', '#d8b070', '#4a2e18', '#d8b070', '#ff7a1f'],
     pineShare: 0, leafy: 'bare',
     trunk: ['#1a1210', '#4a3430'], pine: ['#1a1210', '#2e201c', '#4a3430', '#2e201c'],
     rock: ['#6a5446', '#9a826e'],
@@ -105,10 +110,17 @@ export default {
   // Risse im Weg, über dem Weg
   svgOver: (sc) => `<g id="nm-path-cracks">${pathCracks(sc.paths).map((c) => crack(c.pts, c.glow)).join('')}</g>`,
   embers: true,
-  // Reihenfolge = Wichtigkeit (Handy schneidet ab); Summe Desktop 40, Handy 18
+  // Marken der Szene: Glutrisse (4 im Rand, dann jeder dritte Wegriss), Spiel-px
+  marks: (sc) => ({
+    crack: [...RIM_CRACKS.map(([[ax, ay], [bx, by]]) => [r2((ax + bx) / 2), r2((ay + by) / 2)]),
+      ...pathCracks(sc.paths).filter((c) => c.glow).map((c) => [r2(c.x * K), r2(c.y * K)])],
+  }),
+  // Reihenfolge = Wichtigkeit (Handy schneidet ab); Summe Desktop 55, Handy 25
   motion: [
     { kind: 'fall', count: [28, 12], color: '#e8dccc', alpha: 0.75, r: [1.4, 3] },
     { kind: 'rise', count: [10, 5], color: '#ffe58a', halo: '#ff7a1f', haloAlpha: 0.35 },
+    { kind: 'smoke', count: [6, 3], color: '#6e6460', alpha: 0.75, on: 'smoke' },
+    { kind: 'pulse', count: [9, 4], color: '#ff7a1f', r: 14, on: 'crack' }, // lava
     { kind: 'fog', count: [2, 1], color: '#d8cfc4', alpha: [0.10, 0.12] },
   ],
 };

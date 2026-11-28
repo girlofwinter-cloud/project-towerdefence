@@ -2166,6 +2166,43 @@ test('B-194 Bewegung: Teilchen je Karte höchstens 60 (Handy 28), reduced motion
   } finally { NM_MAPS.meadow.motion.pop(); }
 });
 
+test('B-194 Nachtrag: Glitzern, Puls, Rauch und Wippen bewegen sich, reduced motion steht still, Obergrenze gilt', async () => {
+  const { motionParticles, drawNightmareMotion } = await import('../src/render-nightmare.js');
+  const { NM_MOTION } = await import('../src/config.js');
+  const { NM_MAPS } = await import('../src/nm-maps/index.js');
+  NM_MAPS.__t = { motion: [
+    { kind: 'twinkle', count: [2, 1], color: '#fff', at: [[10, 10], [20, 20]] },
+    { kind: 'pulse', count: [1, 1], color: '#c58aff', at: [[[30, 30], [40, 40]]] },
+    { kind: 'smoke', count: [1, 1], color: '#888', at: [[50, 50]] },
+    { kind: 'bob', count: [1, 0], color: '#fff', shape: 'flame', core: '#eef', at: [[60, 60]] },
+    { kind: 'bob', count: [1, 0], color: '#fff', shape: 'floe', at: [[70, 70]] },
+    { kind: 'smoke', count: [3, 3], color: '#888', on: 'vent' },
+    { kind: 'pulse', count: [5, 5], color: '#888' }, // ohne Punkte: nichts
+    { kind: 'blink', count: [1, 1], color: '#d8ff5a', at: [[80, 80]], rx: 5, ry: 2.5, gap: 7 },
+  ] };
+  try {
+    const d = motionParticles('__t');
+    assert.deepEqual(d.map((p) => p.kind), ['twinkle', 'twinkle', 'pulse', 'smoke', 'bob', 'bob', 'blink']);
+    assert.equal(d[2].pts.length, 2, 'Puls-Gruppe zählt als ein Teilchen');
+    assert.equal(motionParticles('__t', true).length, 4);
+    assert.equal(motionParticles('__t', false, [], { vent: [[1, 1], [2, 2]] }).filter((p) => p.kind === 'smoke').length, 3, 'Marken: höchstens so viele wie da');
+    const state = { mapId: '__t' };
+    const rec = (t, reduced) => {
+      const calls = [];
+      const ctx = new Proxy({}, { get: (_, k) => (...a) => { calls.push([k, ...a]); return { addColorStop() {} }; }, set: (_, k, v) => { calls.push(['=' + String(k), v]); return true; } });
+      drawNightmareMotion(ctx, state, t, reduced);
+      return calls;
+    };
+    assert.deepEqual(rec(0, true), rec(2.3, true), 'reduced motion steht');
+    assert.notDeepEqual(rec(0, false), rec(0.7, false), 'bewegt sich');
+    const kinds = new Set(rec(0.5, false).map(([k]) => k));
+    for (const k of ['lineTo', 'quadraticCurveTo', 'ellipse', 'stroke']) assert.ok(kinds.has(k), `zeichnet ${k}`);
+    assert.ok(!kinds.has('createRadialGradient') && !kinds.has('createLinearGradient'), 'keine Verläufe je Frame');
+    assert.ok(d.filter((p) => p.kind === 'bob').every((p) => p.amp === NM_MOTION.bob.amp), 'Wippen ±amp aus NM_MOTION');
+    for (const k of ['twinkle', 'pulse', 'smoke', 'bob']) assert.ok(NM_MOTION[k], `NM_MOTION.${k}`);
+  } finally { delete NM_MAPS.__t; }
+});
+
 test('B-184 Glut am Weg: 10 Punkte, deterministisch, neben der Wegmitte (höchstens 0,6 Kacheln)', async () => {
   const { emberPoints, drawEmbers } = await import('../src/render-light.js');
   const { NIGHT_STYLE: N } = await import('../src/config.js');

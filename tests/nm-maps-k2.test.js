@@ -76,12 +76,12 @@ test('B-196/B-198: keine Deko auf Bauplätzen (Figuren, Landmarken, Runen), Baup
 });
 
 test('B-196/B-198: Bewegung innerhalb der Obergrenze, Augen aus der Szene, reduced motion steht still', () => {
-  const expect = { ice: [38, 18], twin: [22, 11] };
+  const expect = { ice: [59, 28], twin: [51, 26] }; // B-194 Nachtrag: Glitzern, Puls, Wippen
   for (const id of IDS) {
     const s = createGame({ mapId: id, mode: 'nightmare' });
-    const eyes = buildPaintedScene(s, 'nightmare').eyes;
+    const { eyes, marks } = buildPaintedScene(s, 'nightmare');
     assert.ok(eyes.length >= 2, `${id}: Augen in der Rand-Deko (${eyes.length})`);
-    const d = motionParticles(id, false, eyes), h = motionParticles(id, true, eyes);
+    const d = motionParticles(id, false, eyes, marks), h = motionParticles(id, true, eyes, marks);
     assert.deepEqual([d.length, h.length], expect[id], `${id}: Teilchen Desktop/Handy`);
     assert.ok(d.length <= NM_MOTION.maxDesktop && h.length <= NM_MOTION.maxCompact);
     for (const p of d.filter((q) => q.kind === 'ripple')) {
@@ -91,9 +91,32 @@ test('B-196/B-198: Bewegung innerhalb der Obergrenze, Augen aus der Szene, reduc
     const rec = (t) => {
       const calls = [];
       const ctx = new Proxy({}, { get: (_, k) => (...a) => { calls.push([k, ...a]); return { addColorStop() {} }; }, set: (_, k, v) => { calls.push(['=' + String(k), v]); return true; } });
-      drawNightmareMotion(ctx, s, t, true, false, eyes);
+      drawNightmareMotion(ctx, s, t, true, false, eyes, marks);
       return calls;
     };
     assert.deepEqual(rec(0), rec(4), `${id}: reduced motion`);
   }
+});
+
+test('B-194 Nachtrag: Randbäume weichen See, offenem Wasser und Gruft-Toren aus (reserve)', () => {
+  const hit = (a, b) => a[0] < b[2] && b[0] < a[2] && a[1] < b[3] && b[1] < a[3];
+  for (const id of ['meadow', 'ice', 'twin']) {
+    const reserve = NM_MAPS[id].reserve;
+    assert.ok(reserve?.length > 0, `${id}: reserve`);
+    const sc = buildPaintedScene(createGame({ mapId: id, mode: 'nightmare' }), 'nightmare');
+    const { tree, rock } = NM_MAPS[id].obstacle;
+    for (const t of sc.trees.filter((q) => q.box && q.kind !== tree && q.kind !== rock)) {
+      assert.ok(!reserve.some((r) => hit(r, t.box)), `${id}: ${t.kind} auf freier Fläche`);
+    }
+  }
+});
+
+test('B-194 Nachtrag: Szenen-Marken für Rauch, Risse und Runen; Bewegung nutzt sie', () => {
+  const sc = (id) => buildPaintedScene(createGame({ mapId: id, mode: 'nightmare' }), 'nightmare');
+  const fork = sc('fork'), twinSc = sc('twin');
+  assert.ok(fork.marks.smoke.length > 0 && fork.marks.crack.length >= 4, 'Zangenangriff: Rauch und Glutrisse');
+  assert.equal(twinSc.marks.rune.length, 18, 'Zwei Fronten: 18 Runen am Weg');
+  assert.equal(motionParticles('fork', false, fork.eyes, fork.marks).filter((p) => p.kind === 'smoke').length, 6);
+  assert.equal(motionParticles('fork', false, fork.eyes, {}).filter((p) => p.kind === 'smoke').length, 0, 'ohne Marken kein Rauch');
+  assert.deepEqual(buildPaintedScene(createGame({ mapId: 'fork' }), 'normal').marks, {}, 'Normalmodus ohne Marken');
 });
