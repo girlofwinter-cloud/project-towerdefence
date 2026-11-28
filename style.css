@@ -353,7 +353,7 @@ canvas#game, #game { height: auto; border-radius: 10px; }
 .help { display: block; } /* C-Abnahme 9: "?" als fünfter runder Knopf */
 .top-buttons .rb { width: 56px; height: 56px; }
 .help-pop { position: fixed; left: 8px; right: 8px; top: auto; width: auto; z-index: 30; }
-.sound-pop { position: fixed; left: 8px; right: 8px; top: 68px; width: auto; z-index: 30; }
+.sound-pop { left: 0; right: 0; top: auto; bottom: calc(100% + 8px); width: auto; z-index: 30; } /* B-188: über der Knopfreihe, über dem Feld statt über der HUD-Leiste */
 .wave-row { position: relative; order: 3; left: 0; bottom: 0; width: 100%; height: auto; display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
 .wave-btn, #wave-preview, .map-pick { position: static; transform: none; max-width: none; }
 .wave-btn { position: relative; } /* Bezug für die Fortschrittsfüllung */
@@ -367,7 +367,7 @@ body:has(#tower-info:not([hidden])) #app { padding-bottom: calc(var(--tower-info
 #app { min-height: 100%; }
 .wave-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
 .hud { align-self: stretch; justify-content: space-around; }
-.top-buttons { position: static; order: 3; justify-content: center; }
+.top-buttons { position: relative; inset: auto; order: 3; justify-content: center; } /* relative: Bezug für das Ton-Feld */
 .map-pick { position: static; order: 3; align-self: center; }
 #boss-bars { position: relative; order: 1; left: 0; top: 0; width: auto; margin: 0 12px; } /* B-180: unter der HUD-Leiste */
 /* C-Abnahme 11: bis Block E Feld und Leisten senkrecht mittig statt Leerraum unten */

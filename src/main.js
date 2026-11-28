@@ -573,6 +573,22 @@ for (const kind of ['music', 'sfx']) {
 document.addEventListener('pointerdown', (ev) => {
   if (!soundPop.hidden && !ev.target.closest?.('#sound-pop, #sound')) setSoundPop(false);
 }, { capture: true });
+// Schließen, wenn der Fokus per Tab hinauswandert
+for (const el of [soundPop, $('sound')]) {
+  el.addEventListener('focusout', (ev) => {
+    if (ev.relatedTarget && !ev.relatedTarget.closest?.('#sound-pop, #sound')) setSoundPop(false);
+  });
+}
+// Schließen, sobald Startbildschirm oder Spielende-Plakette erscheint (Feld bliebe sonst verdeckt offen)
+// (nur beim Erscheinen: auf dem Startbildschirm selbst darf das Feld offen sein)
+const isCovered = () => !$('start-screen').hidden || !$('overlay').hidden;
+let wasCovered = isCovered();
+const closeOnCover = new MutationObserver(() => {
+  const covered = isCovered();
+  if (covered && !wasCovered) setSoundPop(false);
+  wasCovered = covered;
+});
+for (const id of ['start-screen', 'overlay']) closeOnCover.observe($(id), { attributes: true, attributeFilter: ['hidden'] });
 $('auto-wave').addEventListener('click', toggleAutoWave);
 
 // B-178: Vollbild-Knopf (nur wo der Browser es kann). Auf Touch-Geräten zusätzlich Querformat festhalten.
@@ -725,8 +741,8 @@ function keepFocus() {
 }
 
 window.addEventListener('keydown', (ev) => {
+  if (startScreen.handleKey(ev)) return; // C5: Startbildschirm offen (hat Vorrang vor dem Ton-Feld)
   if (ev.key === 'Escape' && !soundPop.hidden) { setSoundPop(false); $('sound').focus(); return; } // B-188
-  if (startScreen.handleKey(ev)) return; // C5: Startbildschirm offen
   if (fieldKey(ev)) return;
   const key = String(ev.key ?? '').toLowerCase(); // manche Ereignisse (Autofill) haben kein key
   // Enter/Leertaste auf einem Ringknopf löst den Knopf aus (nicht den Wellenstart)
