@@ -254,3 +254,20 @@ test('Spielende Querformat 844x390 und 932x430: Plakette im Fenster, Hintergrund
     await ctx.close();
   }
 });
+
+// Start im Hochformat, dann drehen: das Laden brach ab (updateBossBars vor der Initialisierung), Vollbild-Knopf fehlte
+test('Start im Hochformat, dann quer: keine Fehler beim Laden, Vollbild-Knopf sichtbar, Karte wählbar', async () => {
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+  const page = await ctx.newPage();
+  const errors = [];
+  page.on('pageerror', (e) => errors.push(e.message));
+  await page.goto(url);
+  await page.waitForSelector('#rotate-hint', { state: 'visible' });
+  await page.setViewportSize({ width: 844, height: 390 });
+  await page.waitForSelector('#fullscreen', { state: 'visible' });
+  await enterGame(page, 'meadow');
+  await page.waitForSelector('#abilities .ability-btn');
+  assert.ok(await page.locator('#fullscreen').isVisible(), 'Vollbild-Knopf im Spiel');
+  assert.deepEqual(errors, []);
+  await ctx.close();
+});

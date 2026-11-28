@@ -543,7 +543,6 @@ function applyRotateHint() {
   refreshUI();
 }
 rotateQuery.addEventListener('change', applyRotateHint);
-if (rotateQuery.matches) applyRotateHint();
 $('sound').addEventListener('click', toggleSound);
 
 // B-178: Vollbild-Knopf (nur wo der Browser es kann). Auf Touch-Geräten zusätzlich Querformat festhalten.
@@ -861,6 +860,8 @@ function frame(now) {
   if (hudTimer <= 0) { refreshUI(); hudTimer = 0.1; }
   requestAnimationFrame(frame);
 }
+// Start im Hochformat: Hinweis erst hier anwenden, wenn alles initialisiert ist (vorher brach das Laden ab, z. B. ohne Vollbild-Knopf)
+if (rotateQuery.matches) applyRotateHint();
 refreshUI();
 requestAnimationFrame(frame);
 
