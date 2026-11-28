@@ -1,5 +1,5 @@
 // Reine Darstellungs-Helfer fürs HUD (kein DOM).
-import { START_LIVES, MAX_WAVES, ENEMY_TYPES, BOSS_BAR, isBoss } from './config.js';
+import { START_LIVES, MAX_WAVES, ENEMY_TYPES, BOSS_BAR, AUTO_WAVE_SETTING, isBoss } from './config.js';
 import { earlyStartPreview } from './game.js';
 
 // Herzreihe als Liste: true = verbleibendes Leben, false = verlorenes (nie negativ, gekappt).
@@ -116,4 +116,17 @@ export function bossBarPlacement(hudRight, buttonsLeft, width = BOSS_BAR.width, 
   if (!Number.isFinite(gap)) return null;
   const w = Math.max(0, gap < width + pad ? gap - pad : width);
   return { left: hudRight + (gap - w) / 2, width: w };
+}
+
+// Schalter Auto-Start: gespeicherte Wahl lesen und schreiben (Speicher fehlt oder wirft: Standard bzw. nichts tun).
+export function loadAutoWave(storage) {
+  try {
+    const v = storage?.getItem(AUTO_WAVE_SETTING.storageKey);
+    if (v === '0') return false;
+    if (v === '1') return true;
+  } catch { /* Speicher nicht lesbar: Standard */ }
+  return AUTO_WAVE_SETTING.defaultOn;
+}
+export function saveAutoWave(storage, on) {
+  try { storage?.setItem(AUTO_WAVE_SETTING.storageKey, on ? '1' : '0'); } catch { /* Speicher voll oder gesperrt */ }
 }

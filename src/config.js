@@ -673,6 +673,8 @@ export const LANE_ASYNC = { burst: 5, offset: 6 };
 
 // B-121: Nach Wellenende startet die nächste Welle nach so vielen Sekunden Spielzeit automatisch (nicht vor Welle 1).
 export const AUTO_WAVE_DELAY = 5;
+// Schalter Auto-Start: localStorage-Schlüssel ('1' an, '0' aus) und Standard ohne gespeicherte Wahl.
+export const AUTO_WAVE_SETTING = { storageKey: 'td-auto-wave', defaultOn: true };
 
 // B-123: Münz-Explosion an der Goldanzeige beim Frühstart-Bonus (Darstellung, in CSS-px und Sekunden)
 export const COIN_BURST = { count: 12, minDist: 35, maxDist: 75, fall: 40, duration: 1.0, stagger: 0.25 };

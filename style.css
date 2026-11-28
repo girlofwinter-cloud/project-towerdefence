@@ -242,6 +242,12 @@ kbd { font: 12px/1.4 ui-monospace, monospace; color: var(--cream); background: r
   border-radius: 17px; font: 15px/28px var(--display); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 #wave-preview[hidden] { display: none; }
+/* Schalter Auto-Start: links neben dem Wellenknopf; aus = Symbol durchgestrichen, an = Leuchtring */
+#auto-wave { grid-column: 1; justify-self: end; width: 44px; height: 44px; } /* size-touch-min */
+#auto-wave > svg { width: 34px; height: 34px; }
+#auto-wave .ic-off, #auto-wave[aria-pressed="false"] .ic-on { display: none; }
+#auto-wave[aria-pressed="false"] .ic-off { display: block; }
+#auto-wave[aria-pressed="true"] { box-shadow: 0 0 0 3px var(--hl), inset 0 2px 0 rgba(255,235,190,.6), 0 3px 0 rgba(30,15,5,.5); }
 /* C-Abnahme 3: Kartenwahl vor Welle 1 im oberen Band zwischen Holzleiste und runden Knöpfen (4 Knöpfe à 48 + 3 x 8 Abstand, mit Vollbild-Knopf 5 + 4) */
 .map-pick { position: absolute; z-index: 11; right: calc(var(--fr) + 4 * 48px + 3 * 8px + 16px); top: max(2px, calc((var(--fy) - 56px) / 2)); height: 56px; padding: 0 6px 0 12px; border-radius: 28px; /* Höhe wie Holzleiste: size-hud-h */ display: flex; align-items: center; gap: 8px; font-size: 16px; }
 body:has(#fullscreen:not([hidden])) .map-pick { right: calc(var(--fr) + 5 * 48px + 4 * 8px + 16px); } /* B-178: fünfter Knopf (Vollbild) */
@@ -500,12 +506,13 @@ body.on-start .top-buttons { z-index: 41; } /* Ton und Hilfe bleiben erreichbar 
   .wave-btn { --d: min(104px, calc(var(--side) - var(--safe-r))); width: var(--d); height: var(--d); min-width: 0; padding: 0 10px; border-radius: 50%;
     font-size: 18px; line-height: 1.05; white-space: normal; }
   .wave-btn::after { left: 18px; bottom: 14px; width: calc((100% - 36px) * var(--wave-fill, 0)); }
+  #auto-wave { position: absolute; right: 0; bottom: calc(min(104px, calc(var(--side) - var(--safe-r))) + 8px); }
   #wave-preview, .map-pick { display: none; }
   /* Turm-Ring bleibt ein Ring (Knöpfe 48), Info-Plakette nur bei Bedarf rechts zwischen Knöpfen und Wellenknopf */
   .rbtn { width: 48px; height: 48px; left: -24px; top: -24px; } .rbtn > svg { width: 30px; height: 30px; }
   .rbtn-small { width: 44px; height: 44px; left: -22px; top: -22px; }
   .ring-tower .ring-info, .ring-tower.info-left .ring-info { position: fixed; left: auto; right: var(--safe-r); top: calc(var(--safe-t) + 112px); z-index: 16;
-    width: min(130px, calc(var(--side) - var(--safe-r))); max-height: calc(var(--vh) - var(--safe-t) - var(--safe-b) - 112px - 112px); overflow: hidden; padding: 8px; text-align: center; }
+    width: min(130px, calc(var(--side) - var(--safe-r))); max-height: calc(var(--vh) - var(--safe-t) - var(--safe-b) - 112px - 164px); overflow: hidden; padding: 8px; text-align: center; }
   .ring-info h3 { font-size: 15px; } .ring-info p { font-size: 12px; line-height: 1.25; } #ti-special { display: none; }
   #message { max-width: calc(var(--fw) - 20px); white-space: normal; text-align: center; }
   #overlay { position: fixed; inset: 0; z-index: 30; background: rgba(16,28,14,.78); overflow: auto; }

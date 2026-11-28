@@ -97,7 +97,7 @@
           <ul>
             <li>Freies Feld anklicken: Turm im Ring wählen · <kbd>1</kbd>–<kbd>5</kbd> Turm wählen, dann aufs Feld klicken</li>
             <li><kbd>Leertaste</kbd> nächste Welle starten</li>
-            <li><kbd>P</kbd> Pause / Weiter · <kbd>F</kbd> Tempo · <kbd>M</kbd> Ton</li>
+            <li><kbd>P</kbd> Pause / Weiter · <kbd>F</kbd> Tempo · <kbd>M</kbd> Ton · <kbd>A</kbd> Auto-Start</li>
             <li>Turm anklicken: <kbd>U</kbd> verbessern, <kbd>S</kbd> verkaufen, <kbd>T</kbd> Zielregel</li>
             <li><kbd>Q</kbd> Meteor (danach aufs Feld klicken), <kbd>W</kbd> Kälteschock, <kbd>E</kbd> Notfall-Reparatur</li>
             <li><kbd>Esc</kbd> / Rechtsklick: abbrechen</li>
@@ -130,6 +130,12 @@
     <!-- C-Abnahme 3: Kartenwahl (nur vor Welle 1) im oberen Band -->
     <label class="map-pick plq"><span>Karte</span> <select id="map-select"></select></label>
     <div class="wave-row">
+      <!-- Schalter: nächste Welle nach Wellenende automatisch starten -->
+      <button id="auto-wave" class="rb" aria-pressed="true" title="Nächste Welle automatisch starten an/aus (A)">
+        <svg class="ic-on" width="40" height="40" viewBox="0 0 40 40" aria-hidden="true"><path d="M30 15 A11 11 0 1 0 31 23" fill="none" stroke="#2b1a10" stroke-width="8" stroke-linecap="round"/><path d="M30 15 A11 11 0 1 0 31 23" fill="none" stroke="#fff3d2" stroke-width="3.5" stroke-linecap="round"/><path d="M24 14 L32 8 L33 17 Z" fill="#fff3d2" stroke="#2b1a10" stroke-width="2.5" stroke-linejoin="round"/><text x="19" y="25" text-anchor="middle" font-size="13" font-family="sans-serif" font-weight="700" fill="#2b1a10">A</text></svg>
+        <svg class="ic-off" width="40" height="40" viewBox="0 0 40 40" aria-hidden="true"><path d="M30 15 A11 11 0 1 0 31 23" fill="none" stroke="#2b1a10" stroke-width="8" stroke-linecap="round"/><path d="M30 15 A11 11 0 1 0 31 23" fill="none" stroke="#fff3d2" stroke-width="3.5" stroke-linecap="round"/><path d="M24 14 L32 8 L33 17 Z" fill="#fff3d2" stroke="#2b1a10" stroke-width="2.5" stroke-linejoin="round"/><path d="M9 31 L31 9" stroke="#2b1a10" stroke-width="7" stroke-linecap="round"/><path d="M9 31 L31 9" stroke="#c4452f" stroke-width="3.5" stroke-linecap="round"/></svg>
+        <span class="sr" id="auto-wave-label">Auto-Start an</span><span class="key sr">(A)</span>
+      </button>
       <button id="start-wave" class="wave-btn" title="Nächste Welle starten (Leertaste)"><span id="start-label">Welle 1 starten</span> <span class="key" id="start-key">(Leertaste)</span></button>
       <p id="wave-preview" class="plq"></p>
     </div>
