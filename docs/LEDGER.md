@@ -158,3 +158,7 @@ Anhängen ohne die Datei zu lesen: `cat >> docs/LEDGER.md <<'EOF' … EOF`. Übe
 - Haus-Knopf aus dem Pause-Schild in die HUD-Leiste: Desktop links neben der Holzleiste, Kompakt als erstes Element der Leiste, Handy quer unter dem Ton-Knopf.
 - Klick pausiert und öffnet Kartenauswahl; Rückfrage beim Kartenwechsel wie bisher.
 - Review: Kompakt-Layout außerhalb des Bildschirms gefunden, nachgebessert; e2e um 390x844 und Rand-Prüfung ergänzt.
+
+## 2026-11-28 · CI schlank · Doku zur bedingten CI
+- CLAUDE.md und Pipeline-Skill: Unit-Tests immer, Balancing/e2e nur bei passenden Dateiänderungen.
+- `ci.yml` selbst ändert der Mensch (geschützte Datei); Vorschlag liegt im PR.
