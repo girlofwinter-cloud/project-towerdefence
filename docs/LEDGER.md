@@ -138,3 +138,9 @@ Anhängen ohne die Datei zu lesen: `cat >> docs/LEDGER.md <<'EOF' … EOF`. Übe
 ### agent/home-knopf (2026-11-28)
 - Kartenauswahl-Knopf im Pause-Schild als Home-Knopf (Haus-Symbol + „Menü“), Desktop und Handy.
 - Unit- und e2e-Tests grün, Screenshots 1280x800 und 844x390 geprüft.
+
+### 2026-11-28 – agent/elite-regen-immer
+- Fähigkeiten laden zwischen den Wellen nicht weiter (Exploit: Welle stoppen und Abklingzeit gratis abwarten).
+- Elite: Normalmodus leichter (Schild 15 %, Heilung 1 %/s nach 2 s), Albtraum eigene Werte (Heilung immer).
+- Albtraum-Bosse: Nekromantin mit Fledermäusen und stärkerer Phase 2, Oger-König Phase 2; Bosse ohne Leben-Deckel.
+- Tests: unit, balance, e2e grün.

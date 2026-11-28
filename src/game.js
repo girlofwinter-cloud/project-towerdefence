@@ -20,8 +20,8 @@ export function mapModifiers(mapId) {
 export const MODES = ['normal', 'nightmare'];
 export function modeModifiers(mode) {
   if (mode !== 'nightmare') return {};
-  const { rewardFactor, lives: maxLives, repairUses, hpGrowthLate, eliteBonus, eliteEarlier, hpSteps, specialHpCap } = NIGHTMARE;
-  return { rewardFactor, maxLives, repairUses, hpGrowthLate, eliteBonus, eliteEarlier, hpSteps, specialHpCap };
+  const { rewardFactor, lives: maxLives, repairUses, hpGrowthLate, eliteBonus, eliteEarlier, hpSteps, specialHpCap, bossBuff, elite } = NIGHTMARE;
+  return { rewardFactor, maxLives, repairUses, hpGrowthLate, eliteBonus, eliteEarlier, hpSteps, specialHpCap, bossBuff, elite };
 }
 // Höchstleben (Start und Grenze der Reparatur)
 export function maxLives(state) {
@@ -245,10 +245,10 @@ export function waveHp(wave, mapId, lateGrowth, hpFactor = 1) {
 // gekappt auf 0..1. Ohne laufende Welle 0.
 export function earlyStartRisk(state) {
   if (!state.waveActive || state.wave < 1) return 0;
-  // Albtraum: Faktor je Gegner (Bosse und Elite gedeckelt, specialHpCap), wie in spawnEnemy
+  // Albtraum: Faktor je Gegner (Elite gedeckelt, specialHpCap), wie in spawnEnemy
   const mods = state.modifiers;
   const total = waveFor(state.wave, state.mapId, mods).reduce((sum, e) => sum + Math.round(ENEMY_TYPES[e.type].hp
-    * hpScale(state.wave, mods?.hpGrowthLate) * nightmareHpFactor(state.wave, mods, isBoss(e.type) || Boolean(e.elite && ELITE[e.elite]))), 0);
+    * hpScale(state.wave, mods?.hpGrowthLate) * nightmareHpFactor(state.wave, mods, Boolean(e.elite && ELITE[e.elite]))), 0);
   const alive = state.enemies.reduce((sum, e) => sum + Math.max(0, e.hp), 0);
   return total > 0 ? Math.min(1, alive / total) : 0;
 }
@@ -325,8 +325,8 @@ export function planLanes(state, list, wave) {
 export function spawnEnemy(state, type, wave = state.wave, lane = null, elite = null) {
   const def = ENEMY_TYPES[type];
   // B-189: gestufter Leben-Faktor (Albtraum) nur auf die Gegner-Leben, nicht auf Lava- und Meteor-Schaden
-  // Bosse und Elite höchstens mal specialHpCap (Elite wie bei makeElite unten)
-  const special = isBoss(type) || Boolean(elite && ELITE[elite]);
+  // Elite höchstens mal specialHpCap (Elite wie bei makeElite unten), Bosse voller Faktor
+  const special = Boolean(elite && ELITE[elite]);
   const hp = Math.round(def.hp * hpScale(Math.max(1, wave), state.modifiers?.hpGrowthLate) * nightmareHpFactor(wave, state.modifiers, special));
   const paths = state.paths || [state.path];
   // B-124: vorgeplante Seite aus der Spawn-Liste, sonst Wechsel wie bisher
@@ -356,17 +356,21 @@ export function spawnEnemy(state, type, wave = state.wave, lane = null, elite = 
   };
   if (def.summonInterval) enemy.summonAt = state.time + def.summonInterval; // B-127: nächste Beschwörung
   if (def.shellHits) enemy.shell = def.shellHits; // B-169: Schichten der Schale (Panzerkäfer)
-  if (elite && ELITE[elite]) makeElite(enemy, elite);
+  if (elite && ELITE[elite]) makeElite(state, enemy, elite);
   state.enemies.push(enemy);
   return enemy;
 }
 
 // B-179: Elite-Eigenschaft anwenden (enemy.elite = Eigenschaft, Flag fürs Abzeichen). Werte in ELITE (config.js).
-function makeElite(enemy, trait) {
+// Elite-Werte je Modus: ELITE (Normalmodus) oder die Albtraum-Werte aus modifiers.elite
+export function eliteTrait(state, trait) {
+  return state.modifiers?.elite?.[trait] ?? ELITE[trait];
+}
+function makeElite(state, enemy, trait) {
   enemy.elite = trait;
   enemy.reward = Math.round(enemy.reward * ELITE.rewardFactor);
   if (trait === 'swift') enemy.speed *= ELITE.swift.speed;
-  else if (trait === 'shield') enemy.ward = ELITE.shield.wardShare * enemy.maxHp;
+  else if (trait === 'shield') enemy.ward = eliteTrait(state, 'shield').wardShare * enemy.maxHp;
 }
 
 // ---------- Update-Schleife ----------
@@ -452,6 +456,7 @@ export function update(state, dt) {
   if (state.status !== 'playing' || state.paused) return;
   state.time += dt;
 
+  abilityPauseStep(state, dt);
   autoWaveStep(state, dt);
   spawnStep(state, dt);
   moveEnemies(state, dt);
@@ -466,6 +471,14 @@ export function update(state, dt) {
   projectilesStep(state, dt);
   effectsStep(state, dt);
   waveEndCheck(state);
+}
+
+// Zwischen den Wellen laden Fähigkeiten nicht weiter (sonst Auto-Start aus = Abklingzeit gratis abwarten).
+function abilityPauseStep(state, dt) {
+  if (state.waveActive || state.wave < 1) return;
+  for (const a of Object.values(state.abilities || {})) {
+    if (a.readyAt > state.time - dt) a.readyAt += dt;
+  }
 }
 
 // B-121: Countdown nach Wellenende; bei 0 startet die nächste Welle. Läuft in Spielzeit (Pause hält an, Tempo gilt).
@@ -551,12 +564,13 @@ function healStep(state) {
 }
 
 // B-179: Selbstheilung der Elite-Gegner mit regen: healPerSec * maxHp pro Sekunde (Rate mal dt), nie über maxHp.
-// Heilpause: erst pauseAfterHit Sekunden nach dem letzten HP-Schaden (enemy.hurtAt).
+// Heilpause: erst pauseAfterHit Sekunden nach dem letzten HP-Schaden (enemy.hurtAt); 0 = immer.
 function regenStep(state, dt) {
-  const rate = ELITE.regen.healPerSec * dt;
+  const { healPerSec, pauseAfterHit = 0 } = eliteTrait(state, 'regen');
+  const rate = healPerSec * dt;
   for (const e of state.enemies) {
     if (e.elite !== 'regen' || e.hp <= 0 || e.hp >= e.maxHp) continue;
-    if (state.time - (e.hurtAt ?? -Infinity) < ELITE.regen.pauseAfterHit) continue;
+    if (pauseAfterHit > 0 && state.time - (e.hurtAt ?? -Infinity) < pauseAfterHit) continue;
     e.hp = Math.min(e.maxHp, e.hp + e.maxHp * rate);
   }
 }
@@ -571,7 +585,7 @@ function summonStep(state) {
     const s = list[i];
     if (!(s.summonAt <= state.time) || s.hp <= 0) continue;
     const def = ENEMY_TYPES[s.type];
-    const phase = s.phase === 2 ? def.phase2 : def; // B-180: zweite Phase beschwört schneller und mehr
+    const phase = s.phase === 2 ? bossPhase2(state, s) : def; // B-180: zweite Phase beschwört schneller und mehr
     s.summonAt += phase.summonInterval;
     if (s.summonAt <= state.time) s.summonAt = state.time + phase.summonInterval; // nach großem dt nicht aufholen
     const path = enemyPath(state, s);
@@ -583,6 +597,18 @@ function summonStep(state) {
       m.x = p.x;
       m.y = p.y;
       state.effects.push({ kind: 'summon', x: p.x, y: p.y, ttl: FX_STYLE.summon.life, max: FX_STYLE.summon.life, p2: s.phase === 2 }); // p2: nur Optik (Farbe)
+    }
+    // Albtraum (NIGHTMARE.bossBuff): zusätzlich Fledermäuse, etwas weiter hinten als die Skelette
+    const buff = state.modifiers?.bossBuff;
+    const bats = s.type === 'necro' && buff ? (s.phase === 2 ? buff.necroBatsP2 : buff.necroBats) || 0 : 0;
+    for (let k = 0; k < bats; k++) {
+      const m = spawnEnemy(state, 'bat', s.wave ?? state.wave, s.lane);
+      m.summoned = true;
+      m.dist = Math.max(0, s.dist - (def.summonBehind + (phase.summonCount + k) * def.summonSpacing) * TILE);
+      const p = pointAt(path, m.dist);
+      m.x = p.x;
+      m.y = p.y;
+      state.effects.push({ kind: 'summon', x: p.x, y: p.y, ttl: FX_STYLE.summon.life, max: FX_STYLE.summon.life, p2: s.phase === 2 });
     }
   }
 }
@@ -938,12 +964,22 @@ function damage(state, enemy, p, direct = false) {
 // B-180: Phasenwechsel der Nekromantin (ENEMY_TYPES[type].phase2), genau einmal, sobald die HP auf phase2.at * maxHp
 // fallen und sie noch lebt: schnellerer Beschwörungstakt ab jetzt, Schild für shieldDuration Sekunden und das
 // Logik-Ereignis 'phase2' in state.effects (für die spätere Optik; ttl = Schilddauer, id = Gegner).
+// Albtraum: der Oger-König bekommt seine zweite Phase aus NIGHTMARE.bossBuff.ogrePhase2 (Schild, dann schneller),
+// die Nekromantin eine stärkere aus bossBuff.necroPhase2.
+function bossPhase2(state, enemy) {
+  const buff = state.modifiers?.bossBuff;
+  const base = ENEMY_TYPES[enemy.type]?.phase2;
+  if (enemy.type === 'boss') return buff?.ogrePhase2;
+  if (enemy.type === 'necro' && base && buff?.necroPhase2) return { ...base, ...buff.necroPhase2 };
+  return base;
+}
 function phaseCheck(state, enemy) {
-  const p2 = ENEMY_TYPES[enemy.type]?.phase2;
+  const p2 = bossPhase2(state, enemy);
   if (!p2 || enemy.phase === 2 || enemy.hp <= 0 || enemy.hp > p2.at * enemy.maxHp) return;
   enemy.phase = 2;
   enemy.shieldUntil = state.time + p2.shieldDuration;
-  enemy.summonAt = state.time + p2.summonInterval;
+  if (p2.summonInterval) enemy.summonAt = state.time + p2.summonInterval;
+  if (p2.speedFactor) enemy.speed *= p2.speedFactor;
   state.effects.push({ kind: 'phase2', id: enemy.id, x: enemy.x, y: enemy.y, ttl: p2.shieldDuration, max: p2.shieldDuration });
 }
 
