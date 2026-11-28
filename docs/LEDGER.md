@@ -183,3 +183,7 @@ Anhängen ohne die Datei zu lesen: `cat >> docs/LEDGER.md <<'EOF' … EOF`. Übe
 ### Regel Optik-Tests (agent/regel-optik-tests)
 - CLAUDE.md Regel 2 + Pipeline-Merge: Optik-Zähltests dürfen Agenten bei gewollter Optikänderung anpassen, im PR begründet.
 - Logik/Balancing/Eingabe-Tests und Abschwächen bleiben beim Menschen. Merge durch Mensch (.claude/ geändert).
+
+### Lava-Puls (agent/lava-puls)
+- Vulkan-Albtraum: Glutpuls an den Rand-Lavaseen entfernt (lag außerhalb des Felds, hart abgeschnitten).
+- Optik-Zähltest nach Regel 2 angepasst: Partikel Desktop 51 -> 49.
