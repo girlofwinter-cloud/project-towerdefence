@@ -777,7 +777,8 @@ export const NIGHTMARE = {
   // Spieltest 28.11. (Welle 15 zu schwer): Elite höchstens mal specialHpCap; Bosse behalten den vollen Faktor
   specialHpCap: 1.3,
   // Elite im Albtraum (ersetzt ELITE.shield/regen): Heilung immer, auch unter Beschuss (Entscheidung des Menschen 28.11.)
-  elite: { shield: { wardShare: 0.3 }, regen: { healPerSec: 0.025, pauseAfterHit: 0 } },
+  // Spieltest 28.11. (Welle 15 kaum schaffbar, Eliten zu stark): Schild 0.3 -> 0.2, Heilung 0.025 -> 0.015
+  elite: { shield: { wardShare: 0.2 }, regen: { healPerSec: 0.015, pauseAfterHit: 0 } },
   // Boss-Verstärkung (Wunsch des Menschen 28.11.): Nekromantin beschwört zusätzlich necroBats Fledermäuse je Beschwörung
   // (in Phase 2 necroBatsP2); Oger-König bekommt eine zweite Phase: bei at * maxHp Schild für shieldDuration s und
   // danach Tempo mal speedFactor (Wut). necroPhase2 ersetzt Werte der Nekromantin-Phase 2 (Spieltest 28.11.: Phase 2
