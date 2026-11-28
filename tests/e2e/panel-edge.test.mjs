@@ -28,6 +28,7 @@ async function setup(viewport) {
   const page = await ctx.newPage();
   await page.goto(`${url}?test`);
   await page.waitForSelector('#test-panel');
+  await page.click('#tp-gold'); // unbegrenztes Gold ist im Testmodus standardmäßig aus
   // Kachelmitte jedes Mal neu messen (Klick auf eine Karte kann die Seite scrollen)
   const click = async (c, r) => {
     await page.evaluate(() => window.scrollTo(0, 0));
