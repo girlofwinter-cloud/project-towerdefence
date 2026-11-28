@@ -1790,8 +1790,17 @@ export const SOUND = {
       twin:    { file: 'music-twin', gain: 0.55 },
       volcano: { file: 'music-volcano', gain: 0.6 },
     },
-    // B-187: eigener Titel im Albtraum-Modus (Vorrang vor dem Kartentitel; file: null = Kartentitel). gain wie bei byMap.
-    nightmare: { file: 'music-nightmare', gain: 0.52 }, // RMS 0,240 (Wiese 0,126)
+    // B-187: eigener Titel je Karte im Albtraum-Modus (Vorrang vor dem Kartentitel). Format wie byMap;
+    // file: null = kein eigener Albtraum-Titel -> Kartentitel, dann Rückfall file. gain wie bei byMap.
+    nightmare: {
+      byMap: {
+        meadow:  { file: 'music-nightmare', gain: 0.52 }, // RMS 0,240 (Wiese 0,126)
+        ice:     { file: null, gain: 1 },
+        fork:    { file: null, gain: 1 },
+        twin:    { file: null, gain: 1 },
+        volcano: { file: null, gain: 1 },
+      },
+    },
     gain: 0.025,         // Lautstärke im laufenden Spiel
     pausedFactor: 0.6,   // bei Pause etwas leiser (Anteil von gain)
     fadeIn: 2,           // Einblenden in s (Start, Ton wieder an, neues Spiel)

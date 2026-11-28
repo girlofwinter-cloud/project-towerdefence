@@ -255,26 +255,29 @@ export function musicUrl(cfg = SOUND.music, mapId) {
 // B-118: Lautstärkefaktor eines Titels (nach URL, damit der Rückfalltitel seinen eigenen Faktor behält);
 // Titel ohne Eintrag oder ohne gültigen Faktor -> 1
 export function musicGainFactor(url, cfg = SOUND.music) {
-  const nm = nightmareMusicUrl(cfg);
-  if (nm && nm === url && Number.isFinite(cfg.nightmare.gain) && cfg.nightmare.gain >= 0) return cfg.nightmare.gain;
+  // B-187: Albtraum-Titel je Karte zuerst (eigener Faktor je Albtraum-Datei)
+  for (const [id, entry] of Object.entries(cfg.nightmare?.byMap || {})) {
+    if (nightmareMusicUrl(cfg, id) === url && Number.isFinite(entry.gain) && entry.gain >= 0) return entry.gain;
+  }
   for (const [id, entry] of Object.entries(cfg.byMap || {})) {
     if (musicUrl(cfg, id) === url && Number.isFinite(entry.gain) && entry.gain >= 0) return entry.gain;
   }
   return 1;
 }
 
-// B-187: URL des Albtraum-Titels; ohne Eintrag oder ohne Datei (file: null) -> null
-export function nightmareMusicUrl(cfg = SOUND.music) {
-  const name = cfg.nightmare?.file;
+// B-187: URL des Albtraum-Titels einer Karte; ohne Eintrag oder ohne Datei (file: null) -> null
+export function nightmareMusicUrl(cfg = SOUND.music, mapId) {
+  const byMap = cfg.nightmare?.byMap || {};
+  const name = mapId != null && Object.hasOwn(byMap, mapId) ? byMap[mapId]?.file : null;
   return name ? `${cfg.base}${name}.m4a` : null;
 }
 
 // B-118: welcher Titel laufen soll. failed: URLs, deren Laden gescheitert ist.
 // Kartentitel gescheitert -> Rückfalltitel; auch der gescheitert -> null (keine Musik).
-// B-187: mode 'nightmare' -> zuerst der Albtraum-Titel (falls konfiguriert), dann wie oben.
+// B-187: mode 'nightmare' -> zuerst der Albtraum-Titel dieser Karte (falls konfiguriert), dann wie oben.
 export function pickMusicUrl(mapId, failed = [], cfg = SOUND.music, mode = 'normal') {
   const bad = new Set(failed);
-  const nm = mode === 'nightmare' ? nightmareMusicUrl(cfg) : null;
+  const nm = mode === 'nightmare' ? nightmareMusicUrl(cfg, mapId) : null;
   for (const url of [nm, musicUrl(cfg, mapId), musicUrl(cfg)]) if (url && !bad.has(url)) return url;
   return null;
 }
