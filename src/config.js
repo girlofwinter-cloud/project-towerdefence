@@ -602,16 +602,17 @@ export const ABILITIES = {
 ABILITIES.meteor.text = meteorText(1);
 
 // Meteor-Schaden (B-112) in Welle wave bei Abstand frac (0 = Mitte, 1 = Rand des Radius); Welle < 1 zählt als 1.
-export function meteorDamage(wave, frac = 0) {
+// lateGrowth (B-186): spätes HP-Wachstum des Modus wie bei den Gegnern (Standard HP_GROWTH.late).
+export function meteorDamage(wave, frac = 0, lateGrowth) {
   const m = ABILITIES.meteor;
   const f = frac > 0 ? Math.min(frac, 1) : 0;
-  return m.damage * hpScale(Math.max(1, wave || 0)) * (1 - (1 - m.edge) * f);
+  return m.damage * hpScale(Math.max(1, wave || 0), lateGrowth) * (1 - (1 - m.edge) * f);
 }
 
 // Beschreibung mit dem aktuellen Schaden der Welle (Tooltip des Knopfs, main.js aktualisiert sie je Welle).
-export function meteorText(wave) {
+export function meteorText(wave, lateGrowth) {
   const m = ABILITIES.meteor;
-  return `Flächenschaden ${Math.round(meteorDamage(wave))} in der Mitte (am Rand ${pct(m.edge)}), wächst mit der Welle. `
+  return `Flächenschaden ${Math.round(meteorDamage(wave, 0, lateGrowth))} in der Mitte (am Rand ${pct(m.edge)}), wächst mit der Welle. `
     + `Umkreis ${num(m.radius)} Kacheln, Abklingzeit ${m.cooldown} s.`;
 }
 ABILITIES.freeze.text = `Alle Gegner ${pct(ABILITIES.freeze.slow)} langsamer für ${ABILITIES.freeze.duration} s, Abklingzeit ${ABILITIES.freeze.cooldown} s.`;
@@ -754,11 +755,16 @@ export const ELITE = {
   rewardFactor: 1.5,
 };
 
-// B-182: Albtraum-Modus (vorläufige Werte, Balancing in B-186). Gilt zusätzlich zu den Karten-Modifikatoren.
+// B-182: Albtraum-Modus. Gilt zusätzlich zu den Karten-Modifikatoren.
 // goldFactor: mal START_GOLD (gerundet); rewardFactor: mal Kopfgeld (gerundet, mindestens 1); lives: Start- und Höchstleben
 // (auch Grenze der Reparatur); repairUses: Einsätze der Reparatur; hpGrowthLate: ersetzt HP_GROWTH.late;
 // eliteBonus: Elite-Gegner mehr je Welle (auch über ELITE.max hinaus); eliteEarlier: so viele Wellen früher ab ELITE.from.
-export const NIGHTMARE = { goldFactor: 0.7, rewardFactor: 0.8, lives: 5, repairUses: 1, hpGrowthLate: 1.18, eliteBonus: 1, eliteEarlier: 2 };
+// B-186 (28.11., grob, Feinabstimmung macht der Mensch): vorher goldFactor 0.7, rewardFactor 0.8, hpGrowthLate 1.18,
+// eliteEarlier 2. Damit scheiterten Kanonen-Mix und perfektes Spiel schon in Welle 2-10 (Start-Gold reichte nicht).
+// Jetzt (tests/balance/albtraum.test.js, dt 1/30): Kanonen-Mix scheitert in Welle 10-16 (normal 16-20), perfektes Spiel
+// erreicht Welle 19-20 (meist knapp verloren, Zangenangriff ohne Lebensverlust); Start-Gold kürzen kippt Eiswelt und
+// Zwei Fronten schon in Welle 2-3.
+export const NIGHTMARE = { goldFactor: 1, rewardFactor: 0.9, lives: 5, repairUses: 1, hpGrowthLate: 1.16, eliteBonus: 1, eliteEarlier: 0 };
 
 // B-179: Anzahl der Elite-Gegner in Welle `wave` (0 vor ELITE.from). mods (B-182): { eliteBonus, eliteEarlier }.
 export function eliteCount(wave, mods = {}) {

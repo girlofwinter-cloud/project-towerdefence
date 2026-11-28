@@ -401,7 +401,7 @@ export function useAbility(state, id, x, y) {
     const r = def.radius * TILE;
     for (const e of state.enemies) {
       const d = Math.hypot(e.x - x, e.y - y);
-      if (d <= r) damage(state, e, { damage: meteorDamage(e.wave ?? state.wave, d / r) }); // B-120: Welle des Gegners
+      if (d <= r) damage(state, e, { damage: meteorDamage(e.wave ?? state.wave, d / r, state.modifiers?.hpGrowthLate) }); // B-120: Welle des Gegners; B-186: Wachstum des Modus
     }
     const life = meteorLife();
     state.effects.push({ kind: 'explosion', meteor: true, x, y, r, ttl: life, max: life });
@@ -507,7 +507,7 @@ function lavaStep(state, dt) {
     const row = Math.floor(e.y / TILE);
     if (!state.hotPath.has(`${col},${row}`)) continue;
     // B-120: skaliert mit der Welle des Gegners (Rückfall: aktuelle Welle)
-    damage(state, e, { damage: LAVA.dps * hpScale(Math.max(1, e.wave ?? state.wave)) * dt, lava: true }); // B-169: kein Treffer auf die Schale
+    damage(state, e, { damage: LAVA.dps * hpScale(Math.max(1, e.wave ?? state.wave), state.modifiers?.hpGrowthLate) * dt, lava: true }); // B-169: kein Treffer auf die Schale; B-186: Wachstum des Modus
     hit = true;
   }
   if (hit) removeDead(state);

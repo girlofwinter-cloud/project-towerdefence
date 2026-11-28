@@ -850,7 +850,7 @@ function refreshUI() {
     // B-112: Meteor-Schaden wächst mit der Welle, der Tooltip zeigt den aktuellen Wert
     if (id === 'meteor' && btn.dataset.wave !== String(state.wave)) {
       btn.dataset.wave = String(state.wave);
-      btn.title = meteorText(state.wave);
+      btn.title = meteorText(state.wave, state.modifiers?.hpGrowthLate);
     }
   }
 

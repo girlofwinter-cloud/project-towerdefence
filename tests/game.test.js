@@ -3711,6 +3711,40 @@ describe('B-182: Albtraum-Modus', () => {
     assert.ok(hpScale(15, NIGHTMARE.hpGrowthLate) > hpScale(15));
   });
 
+  // B-186: Lava und Meteor wachsen im Albtraum wie die Gegner-HP (hpGrowthLate), im Normalmodus wie bisher
+  test('Lava und Meteor skalieren mit hpGrowthLate', () => {
+    const w = 15;
+    const g = NIGHTMARE.hpGrowthLate;
+    assert.ok(Math.abs(meteorDamage(w, 0, g) - ABILITIES.meteor.damage * hpScale(w, g)) < 1e-6);
+    assert.equal(meteorDamage(w, 0.5), meteorDamage(w, 0.5, undefined));
+    assert.ok(meteorText(w, g).includes(String(Math.round(meteorDamage(w, 0, g)))));
+    for (const mode of ['normal', 'nightmare']) {
+      const s = createGame({ mode });
+      s.wave = w;
+      const e = enemyAt(s, 'shielded', 300, 300);
+      e.hp = 1e6;
+      assert.ok(useAbility(s, 'meteor', 300, 300).ok);
+      const want = meteorDamage(w, 0, mode === 'nightmare' ? g : undefined);
+      assert.ok(Math.abs(1e6 - e.hp - want) < 1e-6, `${mode}: ${1e6 - e.hp}`);
+    }
+    // Lava: Gegner steht eine Sekunde auf einer heißen Wegkachel des Vulkans
+    const burn = (mode) => {
+      const s = createGame({ mapId: 'volcano', mode });
+      s.wave = w;
+      const e = spawnEnemy(s, 'grunt', w);
+      e.speed = 0;
+      e.hp = e.maxHp = 1e6;
+      s.paths = [buildPath([[10, 8], [11, 8]], TILE)];
+      e.dist = 0;
+      run(s, 1, 1 / 60);
+      return 1e6 - e.hp;
+    };
+    const normal = burn('normal');
+    const nm = burn('nightmare');
+    assert.ok(Math.abs(normal - LAVA.dps * hpScale(w)) < LAVA.dps * hpScale(w) * 0.05, `normal ${normal}`);
+    assert.ok(Math.abs(nm - LAVA.dps * hpScale(w, g)) < LAVA.dps * hpScale(w, g) * 0.05, `Albtraum ${nm}`);
+  });
+
   test('mehr und frühere Elite-Gegner', () => {
     const mods = { eliteBonus: NIGHTMARE.eliteBonus, eliteEarlier: NIGHTMARE.eliteEarlier };
     const from = ELITE.from - NIGHTMARE.eliteEarlier;
