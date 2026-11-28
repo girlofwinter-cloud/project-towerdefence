@@ -1798,7 +1798,7 @@ export const SOUND = {
         ice:     { file: 'music-nightmare-ice', gain: 0.97 },
         fork:    { file: 'music-nightmare-fork', gain: 1.08 },
         twin:    { file: 'music-nightmare-twin', gain: 1.88 },
-        volcano: { file: null, gain: 1 },
+        volcano: { file: 'music-nightmare-volcano', gain: 0.78 },
       },
     },
     gain: 0.025,         // Lautstärke im laufenden Spiel
