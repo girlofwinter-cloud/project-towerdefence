@@ -3,7 +3,7 @@
 // BOSS_BAR.fadeAfter Sekunden, dann verschwindet sie. ui.bossBarShown sagt render.js, dass über Bossen kein
 // kleiner Lebensbalken nötig ist.
 import { BOSS_BAR, ENEMY_TYPES } from './config.js';
-import { bossBarViews, bossBarPlacement } from './hud.js';
+import { bossBarViews, bossBarLayout } from './hud.js';
 
 const PHASE_TEXT = ['', 'Phase I', 'Phase II'];
 
@@ -36,10 +36,11 @@ export function createBossBars(doc = document) {
     // B-193: sichtbare Albtraum-Plakette rechts neben dem HUD: Leiste rückt daneben
     const plq = doc.getElementById('nm-plaque');
     const plqRight = plq && !plq.hidden ? plq.getBoundingClientRect().right : 0;
-    const p = hud && btn ? bossBarPlacement(Math.max(hud.right, plqRight || 0), btn.left) : null;
+    const p = hud && btn ? bossBarLayout(hud.left, Math.max(hud.right, plqRight || 0), hud.bottom, btn.left) : null;
     if (!p) return;
     box.style.setProperty('--bb-left', `${Math.round(p.left)}px`);
     box.style.setProperty('--bb-w', `${Math.round(p.width)}px`);
+    box.style.setProperty('--bb-top', `${Math.round(p.top)}px`);
   }
 
   // now: Sekunden (Echtzeit der Oberfläche, nur fürs Ausblenden)

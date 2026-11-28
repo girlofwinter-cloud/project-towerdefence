@@ -162,3 +162,7 @@ Anhängen ohne die Datei zu lesen: `cat >> docs/LEDGER.md <<'EOF' … EOF`. Übe
 ## 2026-11-28 · CI schlank · Doku zur bedingten CI
 - CLAUDE.md und Pipeline-Skill: Unit-Tests immer, Balancing/e2e nur bei passenden Dateiänderungen.
 - `ci.yml` selbst ändert der Mensch (geschützte Datei); Vorschlag liegt im PR.
+
+### Fix Boss-Leiste Albtraum (2026-11-28)
+- Bug: Oger-König-Leiste neben der Albtraum-Plakette auf wenige px gequetscht ("Oger-").
+- Fix: Lücke < BOSS_BAR.minWidth (200) -> Leiste in voller Breite unter die HUD-Leiste (bossBarLayout in hud.js), Test in render.test.js.

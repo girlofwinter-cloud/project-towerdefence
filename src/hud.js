@@ -118,6 +118,15 @@ export function bossBarPlacement(hudRight, buttonsLeft, width = BOSS_BAR.width, 
   return { left: hudRight + (gap - w) / 2, width: w };
 }
 
+// Lücke zu schmal (unter BOSS_BAR.minWidth, z. B. mit Albtraum-Plakette): Leiste in voller Breite unter die HUD-Leiste,
+// rechtsbündig mit deren rechtem Rand (nie links aus dem Bild). Sonst die Lage aus bossBarPlacement mit top = BOSS_BAR.top.
+export function bossBarLayout(hudLeft, hudRight, hudBottom, buttonsLeft) {
+  const p = bossBarPlacement(hudRight, buttonsLeft);
+  if (!p) return null;
+  if (p.width >= BOSS_BAR.minWidth) return { ...p, top: BOSS_BAR.top };
+  return { left: Math.max(hudLeft, hudRight - BOSS_BAR.width), width: BOSS_BAR.width, top: hudBottom + BOSS_BAR.gapPad };
+}
+
 // Schalter Auto-Start: gespeicherte Wahl lesen und schreiben (Speicher fehlt oder wirft: Standard bzw. nichts tun).
 export function loadAutoWave(storage) {
   try {
