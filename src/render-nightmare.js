@@ -2,7 +2,7 @@
 // Lage aller Teilchen einmal je Karte (WeakMap je Weg, deterministisch aus mapId), je Frame nur Zeitversätze:
 // keine Zufallszahlen, keine Gradienten. Weiche Flecken (Nebel, Hof) kommen aus einem kleinen Sprite je Farbe.
 // Arten und Grundwerte: NM_MOTION (config.js); Anzahl und Farben je Karte: motion in src/nm-maps/<id>.js.
-import { WIDTH, HEIGHT, TILE, NM_MOTION, NIGHT_STYLE } from './config.js';
+import { WIDTH, HEIGHT, TILE, NM_MOTION, NIGHT_STYLE, NM_WARM_LIGHT } from './config.js';
 import { nightmareOf } from './nm-maps/index.js';
 import { emberPoints, drawEmbers } from './render-light.js';
 
@@ -161,4 +161,10 @@ export function drawNightmareMotion(ctx, state, t, reduced = false, compact = fa
     if (!emberCache.has(state.path)) emberCache.set(state.path, emberPoints(state.path, NIGHT_STYLE, TILE));
     drawEmbers(ctx, emberCache.get(state.path), t, NIGHT_STYLE, reduced);
   }
+}
+
+// B-194: warme Lichtinsel unter jedem Turm ("deine Türme sind die Lichter"), über dem Boden, unter den Figuren; steht still
+export function drawWarmLights(ctx, towers) {
+  const W = NM_WARM_LIGHT;
+  for (const t of towers) spot(ctx, W.color, t.x, t.y + W.dy * TILE, W.rx * TILE, W.ry * TILE);
 }

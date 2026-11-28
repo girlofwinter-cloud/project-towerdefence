@@ -13,6 +13,7 @@
 //   svgOver:  (scene, palette) => SVG über Weg und Tupfen, unter Licht und Figuren
 //   motion:   Bewegung, nach Wichtigkeit sortiert (Arten und Grundwerte: NM_MOTION in config.js, Zeichnen: render-nightmare.js)
 //             [{ kind: 'fog'|'fall'|'rise'|'blink'|'glint'|'ripple', count: [desktop, handy], color, … }]
+//   reserve:  Rechtecke [x0, y0, x1, y1] in Entwurfs-px ohne Rand-Deko (z. B. Rand-Lava)
 //   embers:   true = Glut am Weg (B-184) als Teil der Bewegung
 import meadow from './meadow.js';
 import ice from './ice.js';
