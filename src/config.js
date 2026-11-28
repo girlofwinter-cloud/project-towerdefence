@@ -1848,9 +1848,9 @@ export const SOUND = {
 export const GOLD_CONDITIONS = {
   meadow:  { kind: 'noAbilities', label: 'ohne Fähigkeiten' },
   ice:     { kind: 'noTower', tower: 'frost', label: 'ohne Frostturm' },
-  fork:    { kind: 'maxTowerTypes', max: 3, label: 'höchstens 3 Turmtypen' },
+  fork:    { kind: 'noTower', tower: 'cannon', label: 'ohne Kanone' },
   twin:    { kind: 'noSell', label: 'ohne Verkaufen' },
-  volcano: { kind: 'maxTowerTypes', max: 3, label: 'höchstens 3 Turmtypen' },
+  volcano: { kind: 'noTower', tower: 'lightning', label: 'ohne Blitzturm' },
 };
 
 // B-183: Albtraum-Abzeichen je Karte, Index + 1 = Stufe (1 Bronze: Welle 20 geschafft, 2 Silber: ohne Lebensverlust,
