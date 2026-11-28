@@ -14,7 +14,7 @@ import { beginMasterFx, drawMasterUnder, drawMasterOver, drawMasterTrails, displ
 import * as flat from './render-decor.js';
 import { drawAccents } from './render-accents.js';
 import { drawTreeShadows, drawLight } from './render-light.js';
-import { drawNightmareMotion } from './render-nightmare.js';
+import { drawNightmareMotion, drawWarmLights } from './render-nightmare.js';
 import { drawGround as drawGroundFill, drawGroundTufts, drawMottle } from './render-ground.js';
 import { waterGeometry, drawWater, drawBridges } from './render-water.js';
 import { lavaGeometry, drawLava, drawLavaBridges, lavaGlowSpots, drawLavaGlow } from './render-lava.js';
@@ -190,7 +190,10 @@ export function render(ctx, state, ui) {
     drawGround(ctx, state, reduced);
   }
   // B-194: Albtraum-Bewegung statt Tönung und Vignette, über dem Boden, unter allen Figuren
-  if (nightOn(state, ui)) drawNightmareMotion(ctx, state, now() / 1000, reduced, !!ui?.compactMotion, paintedCache.get(state.mapId)?.scene?.eyes ?? []);
+  if (nightOn(state, ui)) {
+    drawNightmareMotion(ctx, state, now() / 1000, reduced, !!ui?.compactMotion, paintedCache.get(state.mapId)?.scene?.eyes ?? []);
+    drawWarmLights(ctx, state.towers);
+  }
   drawHover(ctx, state, ui);
   for (const e of state.enemies) drawHealAura(ctx, e, state.time);
   for (const e of state.enemies) drawNecroAura(ctx, e, state.time, reduced); // B-180: Boden-Aura unter allen Figuren

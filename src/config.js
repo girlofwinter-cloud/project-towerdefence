@@ -1900,6 +1900,8 @@ export const NM_MOTION = {
   maxDesktop: 60,
   maxCompact: 28,
 };
+// B-194: warme Lichtinsel unter jedem Turm im Albtraum (nm-warm-light #ffe2a0, radial α 0,42 -> 0), Halbachsen in Kacheln
+export const NM_WARM_LIGHT = { color: 'rgba(255,226,160,0.42)', rx: 0.9, ry: 0.6, dy: 0.2 };
 // Zusätze: Randlicht-Verlauf [Anteil, Deckkraft], Fußaura-Deckkraft, Dornen (bone), Elite-Innenring (Abstand
 // nach innen zum Goldring und Breite in Entwurfs-px), Umfärbung (Entsättigung, Anteil Schattenfarbe)
 export const NM_ENEMY_FX = {
