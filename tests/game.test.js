@@ -3908,3 +3908,58 @@ test('B-183: Reparatur merkt fehlende Leben als verloren', () => {
   useAbility(s, 'repair');
   assert.ok(s.track.livesLost >= 1);
 });
+
+// ---------- B-189 (Tester): Albtraum gestuft über den echten Spawn-Ablauf, Normalmodus unverändert ----------
+describe('B-189: gestufte Albtraum-Leben im echten Spawn-Ablauf', () => {
+  // Spawnt die komplette Welle `wave` über startWave + Warteschlange (wie im Spiel)
+  const spawnWave = (mode, wave, mapId = 'meadow') => {
+    const s = createGame({ mapId, mode });
+    s.wave = wave - 1;
+    startWave(s);
+    for (const e of s.spawnQueue) spawnEnemy(s, e.type, e.wave ?? s.wave, e.lane ?? null, e.elite ?? null);
+    s.spawnQueue = [];
+    return s;
+  };
+
+  for (const wave of [5, 7, 8, 11, 12]) {
+    test(`Welle ${wave}: Leben, Kopfgeld und Elite je Modus`, () => {
+      const n = spawnWave('normal', wave);
+      const a = spawnWave('nightmare', wave);
+      const f = wave >= 12 ? 1.4 : wave >= 8 ? 1.2 : 1;
+      for (const e of n.enemies) {
+        assert.equal(e.maxHp, Math.round(ENEMY_TYPES[e.type].hp * hpScale(wave)), `normal ${e.type}`);
+      }
+      for (const e of a.enemies) {
+        assert.equal(e.maxHp, Math.round(ENEMY_TYPES[e.type].hp * hpScale(wave, NIGHTMARE.hpGrowthLate) * f), `Albtraum ${e.type}`);
+      }
+      if (wave === 5) {
+        const nb = n.enemies.find((e) => isBoss(e));
+        const ab = a.enemies.find((e) => isBoss(e));
+        assert.ok(nb && ab, 'Boss in Welle 5');
+        assert.equal(ab.maxHp, nb.maxHp, 'Boss in Welle 5 wie normal');
+      }
+      // Kopfgeld im Albtraum wie normal (rewardFactor 1)
+      for (const e of a.enemies.filter((x) => !x.elite)) assert.equal(e.reward, ENEMY_TYPES[e.type].reward, `Kopfgeld ${e.type}`);
+      // Elite: normal erst ab ELITE.from, Albtraum ab Welle 8 mit zwei mehr
+      assert.equal(n.enemies.filter((e) => e.elite).length, eliteCount(wave));
+      assert.equal(a.enemies.filter((e) => e.elite).length, wave >= 8 ? eliteCount(wave, { eliteBonus: 2, eliteEarlier: 2 }) : 0);
+      if (wave < ELITE.from) assert.equal(n.enemies.filter((e) => e.elite).length, 0);
+      // Frühstart-Risiko: frische Welle = 1, nach Halbierung aller Leben = 0.5 (beide Modi)
+      for (const s of [n, a]) {
+        assert.equal(earlyStartRisk(s), 1);
+        for (const e of s.enemies) e.hp = e.maxHp / 2;
+        assert.ok(Math.abs(earlyStartRisk(s) - 0.5) < 0.01, `${s.mode}: ${earlyStartRisk(s)}`);
+      }
+    });
+  }
+
+  test('Normalmodus: waveHp ohne Faktor wie vorher, Lava und Meteor ohne hpSteps', () => {
+    for (const w of [1, 8, 12, 20]) {
+      assert.equal(waveHp(w, 'meadow'), waveHp(w, 'meadow', undefined, 1));
+      // Meteor im Albtraum hängt nur an hpGrowthLate, nicht am Stufen-Faktor
+      assert.equal(meteorDamage(w, 0, NIGHTMARE.hpGrowthLate), ABILITIES.meteor.damage * hpScale(w, NIGHTMARE.hpGrowthLate));
+    }
+    assert.deepEqual(modeModifiers('normal'), {});
+    assert.equal(createGame().modifiers?.hpSteps, undefined);
+  });
+});
