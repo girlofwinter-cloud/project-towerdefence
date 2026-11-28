@@ -164,11 +164,21 @@ canvas#game.over-flag { cursor: pointer; } /* Maus über der Wellenfahne */
   .bb-shield-ico { width: 20px; height: 22px; right: -8px; top: -10px; }
 }
 
-#sound .ic-off, #sound[aria-pressed="false"] .ic-on { display: none; }
+#sound .ic-off, #sound[data-on="false"] .ic-on, .sound-toggle .ic-off, .sound-toggle[data-on="false"] .ic-on { display: none; }
 #fullscreen[hidden] { display: none; }
 #fullscreen .ic-exit, #fullscreen[aria-pressed="true"] .ic-enter { display: none; }
 #fullscreen[aria-pressed="true"] .ic-exit { display: block; }
-#sound[aria-pressed="false"] .ic-off { display: block; }
+#sound[data-on="false"] .ic-off, .sound-toggle[data-on="false"] .ic-off { display: block; }
+#sound[aria-expanded="true"] { box-shadow: 0 0 0 3px var(--hl), inset 0 2px 0 rgba(255,235,190,.6), 0 3px 0 rgba(30,15,5,.5); }
+/* B-188: Feld Ton und Lautstärke (Plakette unter dem Ton-Knopf; Tippziele mindestens 44 px) */
+.sound-pop { position: absolute; z-index: 13; right: 0; top: calc(100% + 10px); width: 270px; padding: 8px 14px 10px; display: flex; flex-direction: column; gap: 4px; }
+.sound-pop[hidden] { display: none; }
+.sound-toggle { display: flex; align-items: center; gap: 10px; min-height: 48px; padding: 0; border: 0; background: none; color: var(--cream); font: 18px/1 var(--display); text-shadow: 0 2px 0 var(--ink); cursor: pointer; text-align: left; }
+.sound-toggle .rb { width: 44px; height: 44px; } .sound-toggle .rb > svg { width: 32px; height: 32px; }
+.sound-toggle kbd { margin-left: auto; text-shadow: none; }
+.vol-row { display: grid; grid-template-columns: 64px 1fr 46px; align-items: center; gap: 8px; min-height: 44px; font: 18px/1 var(--display); text-shadow: 0 2px 0 var(--ink); cursor: pointer; }
+.vol-row input { width: 100%; height: 44px; margin: 0; accent-color: var(--gold); cursor: pointer; }
+.vol-row output { text-align: right; font-size: 15px; color: var(--muted); }
 #pause .ic-play, #pause[data-paused="true"] .ic-pause { display: none; }
 #pause[data-paused="true"] .ic-play { display: block; }
 #pause[data-paused="true"] { box-shadow: 0 0 0 3px var(--hl), inset 0 2px 0 rgba(255,235,190,.6), 0 3px 0 rgba(30,15,5,.5); }
@@ -343,6 +353,7 @@ canvas#game, #game { height: auto; border-radius: 10px; }
 .help { display: block; } /* C-Abnahme 9: "?" als fünfter runder Knopf */
 .top-buttons .rb { width: 56px; height: 56px; }
 .help-pop { position: fixed; left: 8px; right: 8px; top: auto; width: auto; z-index: 30; }
+.sound-pop { position: fixed; left: 8px; right: 8px; top: 68px; width: auto; z-index: 30; }
 .wave-row { position: relative; order: 3; left: 0; bottom: 0; width: 100%; height: auto; display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
 .wave-btn, #wave-preview, .map-pick { position: static; transform: none; max-width: none; }
 .wave-btn { position: relative; } /* Bezug für die Fortschrittsfüllung */
@@ -504,6 +515,7 @@ body.fs-gate #rotate-hint { position: fixed; inset: 0; z-index: 60; display: fle
   #speed { grid-area: 1 / 1; } #pause { grid-area: 1 / 2; }
   #sound { grid-area: 2 / 2; width: 44px; height: 44px; } #sound > svg { width: 32px; height: 32px; }
   #fullscreen { grid-area: 2 / 1; width: 44px; height: 44px; } #fullscreen > svg { width: 32px; height: 32px; } /* B-178: freie Ecke links neben Ton */
+  .sound-pop { right: calc(100% + 8px); top: 0; } /* B-188: links neben den Knöpfen, ganz über dem Feldrand */
   /* Links unten: drei Fähigkeiten untereinander, nur Symbol (Name im aria-label) */
   .abilities { left: calc(var(--safe-l) + 18px); top: auto; bottom: calc(var(--safe-b) + 10px); height: auto; width: auto; flex-direction: column; gap: 16px;
     padding: 0; background: none; border: 0; border-radius: 0; box-shadow: none; }

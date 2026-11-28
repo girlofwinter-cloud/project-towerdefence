@@ -2,9 +2,11 @@
 // Nutzeraktion), sonst Synthese (Oszillatoren, Rauschen-Buffer, Hüllkurven) als Ersatz.
 // Ohne Web Audio (Node, alte Browser) tun alle Funktionen nichts.
 import { SOUND } from './config.js';
-import { sampleUrls, planSound, pickMusicUrl, musicLevel, musicRamp, findLoopPoints } from './sound-events.js';
+import { sampleUrls, planSound, pickMusicUrl, musicLevel, musicRamp, findLoopPoints, clampVolume, sfxGain } from './sound-events.js';
 
-const audio = { ctx: null, master: null, noise: null, on: SOUND.defaultOn, buffers: new Map(), samplesSettled: false };
+// B-188: volume = Schieber Musik und Effekte (0..1)
+const audio = { ctx: null, master: null, noise: null, on: SOUND.defaultOn, buffers: new Map(), samplesSettled: false,
+  volume: { music: SOUND.defaultVolume, sfx: SOUND.defaultVolume } };
 // B-116/B-118: Musik. tracks: Cache je URL { state: 'loading' | 'ready' | 'failed', buffer, loop };
 // url/src/gain/level = laufender Titel (level = zuletzt angesteuerte Lautstärke); broken = Musik ganz aus.
 const music = { tracks: new Map(), url: null, src: null, gain: null, level: 0, broken: false };
@@ -23,7 +25,7 @@ export function unlockAudio() {
     if (!audio.ctx) {
       audio.ctx = new Ctor();
       audio.master = audio.ctx.createGain();
-      audio.master.gain.value = SOUND.masterGain;
+      audio.master.gain.value = sfxGain(audio.volume.sfx);
       // Tiefpass am Master gegen Schärfe
       const soft = audio.ctx.createBiquadFilter();
       soft.type = 'lowpass';
@@ -43,6 +45,12 @@ export function setSoundOn(on) {
   audio.on = !!on;
   if (!audio.on) musicSilence(); // beim Wiedereinschalten neu einblenden
   if (!audio.on && audio.ctx && audio.ctx.state === 'running') audio.ctx.suspend().catch(() => {});
+}
+
+// B-188: Lautstärke setzen. Effekte sofort am Master, Musik im nächsten updateMusic (kurze Rampe).
+export function setVolumes({ music, sfx } = {}) {
+  audio.volume = { music: clampVolume(music), sfx: clampVolume(sfx) };
+  if (audio.master) audio.master.gain.value = sfxGain(audio.volume.sfx);
 }
 
 // Lädt alle Aufnahmen im Hintergrund. Fehler (fehlende Datei, Dekodieren) bleiben still: dann Synthese.
@@ -163,7 +171,7 @@ export function updateMusic({ status, paused, mapId } = {}) {
       if (!music.src) startMusic(ctx, url, track);
     } else if (!url && music.src) stopMusic(ctx);
     if (!music.src) return;
-    const r = musicRamp(music.level, musicLevel({ soundOn: audio.on, status, paused, url: music.url }));
+    const r = musicRamp(music.level, musicLevel({ soundOn: audio.on, status, paused, url: music.url, volume: audio.volume.music }));
     if (!r) return;
     const p = music.gain.gain;
     const t = ctx.currentTime;
