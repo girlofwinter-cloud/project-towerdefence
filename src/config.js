@@ -1518,6 +1518,15 @@ export const FX_STYLE = {
     life: 0.6, ghostAlpha: 0.35, ghostLife: 0.25, flash: '#ffffff', flashAlpha: 0.6, flashR: 16, flashLife: 0.1,
     missText: 'Verfehlt', missFont: '13px "Lilita One", "Trebuchet MS", sans-serif',
     missColor: '#fff3d2', missOutline: '#2b1a10', missOutlineWidth: 3, missRise: 12, missLift: 18,
+    dodgeDx: 9, dodgeTime: 0.16, // B-178: Seitwärtszucken (Entwurfs-px), ease-out, zurück in dodgeTime s
+  },
+  // B-178: Frost-Treffer auf Glutling: Dampfwölkchen (Farben/Maße wie ENEMY_STYLE.ember.steam*), life in s Spielzeit
+  steam: { life: 0.5 },
+  // B-178: verlorene Schicht des Panzerkäfers (nicht die letzte): 2 kleine Splitter, kein Ring (Werte wie shellBreak)
+  shellChip: {
+    life: 0.35, shards: 2, shardColors: ['#b0703a', '#7a4a24', '#e8b27a'], shardSize: [3, 4],
+    shardSpeed: [50, 80], shardAngle: [-140, -40], gravity: 260, spin: 8, fadeFrom: 0.6, reducedLife: 0.25,
+    shardInk: '#2b1a10', shardLine: 1.5, originDy: -22, flash: '#fff3c9', flashR: [0, 0], flashLife: 0, flashLine: 0,
   },
   // Meteor (B-112): Anflug -> Einschlag -> Krater. Zeiten in Sekunden Spielzeit (flight + blast + crater = Effektdauer),
   // Radien als Anteil des Meteor-Radius r, sonst px. Der Schaden fällt sofort (game.js), der Anflug ist darum kurz.

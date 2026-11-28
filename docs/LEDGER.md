@@ -83,3 +83,7 @@ Anhängen ohne die Datei zu lesen: `cat >> docs/LEDGER.md <<'EOF' … EOF`. Übe
 - Wunsch des Menschen: zuerst "Im Vollbild spielen" tippen, nicht zuerst drehen. Tippen: Vollbild + Querformat festhalten, Spiel dreht sich selbst.
 - Hinweis bleibt quer, bis getippt wurde (dann nur der Knopf). Nur wo Vollbild geht (nicht iPhone), nicht bei installierter App. fullscreenGate in input.js.
 - PR #121 (versehentlich mit fremden Änderungen) geschlossen, neu im eigenen Worktree. Unit- und e2e-Tests neu, alle grün.
+
+### 2026-11-28 – B-178 Fehlende Effekte der neuen Gegner
+- Neu: Dampf bei jedem Frosttreffer auf Glutling (`steam`), Splitter je verlorener Käferschicht (`shellChip`, letzte bleibt `shellBreak`), Irrlicht-Ausweichen mit enemyId/Richtung, 9 px Zucken, ein "Verfehlt" je Irrlicht. Spielwerte unverändert.
+- Tester PASS, Reviewer APPROVE (Hinweise: steam ohne Dedupe, steam.life doppelt zu ember.steamLife; unkritisch). unit 644, balance 21, e2e 107 grün.

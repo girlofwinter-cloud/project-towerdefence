@@ -132,3 +132,15 @@
   - Gemeinsam mit B-179 messen: perfektes Spiel gewinnt weiter auf jeder Karte.
   - Optik nach Design-System „Gemalt und warm“; Screenshot Desktop und Handy.
 - Entscheidungen des Menschen (27.11.): Boss-Leiste gilt für alle Bosse (auch Oger-König); die 14 neuen Tokens des designers (necro-*, boss-bar, boss-shield, bolt, cloud, soot, mark, elite-ring) sind freigegeben. Auf dem Handy quer darf die Boss-Leiste (240 × 32, oben mittig, nicht anklickbar) als Ausnahme über Feldkacheln liegen. Stufe 3 der Türme wird eine komplette Verwandlung (neues Gebäude): Entwürfe Adlerhorst (Marmor/Gold), Mörserfestung (Basalt/Lava), Eiszitadelle (Eispalast), Falkenauge (Ziegel-Leuchtturm), Sturmspule (Eisen-Dreibein mit Gewitterwolke) am 27.11. freigegeben. Weitere 13 Tokens (marble-a/-b/-c, ice-deep, brick-a/-b/-line, darkwood-a/-b, iron-a/-b, copper-a, electric) freigegeben.
+
+### B-178: Fehlende Effekte der neuen Gegner (Logik-Ereignisse + Optik)
+- Status: erledigt
+- Aufwand: S
+- Idee: Drei Effekte aus den Bauvorlagen (`docs/design/elemente/Gegner-*.md`) fehlen, weil die Logik kein Ereignis liefert. `game.js` soll dafür nur Effekt-Einträge in `state.effects` schreiben (wie `dodge`/`shellBreak`), das Zeichnen kommt in `render-fx.js`. Spielwerte ändern sich nicht.
+  - Glutling: Frostturm-Treffer erzeugt `steam` (Dampfwölkchen, kurzes Aufzischen), nicht nur beim Kälteschock.
+  - Panzerkäfer: jede verlorene Schicht erzeugt `shellChip` (2 kleine Splitter); der große Bruch bleibt `shellBreak`.
+  - Irrlicht: der `dodge`-Effekt bekommt Gegner-ID und Richtung, damit das seitliche Zucken (ca. 9 px) gezeichnet werden kann und je Irrlicht nur ein "Verfehlt" gleichzeitig erscheint.
+- Akzeptanzkriterien:
+  - Tests in `tests/game.test.js`: die drei Ereignisse entstehen genau in diesen Fällen (nicht bei Pfeil auf Glutling, nicht bei Lava auf Käfer).
+  - Tests in `tests/fx.test.js`: Zeichnen ausgewogen (save/restore), robust bei kaputten Werten, abgeschwächt bei `prefers-reduced-motion`.
+  - `npm test` grün, `npm run test:balance` unverändert grün.

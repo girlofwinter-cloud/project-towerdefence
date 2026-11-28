@@ -753,7 +753,12 @@ function dodges(state, target, p) {
   target.dodgeCount = (target.dodgeCount || 0) + 1;
   if (target.dodgeCount % def.dodgeEvery === 0) return false;
   const life = FX_STYLE.dodge.life;
-  state.effects.push({ kind: 'dodge', x: target.x, y: target.y, ttl: life, max: life });
+  // B-178: Zuck-Richtung quer zur Flugbahn (Seite wechselt je Ausweichen); je Irrlicht nur ein "Verfehlt" zugleich
+  const fx = target.x - p.x, fy = target.y - p.y, len = Math.hypot(fx, fy);
+  const side = target.dodgeCount % 2 ? 1 : -1;
+  const dx = len > 0 ? (-fy / len) * side : side, dy = len > 0 ? (fx / len) * side : 0;
+  state.effects = state.effects.filter((f) => !(f.kind === 'dodge' && f.enemyId === target.id));
+  state.effects.push({ kind: 'dodge', enemyId: target.id, dx, dy, x: target.x, y: target.y, ttl: life, max: life });
   return true;
 }
 const isDodger = (e) => !!ENEMY_TYPES[e.type]?.dodgeEvery;
@@ -858,6 +863,9 @@ function damage(state, enemy, p, direct = false) {
   if (p.slow && !isSlowImmune(enemy)) { // B-170: Glutlinge ignorieren den Frost-Slow, der Schaden wirkt
     enemy.slowFactor = 1 - p.slow;
     enemy.slowUntil = state.time + p.slowDuration;
+  } else if (p.slow) { // B-178: Frost-Treffer auf Glutling zischt als Dampf (nur Darstellung)
+    const life = FX_STYLE.steam.life;
+    state.effects.push({ kind: 'steam', x: enemy.x, y: enemy.y, ttl: life, max: life });
   }
 }
 
@@ -884,6 +892,9 @@ function crackShell(state, enemy) {
   if (enemy.shell <= 0) {
     const life = FX_STYLE.shellBreak.life;
     state.effects.push({ kind: 'shellBreak', x: enemy.x, y: enemy.y, ttl: life, max: life });
+  } else { // B-178: jede andere verlorene Schicht: kleine Splitter
+    const life = FX_STYLE.shellChip.life;
+    state.effects.push({ kind: 'shellChip', x: enemy.x, y: enemy.y, ttl: life, max: life });
   }
   return true;
 }
