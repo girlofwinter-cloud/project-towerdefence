@@ -205,3 +205,11 @@
 - Akzeptanzkriterien:
   - `pickMusicUrl` (src/sound-events.js) wählt im Albtraum den Albtraum-Titel und sonst den Kartentitel (Unit-Test); ohne Albtraum-Datei gilt der Kartentitel.
   - Asset-Grenzen im Test bleiben eingehalten (3 MB je Musikdatei, 15 MB gesamt (vom Menschen am 28.11. angehoben)).
+
+### B-189: Albtraum deutlich schwerer
+- Status: fertig
+- Aufwand: S
+- Idee: Rückmeldung des Menschen nach eigenem Spiel (28.11.2026): Der Albtraum war keine Herausforderung. Erste Fassung (+40 % Leben ab Welle 1, Kopfgeld −20 %) war zu schwer (verloren in Welle 1–5). Endgültig nach zweitem Spieltest: Gegner-Leben gestuft (`NIGHTMARE.hpSteps`: Welle 1–7 ×1, 8–11 ×1,2, ab 12 ×1,4; auch Bosse und Elite, nicht Lava/Meteor), Kopfgeld wie normal, mehr Elite ab Welle 8 (`eliteEarlier` 2, `eliteBonus` 2). Dazu: Gold-Anzeige im verletzten Zustand lesbar, Testmodus „Unbegrenztes Gold“ standardmäßig aus.
+- Akzeptanzkriterien:
+  - Stufen wirken nur im Albtraum (Unit-Tests über den echten Spawn-Ablauf); Normalmodus unverändert.
+  - `tests/balance/albtraum.test.js` misst je Karte; Grenzen an die gewollt höhere Schwierigkeit angepasst (Entscheidung des Menschen).
