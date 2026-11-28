@@ -1814,3 +1814,10 @@ export const GOLD_CONDITIONS = {
 // B-183: Albtraum-Abzeichen je Karte, Index + 1 = Stufe (1 Bronze: Welle 20 geschafft, 2 Silber: ohne Lebensverlust,
 // 3 Gold: Silber plus Gold-Bedingung der Karte). 0 = noch kein Abzeichen.
 export const BADGE_TIERS = ['Bronze', 'Silber', 'Gold'];
+
+// B-185: Kosmetik-Belohnungen aus dem Albtraum-Modus (nur Aussehen, keine Spielwerte).
+// night: Nacht-Look je Karte, frei mit Gold-Abzeichen auf dieser Karte; goldTowers: goldene Türme, frei mit Gold auf allen Karten.
+export const COSMETICS = {
+  night: { name: 'Nacht-Look', unlock: 'Gold im Albtraum auf dieser Karte' },
+  goldTowers: { name: 'Goldene Türme', unlock: 'Gold im Albtraum auf allen Karten' },
+};

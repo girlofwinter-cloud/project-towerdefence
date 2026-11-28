@@ -458,3 +458,115 @@ test('B-183: Ergebnistext nennt erreichtes und neues Abzeichen', () => {
   const r2 = recordResult(p, { mapId: 'meadow', status: 'won', wave: MAX_WAVES, lives: 3, mode: 'nightmare', goldOk: true, maxLives: 5 });
   assert.deepEqual(nightmareResultLines(p, 'meadow', r2, before), [`Albtraum-Rekord: Welle ${MAX_WAVES} · Abzeichen: Silber`]);
 });
+
+// ---------- B-185: Kosmetik-Belohnungen ----------
+import { COSMETICS } from '../src/config.js';
+import { isNightUnlocked, isGoldTowersUnlocked, goldMapsProgress, setNightLook, setGoldTowers, activeCosmetics } from '../src/cosmetics.js';
+import { createGame, buildTower, startWave, stepGame } from '../src/game.js';
+import { freeTileNearPath } from './helpers.js';
+
+const GOLD_BADGE = BADGE_TIERS.length;
+function withBadges(badges) {
+  const p = emptyProgress();
+  p.nightmare = {};
+  for (const [id, badge] of Object.entries(badges)) p.nightmare[id] = { bestWave: MAX_WAVES, badge };
+  return p;
+}
+const allGold = () => withBadges(Object.fromEntries(MAP_ORDER.map((id) => [id, GOLD_BADGE])));
+
+test('B-185: Kosmetik-Definitionen mit deutschen Namen', () => {
+  assert.equal(COSMETICS.night.name, 'Nacht-Look');
+  assert.equal(COSMETICS.goldTowers.name, 'Goldene Türme');
+});
+
+test('B-185: ohne Gold keine Freischaltung', () => {
+  for (const p of [emptyProgress(), withBadges({ meadow: 1, ice: 2 })]) {
+    for (const id of MAP_ORDER) assert.equal(isNightUnlocked(p, id), false, id);
+    assert.equal(isGoldTowersUnlocked(p), false);
+  }
+  assert.deepEqual(goldMapsProgress(emptyProgress()), { done: 0, total: 5 });
+  assert.equal(isNightUnlocked(allGold(), 'forest'), false); // unbekannte Karte
+});
+
+test('B-185: Gold auf einer Karte schaltet nur deren Nacht-Look frei', () => {
+  const p = withBadges({ ice: GOLD_BADGE, meadow: 2 });
+  assert.deepEqual(MAP_ORDER.filter((id) => isNightUnlocked(p, id)), ['ice']);
+  assert.equal(isGoldTowersUnlocked(p), false);
+  assert.deepEqual(goldMapsProgress(p), { done: 1, total: 5 });
+});
+
+test('B-185: Gold auf allen Karten schaltet goldene Türme frei, vier reichen nicht', () => {
+  const four = withBadges(Object.fromEntries(MAP_ORDER.slice(0, 4).map((id) => [id, GOLD_BADGE])));
+  assert.deepEqual(goldMapsProgress(four), { done: 4, total: 5 });
+  assert.equal(isGoldTowersUnlocked(four), false);
+  assert.deepEqual(goldMapsProgress(allGold()), { done: 5, total: 5 });
+  assert.equal(isGoldTowersUnlocked(allGold()), true);
+});
+
+test('B-185: an- und abschalten nur wenn freigeschaltet; abgeschaltet bleibt frei', () => {
+  const p = withBadges({ ice: GOLD_BADGE });
+  assert.equal(setNightLook(p, 'meadow', true), false);
+  assert.equal(setGoldTowers(p, true), false);
+  assert.equal(p.cosmetics, undefined); // unverändert
+  assert.deepEqual(activeCosmetics(p, 'ice'), { night: false, goldTowers: false }); // frei, aber nicht gewählt = aus
+  assert.equal(setNightLook(p, 'ice', true), true);
+  assert.deepEqual(activeCosmetics(p, 'ice'), { night: true, goldTowers: false });
+  assert.deepEqual(activeCosmetics(p, 'meadow'), { night: false, goldTowers: false });
+  assert.equal(setNightLook(p, 'ice', false), true);
+  assert.deepEqual(activeCosmetics(p, 'ice'), { night: false, goldTowers: false });
+  assert.equal(isNightUnlocked(p, 'ice'), true);
+  const g = allGold();
+  assert.equal(setGoldTowers(g, true), true);
+  assert.deepEqual(activeCosmetics(g, 'volcano'), { night: false, goldTowers: true });
+  assert.equal(setGoldTowers(g, false), true);
+  assert.equal(isGoldTowersUnlocked(g), true);
+  assert.deepEqual(activeCosmetics(undefined, 'ice'), { night: false, goldTowers: false });
+});
+
+test('B-185: gewählt, aber nicht freigeschaltet (z. B. manipulierter Speicher) ist nicht aktiv', () => {
+  const p = sanitizeProgress({ maps: {}, cosmetics: { night: { meadow: true }, goldTowers: true } });
+  assert.deepEqual(activeCosmetics(p, 'meadow'), { night: false, goldTowers: false });
+});
+
+test('B-185: sanitizeProgress säubert den Kosmetik-Bereich, alte Stände ohne Bereich laden', () => {
+  const old = loadProgress(fakeStorage({ [PROGRESS_KEY]: JSON.stringify({ maps: { meadow: { bestWave: 3, stars: 1 } } }) }));
+  assert.equal(old.cosmetics, undefined);
+  assert.deepEqual(activeCosmetics(old, 'meadow'), { night: false, goldTowers: false });
+  const dirty = sanitizeProgress({ maps: {}, cosmetics: { night: { meadow: true, ice: 'ja', forest: true, __proto__: { twin: true } }, goldTowers: 1, extra: 5 } });
+  assert.deepEqual(dirty.cosmetics, { night: { meadow: true }, goldTowers: false });
+  assert.equal(sanitizeProgress({ maps: {}, cosmetics: [] }).cosmetics, undefined);
+  assert.deepEqual(sanitizeProgress({ maps: {}, cosmetics: { night: [true] } }).cosmetics, { night: {}, goldTowers: false });
+});
+
+test('B-185: Auswahl bleibt nach Speichern und Laden erhalten', () => {
+  const p = allGold();
+  setGoldTowers(p, true);
+  setNightLook(p, 'fork', true);
+  setNightLook(p, 'ice', false);
+  const s = fakeStorage();
+  assert.equal(saveProgress(s, p), true);
+  const loaded = loadProgress(s);
+  assert.deepEqual(loaded.cosmetics, { night: { fork: true, ice: false }, goldTowers: true });
+  assert.deepEqual(activeCosmetics(loaded, 'fork'), { night: true, goldTowers: true });
+  assert.deepEqual(activeCosmetics(loaded, 'ice'), { night: false, goldTowers: true });
+});
+
+test('B-185: Kosmetik ändert keine Spielwerte (createGame kennt sie nicht)', () => {
+  const sim = () => {
+    const state = createGame({ mapId: 'meadow', mode: 'nightmare' });
+    const [c, r] = freeTileNearPath(state);
+    buildTower(state, 'arrow', c, r);
+    startWave(state);
+    for (let i = 0; i < 600; i++) stepGame(state, 1 / 60);
+    return state;
+  };
+  const plain = sim();
+  const p = allGold();
+  setGoldTowers(p, true);
+  setNightLook(p, 'meadow', true);
+  assert.deepEqual(activeCosmetics(p, 'meadow'), { night: true, goldTowers: true });
+  const cosmetic = sim();
+  assert.equal('cosmetics' in cosmetic, false);
+  const snap = (s) => ({ gold: s.gold, lives: s.lives, wave: s.wave, enemies: s.enemies.length, towers: s.towers.map((t) => ({ ...t })) });
+  assert.deepEqual(snap(cosmetic), snap(plain));
+});

@@ -29,7 +29,20 @@ export function sanitizeProgress(raw) {
     progress.maps[id] = { bestWave, stars };
   }
   sanitizeNightmare(raw.nightmare, progress);
+  sanitizeCosmetics(raw.cosmetics, progress);
   return progress;
+}
+
+// B-185: Kosmetik-Auswahl bereinigen: nur Booleans, nur bekannte Karten (alte Spielstände bleiben ohne Bereich).
+// Ob ein Element freigeschaltet ist, prüft src/cosmetics.js bei jeder Abfrage.
+function sanitizeCosmetics(raw, progress) {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return;
+  const night = {};
+  const rawNight = raw.night && typeof raw.night === 'object' && !Array.isArray(raw.night) ? raw.night : {};
+  for (const id of MAP_ORDER) {
+    if (Object.prototype.hasOwnProperty.call(rawNight, id) && typeof rawNight[id] === 'boolean') night[id] = rawNight[id];
+  }
+  progress.cosmetics = { night, goldTowers: raw.goldTowers === true };
 }
 
 // B-182: Albtraum-Bereich bereinigen (alte Spielstände ohne Bereich bleiben ohne)
