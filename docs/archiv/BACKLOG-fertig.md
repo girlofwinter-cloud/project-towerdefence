@@ -144,3 +144,13 @@
   - Tests in `tests/game.test.js`: die drei Ereignisse entstehen genau in diesen Fällen (nicht bei Pfeil auf Glutling, nicht bei Lava auf Käfer).
   - Tests in `tests/fx.test.js`: Zeichnen ausgewogen (save/restore), robust bei kaputten Werten, abgeschwächt bei `prefers-reduced-motion`.
   - `npm test` grün, `npm run test:balance` unverändert grün.
+
+### B-188: Lautstärkeregler für Musik und Effekte
+- Status: fertig
+- Aufwand: M
+- Idee: Wunsch des Menschen (28.11.2026, ersetzt die frühere Entscheidung „kein Lautstärkeregler“): Tippen auf den Ton-Knopf oben rechts öffnet ein kleines Feld mit zwei Schiebern, „Musik“ und „Effekte“ (je 0–100 %). Der Ton an/aus bleibt erhalten (Taste M schaltet weiter stumm). Werte werden gespeichert und wirken sofort. Eigener PR von main, nicht im Albtraum-Paket.
+- Akzeptanzkriterien:
+  - Reine Logik (Speichern/Laden, Begrenzung 0..1, Umrechnung auf Gain) in Node getestet; alte Speicherstände ohne Werte laden mit 100 %.
+  - Musik-Schieber wirkt auf die Musik-Lautstärke, Effekte-Schieber auf alle Effekte; 0 % ist still, ohne den Ton-Schalter zu ändern.
+  - Tastatur und Touch bedienbar, Tippziele ≥ 44 px, Desktop 1280x800 und Handy quer ohne Überlappung (Screenshots); e2e grün.
+  - Farben und Maße aus dem Design-System (Bauteile Holzleiste/Plakette, runder Knopf).

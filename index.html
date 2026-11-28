@@ -116,11 +116,20 @@
           </ul>
         </div>
       </details>
-      <button id="sound" class="rb" aria-pressed="true" title="Ton an/aus (M)">
+      <button id="sound" class="rb" data-on="true" aria-expanded="false" aria-controls="sound-pop" title="Ton und Lautstärke (M: Ton an/aus)">
         <svg class="ic-on" width="40" height="40" viewBox="0 0 40 40" aria-hidden="true"><path d="M8 16 H14 L22 9 V31 L14 24 H8 Z" fill="#fff3d2" stroke="#2b1a10" stroke-width="2.5" stroke-linejoin="round"/><path d="M27 14 Q32 20 27 26 M31 10 Q38 20 31 30" fill="none" stroke="#2b1a10" stroke-width="2.5" stroke-linecap="round"/></svg>
         <svg class="ic-off" width="40" height="40" viewBox="0 0 40 40" aria-hidden="true"><path d="M8 16 H14 L22 9 V31 L14 24 H8 Z" fill="#fff3d2" stroke="#2b1a10" stroke-width="2.5" stroke-linejoin="round"/><path d="M27 15 L35 25 M35 15 L27 25" stroke="#2b1a10" stroke-width="3.5" stroke-linecap="round"/></svg>
-        <span class="sr" id="sound-label">Ton an</span><span class="key sr">(M)</span>
+        <span class="sr" id="sound-label">Ton an</span><span class="sr">, Lautstärke</span><span class="key sr">(M)</span>
       </button>
+      <!-- B-188: Feld mit Ton-Schalter und Lautstärke (öffnet der Ton-Knopf) -->
+      <div id="sound-pop" class="plq sound-pop" role="group" aria-label="Ton und Lautstärke" hidden>
+        <button id="sound-toggle" class="sound-toggle" type="button" data-on="true" aria-pressed="true">
+          <span class="rb" aria-hidden="true"><svg class="ic-on" width="40" height="40" viewBox="0 0 40 40" aria-hidden="true"><path d="M8 16 H14 L22 9 V31 L14 24 H8 Z" fill="#fff3d2" stroke="#2b1a10" stroke-width="2.5" stroke-linejoin="round"/><path d="M27 14 Q32 20 27 26 M31 10 Q38 20 31 30" fill="none" stroke="#2b1a10" stroke-width="2.5" stroke-linecap="round"/></svg><svg class="ic-off" width="40" height="40" viewBox="0 0 40 40" aria-hidden="true"><path d="M8 16 H14 L22 9 V31 L14 24 H8 Z" fill="#fff3d2" stroke="#2b1a10" stroke-width="2.5" stroke-linejoin="round"/><path d="M27 15 L35 25 M35 15 L27 25" stroke="#2b1a10" stroke-width="3.5" stroke-linecap="round"/></svg></span>
+          <span id="sound-toggle-label">Ton an</span><kbd class="key">M</kbd>
+        </button>
+        <label class="vol-row"><span>Musik</span><input type="range" id="vol-music" min="0" max="100" step="5" value="100"><output id="vol-music-out" for="vol-music">100 %</output></label>
+        <label class="vol-row"><span>Effekte</span><input type="range" id="vol-sfx" min="0" max="100" step="5" value="100"><output id="vol-sfx-out" for="vol-sfx">100 %</output></label>
+      </div>
       <button id="fullscreen" class="rb" aria-pressed="false" title="Vollbild" hidden>
         <svg class="ic-enter" width="40" height="40" viewBox="0 0 40 40" aria-hidden="true"><path d="M8 16 V8 H16 M24 8 H32 V16 M32 24 V32 H24 M16 32 H8 V24" fill="none" stroke="#2b1a10" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 16 V8 H16 M24 8 H32 V16 M32 24 V32 H24 M16 32 H8 V24" fill="none" stroke="#fff3d2" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
         <svg class="ic-exit" width="40" height="40" viewBox="0 0 40 40" aria-hidden="true"><path d="M8 16 H16 V8 M24 8 V16 H32 M32 24 H24 V32 M16 32 V24 H8" fill="none" stroke="#2b1a10" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 16 H16 V8 M24 8 V16 H32 M32 24 H24 V32 M16 32 V24 H8" fill="none" stroke="#fff3d2" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>

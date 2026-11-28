@@ -1483,3 +1483,85 @@ test('B-127: Nekromantin spielt beim Tod den Boss-Ton, Skelett den normalen Tod-
   assert.ok(evs.some((e) => e.kind === 'death' && e.enemy === 'skeleton'));
   assert.ok(!evs.some((e) => e.kind === 'death' && e.enemy === 'necro'));
 });
+
+// ---------- B-188: Lautstärke Musik und Effekte ----------
+import { clampVolume, volumeGain, sfxGain, loadVolumes, saveVolumes } from '../src/sound-events.js';
+
+test('B-188: Lautstärke begrenzen, Gain leicht quadratisch, 0 ist still', () => {
+  assert.equal(SOUND.defaultVolume, 1);
+  assert.equal(clampVolume(0.4), 0.4);
+  assert.equal(clampVolume(-1), 0);
+  assert.equal(clampVolume(7), 1);
+  assert.equal(clampVolume('0.5'), 0.5);
+  for (const bad of [undefined, null, NaN, Infinity, 'x', '', {}, true]) assert.equal(clampVolume(bad), 1, String(bad));
+  assert.equal(volumeGain(0), 0);
+  assert.equal(volumeGain(1), 1);
+  assert.ok(Math.abs(volumeGain(0.5) - 0.25) < 1e-12, 'Kurve hoch 2');
+  assert.ok(volumeGain(0.3) < volumeGain(0.6), 'steigt monoton');
+  assert.equal(sfxGain(1), SOUND.masterGain);
+  assert.equal(sfxGain(0), 0);
+  assert.equal(sfxGain(undefined), SOUND.masterGain);
+});
+
+test('B-188: Lautstärke speichern und laden; alte Speicherstände und Müll -> 100 %', () => {
+  const mem = new Map();
+  const storage = { getItem: (k) => (mem.has(k) ? mem.get(k) : null), setItem: (k, v) => mem.set(k, String(v)) };
+  mem.set(SOUND.storageKey, '1'); // alter Speicherstand: nur Ton an/aus
+  assert.deepEqual(loadVolumes(storage), { music: 1, sfx: 1 });
+  assert.deepEqual(saveVolumes(storage, { music: 0.3, sfx: 1.5 }), { music: 0.3, sfx: 1 });
+  assert.deepEqual(loadVolumes(storage), { music: 0.3, sfx: 1 });
+  assert.equal(loadSoundOn(storage), true, 'Ton-Schalter bleibt unberührt');
+  saveVolumes(storage, { music: 0, sfx: 0 });
+  assert.deepEqual(loadVolumes(storage), { music: 0, sfx: 0 });
+  for (const raw of ['{kaputt', '42', 'null', '{"music":"laut","sfx":-3}']) {
+    mem.set(SOUND.volumeStorageKey, raw);
+    const v = loadVolumes(storage);
+    assert.ok(v.music === 1 && (v.sfx === 1 || v.sfx === 0), raw);
+  }
+  const broken = { getItem: () => { throw new Error('x'); }, setItem: () => { throw new Error('x'); } };
+  assert.deepEqual(loadVolumes(broken), { music: 1, sfx: 1 });
+  assert.doesNotThrow(() => saveVolumes(broken, { music: 0.5, sfx: 0.5 }));
+  assert.deepEqual(loadVolumes(null), { music: 1, sfx: 1 });
+});
+
+test('B-188: Musik-Schieber wirkt auf musicLevel (fehlt -> 100 %, 0 -> still, Ton-Schalter unabhängig)', () => {
+  const M = SOUND.music;
+  const base = { soundOn: true, status: 'playing', paused: false };
+  assert.equal(musicLevel({ ...base, volume: 1 }), musicLevel(base));
+  assert.equal(musicLevel({ ...base, volume: 0 }), 0);
+  assert.ok(Math.abs(musicLevel({ ...base, volume: 0.5 }) - M.gain * 0.25) < 1e-12);
+  assert.ok(Math.abs(musicLevel({ ...base, paused: true, volume: 0.5 }) - M.gain * M.pausedFactor * 0.25) < 1e-12);
+  assert.equal(musicLevel({ ...base, soundOn: false, volume: 1 }), 0);
+});
+
+test('B-188: setVolumes setzt den Effekte-Master sofort (Web Audio nachgebaut), ohne Web Audio fehlerfrei', async () => {
+  const masters = [];
+  const node = () => ({ connect() {}, start() {}, stop() {} });
+  class FakeCtx {
+    constructor() { this.state = 'running'; this.currentTime = 1; this.sampleRate = 100; this.destination = {}; }
+    createGain() { const g = { ...node(), gain: { value: 1, setValueAtTime() {}, exponentialRampToValueAtTime() {} } }; masters.push(g); return g; }
+    createBuffer(_c, len) { return { getChannelData: () => new Float32Array(len) }; }
+    createBufferSource() { return node(); }
+    createBiquadFilter() { return { ...node(), frequency: { value: 0 }, Q: { value: 0 } }; }
+    resume() { return Promise.resolve(); }
+    suspend() { return Promise.resolve(); }
+  }
+  const plain = await import('../src/audio.js');
+  assert.doesNotThrow(() => plain.setVolumes({ music: 0.2, sfx: 0.2 }));
+  const hadWindow = 'window' in globalThis;
+  globalThis.window = { AudioContext: FakeCtx };
+  try {
+    const { unlockAudio, setSoundOn, setVolumes } = await import(`../src/audio.js?vol=${Date.now()}`);
+    setVolumes({ music: 1, sfx: 0.5 });
+    setSoundOn(true);
+    unlockAudio();
+    const master = masters[0];
+    assert.ok(Math.abs(master.gain.value - SOUND.masterGain * 0.25) < 1e-12, 'Startwert aus dem Schieber');
+    setVolumes({ music: 1, sfx: 0 });
+    assert.equal(master.gain.value, 0, '0 % ist still');
+    setVolumes({ music: 1, sfx: 1 });
+    assert.equal(master.gain.value, SOUND.masterGain);
+  } finally {
+    if (hadWindow) globalThis.window = undefined; else delete globalThis.window;
+  }
+});

@@ -1585,6 +1585,12 @@ export const SOUND = {
   noiseLength: 0.5,     // Länge des gemeinsamen Rauschen-Buffers in s
   storageKey: 'td-sound', // localStorage-Schlüssel für Ton an/aus
   defaultOn: true,
+  // B-188: Lautstärke je Musik und Effekte (0..1, Schieber in 5-%-Schritten), gespeichert als JSON { music, sfx }.
+  // Gain = Wert hoch volumeCurve (2 = leicht quadratisch: das Gehör empfindet die Schritte gleichmäßiger als linear).
+  volumeStorageKey: 'td-volume',
+  defaultVolume: 1,
+  volumeCurve: 2,
+  volumeStep: 0.05,
   // Begrenzung: höchstens perWindow Töne je Art (Schuss je Turmtyp, Tod, Boss) pro window Sekunden Echtzeit
   // Schuss-Töne zusammen höchstens total pro totalWindow (Tode, Boss, Warnton und Meteor zählen nie dagegen;
   // Kanonenschüsse zählen mit, werden aber nie verschluckt, siehe totalExemptShots).

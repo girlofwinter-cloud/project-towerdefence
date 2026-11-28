@@ -1,5 +1,5 @@
 // Verbindet Spiel-Logik, Rendering und Bedienung (DOM, Maus, Tastatur).
-import { BADGE_TIERS, TILE, FRAME_MARGIN, VIEW_WIDTH, VIEW_HEIGHT, PAINTED_STYLE, FIGURE_STYLE, SHOP_CARD, TOWER_TYPES, ENEMY_TYPES, MAX_WAVES, MAPS, SPEED_STEPS, TARGET_MODES, MAX_SUBSTEP, LOW_LIVES, ABILITIES, ICON, VIEW_FIT, COIN_BURST, HUD_BAR, waveSummary, meteorText } from './config.js';
+import { BADGE_TIERS, TILE, FRAME_MARGIN, VIEW_WIDTH, VIEW_HEIGHT, PAINTED_STYLE, FIGURE_STYLE, SHOP_CARD, TOWER_TYPES, ENEMY_TYPES, MAX_WAVES, MAPS, SPEED_STEPS, TARGET_MODES, MAX_SUBSTEP, LOW_LIVES, ABILITIES, ICON, VIEW_FIT, COIN_BURST, HUD_BAR, SOUND, waveSummary, meteorText } from './config.js';
 import {
   createGame, stepGame, togglePause, buildTower, upgradeTower, sellTower, setTargetMode, startWave, setAutoWave,
   useAbility, abilityCooldownLeft, abilityMaxUses, canBuild, towerAt, towerStats, masterInfo, checkGoldCondition, maxLives,
@@ -8,8 +8,8 @@ import { renderView, drawTower, paintedStatus, paintedImage, setPaintedExtent, f
 import { abilityView, overheatNote, startButtonView, waveProgress, loadAutoWave, saveAutoWave, goldGoalView } from './hud.js';
 import { drawIcon } from './render-icons.js';
 import { buildTapStep, aimStep, fieldPoint, canvasSize, moveFocusTile, rotatePauseStep, fullscreenGate } from './input.js';
-import { createSoundTracker, collectSounds, loadSoundOn, saveSoundOn } from './sound-events.js';
-import { unlockAudio, setSoundOn, playSound, updateMusic } from './audio.js';
+import { createSoundTracker, collectSounds, loadSoundOn, saveSoundOn, loadVolumes, saveVolumes } from './sound-events.js';
+import { unlockAudio, setSoundOn, setVolumes, playSound, updateMusic } from './audio.js';
 import { loadProgress, saveProgress, recordResult, isUnlocked, isNightmareUnlocked, nightmareResultLines, nightmareProgress, mapProgress, starText, resultLines, startMap, mapAfterResult, starsFor, MAP_ORDER } from './progress.js';
 import { mountStartScreen, mountCosmeticsMenu, endView, starsHtml, STAR_COUNT, nightmareWinView, mapSelectOptions, mapSelectValue, parseMapSelectValue } from './screens.js';
 import { activeCosmetics } from './cosmetics.js';
@@ -149,6 +149,9 @@ function soundStorage() {
 }
 ui.soundOn = loadSoundOn(soundStorage());
 setSoundOn(ui.soundOn);
+// B-188: Lautstärke Musik und Effekte (gespeichert wie der Ton)
+ui.volume = loadVolumes(soundStorage());
+setVolumes(ui.volume);
 // Schalter Auto-Start: Spieler-Wahl gilt für jedes neue Spiel (gespeichert wie der Ton)
 ui.autoWave = loadAutoWave(soundStorage());
 setAutoWave(state, ui.autoWave);
@@ -586,7 +589,43 @@ function applyRotateHint() {
   refreshUI();
 }
 rotateQuery.addEventListener('change', applyRotateHint);
-$('sound').addEventListener('click', toggleSound);
+// B-188: Ton-Knopf öffnet das Feld mit Ton-Schalter und Schiebern (Taste M schaltet weiter direkt stumm)
+const soundPop = $('sound-pop');
+function setSoundPop(open) {
+  soundPop.hidden = !open;
+  $('sound').setAttribute('aria-expanded', String(open));
+}
+$('sound').addEventListener('click', () => setSoundPop(soundPop.hidden));
+$('sound-toggle').addEventListener('click', toggleSound);
+for (const kind of ['music', 'sfx']) {
+  const input = $(`vol-${kind}`);
+  input.step = String(SOUND.volumeStep * 100);
+  input.addEventListener('input', () => {
+    ui.volume = saveVolumes(soundStorage(), { ...ui.volume, [kind]: Number(input.value) / 100 });
+    setVolumes(ui.volume);
+    refreshUI();
+  });
+}
+// Schließen per Klick bzw. Tippen daneben (der Klick wirkt trotzdem, z. B. aufs Feld)
+document.addEventListener('pointerdown', (ev) => {
+  if (!soundPop.hidden && !ev.target.closest?.('#sound-pop, #sound')) setSoundPop(false);
+}, { capture: true });
+// Schließen, wenn der Fokus per Tab hinauswandert
+for (const el of [soundPop, $('sound')]) {
+  el.addEventListener('focusout', (ev) => {
+    if (ev.relatedTarget && !ev.relatedTarget.closest?.('#sound-pop, #sound')) setSoundPop(false);
+  });
+}
+// Schließen, sobald Startbildschirm oder Spielende-Plakette erscheint (Feld bliebe sonst verdeckt offen)
+// (nur beim Erscheinen: auf dem Startbildschirm selbst darf das Feld offen sein)
+const isCovered = () => !$('start-screen').hidden || !$('overlay').hidden;
+let wasCovered = isCovered();
+const closeOnCover = new MutationObserver(() => {
+  const covered = isCovered();
+  if (covered && !wasCovered) setSoundPop(false);
+  wasCovered = covered;
+});
+for (const id of ['start-screen', 'overlay']) closeOnCover.observe($(id), { attributes: true, attributeFilter: ['hidden'] });
 $('auto-wave').addEventListener('click', toggleAutoWave);
 
 // B-178: Vollbild-Knopf (nur wo der Browser es kann). Auf Touch-Geräten zusätzlich Querformat festhalten.
@@ -743,11 +782,12 @@ function keepFocus() {
 
 window.addEventListener('keydown', (ev) => {
   if (cosMenu.handleKey(ev)) return; // B-185: Menü „Aussehen“ offen
-  if (startScreen.handleKey(ev)) return; // C5: Startbildschirm offen
+  if (startScreen.handleKey(ev)) return; // C5: Startbildschirm offen (hat Vorrang vor dem Ton-Feld)
+  if (ev.key === 'Escape' && !soundPop.hidden) { setSoundPop(false); $('sound').focus(); return; } // B-188
   if (fieldKey(ev)) return;
   const key = String(ev.key ?? '').toLowerCase(); // manche Ereignisse (Autofill) haben kein key
   // Enter/Leertaste auf einem Ringknopf löst den Knopf aus (nicht den Wellenstart)
-  if ((key === ' ' || key === 'enter') && ev.target.closest?.('.ring')) return;
+  if ((key === ' ' || key === 'enter') && ev.target.closest?.('.ring, #sound-pop')) return;
   const type = Object.keys(TOWER_TYPES).find((t) => TOWER_TYPES[t].key === key);
   const ability = Object.keys(ABILITIES).find((a) => ABILITIES[a].key === key);
   if (type && ui.ring) buildFromRing(type); // C4: Bau-Ring offen -> diesen Typ auf der Ringkachel bauen
@@ -786,7 +826,15 @@ function refreshUI() {
   $('pause-banner').hidden = !state.paused;
   $('pause-label').textContent = state.paused ? 'Weiter' : 'Pause';
   $('sound-label').textContent = ui.soundOn ? 'Ton an' : 'Ton aus';
-  $('sound').setAttribute('aria-pressed', String(ui.soundOn));
+  $('sound').dataset.on = String(ui.soundOn);
+  $('sound-toggle').dataset.on = String(ui.soundOn);
+  $('sound-toggle').setAttribute('aria-pressed', String(ui.soundOn));
+  $('sound-toggle-label').textContent = ui.soundOn ? 'Ton an' : 'Ton aus';
+  for (const kind of ['music', 'sfx']) {
+    const pct = Math.round(ui.volume[kind] * 100);
+    if (Number($(`vol-${kind}`).value) !== pct) $(`vol-${kind}`).value = String(pct);
+    $(`vol-${kind}-out`).textContent = `${pct} %`;
+  }
   $('auto-wave').setAttribute('aria-pressed', String(ui.autoWave));
   $('auto-wave-label').textContent = ui.autoWave ? 'Auto-Start an' : 'Auto-Start aus';
   mapSelect.disabled = state.wave !== 0 || state.waveActive;
