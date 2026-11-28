@@ -70,7 +70,7 @@ test('Stil 1 (alle Karten): Burg am Ausgang, Fahne an jedem Eingang; Burg und Kl
   for (const id of MAP_IDS) {
     const s = createGame({ mapId: id });
     const sc = buildPaintedScene(s);
-    const paths = s.paths || [s.path];
+    const paths = (s.paths || [s.path]).slice(0, s.entranceCount); // B-211: Friedhof-Wege sind keine Eingänge
     assert.equal(sc.flags.length, paths.length, `${id}: eine Fahne je Eingang`);
     assert.equal(sc.castles.length, 1, `${id}: eine Burg am gemeinsamen Ausgang`);
     for (const el of [...sc.castles, ...sc.cliffs]) {
@@ -273,7 +273,7 @@ test('Stil 1 (G9): Lava des Vulkans folgt den Lavakacheln, Kruste ragt höchsten
 
 // Seit der großen Fahne (2026-11-27) je Eingang eine Fahnen-Kachel weniger, außer Wiese (Fahne über Wasser); vorher 226/233/221/196/212
 test('Stil 1 (G9): Bauplatzzahl je Karte (gemalter Hintergrund ändert keine Kacheln, nur die Fahnen-Kacheln fallen weg)', () => {
-  const expected = { meadow: 226, ice: 232, fork: 219, twin: 194, volcano: 211 };
+  const expected = { meadow: 226, ice: 232, fork: 219, twin: 194, volcano: 211, graveyard: 205 };
   for (const id of MAP_IDS) assert.equal(buildableOf(createGame({ mapId: id })).length, expected[id], id);
 });
 
@@ -518,4 +518,22 @@ test('Tester: schnelles Hin- und Zurückschalten (Albtraum-Raster noch unterwegs
     assert.equal(lookOf(img), img.look, 'paintedImage.look passt nicht zum gezeigten Raster');
     assert.equal(lookOf(img), 'normal', 'Albtraum-Raster überschreibt das normale Bild');
   });
+});
+
+// B-212: Nachtfriedhof: zwei Friedhöfe mit gestricheltem Rand, je vier Grabsteine und eine Gruft; andere Karten ohne
+test('B-212: Friedhöfe im gemalten Hintergrund (Fläche, Grabsteine, Gruft), nur auf dem Nachtfriedhof', () => {
+  const s = createGame({ mapId: 'graveyard' });
+  const sc = buildPaintedScene(s);
+  assert.equal(sc.yards.length, 2);
+  for (const y of sc.yards) assert.equal(y.graves.length, 4);
+  const svg = buildPaintedSvg(s);
+  assert.equal((svg.match(/class="yard"/g) || []).length, 2);
+  assert.equal((svg.match(/class="crypt"/g) || []).length, 2);
+  // Rahmen dauerhaft (nicht nur beim Aufleuchten), mind. 3 px bei 19 px je Kachel (Handy)
+  assert.ok(svg.includes('fill="#2c3a30" stroke="#4a4038" stroke-width="9" stroke-dasharray="18 15"'));
+  assert.ok(9 * (19 / PAINTED_STYLE.unit) >= 3);
+  const nmSvg = buildPaintedSvg(createGame({ mapId: 'graveyard', mode: 'nightmare' }), { look: 'nightmare' });
+  assert.ok(nmSvg.includes('fill="#241c2a" stroke="#5a2030" stroke-width="9"'), 'Albtraum: Rahmen ebenso');
+  assert.ok(!svg.includes('NaN'));
+  assert.equal(buildPaintedScene(createGame({ mapId: 'meadow' })).yards.length, 0);
 });

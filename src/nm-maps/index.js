@@ -20,7 +20,8 @@ import ice from './ice.js';
 import fork from './fork.js';
 import twin from './twin.js';
 import volcano from './volcano.js';
+import graveyard from './graveyard.js';
 
-export const NM_MAPS = { meadow, ice, fork, twin, volcano };
+export const NM_MAPS = { meadow, ice, fork, twin, volcano, graveyard };
 const EMPTY = {};
 export const nightmareOf = (mapId) => NM_MAPS[mapId] ?? EMPTY;

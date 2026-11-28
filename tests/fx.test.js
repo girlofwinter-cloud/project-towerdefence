@@ -1924,3 +1924,41 @@ test('B-178: steam, shellChip und dodge mit Richtung zeichnen ausgewogen, robust
     for (const ttl of [NaN, -1, 5]) for (const r of [false, true]) draw({ kind, x: 1, y: 1, dx: NaN, dy: undefined, ttl, max: NaN }, r);
   }
 });
+
+// B-212: Friedhof leuchtet beim Trupp auf: Ereignis am richtigen Friedhof, endet nach 0,8 s, Erdklumpen je Grabstein
+import { graveyardGlowAlpha, drawGraveyardGlow } from '../src/render-fx.js';
+import { K_DUST } from '../src/fx-system.js';
+import { GRAVEYARD, FX_STYLE as FX_B212 } from '../src/config.js';
+test('B-212: Trupp-Ereignis leuchtet am richtigen Friedhof auf und endet nach 0,8 s', () => {
+  const s = createGame({ mapId: 'graveyard' });
+  s.wave = GRAVEYARD.fromWave - 1;
+  startWave(s);
+  let glow = [];
+  for (let k = 0; k < Math.ceil((GRAVEYARD.interval + 0.1) * 60) && !glow.length; k++) {
+    update(s, 1 / 60);
+    glow = s.effects.filter((e) => e.kind === 'graveyardGlow');
+  }
+  assert.deepEqual(glow.map((e) => e.index).sort(), [0, 1], 'beide Friedhöfe');
+  const east = glow.find((e) => e.index === 0);
+  assert.deepEqual(east.area, [12 * TILE, 2 * TILE, 15 * TILE, 5 * TILE]);
+  assert.equal(east.max, 0.8);
+  assert.ok(Math.abs(east.x - 13.5 * TILE) < 1e-9 && Math.abs(east.y - 3.5 * TILE) < 1e-9);
+  for (let k = 0; k < 60; k++) update(s, 1 / 60);
+  assert.ok(!s.effects.includes(east), 'nach 0,8 s vorbei');
+  // Verlauf: steigt an, klingt aus; reduzierte Bewegung statisch
+  const at = (u) => graveyardGlowAlpha({ ttl: 0.8 * (1 - u), max: 0.8 });
+  assert.ok(at(0.15) > at(0.02) && at(0.15) > at(0.6) && at(0.6) > at(0.95));
+  assert.ok(Math.abs(at(0.15) - FX_B212.graveyardGlow.alpha) < 1e-9);
+  assert.equal(graveyardGlowAlpha({ ttl: 0.1, max: 0.8 }, true), FX_B212.graveyardGlow.alpha);
+  assert.equal(graveyardGlowAlpha({ ttl: 0, max: 0.8 }), 0);
+  // Erdklumpen: clods je Grabstein (4 Ecken), still bei reduzierter Bewegung
+  const g = createFx();
+  observeEffect(g, east, 0, false);
+  assert.equal(Array.from(g.pkind).filter((k) => k === K_DUST).length, 4 * FX_B212.graveyardGlow.clods);
+  const calm = createFx();
+  observeEffect(calm, { ...east }, 0, true);
+  for (let i = 0; i < MAX_PARTICLES; i++) if (calm.pkind[i] === K_DUST) assert.equal(Math.abs(calm.pvx[i]), 0);
+  const m = mockCtx();
+  drawGraveyardGlow(m.ctx, { ...east, ttl: 0.6 });
+  assert.equal(m.depth, 0);
+});

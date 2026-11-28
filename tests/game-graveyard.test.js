@@ -126,9 +126,17 @@ describe('Friedhof-Spawns (B-210)', () => {
     }
   });
 
+  test('B-211: Nachtfriedhof hat einen Eingang und zwei Friedhof-Wege, Friedhofkacheln nicht bebaubar', () => {
+    const s = createGame({ mapId: 'graveyard' });
+    assert.equal(s.entranceCount, 1);
+    assert.equal(s.paths.length, 3);
+    assert.equal(s.graveyards.length, 2);
+    for (const g of MAPS.graveyard.graveyards) for (const [c, r] of g.tiles) assert.equal(canBuild(s, c, r).ok, false, `${c},${r}`);
+  });
+
   test('Karten ohne graveyards unverändert', () => {
     for (const id of Object.keys(MAPS)) {
-      if (id === ID) continue;
+      if (id === ID || MAPS[id].graveyards) continue; // B-211: Karten mit Friedhöfen (graveyard) prüfen die Tests oben
       const s = createGame({ mapId: id });
       const extra = (MAPS[id].extraPaths || []).length;
       assert.equal(s.paths.length, 1 + extra);
@@ -139,4 +147,28 @@ describe('Friedhof-Spawns (B-210)', () => {
       assert.deepEqual(planLanes(s, list, 5), planLanes(plain, list, 5));
     }
   });
+});
+
+// B-211: Mündet ein Friedhof-Weg auf dem Hauptweg, läuft das Skelett bis zum Ausgang weiter und kostet erst dort ein Leben
+test('B-211: Skelett vom mündenden Friedhof läuft bis zum Ausgang, nicht nur bis zur Mündung', async () => {
+  const { joinMainPath, spawnEnemy } = await import('../src/game.js');
+  const { START_LIVES } = await import('../src/config.js');
+  const main = MAPS.graveyard.waypoints;
+  assert.deepEqual(joinMainPath([[12, 3], [9, 3]], main), [[12, 3], [9, 3], [9, 4], [3, 4], [3, 11], [10, 11], [10, 8], [16, 8], [16, 12], [20, 12]]);
+  assert.deepEqual(joinMainPath([[2, 13], [6, 13], [6, 11]], main).slice(2), [[6, 11], [10, 11], [10, 8], [16, 8], [16, 12], [20, 12]]);
+  assert.deepEqual(joinMainPath([[0, 5], [0, 7]], main), [[0, 5], [0, 7]], 'ohne Mündung unverändert');
+  const s = createGame({ mapId: 'graveyard' });
+  const lane = s.graveyards[1].lane;
+  const end = s.paths[0].points.at(-1);
+  assert.deepEqual(s.paths[lane].points.at(-1), end, 'Lauf-Pfad endet am Ausgang');
+  const shortLen = 4 * TILE + 2 * TILE; // [2,13] -> [6,13] -> [6,11]
+  spawnEnemy(s, 'skeleton', 1, lane);
+  const e = s.enemies[0];
+  let passed = false;
+  for (let k = 0; k < 60 * 120 && s.enemies.includes(e); k++) {
+    update(s, 1 / 60);
+    if (s.enemies.includes(e) && e.dist > shortLen + TILE) { passed = true; assert.equal(s.lives, START_LIVES, 'an der Mündung kein Leben verloren'); }
+  }
+  assert.ok(passed, 'Skelett läuft über die Mündung hinaus');
+  assert.equal(s.lives, START_LIVES - 1, 'am Ausgang ein Leben verloren');
 });

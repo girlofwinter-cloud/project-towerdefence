@@ -109,21 +109,6 @@ Zwei developer parallel (je eigene Sitzung, eigener Unter-Branch von `agent/stuf
 
 ## Neue Karte "Nachtfriedhof" (freigegeben 2026-11-28, neue Mechanik, eine Sitzung je Eintrag, in dieser Reihenfolge)
 
-### B-211: Karte Nachtfriedhof: Wege und Balancing
-- Status: offen
-- Aufwand: M
-- Idee: Neue Karte `graveyard` (20x14): ein langer Hauptweg vom Rand, Lage nach Skizze Variante B (https://claude.ai/artifact/5VwK9kA9Eze6fY4KAQmjz9#artboard-VarianteB): Hauptweg in Schlangen von links oben nach rechts unten. Friedhof Ost oben Mitte-rechts nah an der ersten Biegung, kurzer Nebenweg mündet früh. Friedhof West abseits in der Ecke links unten (dort baut man sonst nicht), Nebenweg ca. 3-4 Kacheln am unteren Rand, mündet etwa in der Mitte des Hauptwegs; dort braucht man einen eigenen Turm. Wenige Hindernisse.
-- Akzeptanzkriterien:
-  - Balancing-Sim: Welle 20 ohne Lebensverlust mit optimalem Spiel möglich; ohne Türme an den Nebenwegen gehen Leben verloren. Kanonen-Mix mitmessen.
-  - Karte in der Kartenauswahl wählbar.
-
-### B-212: Karte Nachtfriedhof: Optik
-- Status: offen
-- Aufwand: M
-- Idee: Dunkles Moor, Nebel, Grabsteine und Gruft an den Friedhöfen, Farben aus dem Design-System (Tokens). Rand mit Bäumen, keine Vignette. Friedhof leuchtet kurz, wenn ein Trupp kommt.
-- Akzeptanzkriterien:
-  - Weg-Kontrast zum Boden mindestens 25 % Luminanz; Friedhöfe auf Desktop und Handy klar erkennbar (Screenshots).
-
 ## Nachtfriedhof: neue Gegner (freigegeben 2026-11-28, nach B-210 bis B-212; Designer-Skizze Skizze: https://claude.ai/artifact/5VwK9kA9Eze6fY4KAQmjz9)
 
 ### B-213: Gegner Totengräber (Nachtfriedhof)
@@ -150,9 +135,10 @@ Zwei developer parallel (je eigene Sitzung, eigener Unter-Branch von `agent/stuf
   - `MAPS.graveyard` mit Liste ausgeschlossener Typen; Test: weder `ember` noch `bat` erscheinen.
   - Balancing: Welle 20 ohne Lebensverlust machbar.
 
-### B-216: Nachtfriedhof Albtraum-Variante
+### B-217: Nachtfriedhof Balancing (ganz am Ende, nach B-213 bis B-215)
 - Status: offen
 - Aufwand: M
-- Idee: Albtraum-Optik laut Skizze (Fläche "Albtraum"): dunkler, glühende Gruft-Tore, rote Augen im Wald, Glutrisse, violetter Nebel; gleiche Wege. Nach B-212.
+- Idee: Balancing der fertigen Karte mit neuen Gegnern und Rotation, normal und Albtraum. Stand ohne neue Gegner (2026-11-28): perfekt Welle 20 mit 10/10 Leben, Kanonen-Mix Welle 20 mit 4 Leben.
 - Akzeptanzkriterien:
-  - Weg-Kontrast zum Boden mindestens 25 % Luminanz; Screenshots Desktop und Handy.
+  - Balancing-Sim: Welle 20 ohne Lebensverlust mit optimalem Spiel möglich; ohne Türme an den Nebenwegen gehen Leben verloren. Kanonen-Mix mitmessen.
+  - Zahlen (GRAVEYARD, Gegnerwerte) legt der Orchestrator dem Menschen vor dem Merge vor.

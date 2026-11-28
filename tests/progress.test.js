@@ -16,7 +16,7 @@ const throwingStorage = { getItem() { throw new Error('verboten'); }, setItem() 
 test('Konfiguration: Schlüssel und Sterne-Grenzen', () => {
   assert.equal(PROGRESS_KEY, 'td-progress-v1');
   assert.deepEqual(STAR_LIVES_SHARE, [0, 0.5, 1]);
-  assert.deepEqual(MAP_ORDER, ['meadow', 'ice', 'fork', 'twin', 'volcano']); // B-098: Wald entfernt, B-099: Zwei Fronten neu, B-030: Vulkan
+  assert.deepEqual(MAP_ORDER, ['meadow', 'ice', 'fork', 'twin', 'volcano', 'graveyard']); // B-098: Wald entfernt, B-099: Zwei Fronten neu, B-030: Vulkan, B-211: Nachtfriedhof
 });
 
 test('starsFor: Niederlage 0, Sieg 1 bis 3 nach übrigen Leben', () => {
@@ -55,7 +55,7 @@ test('recordResult: Rekord und Sterne werden nie schlechter', () => {
   assert.deepEqual(mapProgress(p, 'meadow'), { bestWave: MAX_WAVES, stars: 3 });
 });
 
-test('Freischalten: Reihenfolge meadow, ice, fork, twin, volcano', () => {
+test('Freischalten: Reihenfolge meadow, ice, fork, twin, volcano, graveyard', () => {
   const p = emptyProgress();
   assert.equal(isUnlocked(p, 'meadow'), true);
   assert.equal(isUnlocked(p, 'ice'), false);
@@ -73,8 +73,11 @@ test('Freischalten: Reihenfolge meadow, ice, fork, twin, volcano', () => {
   assert.equal(isUnlocked(p, 'volcano'), false);
   assert.equal(recordResult(p, { mapId: 'twin', status: 'won', wave: MAX_WAVES, lives: 1 }).unlockedMap, 'volcano'); // B-030
   assert.equal(isUnlocked(p, 'volcano'), true);
+  assert.equal(isUnlocked(p, 'graveyard'), false);
+  assert.equal(recordResult(p, { mapId: 'volcano', status: 'won', wave: MAX_WAVES, lives: 1 }).unlockedMap, 'graveyard'); // B-211
+  assert.equal(isUnlocked(p, 'graveyard'), true);
   // Letzte Karte schaltet nichts mehr frei
-  assert.equal(recordResult(p, { mapId: 'volcano', status: 'won', wave: MAX_WAVES, lives: 1 }).unlockedMap, null);
+  assert.equal(recordResult(p, { mapId: 'graveyard', status: 'won', wave: MAX_WAVES, lives: 1 }).unlockedMap, null);
   // Unbekannte Karte wird ignoriert, auch der entfernte Wald (B-098)
   assert.deepEqual(recordResult(p, { mapId: 'mond', status: 'won', wave: 20, lives: 10 }), { newRecord: false, newStars: false, unlockedMap: null });
   assert.equal('mond' in p.maps, false);
@@ -490,7 +493,7 @@ test('B-185: ohne Gold keine Freischaltung', () => {
     for (const id of MAP_ORDER) assert.equal(isNightUnlocked(p, id), false, id);
     assert.equal(isGoldTowersUnlocked(p), false);
   }
-  assert.deepEqual(goldMapsProgress(emptyProgress()), { done: 0, total: 5 });
+  assert.deepEqual(goldMapsProgress(emptyProgress()), { done: 0, total: 6 });
   assert.equal(isNightUnlocked(allGold(), 'forest'), false); // unbekannte Karte
 });
 
@@ -498,14 +501,14 @@ test('B-185: Gold auf einer Karte schaltet nur deren Nacht-Look frei', () => {
   const p = withBadges({ ice: GOLD_BADGE, meadow: 2 });
   assert.deepEqual(MAP_ORDER.filter((id) => isNightUnlocked(p, id)), ['ice']);
   assert.equal(isGoldTowersUnlocked(p), false);
-  assert.deepEqual(goldMapsProgress(p), { done: 1, total: 5 });
+  assert.deepEqual(goldMapsProgress(p), { done: 1, total: 6 });
 });
 
-test('B-185: Gold auf allen Karten schaltet goldene Türme frei, vier reichen nicht', () => {
-  const four = withBadges(Object.fromEntries(MAP_ORDER.slice(0, 4).map((id) => [id, GOLD_BADGE])));
-  assert.deepEqual(goldMapsProgress(four), { done: 4, total: 5 });
+test('B-185: Gold auf allen Karten schaltet goldene Türme frei, fünf reichen nicht', () => {
+  const four = withBadges(Object.fromEntries(MAP_ORDER.slice(0, 5).map((id) => [id, GOLD_BADGE])));
+  assert.deepEqual(goldMapsProgress(four), { done: 5, total: 6 });
   assert.equal(isGoldTowersUnlocked(four), false);
-  assert.deepEqual(goldMapsProgress(allGold()), { done: 5, total: 5 });
+  assert.deepEqual(goldMapsProgress(allGold()), { done: 6, total: 6 });
   assert.equal(isGoldTowersUnlocked(allGold()), true);
 });
 

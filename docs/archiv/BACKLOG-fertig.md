@@ -279,3 +279,27 @@ Ersetzt die Skizzen-Optik (Filter) durch das ausgearbeitete Design. Nur Optik, M
   - Tests in `tests/game`: Trupps erscheinen am Friedhof-Startpunkt, im Takt, nur während einer laufenden Welle; Karten ohne `graveyards` unverändert.
   - Friedhofkacheln sind nicht bebaubar; Welle gilt erst als beendet, wenn auch Trupps besiegt/durch sind.
 
+
+### B-211: Karte Nachtfriedhof: Wege und Balancing
+- Status: fertig
+- Aufwand: M
+- Idee: Neue Karte `graveyard` (20x14): ein langer Hauptweg vom Rand, Lage nach Skizze Variante B (https://claude.ai/artifact/5VwK9kA9Eze6fY4KAQmjz9#artboard-VarianteB): Hauptweg in Schlangen von links oben nach rechts unten. Friedhof Ost oben Mitte-rechts nah an der ersten Biegung, kurzer Nebenweg mündet früh. Friedhof West abseits in der Ecke links unten (dort baut man sonst nicht), Nebenweg ca. 3-4 Kacheln am unteren Rand, mündet etwa in der Mitte des Hauptwegs; dort braucht man einen eigenen Turm. Wenige Hindernisse.
+- Akzeptanzkriterien:
+  - Balancing-Sim: Welle 20 ohne Lebensverlust mit optimalem Spiel möglich; ohne Türme an den Nebenwegen gehen Leben verloren. Kanonen-Mix mitmessen.
+  - Karte in der Kartenauswahl wählbar.
+
+
+### B-212: Karte Nachtfriedhof: Optik
+- Status: fertig
+- Aufwand: M
+- Idee: Dunkles Moor, Nebel, Grabsteine und Gruft an den Friedhöfen, Farben aus dem Design-System (Tokens). Rand mit Bäumen, keine Vignette. Friedhof leuchtet kurz, wenn ein Trupp kommt.
+- Akzeptanzkriterien:
+  - Weg-Kontrast zum Boden mindestens 25 % Luminanz; Friedhöfe auf Desktop und Handy klar erkennbar (Screenshots).
+
+
+### B-216: Nachtfriedhof Albtraum-Variante
+- Status: fertig
+- Aufwand: M
+- Idee: Albtraum-Optik laut Skizze (Fläche "Albtraum"): dunkler, glühende Gruft-Tore, rote Augen im Wald, Glutrisse, violetter Nebel; gleiche Wege. Nach B-212.
+- Akzeptanzkriterien:
+  - Weg-Kontrast zum Boden mindestens 25 % Luminanz; Screenshots Desktop und Handy.

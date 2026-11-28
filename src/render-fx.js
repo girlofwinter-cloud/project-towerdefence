@@ -322,8 +322,42 @@ export function drawParticles(ctx, under = false) {
 }
 
 // Effekte aus dem Spielzustand, die unter den Figuren liegen: Lichthof und Rauch der Explosion (Z.131f)
-export function drawEffectUnder(ctx, e) {
+// B-212: Friedhof leuchtet beim Skelett-Trupp auf: Schein (ohne Verlauf, zwei Kreise) steigt schnell an und klingt aus
+// (ease-out), dazu kurz ein Rand in Laternenfarbe. Bei reduzierter Bewegung statisch an, ohne Puls.
+export function graveyardGlowAlpha(e, reduced = false) {
+  const G = FX_STYLE.graveyardGlow;
+  if (!(e.ttl > 0) || !(e.max > 0)) return 0;
+  if (reduced) return G.alpha;
+  const u = 1 - e.ttl / e.max; // 0..1
+  const up = 0.15;
+  return u < up ? G.alpha * (u / up) : G.alpha * (1 - (u - up) / (1 - up)) ** 2;
+}
+export function drawGraveyardGlow(ctx, e, reduced = false) {
+  const G = FX_STYLE.graveyardGlow;
+  const a = graveyardGlowAlpha(e, reduced);
+  if (!(a > 0) || !Number.isFinite(e.x) || !Number.isFinite(e.y)) return;
+  ctx.save();
+  ctx.fillStyle = G.color;
+  for (const k of [1, 0.55]) {
+    ctx.globalAlpha = a * (k === 1 ? 0.5 : 1);
+    ctx.beginPath();
+    ctx.arc(e.x, e.y, G.radius * TILE * k, 0, TWO_PI);
+    ctx.fill();
+  }
+  if (Array.isArray(e.area)) {
+    const [x0, y0, x1, y1] = e.area;
+    ctx.globalAlpha = a / G.alpha;
+    ctx.strokeStyle = G.color;
+    ctx.lineWidth = G.edgeWidth;
+    ctx.strokeRect(x0, y0, x1 - x0, y1 - y0);
+  }
+  ctx.globalAlpha = 1;
+  ctx.restore();
+}
+
+export function drawEffectUnder(ctx, e, reduced = false) {
   if (e && e.kind === 'summon') { drawSummonSpot(ctx, e); return; } // B-180: Bodenfleck der Beschwörung
+  if (e && e.kind === 'graveyardGlow') { drawGraveyardGlow(ctx, e, reduced); return; }
   if (!e || e.kind !== 'explosion') return;
   if (e.meteor) { drawMeteorUnder(ctx, e); return; }
   const a = e.ttl / e.max;

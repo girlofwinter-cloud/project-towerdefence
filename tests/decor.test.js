@@ -608,3 +608,14 @@ test('groupedDecor: Büschel und Kiesel etwa halbiert und an Weg/Wasser/Hinderni
   }
   assert.equal(groupedDecor('gibtsnicht', new Set(), new Set()), null, 'ohne theme.paint keine Gruppierung');
 });
+
+// B-212: Nachtfriedhof: keine Deko auf Weg-, Nebenweg- oder Friedhofkacheln, Hindernisse liegen frei
+test('B-212 Nachtfriedhof: keine Deko auf Weg, Nebenwegen und Friedhöfen', () => {
+  const s = createGame({ mapId: 'graveyard' });
+  const yard = MAPS.graveyard.graveyards.flatMap((g) => [...g.tiles, ...[...pathTiles(g.waypoints)].map((k) => k.split(",").map(Number))]);
+  assert.ok(yard.length > 15);
+  for (const [c, r] of yard) {
+    assert.equal(decorFor(c, r, s.blocked, s.obstacles), null, `${c},${r}`);
+    assert.ok(!s.obstacles.has(`${c},${r}`), `Hindernis auf ${c},${r}`);
+  }
+});

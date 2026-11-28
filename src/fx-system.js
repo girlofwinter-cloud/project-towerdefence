@@ -4,7 +4,7 @@
 // Alles ist vorab allokiert (feste Pools, Typed Arrays); im Hotpath entstehen keine Objekte.
 // Zufall ist deterministisch (tileRand mit Zaehler), niemals Math.random.
 import { tileRand } from './decor.js';
-import { BOSS_ENTRY, FX_STYLE, isBoss } from './config.js';
+import { BOSS_ENTRY, FX_STYLE, isBoss, TILE } from './config.js';
 
 export const MAX_PARTICLES = 256; // feste Obergrenze, ist der Pool voll wird das Aelteste ueberschrieben
 export const MAX_TRACKED = 256; // gleichzeitig verfolgte Projektile (Schweif-Richtung, Treffer-Erkennung)
@@ -285,6 +285,15 @@ export function observeEffect(fx, e, time, reducedMotion = false) {
     spawnParticle(fx, K_COIN, x, y - 6, drift, 0, 0.7, 3.5);
   } else if (e.kind === 'phase2') {
     triggerShake(fx, time, bossEntryShake(reducedMotion)); // B-180: Phasenwechsel wackelt wie der Boss-Auftritt
+  } else if (e.kind === 'graveyardGlow' && Array.isArray(e.area)) {
+    // B-212: je Grabstein (Ecken der Friedhoffläche) Erdklumpen; bei reduzierter Bewegung liegen sie still
+    const G = FX_STYLE.graveyardGlow, [x0, y0, x1, y1] = e.area, d = G.inset * TILE;
+    for (const [gx, gy] of [[x0 + d, y0 + d], [x1 - d, y0 + d], [x0 + d, y1 - d], [x1 - d, y1 - d]]) {
+      for (let i = 0; i < G.clods; i++) {
+        const a = nextRand(fx) * Math.PI * 2, v = reducedMotion ? 0 : G.clodSpeed * (0.5 + nextRand(fx) * 0.5);
+        spawnParticle(fx, K_DUST, gx, gy, Math.cos(a) * v, Math.sin(a) * v * 0.5, G.clodLife, G.clodSize);
+      }
+    }
   } else if (e.kind === 'summon') {
     // B-127: kleine grüne Lichtfunken; bei reduzierter Bewegung steigen sie nicht auf
     const S = FX_STYLE.summon;

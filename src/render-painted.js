@@ -161,7 +161,9 @@ export function buildPaintedScene(state, look = 'normal') {
   const nm = look === 'nightmare' ? nightmareOf(mapId) : null;
   const map = MAPS[mapId] || {};
   const rnd = rng(mapId);
-  const paths = state.paths || (state.path ? [state.path] : []);
+  // B-211: Friedhof-Wege laufen im Spiel bis zum Ausgang weiter; gezeichnet wird nur der kurze Weg bis zur Mündung
+  const sideWays = (map.graveyards || []).map((g) => buildPath(g.waypoints, TILE));
+  const paths = (state.paths || (state.path ? [state.path] : [])).map((p, i) => sideWays[i - (state.entranceCount ?? Infinity)] ?? p);
   const blocked = state.blocked || new Set();
   const obstacles = state.obstacles || new Set();
   const flagTiles = state.flagTiles || new Set(); // Fahnen-Kacheln: dort keine Tupfen (Fahne steht darüber)
@@ -217,9 +219,21 @@ export function buildPaintedScene(state, look = 'normal') {
     scene.bridges.push({ x, y, horizontal });
   }
 
+  // B-212: Friedhöfe (Nachtfriedhof): Fläche in Entwurfs-px, Grabsteine in den Ecken, Gruft in der Mitte
+  scene.yards = (map.graveyards || []).filter((g) => g.tiles?.length).map((g) => {
+    const cs = g.tiles.map((t) => t[0]), rs = g.tiles.map((t) => t[1]);
+    const c0 = Math.min(...cs), r0 = Math.min(...rs), c1 = Math.max(...cs), r1 = Math.max(...rs);
+    const x0 = fromGame(c0 * TILE), y0 = fromGame(r0 * TILE), x1 = fromGame((c1 + 1) * TILE), y1 = fromGame((r1 + 1) * TILE);
+    const k = fromGame(TILE) * 0.3;
+    const graves = [[x0 + k, y0 + k], [x1 - k, y0 + k], [x0 + k, y1 - k], [x1 - k, y1 - k]].map(([x, y]) => [f(x), f(y)]);
+    // Gruft auf der Mittelkachel (bei zwei Zeilen links unten mittig in der Fläche)
+    return { x: f(x0), y: f(y0), w: f(x1 - x0), h: f(y1 - y0), graves, crypt: [f((x0 + x1) / 2), f(y1 - fromGame(TILE) * 0.15)] };
+  });
+
   // Burg am Ausgang, Fahne am Eingang, Klippen oben und unten im Rand
   const keep = [...(nm?.reserve || [])]; // freie Bahnen im Rand: dort keine Randbäume (B-199: reserve = Rand-Lava der Karte)
-  for (const path of paths) {
+  // B-211: nur Eingänge bekommen Fahne und Burg (Friedhof-Wege starten mitten im Feld)
+  for (const path of paths.slice(0, state.entranceCount ?? paths.length)) {
     const pts = path.points;
     if (pts.length < 2) continue;
     const start = edgeOf(pts[0]);
@@ -532,6 +546,8 @@ export function buildPaintedSvg(state, opts = {}) {
       + sc.lava.plates.map((p) => `<ellipse cx="${p.x}" cy="${p.y}" rx="8" ry="4.5" fill="${L.plate}" stroke="${L.crust}" stroke-width="1.5" transform="rotate(${p.rot} ${p.x} ${p.y})"/>`).join('')
       + '</g>');
   }
+  // B-212: Friedhöfe unter dem Weg (Nebenwege beginnen am Rand der Fläche)
+  for (const y of sc.yards || []) out.push(yardSvg(y, c.yard || {}));
   // Weg, eingesunken (Z.79–87)
   const [groove, rim, edge, main, mid] = c.path;
   // Alle Wege als EIN Pfad mit mehreren Teilstücken: jede Schicht wird für alle Wege gemeinsam gemalt,
@@ -580,6 +596,22 @@ export function buildPaintedSvg(state, opts = {}) {
   for (const fl of sc.flags) out.push(`<g class="flag" transform="translate(${fl.tx} ${fl.ty}) scale(${fl.s})">${FLAG.svg}</g>`);
   out.push('</g></svg>');
   return out.join('');
+}
+
+// B-212: Friedhof als SVG (Bauvorlage Karte-Nachtfriedhof, Formen): Boden mit gestricheltem Rand, Grabsteine (Box 20x26,
+// Fuß unten Mitte), Gruft (Box 40x40, Fuß unten Mitte) mit dunkler Tür. Kontur ink.
+// Rand dauerhaft sichtbar: 9 Entwurfs-px = mind. 3 px bei ca. 19 px je Kachel (Handy), Striche im Verhältnis 6/5
+const YARD_EDGE = 9, YARD_DASH = '18 15';
+function yardSvg(y, Y) {
+  const ink = '#2b1a10';
+  const [ga, gb] = Y.grave || ['#aab0c8', '#5a5f78'], [ca, cb] = Y.crypt || ['#8a8ea8', '#4a4c66'];
+  const grave = ([x, yy]) => `<g transform="translate(${f(x - 10)} ${f(yy - 13)})"><path d="M0 26 V10 A10 10 0 0 1 20 10 V26 Z" fill="${ga}"/>`
+    + `<path d="M10 26 V0 A10 10 0 0 1 20 10 V26 Z" fill="${gb}"/><path d="M0 26 V10 A10 10 0 0 1 20 10 V26 Z" fill="none" stroke="${ink}" stroke-width="2"/></g>`;
+  const [cx, cy] = y.crypt;
+  return `<g class="yard"><rect x="${y.x}" y="${y.y}" width="${y.w}" height="${y.h}" rx="10" fill="${Y.ground}" stroke="${Y.edge}" stroke-width="${YARD_EDGE}" stroke-dasharray="${YARD_DASH}"/>`
+    + y.graves.map(grave).join('')
+    + `<g class="crypt" transform="translate(${f(cx - 20)} ${f(cy - 40)})"><path d="M0 40 V14 L20 0 L40 14 V40 Z" fill="${ca}" stroke="${ink}" stroke-width="3"/>`
+    + `<path d="M0 40 V27 H40 V40 Z" fill="${cb}" opacity=".7"/><path d="M12 40 V24 H28 V40 Z" fill="${Y.door}"/></g></g>`;
 }
 
 // ---------- Seitenzonen (C-Abnahme 1) ----------

@@ -1754,7 +1754,7 @@ test('Wegsaum: unterbrochene Büschel über der Fuge, 30 bis 50 % der Randlänge
     drawPathStyled(m.ctx, s.paths || [s.path], MAPS[id].theme);
     assert.equal(m.depth, 0);
   }
-  assert.deepEqual(kinds, { meadow: 'blades', ice: 'snow', fork: 'leaves', twin: 'blades', volcano: 'ash' });
+  assert.deepEqual(kinds, { meadow: 'blades', ice: 'snow', fork: 'leaves', twin: 'blades', volcano: 'ash', graveyard: 'blades' });
   assert.equal(MAPS.fork.theme.path.fringe, '#e0803a', 'Herbstlaub im Zangenangriff');
 });
 
@@ -2452,7 +2452,7 @@ test('B-190: Render im Albtraum zeichnet alle Typen ohne Fehler', async () => {
 test('B-193 nmWoodDeco: SVG ohne NaN für alle 5 Holzarten, Eisenband je Trenner, Zuordnung Karte -> Holz', async () => {
   const { nmWoodDeco, nmWoodKind, NM_WOOD_OF_MAP, NM_WOOD_KINDS, NM_WOOD_OVERHANG, NM_STYLE_NAME } = await import('../src/nm-wood.js');
   const { MAP_ORDER } = await import('../src/progress.js');
-  assert.deepEqual(NM_WOOD_OF_MAP, { meadow: 'moss', ice: 'ice', fork: 'rust', twin: 'iron', volcano: 'ember' });
+  assert.deepEqual(NM_WOOD_OF_MAP, { meadow: 'moss', ice: 'ice', fork: 'rust', twin: 'iron', volcano: 'ember', graveyard: 'iron' });
   for (const id of MAP_ORDER) {
     assert.ok(NM_WOOD_KINDS.includes(nmWoodKind(id, true)), `Holz für ${id}`);
     assert.ok(NM_STYLE_NAME[id], `Stilname für ${id}`);
@@ -2616,4 +2616,29 @@ test('Boss-Leiste: zu schmale Lücke (Albtraum-Plakette) -> volle Breite unter d
   assert.equal(narrow.left + narrow.width, 1380, 'rechtsbündig mit HUD');
   assert.equal(bossBarLayout(40, 200, 60, 150).left, 40, 'nie links neben das HUD');
   assert.equal(bossBarLayout(NaN, NaN, 0, 0), null);
+});
+
+// B-216: Albtraum Nachtfriedhof: eigene Datei, Glutrisse und Tor-Schein nur auf Friedhofkacheln (nicht bebaubar), rote Augen
+test('B-216: Albtraum Nachtfriedhof: Glutrisse und Tore nicht auf Bauplätzen, rote Augen im Randwald', async () => {
+  const { NM_MAPS } = await import('../src/nm-maps/index.js');
+  const { CRACKS, DOORS } = await import('../src/nm-maps/graveyard.js');
+  const { createGame, canBuild } = await import('../src/game.js');
+  const { PAINTED_STYLE } = await import('../src/config.js');
+  const nm = NM_MAPS.graveyard;
+  assert.ok(nm && nm.painted.ground[1] === '#2a2232');
+  const s = createGame({ mapId: 'graveyard', mode: 'nightmare' });
+  assert.ok(CRACKS.length >= 6 && CRACKS.length <= 8);
+  const U = PAINTED_STYLE.unit;
+  for (const [x, y] of CRACKS) {
+    for (const [dx, dy] of [[0, 0], [40, 0], [0, 12], [40, 12]]) {
+      const c = Math.floor((x + dx) / U), r = Math.floor((y + dy) / U);
+      assert.equal(canBuild(s, c, r).ok, false, `Glutriss auf Bauplatz ${c},${r}`);
+    }
+  }
+  for (const [x, y] of DOORS) assert.equal(canBuild(s, Math.floor(x / TILE), Math.floor(y / TILE)).ok, false);
+  assert.ok(nm.motion.some((m) => m.kind === 'blink' && m.color === '#ff3a3a' && m.count[0] === 5));
+  assert.ok(nm.shapes.eyeTree.eyes.length === 1 && nm.frame.big.includes('eyeTree'));
+  // Wege und Bauplätze wie die normale Karte
+  const n = createGame({ mapId: 'graveyard' });
+  assert.deepEqual([...s.blocked].sort(), [...n.blocked].sort());
 });

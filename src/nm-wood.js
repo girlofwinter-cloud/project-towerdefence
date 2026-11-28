@@ -2,11 +2,11 @@
 // Nur Zeichnen, rein und testbar: liefert die Rand-Deko als SVG-Text. Farben als CSS-Tokens (style.css :root).
 // Koordinaten in px der Plakette (0..w, 0..h); Deko nur im oberen Rand (0–8 px) und unter der Unterkante.
 
-// Holz je Karte (Wiese moss, Eiswelt ice, Zangenangriff rust, Zwei Fronten iron, Vulkan ember)
-export const NM_WOOD_OF_MAP = { meadow: 'moss', ice: 'ice', fork: 'rust', twin: 'iron', volcano: 'ember' };
+// Holz je Karte (Wiese moss, Eiswelt ice, Zangenangriff rust, Zwei Fronten iron, Vulkan ember, Nachtfriedhof iron)
+export const NM_WOOD_OF_MAP = { meadow: 'moss', ice: 'ice', fork: 'rust', twin: 'iron', volcano: 'ember', graveyard: 'iron' };
 export const NM_WOOD_KINDS = ['moss', 'ice', 'rust', 'iron', 'ember'];
 // Stilname je Karte für die Albtraum-Plakette (Karten-Bauvorlagen)
-export const NM_STYLE_NAME = { meadow: 'Verfluchter Wald', ice: 'Düstere Magie', fork: 'Verbrannte Steppe', twin: 'Düstere Magie', volcano: 'Verbrannte Erde' };
+export const NM_STYLE_NAME = { meadow: 'Verfluchter Wald', ice: 'Düstere Magie', fork: 'Verbrannte Steppe', twin: 'Düstere Magie', volcano: 'Verbrannte Erde', graveyard: 'Verfluchter Friedhof' };
 // Überstand der Deko unter der Plakette in px (Höhe des SVG = Plakettenhöhe + Überstand)
 export const NM_WOOD_OVERHANG = { moss: 30, ice: 22, rust: 0, iron: 12, ember: 0 };
 

@@ -452,6 +452,67 @@ export const MAPS = {
       },
     },
   },
+  // Nachtfriedhof (B-211): Schlangenweg links oben -> rechts unten, zwei Friedhöfe schicken Skelett-Trupps über
+  // kurze Nebenwege in den Hauptweg (B-210). Optik vorläufig wie Vulkan (dunkel), eigene Optik folgt mit B-212.
+  graveyard: {
+    name: 'Nachtfriedhof',
+    waypoints: [[-1, 1], [9, 1], [9, 4], [3, 4], [3, 11], [10, 11], [10, 8], [16, 8], [16, 12], [20, 12]],
+    graveyards: [
+      { tiles: [[12, 2], [13, 2], [14, 2], [12, 3], [13, 3], [14, 3], [12, 4], [13, 4], [14, 4]], waypoints: [[12, 3], [9, 3]] },
+      { tiles: [[0, 12], [1, 12], [2, 12], [0, 13], [1, 13], [2, 13]], waypoints: [[2, 13], [6, 13], [6, 11]] },
+    ],
+    obstacles: [[6, 7], [13, 11], [18, 4]],
+    flagTiles: [[0, 2]], // Wellenfahne unter dem Eingang (wie Zwei Fronten oben; Vorlage nannte [0,0]) (Test: flagTilesOf)
+    // B-212: Moor bei Nacht (Bauvorlage Karte-Nachtfriedhof, Tokens map-graveyard-*): Tannen und kahle Bäume ohne
+    // Abdunkeln, kühles Mondlicht, Friedhöfe mit Grabsteinen und Gruft (painted.yard).
+    theme: {
+      treeFrame: {
+        kindShare: [0.5, 0, 0.2, 0.3],
+        greens: ['#1a2a24', '#22362c', '#2e4636', '#5a6a52'],
+        fir: ['#1a2a24', '#22362c'],
+      },
+      ground: {
+        base: '#3e4c40',
+        light: 'rgba(90,106,82,0.2)',
+        dark: 'rgba(38,48,40,0.26)',
+        blade: ['#263028', '#2e4636', '#8aa68a'],
+        plateauTop: '#5a6a52',
+        plateauWall: 'rgba(38,48,40,0.9)',
+        plateauRim: 'rgba(28,36,32,0.42)',
+        plateauLight: 'rgba(200,214,255,0.12)',
+      },
+      light: { tint: '200,214,255', gradientAlpha: 0.06, beamAlpha: 0.03, vignetteAlpha: 0, treeShadowAlpha: 0.18 },
+      decorStyle: 'flatpop',
+      decor: {
+        flatTrees: true,
+        firShare: 0.5,
+        treeColors: ['#2e4636', '#22362c', '#5a6a52'],
+        fir: ['#1a2a24', '#22362c'],
+        trunk: '#2a2a40',
+        bush: '#2e4636', berry: '#e6d27a', rock: '#6a7090', moss: '#8aa68a',
+        flowers: ['#8aa68a', '#c8d4f0', '#e6d27a'], stem: '#263028', tuft: '#263028', tuftLight: '#8aa68a',
+        mushroomCap: '#e6d27a', pebble: '#6a7090', wood: '#4a3a28', woodDark: '#1c2420',
+        obstacleGround: 'rgba(20,28,24,0.3)',
+        scatterChance: 0.08,
+        // Vorlage: grave/lantern/puddle als Streu-Deko gibt es noch nicht; Grabsteine stehen auf den Friedhöfen
+        scatterKinds: [['rockgroup', 0.3], ['stump', 0.25], ['mushroom', 0.25], ['pebbles', 0.2]],
+      },
+      painted: {
+        ground: ['#5a6a52', '#3e4c40', '#263028'], mottle: [0.1, 0.15, 0.12], mottleOpacity: 0.6, lit: [0.78, 0.84, 1], litOpacity: 0.16,
+        sun: ['#c8d6ff', '#c8d4f0'], vignette: '#263028', grainOpacity: 0.14,
+        path: ['#1c2420', '#2b1a10', '#4a3a28', '#b0a07e', '#c8b890'], pathDots: ['#e8dcb8', '#4a3a28'],
+        dotKind: 'flower', dots: ['#8aa68a', '#c8d4f0', '#e6d27a'], dotChance: 0.12,
+        pineShare: 0.6, leafy: 'bare', pine: ['#1a2a24', '#22362c', '#2e4636', '#5a6a52'], round: ['#2a2a40', '#5e5e7c', '#5a6a52'],
+        trunk: ['#2a2a40', '#5e5e7c'], fruit: null,
+        rock: ['#6a7090', '#b8c8e6'], cliff: ['#5a6a52', '#3e4c40', '#4a4c66', '#2a2a40', '#2b1a10'],
+        // Friedhöfe: Boden, Rand (gestrichelt), Grabstein hell/dunkel, Gruft hell/dunkel, Gruft-Tür, Laterne
+        yard: { ground: '#2c3a30', edge: '#4a4038', grave: ['#aab0c8', '#5a5f78'], crypt: ['#8a8ea8', '#4a4c66'], door: '#1a1412' /* map-graveyard-door */, lantern: '#ffd27a' },
+      },
+      path: { main: '#b0a07e', edge: '#4a3a28', outline: '#2b1a10', mid: '#c8b890', fringe: '#8aa68a', fringeAccent: '#e6d27a', groove: '#1c2420' },
+      paint: { dark: [28, 36, 32], darkAlpha: 0.45, light: [138, 166, 138], lightAlpha: 0.22, tint: '200,214,255' },
+      pathStyle: { fringeKind: 'blades' },
+    },
+  },
 };
 export const DEFAULT_MAP_ID = 'meadow';
 
@@ -1551,6 +1612,9 @@ export const FX_STYLE = {
   },
   smoke: { color: '#9a8fa6', alpha: 0.45, grow: 0.6 }, // unter den Gegnern
   // B-127: Beschwörung der Nekromantin: grüne Lichtfunken steigen auf (life = Effektdauer in s Spielzeit, size in px)
+  // B-212: Friedhof leuchtet beim Skelett-Trupp auf (Bauvorlage Karte-Nachtfriedhof, Zustände). life in s, radius in Kacheln,
+  // Farbe map-graveyard-lantern; je Grabstein (vier Ecken der Fläche) clods Erdklumpen (Tempo px/s, Größe px)
+  graveyardGlow: { life: 0.8, radius: 1.5, alpha: 0.45, color: '#ffd27a', edgeWidth: 3, clods: 3, clodSpeed: 40, clodLife: 0.5, clodSize: 2.5, inset: 0.4 },
   summon: { color: '#7dff9a', count: 6, life: 0.6, size: 2.2, sizeVar: 1.2, speed: 30, spread: 8, alpha: 0.85 },
   // B-169: Schale des Panzerkäfers bricht (Platzhalter): Splitter fliegen auseinander (life in s Spielzeit, Maße in px)
   // B-169 Schale bricht (letzte Schicht): Dreieck-Splitter mit Schwerkraft und heller Ring. Größen in Entwurfs-px, Tempo in px/s
@@ -1846,6 +1910,7 @@ export const SOUND = {
       fork:    { file: 'music-fork', gain: 1.6 },
       twin:    { file: 'music-twin', gain: 0.55 },
       volcano: { file: 'music-volcano', gain: 0.6 },
+      graveyard: { file: 'music-volcano', gain: 0.6 }, // B-211: Vorschlag, eigener Titel offen
     },
     // B-187: eigener Titel je Karte im Albtraum-Modus (Vorrang vor dem Kartentitel). Format wie byMap;
     // file: null = kein eigener Albtraum-Titel -> Kartentitel, dann Rückfall file. gain wie bei byMap.
@@ -1856,6 +1921,7 @@ export const SOUND = {
         fork:    { file: 'music-nightmare-fork', gain: 1.08 },
         twin:    { file: 'music-nightmare-twin', gain: 1.16 },
         volcano: { file: 'music-nightmare-volcano', gain: 0.78 },
+        graveyard: { file: 'music-nightmare', gain: 0.52 }, // B-211: Vorschlag (Titel der Wiese), Mensch entscheidet
       },
     },
     gain: 0.025,         // Lautstärke im laufenden Spiel
@@ -1877,6 +1943,7 @@ export const GOLD_CONDITIONS = {
   fork:    { kind: 'noTower', tower: 'cannon', label: 'ohne Kanone' },
   twin:    { kind: 'noSell', label: 'ohne Verkaufen' },
   volcano: { kind: 'noTower', tower: 'lightning', label: 'ohne Blitzturm' },
+  graveyard: { kind: 'noTower', tower: 'arrow', label: 'ohne Pfeilturm' }, // B-211: Vorschlag, Mensch entscheidet
 };
 
 // B-183: Albtraum-Abzeichen je Karte, Index + 1 = Stufe (1 Bronze: Welle 20 geschafft, 2 Silber: ohne Lebensverlust,

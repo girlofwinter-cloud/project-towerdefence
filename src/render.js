@@ -203,7 +203,7 @@ export function render(ctx, state, ui) {
   // Explosionen und Rauch unter den Figuren, damit sie keine Figur verdecken (B-068)
   beginMasterFx(state);
   drawMasterUnder(ctx, state, reduced); // B-173/B-174: Eis- und Brandflächen, Gewitter-Ankündigung, Reif
-  for (const fx of state.effects) drawEffectUnder(ctx, fx);
+  for (const fx of state.effects) drawEffectUnder(ctx, fx, reduced);
   drawParticles(ctx, true);
   // Stil 1: Türme und Gegner nach Fußpunkt sortiert (weiter unten = davor), Stufenmarken danach
   drawFigures(ctx, state, ui);

@@ -600,3 +600,10 @@ Der Mensch hat entschieden, das Zielbild `docs/design/stil1-ziel.png` komplett z
 - Idee: Je Karte zuerst ein S-Element: Eis – schwache Augen hinter Eisblöcken (alpha 0,5) oder Atemwölkchen aus dem Tannendickicht; Zangenangriff – Glutaugen in verkohlten Baumstümpfen; Zwei Fronten – Augen in den Gruftfenstern blinzeln echt, Geisterschleier zwischen Grabsteinen; Vulkan – Augenpaare mit Lid in Basaltspalten. Später (M): Gesicht unter dem Eis, Krähen, Grabhand, Lava-Schlitzauge.
 - Akzeptanzkriterien:
   - Je Karte sichtbar im Screenshot, nicht auf dem Weg (Test), Teilchenbudget eingehalten, Augen nicht mit Glutpunkten/Gegnern verwechselbar.
+
+### B-218: Handy: Gold-Schild verdeckt Eingangsweg (Albtraum Nachtfriedhof)
+- Status: vorschlag
+- Aufwand: S
+- Idee: Bei 844x390 liegt das Schild "Gold: ohne Pfeilturm" über Reihe 1 (Spalten 5-9), genau auf dem Eingangsweg. Schild höher setzen oder nach Wellenstart ausblenden. Nett dazu: Rand-Tannen ragen in Reihe 13 über den unteren Nebenweg.
+- Akzeptanzkriterien:
+  - Bei 844x390 schneidet das Schild keine Wegkachel oder blendet nach Wellenstart aus (Screenshot).
