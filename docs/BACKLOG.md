@@ -61,3 +61,48 @@ Zwei developer parallel (je eigene Sitzung, eigener Unter-Branch von `agent/stuf
 - Akzeptanzkriterien:
   - Je Turm ein eigener `l2`-Eintrag in `src/figures.js`; Stufe 2 auf 1280x800 sichtbar höher als Stufe 1, Fuß bleibt auf der Kachel.
   - Werte aus dem Design-System, Screenshot Desktop und Handy.
+
+## Albtraum-Feinschliff, nur S (freigegeben 2026-11-28, nur Optik)
+
+### B-201: Albtraum Zangenangriff: Weg-Kontrast anheben
+- Status: offen
+- Aufwand: S
+- Idee: Weg (`path.main #d6ab70`) hebt sich kaum vom hellbraunen Boden ab (Muss-Befund). Weg heller/kühler (Richtung `#ecdcb8`) oder Boden ca. 15 % dunkler, nur Theme-Farben in `src/config.js`.
+- Akzeptanzkriterien:
+  - Luminanzabstand Weg-Mitte zu Boden mindestens 25 % (Pixelprobe im Screenshot).
+
+### B-202: Albtraum Zwei Fronten: Weg aufhellen
+- Status: offen
+- Aufwand: S
+- Idee: Weg und Boden beide lila-grau, nur die Kanten tragen die Lesbarkeit. Weg heller (cremig-lila), Boden etwas dunkler.
+- Akzeptanzkriterien:
+  - Luminanzabstand Weg-Mitte zu Boden mindestens 25 %.
+
+### B-203: Albtraum Vulkan: Bodenrisse beruhigen, Weg wärmer
+- Status: offen
+- Aufwand: S
+- Idee: Leuchtende Bodenrisse sind so laut wie die Lava, Feld wirkt unruhig. Risse ca. 50 % weniger Dichte/Deckkraft, volles Leuchten nur für Lavaflüsse. Weg-Mitte `#8b7468` wärmer setzen.
+- Akzeptanzkriterien:
+  - Höchstens halb so viele Rissstriche pro Fläche, Lavaflüsse unverändert.
+
+### B-204: Albtraum Zangenangriff: Glut-Deko vom Weg nehmen
+- Status: offen
+- Aufwand: S
+- Idee: Orange Glut-Schnörkel und Glimmpunkte liegen auf dem Weg und sind mit Effekten verwechselbar. Nur neben den Weg legen.
+- Akzeptanzkriterien:
+  - Kein Deko-Element überlappt Wegkacheln, Test in `tests/decor`.
+
+### B-206: Albtraum-Wiese: mehr Baum- und Buschaugen
+- Status: offen
+- Aufwand: S
+- Idee: Jeder 2.-3. Randbaum (oben/rechts) bekommt ein Augenpaar im Astloch (`twistedTreeEyes` öfter), dazu 2-3 Büsche unten mit selten blinzelnden Augen (period ~8 s). Teilchen-Budget: `blink` 10 -> 14, `rise` 24 -> 18. Nur Rand, mind. 1 Kachel Abstand zum Weg, Handy höchstens halb so viele, Augen höchstens 6 px.
+- Akzeptanzkriterien:
+  - Mindestens 8 sichtbare Augenpaare im Rand (Desktop 1280x800).
+  - Test: kein neues Element auf Weg-Kacheln; Teilchensumme unter `maxDesktop`/`maxCompact`.
+
+### B-209: Kleine Gruselelemente auf den übrigen Albtraum-Karten (nur S-Teile)
+- Status: offen
+- Aufwand: S je Karte
+- Idee: Je Karte zuerst ein S-Element: Eis – schwache Augen hinter Eisblöcken (alpha 0,5) oder Atemwölkchen aus dem Tannendickicht; Zangenangriff – Glutaugen in verkohlten Baumstümpfen; Zwei Fronten – Augen in den Gruftfenstern blinzeln echt, Geisterschleier zwischen Grabsteinen; Vulkan – Augenpaare mit Lid in Basaltspalten.
+- Akzeptanzkriterien:
+  - Je Karte sichtbar im Screenshot, nicht auf dem Weg (Test), Teilchenbudget eingehalten, Augen nicht mit Glutpunkten/Gegnern verwechselbar.

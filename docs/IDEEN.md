@@ -538,28 +538,28 @@ Der Mensch hat entschieden, das Zielbild `docs/design/stil1-ziel.png` komplett z
 ## Designprüfung Albtraum-Karten (designer, 2026-11-28)
 
 ### B-201: Albtraum Zangenangriff: Weg-Kontrast anheben
-- Status: vorschlag
+- Status: freigegeben (BACKLOG)
 - Aufwand: S
 - Idee: Weg (`path.main #d6ab70`) hebt sich kaum vom hellbraunen Boden ab (Muss-Befund). Weg heller/kühler (Richtung `#ecdcb8`) oder Boden ca. 15 % dunkler, nur Theme-Farben in `src/config.js`.
 - Akzeptanzkriterien:
   - Luminanzabstand Weg-Mitte zu Boden mindestens 25 % (Pixelprobe im Screenshot).
 
 ### B-202: Albtraum Zwei Fronten: Weg aufhellen
-- Status: vorschlag
+- Status: freigegeben (BACKLOG)
 - Aufwand: S
 - Idee: Weg und Boden beide lila-grau, nur die Kanten tragen die Lesbarkeit. Weg heller (cremig-lila), Boden etwas dunkler.
 - Akzeptanzkriterien:
   - Luminanzabstand Weg-Mitte zu Boden mindestens 25 %.
 
 ### B-203: Albtraum Vulkan: Bodenrisse beruhigen, Weg wärmer
-- Status: vorschlag
+- Status: freigegeben (BACKLOG)
 - Aufwand: S
 - Idee: Leuchtende Bodenrisse sind so laut wie die Lava, Feld wirkt unruhig. Risse ca. 50 % weniger Dichte/Deckkraft, volles Leuchten nur für Lavaflüsse. Weg-Mitte `#8b7468` wärmer setzen.
 - Akzeptanzkriterien:
   - Höchstens halb so viele Rissstriche pro Fläche, Lavaflüsse unverändert.
 
 ### B-204: Albtraum Zangenangriff: Glut-Deko vom Weg nehmen
-- Status: vorschlag
+- Status: freigegeben (BACKLOG)
 - Aufwand: S
 - Idee: Orange Glut-Schnörkel und Glimmpunkte liegen auf dem Weg und sind mit Effekten verwechselbar. Nur neben den Weg legen.
 - Akzeptanzkriterien:
@@ -573,7 +573,7 @@ Der Mensch hat entschieden, das Zielbild `docs/design/stil1-ziel.png` komplett z
   - Wegrand auf allen 5 Karten sichtbar, Frame-Zeit unverändert, Token in `docs/design/system/`.
 
 ### B-206: Albtraum-Wiese: mehr Baum- und Buschaugen
-- Status: vorschlag
+- Status: freigegeben (BACKLOG)
 - Aufwand: S
 - Idee: Jeder 2.-3. Randbaum (oben/rechts) bekommt ein Augenpaar im Astloch (`twistedTreeEyes` öfter), dazu 2-3 Büsche unten mit selten blinzelnden Augen (period ~8 s). Teilchen-Budget: `blink` 10 -> 14, `rise` 24 -> 18. Nur Rand, mind. 1 Kachel Abstand zum Weg, Handy höchstens halb so viele, Augen höchstens 6 px.
 - Akzeptanzkriterien:
@@ -595,7 +595,7 @@ Der Mensch hat entschieden, das Zielbild `docs/design/stil1-ziel.png` komplett z
   - Höchstens 1 Hand gleichzeitig, nie auf dem Weg; Teilchenzahl nicht höher als heute.
 
 ### B-209: Kleine Gruselelemente auf den übrigen Albtraum-Karten
-- Status: vorschlag
+- Status: freigegeben (BACKLOG)
 - Aufwand: M (je Karte S)
 - Idee: Je Karte zuerst ein S-Element: Eis – schwache Augen hinter Eisblöcken (alpha 0,5) oder Atemwölkchen aus dem Tannendickicht; Zangenangriff – Glutaugen in verkohlten Baumstümpfen; Zwei Fronten – Augen in den Gruftfenstern blinzeln echt, Geisterschleier zwischen Grabsteinen; Vulkan – Augenpaare mit Lid in Basaltspalten. Später (M): Gesicht unter dem Eis, Krähen, Grabhand, Lava-Schlitzauge.
 - Akzeptanzkriterien:
