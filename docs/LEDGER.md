@@ -191,3 +191,11 @@ Anhängen ohne die Datei zu lesen: `cat >> docs/LEDGER.md <<'EOF' … EOF`. Übe
 ### Wiese Brücke Glanz (agent/wiese-bruecke-glanz)
 - Glanzlinien des Flusses bekommen an der Brücke eine Lücke (null im Punktzug), keine Striche mehr über der Brücke.
 - Optik-Test nach Regel 2 angepasst: Lücken zugelassen, neu geprüft, dass die Lücke existiert.
+
+### Design Albtraum (agent/design-albtraum, designer)
+- Albtraum-Karten auf Desktop geprüft, Rand ohne Vignette und Welt-Identitäten passen.
+- Vorschläge B-201 bis B-205 in IDEEN.md (Weg-Kontrast Fork/Twin, Vulkan-Risse, Deko vom Weg, Weg-Glühen).
+- Offen: Handy-Querformat nicht geprüft (Skript-Timeout).
+- Nachtrag: Gruselelemente B-206 bis B-209 (mehr Baumaugen Wiese, folgende Pupillen, Schattenhand/Irrlichter, Elemente je Karte).
+
+- 2026-11-28 designer: Nachtfriedhof skizziert (normal, Albtraum, 2 neue Gegner + Rotation), Design-Fläche https://claude.ai/artifact/5VwK9kA9Eze6fY4KAQmjz9. Vorschläge B-213 bis B-216 in IDEEN.md, Karte B-210 bis B-212 im Backlog. Kein Code geändert.

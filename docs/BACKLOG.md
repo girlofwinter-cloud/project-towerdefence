@@ -61,3 +61,106 @@ Zwei developer parallel (je eigene Sitzung, eigener Unter-Branch von `agent/stuf
 - Akzeptanzkriterien:
   - Je Turm ein eigener `l2`-Eintrag in `src/figures.js`; Stufe 2 auf 1280x800 sichtbar höher als Stufe 1, Fuß bleibt auf der Kachel.
   - Werte aus dem Design-System, Screenshot Desktop und Handy.
+
+## Albtraum-Feinschliff, nur S (freigegeben 2026-11-28, nur Optik)
+
+### B-201: Albtraum Zangenangriff: Weg-Kontrast anheben
+- Status: offen
+- Aufwand: S
+- Idee: Weg (`path.main #d6ab70`) hebt sich kaum vom hellbraunen Boden ab (Muss-Befund). Weg heller/kühler (Richtung `#ecdcb8`) oder Boden ca. 15 % dunkler, nur Theme-Farben in `src/config.js`.
+- Akzeptanzkriterien:
+  - Luminanzabstand Weg-Mitte zu Boden mindestens 25 % (Pixelprobe im Screenshot).
+
+### B-202: Albtraum Zwei Fronten: Weg aufhellen
+- Status: offen
+- Aufwand: S
+- Idee: Weg und Boden beide lila-grau, nur die Kanten tragen die Lesbarkeit. Weg heller (cremig-lila), Boden etwas dunkler.
+- Akzeptanzkriterien:
+  - Luminanzabstand Weg-Mitte zu Boden mindestens 25 %.
+
+### B-203: Albtraum Vulkan: Bodenrisse beruhigen, Weg wärmer
+- Status: offen
+- Aufwand: S
+- Idee: Leuchtende Bodenrisse sind so laut wie die Lava, Feld wirkt unruhig. Risse ca. 50 % weniger Dichte/Deckkraft, volles Leuchten nur für Lavaflüsse. Weg-Mitte `#8b7468` wärmer setzen.
+- Akzeptanzkriterien:
+  - Höchstens halb so viele Rissstriche pro Fläche, Lavaflüsse unverändert.
+
+### B-204: Albtraum Zangenangriff: Glut-Deko vom Weg nehmen
+- Status: offen
+- Aufwand: S
+- Idee: Orange Glut-Schnörkel und Glimmpunkte liegen auf dem Weg und sind mit Effekten verwechselbar. Nur neben den Weg legen.
+- Akzeptanzkriterien:
+  - Kein Deko-Element überlappt Wegkacheln, Test in `tests/decor`.
+
+### B-206: Albtraum-Wiese: mehr Baum- und Buschaugen
+- Status: offen
+- Aufwand: S
+- Idee: Jeder 2.-3. Randbaum (oben/rechts) bekommt ein Augenpaar im Astloch (`twistedTreeEyes` öfter), dazu 2-3 Büsche unten mit selten blinzelnden Augen (period ~8 s). Teilchen-Budget: `blink` 10 -> 14, `rise` 24 -> 18. Nur Rand, mind. 1 Kachel Abstand zum Weg, Handy höchstens halb so viele, Augen höchstens 6 px.
+- Akzeptanzkriterien:
+  - Mindestens 8 sichtbare Augenpaare im Rand (Desktop 1280x800).
+  - Test: kein neues Element auf Weg-Kacheln; Teilchensumme unter `maxDesktop`/`maxCompact`.
+
+### B-209: Kleine Gruselelemente auf den übrigen Albtraum-Karten (nur S-Teile)
+- Status: offen
+- Aufwand: S je Karte
+- Idee: Je Karte zuerst ein S-Element: Eis – schwache Augen hinter Eisblöcken (alpha 0,5) oder Atemwölkchen aus dem Tannendickicht; Zangenangriff – Glutaugen in verkohlten Baumstümpfen; Zwei Fronten – Augen in den Gruftfenstern blinzeln echt, Geisterschleier zwischen Grabsteinen; Vulkan – Augenpaare mit Lid in Basaltspalten.
+- Akzeptanzkriterien:
+  - Je Karte sichtbar im Screenshot, nicht auf dem Weg (Test), Teilchenbudget eingehalten, Augen nicht mit Glutpunkten/Gegnern verwechselbar.
+
+## Neue Karte "Nachtfriedhof" (freigegeben 2026-11-28, neue Mechanik, eine Sitzung je Eintrag, in dieser Reihenfolge)
+
+### B-210: Mechanik: Nebenwege mit Start mitten auf der Karte (Friedhof-Spawns)
+- Status: offen
+- Aufwand: M
+- Idee: `MAPS.<id>.graveyards`: Liste von Nebenwegen (Wegpunkte ab einem Friedhof im Feld bis in den Hauptweg oder zum Ausgang). Unabhängig von der Welle kommt alle `GRAVEYARD.interval` Sekunden je Friedhof ein Trupp von `GRAVEYARD.size` Skeletten (Zahlen in `config.js`, ab Welle `GRAVEYARD.fromWave`). Reine Logik in `game.js`, nutzt bestehende `paths`/`lane`.
+- Akzeptanzkriterien:
+  - Tests in `tests/game`: Trupps erscheinen am Friedhof-Startpunkt, im Takt, nur während einer laufenden Welle; Karten ohne `graveyards` unverändert.
+  - Friedhofkacheln sind nicht bebaubar; Welle gilt erst als beendet, wenn auch Trupps besiegt/durch sind.
+
+### B-211: Karte Nachtfriedhof: Wege und Balancing
+- Status: offen
+- Aufwand: M
+- Idee: Neue Karte `graveyard` (20x14): ein langer Hauptweg vom Rand, Lage nach Skizze Variante B (https://claude.ai/artifact/5VwK9kA9Eze6fY4KAQmjz9#artboard-VarianteB): Hauptweg in Schlangen von links oben nach rechts unten. Friedhof Ost oben Mitte-rechts nah an der ersten Biegung, kurzer Nebenweg mündet früh. Friedhof West abseits in der Ecke links unten (dort baut man sonst nicht), Nebenweg ca. 3-4 Kacheln am unteren Rand, mündet etwa in der Mitte des Hauptwegs; dort braucht man einen eigenen Turm. Wenige Hindernisse.
+- Akzeptanzkriterien:
+  - Balancing-Sim: Welle 20 ohne Lebensverlust mit optimalem Spiel möglich; ohne Türme an den Nebenwegen gehen Leben verloren. Kanonen-Mix mitmessen.
+  - Karte in der Kartenauswahl wählbar.
+
+### B-212: Karte Nachtfriedhof: Optik
+- Status: offen
+- Aufwand: M
+- Idee: Dunkles Moor, Nebel, Grabsteine und Gruft an den Friedhöfen, Farben aus dem Design-System (Tokens). Rand mit Bäumen, keine Vignette. Friedhof leuchtet kurz, wenn ein Trupp kommt.
+- Akzeptanzkriterien:
+  - Weg-Kontrast zum Boden mindestens 25 % Luminanz; Friedhöfe auf Desktop und Handy klar erkennbar (Screenshots).
+
+## Nachtfriedhof: neue Gegner (freigegeben 2026-11-28, nach B-210 bis B-212; Designer-Skizze Skizze: https://claude.ai/artifact/5VwK9kA9Eze6fY4KAQmjz9)
+
+### B-213: Gegner Totengräber (Nachtfriedhof)
+- Status: offen
+- Aufwand: M
+- Idee: Hält 2 s an einem Grabhügel am Weg und gräbt 3 Skelette aus, dann läuft er weiter. Früh töten verhindert den Trupp. Grob: HP 160, Tempo 0,9, Belohnung 10, Leck 2, ab Welle 7.
+- Akzeptanzkriterien:
+  - Werte in `ENEMY_TYPES`; Test in `tests/game`: vor dem Graben getötet = 0 Skelette, sonst 3.
+  - Grabhaltung sichtbar; perfektes Spiel auf der Karte bleibt möglich.
+
+### B-214: Gegner Klagegeist (Nachtfriedhof)
+- Status: offen
+- Aufwand: M
+- Idee: Lähmt alle 6 s Türme im Radius 1,5 für 1,5 s; belohnt verteiltes Bauen. Grob: HP 70, Tempo 1,3, Belohnung 8, Leck 1, ab Welle 9.
+- Akzeptanzkriterien:
+  - Test: gelähmter Turm schießt nicht.
+  - Sichtbarer Ring und Lähm-Zeichen am Turm, nicht nur über Farbe.
+
+### B-215: Gegner-Rotation Nachtfriedhof
+- Status: offen
+- Aufwand: S
+- Idee: Auf `graveyard` fallen Glutling (`ember`) und Fledermaus (`bat`) weg: Feuer passt nicht ins Moor, Flieger würden die Nebenwege entwerten. Skelett und Nekromantin bleiben.
+- Akzeptanzkriterien:
+  - `MAPS.graveyard` mit Liste ausgeschlossener Typen; Test: weder `ember` noch `bat` erscheinen.
+  - Balancing: Welle 20 ohne Lebensverlust machbar.
+
+### B-216: Nachtfriedhof Albtraum-Variante
+- Status: offen
+- Aufwand: M
+- Idee: Albtraum-Optik laut Skizze (Fläche "Albtraum"): dunkler, glühende Gruft-Tore, rote Augen im Wald, Glutrisse, violetter Nebel; gleiche Wege. Nach B-212.
+- Akzeptanzkriterien:
+  - Weg-Kontrast zum Boden mindestens 25 % Luminanz; Screenshots Desktop und Handy.
