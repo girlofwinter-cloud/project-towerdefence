@@ -131,3 +131,36 @@ Zwei developer parallel (je eigene Sitzung, eigener Unter-Branch von `agent/stuf
 - Idee: Dunkles Moor, Nebel, Grabsteine und Gruft an den Friedhöfen, Farben aus dem Design-System (Tokens). Rand mit Bäumen, keine Vignette. Friedhof leuchtet kurz, wenn ein Trupp kommt.
 - Akzeptanzkriterien:
   - Weg-Kontrast zum Boden mindestens 25 % Luminanz; Friedhöfe auf Desktop und Handy klar erkennbar (Screenshots).
+
+## Nachtfriedhof: neue Gegner (freigegeben 2026-11-28, nach B-210 bis B-212; Designer-Skizze Skizze: https://claude.ai/artifact/5VwK9kA9Eze6fY4KAQmjz9)
+
+### B-213: Gegner Totengräber (Nachtfriedhof)
+- Status: offen
+- Aufwand: M
+- Idee: Hält 2 s an einem Grabhügel am Weg und gräbt 3 Skelette aus, dann läuft er weiter. Früh töten verhindert den Trupp. Grob: HP 160, Tempo 0,9, Belohnung 10, Leck 2, ab Welle 7.
+- Akzeptanzkriterien:
+  - Werte in `ENEMY_TYPES`; Test in `tests/game`: vor dem Graben getötet = 0 Skelette, sonst 3.
+  - Grabhaltung sichtbar; perfektes Spiel auf der Karte bleibt möglich.
+
+### B-214: Gegner Klagegeist (Nachtfriedhof)
+- Status: offen
+- Aufwand: M
+- Idee: Lähmt alle 6 s Türme im Radius 1,5 für 1,5 s; belohnt verteiltes Bauen. Grob: HP 70, Tempo 1,3, Belohnung 8, Leck 1, ab Welle 9.
+- Akzeptanzkriterien:
+  - Test: gelähmter Turm schießt nicht.
+  - Sichtbarer Ring und Lähm-Zeichen am Turm, nicht nur über Farbe.
+
+### B-215: Gegner-Rotation Nachtfriedhof
+- Status: offen
+- Aufwand: S
+- Idee: Auf `graveyard` fallen Glutling (`ember`) und Fledermaus (`bat`) weg: Feuer passt nicht ins Moor, Flieger würden die Nebenwege entwerten. Skelett und Nekromantin bleiben.
+- Akzeptanzkriterien:
+  - `MAPS.graveyard` mit Liste ausgeschlossener Typen; Test: weder `ember` noch `bat` erscheinen.
+  - Balancing: Welle 20 ohne Lebensverlust machbar.
+
+### B-216: Nachtfriedhof Albtraum-Variante
+- Status: offen
+- Aufwand: M
+- Idee: Albtraum-Optik laut Skizze (Fläche "Albtraum"): dunkler, glühende Gruft-Tore, rote Augen im Wald, Glutrisse, violetter Nebel; gleiche Wege. Nach B-212.
+- Akzeptanzkriterien:
+  - Weg-Kontrast zum Boden mindestens 25 % Luminanz; Screenshots Desktop und Handy.
