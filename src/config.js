@@ -185,6 +185,8 @@ export const MAPS = {
   },
   // Zangenangriff (B-033): zwei Eingänge links oben und links unten, beide Wege laufen bei [10, 7] zusammen.
   // extraPaths: weitere Wegpunkt-Listen; Gegner verteilen sich abwechselnd auf alle Wege.
+  // graveyards (B-210, optional): [{ tiles: [[c,r],...], waypoints: [[c,r],...] }]; tiles = Friedhofkacheln (nicht bebaubar),
+  // waypoints = Nebenweg vom Friedhof bis in den Hauptweg/Ausgang. Dort erscheinen nur Skelett-Trupps (GRAVEYARD), keine Wellengegner.
   // lanes (B-099): Gegnertyp -> fester Weg (0 = Hauptweg oben, 1 = erster extraPath unten). Nicht genannte Typen
   // wechseln weiter ab. Oben kommt der schnelle Schwarm (Flitzer), unten die schwere Kolonne (Troll, Schildträger,
   // Schamane), damit man auf beiden Seiten unterschiedlich bauen muss.
@@ -671,6 +673,10 @@ export const EARLY_START_MAX = 3;
 // B-124: Karten mit mehreren Eingängen: Gegner (ohne feste Seite) kommen in Schüben von `burst` Gegnern je Seite,
 // und je Welle startet eine Seite `offset` Sekunden später (die Seite wechselt von Welle zu Welle).
 export const LANE_ASYNC = { burst: 5, offset: 6 };
+
+// B-210: Friedhof-Spawns (Karten mit MAPS.<id>.graveyards). interval: Trupp-Takt in s, size: Skelette je Trupp,
+// spacing: Abstand der Skelette eines Trupps in s, fromWave: erste Welle mit Trupps, type: Gegnertyp der Trupps.
+export const GRAVEYARD = { interval: 12, size: 4, spacing: 0.6, fromWave: 3, type: 'skeleton' };
 
 // B-121: Nach Wellenende startet die nächste Welle nach so vielen Sekunden Spielzeit automatisch (nicht vor Welle 1).
 export const AUTO_WAVE_DELAY = 5;

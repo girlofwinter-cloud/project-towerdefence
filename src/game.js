@@ -8,6 +8,7 @@ import { ELITE, UPGRADE_COST_FACTOR, LEVEL_DAMAGE } from './config.js'; // B-179
 import { MASTER_FX } from './config.js'; // B-173/B-174: Lebensdauer reiner Darstellungs-Ereignisse
 import { GOLD_CONDITIONS } from './config.js'; // B-183: Gold-Bedingungen im Albtraum
 import { NIGHTMARE } from './config.js'; // B-182: Albtraum-Modus
+import { GRAVEYARD } from './config.js'; // B-210: Friedhof-Spawns
 
 // Map-Modifikatoren mit Standardwerten (1 = unverändert); unbekannte Karte = Standardkarte.
 export function mapModifiers(mapId) {
@@ -75,6 +76,15 @@ export function createGame({ mapId, mode, ...overrides } = {}) {
   };
   // Alle Wege: Hauptweg (state.path, auch per override) plus extraPaths; ohne extraPaths genau ein Weg.
   if (!overrides.paths) state.paths = [state.path, ...(overrides.path ? [] : extraPaths.map((w) => buildPath(w, TILE)))];
+  // B-210: Friedhof-Wege hinter den Eingängen anhängen; nur Eingänge bekommen Wellengegner
+  if (state.entranceCount == null) state.entranceCount = state.paths.length;
+  const graveyards = overrides.graveyards ? [] : MAPS[id].graveyards || [];
+  state.graveyards = overrides.graveyards || graveyards.map((g) => {
+    state.paths.push(buildPath(g.waypoints, TILE));
+    for (const k of pathTiles(g.waypoints)) state.blocked.add(k);
+    for (const [c, r] of g.tiles || []) state.blocked.add(`${c},${r}`);
+    return { lane: state.paths.length - 1, timer: GRAVEYARD.interval, queue: [] };
+  });
   // B-030: Wegkacheln direkt neben Lava, einmal berechnet (lavaStep schlägt pro Gegner nur nach)
   if (!overrides.hotPath) state.hotPath = new Set([...state.blocked].filter((k) => nearLava(state.lava, ...k.split(',').map(Number))));
   return state;
@@ -277,6 +287,7 @@ export function startWave(state) {
   if (!early) {
     state.waveActive = true;
     state.waveTime = 0;
+    for (const g of state.graveyards || []) { g.timer = GRAVEYARD.interval; g.queue = []; } // B-210: Takt je Welle neu
     state.spawnQueue = planLanes(state, waveFor(wave, state.mapId, waveMods(state)), wave).map((e) => ({ ...e, wave }));
     return { ok: true, wave, bonus: 0 };
   }
@@ -306,7 +317,7 @@ export function laneFor(state, type, count) {
 // (der erste Schub kommt auf der frühen Seite). Eine Seite startet LANE_ASYNC.offset Sekunden später, ebenfalls je Welle wechselnd.
 // Mit nur einem Weg bleibt die Liste unverändert.
 export function planLanes(state, list, wave) {
-  const count = (state.paths || [state.path]).length;
+  const count = state.entranceCount ?? (state.paths || [state.path]).length; // B-210: nur Eingänge, keine Friedhof-Wege
   if (count < 2) return list;
   const fixedLanes = MAPS[state.mapId]?.lanes || {};
   const late = wave % count; // diese Seite startet später
@@ -330,7 +341,7 @@ export function spawnEnemy(state, type, wave = state.wave, lane = null, elite = 
   const hp = Math.round(def.hp * hpScale(Math.max(1, wave), state.modifiers?.hpGrowthLate) * nightmareHpFactor(wave, state.modifiers, special));
   const paths = state.paths || [state.path];
   // B-124: vorgeplante Seite aus der Spawn-Liste, sonst Wechsel wie bisher
-  if (!(Number.isInteger(lane) && lane >= 0 && lane < paths.length)) lane = laneFor(state, type, paths.length);
+  if (!(Number.isInteger(lane) && lane >= 0 && lane < paths.length)) lane = laneFor(state, type, state.entranceCount ?? paths.length);
   const path = paths[lane];
   const pos = pointAt(path, 0);
   const enemy = {
@@ -461,6 +472,7 @@ export function update(state, dt) {
   abilityPauseStep(state, dt);
   autoWaveStep(state, dt);
   spawnStep(state, dt);
+  graveyardStep(state, dt);
   moveEnemies(state, dt);
   if (state.status !== 'playing') return;
   lavaStep(state, dt);
@@ -496,6 +508,30 @@ function spawnStep(state, dt) {
   while (state.spawnQueue.length && state.spawnQueue[0].at <= state.waveTime) {
     const next = state.spawnQueue.shift();
     spawnEnemy(state, next.type, next.wave ?? state.wave, next.lane ?? null, next.elite ?? null); // HP-Skalierung der eigenen Welle, B-124: geplante Seite, B-179: Elite
+  }
+}
+
+// B-210: Friedhöfe schicken während der Welle (ab GRAVEYARD.fromWave, solange Wellengegner ausstehen oder leben) Skelett-Trupps.
+// Trupp-Gegner erkennt man an ihrer Lane (>= entranceCount); sind nur noch sie übrig, kommen keine neuen Trupps.
+// Begonnene Trupps laufen zu Ende.
+export function graveyardStep(state, dt) {
+  if (!state.graveyards || !state.graveyards.length) return;
+  const waveEnemiesLeft = state.spawnQueue.length > 0
+    || state.enemies.some((e) => (e.lane ?? 0) < state.entranceCount);
+  for (const g of state.graveyards) {
+    if (state.waveActive && state.wave >= GRAVEYARD.fromWave && waveEnemiesLeft) {
+      g.timer -= dt;
+      if (g.timer <= 1e-9) {
+        for (let i = 0; i < GRAVEYARD.size; i++) g.queue.push(i * GRAVEYARD.spacing);
+        g.timer += GRAVEYARD.interval;
+      }
+    }
+    if (!g.queue.length) continue;
+    g.queue = g.queue.map((t) => t - dt);
+    while (g.queue.length && g.queue[0] <= 1e-9) {
+      g.queue.shift();
+      spawnEnemy(state, GRAVEYARD.type, state.wave, g.lane);
+    }
   }
 }
 
@@ -1027,6 +1063,7 @@ function effectsStep(state, dt) {
 
 function waveEndCheck(state) {
   if (!state.waveActive || state.spawnQueue.length || state.enemies.length) return;
+  if (state.graveyards && state.graveyards.some((g) => g.queue.length)) return; // B-210: Trupp noch unterwegs
   state.waveActive = false;
   state.gold += waveBonus(state.wave);
   if (state.wave >= MAX_WAVES) state.status = 'won';
