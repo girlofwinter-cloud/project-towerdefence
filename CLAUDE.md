@@ -6,8 +6,8 @@ Zweck des Repos: Lernprojekt für agentische Entwicklung mit Claude Code. Siehe 
 ## Befehle
 - `npm start` – lokaler Server auf http://localhost:8080
 - `npm test` – Unit-Tests (ca. 2 s, immer vor Abschluss ausführen)
-- `npm run test:balance` – Balancing-Simulationen (ca. 10 s, bei Balancing- oder `game.js`-Änderungen; die CI nur bei Änderungen an `src/game.js`, `src/path.js`, `src/config.js` oder `tests/balance/`)
-- `npm run test:e2e` – Browser-Test mit Playwright (CI nur bei Änderungen an `src/`, `index.html`, `style.css`, `assets/`, `tests/e2e`)
+- `npm run test:balance` – Balancing-Simulationen (ca. 10 s, bei Balancing- oder `game.js`-Änderungen; die CI nur bei Änderungen an `src/game.js`, `path.js`, `config.js`, `hud.js`, `sound-events.js`, `fx-system.js`, `tests/balance/`, `tests/helpers.js`, `package.json` oder `ci.yml`)
+- `npm run test:e2e` – Browser-Test mit Playwright (CI nur bei Änderungen an `src/`, `index.html`, `style.css`, `assets/`, `tests/e2e/`, `package.json` oder `ci.yml`)
 - CI: Unit-Tests immer, Balancing und e2e als eigene Jobs nur bei passenden Änderungen; übersprungene Jobs zählen als grün
 
 ## Architektur (bitte einhalten)
