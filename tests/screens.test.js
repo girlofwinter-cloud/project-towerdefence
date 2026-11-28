@@ -105,3 +105,50 @@ test('B-182: mapCards zeigt den Albtraum nur bei allen Sternen', () => {
   assert.equal(cards[2].nightmare, false);
   assert.ok(mapCards(emptyProgress(), { allOpen: true }).every((c) => c.nightmare));
 });
+
+// ---------- B-184: Abzeichen in Kartenauswahl und Siegbildschirm ----------
+test('B-184: Zähler zählt Abzeichen über alle Karten (0..15), Slot-Labels je Stufe', async () => {
+  const { badgeCounterText, badgeSlots } = await import('../src/screens.js');
+  const { BADGE_MAX } = await import('../src/progress.js');
+  assert.equal(BADGE_MAX, 15);
+  assert.equal(badgeCounterText(emptyProgress()), 'Abzeichen 0 / 15');
+  const p = { maps: {}, nightmare: { [M0]: { bestWave: 20, badge: 3 }, [M1]: { bestWave: 20, badge: 1 } } };
+  assert.equal(badgeCounterText(p), 'Abzeichen 4 / 15');
+  const all = { maps: {}, nightmare: Object.fromEntries(MAP_ORDER.map((id) => [id, { bestWave: 20, badge: 3 }])) };
+  assert.equal(badgeCounterText(all), 'Abzeichen 15 / 15');
+  const slots = badgeSlots(p, M1);
+  assert.deepEqual(slots.map((x) => [x.tier, x.reached]), [[1, true], [2, false], [3, false]]);
+  assert.equal(slots[0].label, `Bronze: Welle ${MAX_WAVES} im Albtraum`);
+  assert.equal(slots[1].label, 'Silber: ohne Lebensverlust, offen');
+  assert.match(slots[2].label, /^Gold: .+, offen$/);
+  assert.equal(badgeSlots(p, M0)[2].label, 'Gold: ohne Fähigkeiten');
+});
+
+test('B-184: Siegbildschirm zeigt das höchste neue Abzeichen, Einflug nur bei neuem, Belohnung nur bei neuem Gold', async () => {
+  const { nightmareWinView } = await import('../src/screens.js');
+  const { recordResult } = await import('../src/progress.js');
+  const p = emptyProgress();
+  // erstes Spiel: Silber (volle Leben, Gold-Bedingung verfehlt) -> Bronze und Silber neu, gezeigt wird Silber
+  let res = recordResult(p, { mapId: M0, status: 'won', wave: MAX_WAVES, lives: 5, mode: 'nightmare', goldOk: false, maxLives: 5 });
+  let v = nightmareWinView(p, M0, res);
+  assert.deepEqual([v.tier, v.fly, v.reward], [2, true, null]);
+  assert.equal(v.title, `${MAPS[M0].name} – Silber-Abzeichen`);
+  assert.deepEqual(v.slots.map((x) => x.reached), [true, true, false]);
+  // schwächeres Ergebnis: kein neues Abzeichen, vorhandene höchste Stufe ohne Einflug
+  res = recordResult(p, { mapId: M0, status: 'won', wave: MAX_WAVES, lives: 2, mode: 'nightmare', goldOk: false, maxLives: 5 });
+  v = nightmareWinView(p, M0, res);
+  assert.deepEqual([v.tier, v.fly, v.reward], [2, false, null]);
+  // Gold neu: Belohnung Nacht-Look dieser Karte
+  res = recordResult(p, { mapId: M0, status: 'won', wave: MAX_WAVES, lives: 5, mode: 'nightmare', goldOk: true, maxLives: 5 });
+  v = nightmareWinView(p, M0, res);
+  assert.deepEqual([v.tier, v.fly], [3, true]);
+  assert.equal(v.reward, `Neue Belohnung freigeschaltet: Nacht-Look ${MAPS[M0].name}`);
+  assert.equal(v.condition, 'Gold: ohne Fähigkeiten');
+  // letztes fehlendes Gold: goldene Türme
+  for (const id of MAP_ORDER.slice(1, -1)) p.nightmare[id] = { bestWave: 20, badge: 3 };
+  const last = MAP_ORDER[MAP_ORDER.length - 1];
+  res = recordResult(p, { mapId: last, status: 'won', wave: MAX_WAVES, lives: 5, mode: 'nightmare', goldOk: true, maxLives: 5 });
+  assert.equal(nightmareWinView(p, last, res).reward, 'Neue Belohnung freigeschaltet: Goldene Türme');
+  // kein Albtraum-Abzeichen (z. B. verloren): kein Albtraum-Siegbildschirm
+  assert.equal(nightmareWinView(emptyProgress(), M1, { newBadge: 0 }), null);
+});

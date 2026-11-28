@@ -28,6 +28,16 @@
             <path id="end-ribbon-band" d="M20 10 H540 L524 35 L540 60 H20 L36 35 Z" fill="#c4452f" stroke="#2b1a10" stroke-width="4" stroke-linejoin="round"/>
             <text id="overlay-title" x="280" y="37" text-anchor="middle" dominant-baseline="middle" fill="#fff3d2" stroke="#2b1a10" stroke-width="6" stroke-linejoin="round" paint-order="stroke"></text>
           </svg>
+          <!-- B-184: Albtraum-Sieg (Strahlen, Medaille, Stufenreihe, Bedingung, Werte, Belohnung; main.js füllt) -->
+          <div class="end-rays" aria-hidden="true"></div>
+          <div class="end-badge" id="end-badge"></div>
+          <div class="end-nm" id="end-nm" hidden>
+            <h3 id="end-nm-title"></h3>
+            <div class="end-badges" id="end-badges"></div>
+            <p class="end-cond" id="end-cond"></p>
+            <div class="end-values" id="end-values"></div>
+            <p class="end-reward" id="end-reward" hidden><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path d="M14 3 A9 9 0 1 0 21 14 A7 7 0 1 1 14 3 Z" fill="#fff3d2" stroke="#2b1a10" stroke-width="2" stroke-linejoin="round"/></svg><span></span></p>
+          </div>
           <div class="end-stars" id="end-stars" role="img"></div>
           <p id="overlay-stats"></p>
           <p id="overlay-progress"></p>
@@ -71,7 +81,7 @@
         <svg class="hud-ico" width="38" height="36" viewBox="0 0 38 36" aria-hidden="true"><path d="M19 32 C4 21 2 12 8 7 C13 3 18 6 19 11 C20 6 25 3 30 7 C36 12 34 21 19 32 Z" fill="#e0393e" stroke="#2b1a10" stroke-width="3.5" stroke-linejoin="round"/><path d="M9 11 Q12 8 15 9" stroke="#ffb4b0" stroke-width="3" fill="none" stroke-linecap="round"/></svg>
         <span class="sr">Leben</span><b id="lives" class="num">0</b>
       </span>
-      <!-- B-183: Gold-Bedingung im Albtraum (src/hud.js goldGoalView), große Optik folgt in B-184 -->
+      <!-- B-183/B-184: Gold-Bedingung im Albtraum (src/hud.js goldGoalView), Chip mit Zeichen (main.js) -->
       <span class="gold-goal" id="gold-goal" hidden><span class="gg-text"></span><b class="gg-mark" aria-hidden="true"></b></span>
     </div>
 
@@ -144,10 +154,18 @@
 
     <!-- C5: Startbildschirm mit Kartenkarten (screens.js baut die Karten) -->
     <section id="start-screen" aria-labelledby="start-title" hidden>
+      <div class="start-head">
       <h1 id="start-title" class="start-title plq">
         <svg class="start-castle" width="64" height="72" viewBox="0 -20 108 146" aria-hidden="true"><path d="M10 122 V50 H30 V36 H40 V50 H58 V122 Z" fill="#b9b2a6" stroke="#2b1a10" stroke-width="5" stroke-linejoin="round"/><path d="M22 122 V90 a14 16 0 0 1 28 0 V122" fill="#33211a" stroke="#2b1a10" stroke-width="3"/><path d="M56 122 V30 H72 V20 H80 V30 H96 V122 Z" fill="#cfc8bb" stroke="#2b1a10" stroke-width="5" stroke-linejoin="round"/><path d="M70 30 L84 -4 L98 30 Z" fill="#c4452f" stroke="#2b1a10" stroke-width="4" stroke-linejoin="round"/><rect x="76" y="48" width="8" height="18" rx="4" fill="#33211a"/><path d="M84 -4 V-18" stroke="#2b1a10" stroke-width="3"/><path d="M84 -18 L104 -12 L84 -6 Z" fill="#3a7bd5" stroke="#2b1a10" stroke-width="2.5" stroke-linejoin="round"/></svg>
         <span>Project TowerDefence</span>
       </h1>
+        <!-- B-184: Umschalter Normal/Albtraum und Abzeichen-Zähler (screens.js) -->
+        <div class="start-mode" role="radiogroup" aria-label="Spielmodus">
+          <button type="button" role="radio" data-mode="normal" aria-checked="true">Normal</button>
+          <button type="button" role="radio" data-mode="nightmare" aria-checked="false">Albtraum</button>
+        </div>
+        <span class="badge-count" role="status"></span>
+      </div>
       <div class="map-cards" role="list"></div>
       <p class="start-hint"><span class="no-touch">Klicke eine Karte zum Starten</span><span class="touch-hint">Tippe eine Karte zum Starten</span></p>
       <p class="start-keys key"><kbd>←</kbd> <kbd>→</kbd> Karte wählen · <kbd>Enter</kbd> starten · Im Spiel: <kbd>1</kbd>–<kbd>5</kbd> Türme, <kbd>Leertaste</kbd> Welle, <kbd>P</kbd> Pause · alle Tasten unter ? oben rechts</p>

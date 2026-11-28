@@ -1825,3 +1825,26 @@ export const COSMETICS = {
   night: { name: 'Nacht-Look', unlock: 'Gold im Albtraum auf dieser Karte' },
   goldTowers: { name: 'Goldene Türme', unlock: 'Gold im Albtraum auf allen Karten' },
 };
+
+// B-184: Albtraum-Stimmung (auch Nacht-Look B-185) nur über dem Spielfeld, Bauvorlage Albtraum-Stimmung.
+// strength = Gesamtstärke k; die Deckkräfte unten sind schon mit k multipliziert. Farben als „r,g,b“ für rgba().
+export const NIGHT_STYLE = {
+  strength: 0.75,
+  tint: '20,12,40', tintAlpha: 0.47,          // night-tint, Mischmodus multiply
+  ember: '255,90,42', emberAlpha: 0.26,       // night-ember: rotes Licht von unten
+  emberX: 0.7, emberY: 1.0, emberRadius: 0.6, // Mitte in Feldbreite/-höhe, Radius in Felddiagonalen
+  vignette: '8,4,16', vignetteAlpha: 0.64, vignetteInner: 0.45, // night-vignette, innen durchsichtig (Anteil des Radius)
+  // Glut am Weg (pro Frame): Anzahl, seitlicher Abstand zur Wegmitte in Kacheln, Kern/Hof in Spiel-px, Takt in s
+  glowCount: 10, glowSide: 0.6, glowCore: 3, glowHalo: 7, glowPeriod: 1.8, glowPhaseStep: 0.2,
+  glowHot: '255,229,138', glowLava: '255,122,31', // lava-hot / lava
+};
+
+// B-184: Albtraum-Abzeichen (Medaille mit Oger-Kopf), Bauvorlage Albtraum-Abzeichen. Nur Aussehen.
+export const BADGE_STYLE = {
+  ink: '#2b1a10', ribbon: '#c4452f', cream: '#fff3d2', eye: '#ffc22a', eyeGlow: '#ff7a1f', muted: '#e8d3a8', // ink, flag-red, cream, ogre-eye, lava, muted
+  // Verlauf je Stufe (Index = Stufe - 1): badge-bronze-a/-b, badge-silver-a/-b, gold-light/gold-btn-b
+  tiers: [['#f0b47a', '#8a4f24'], ['#ffffff', '#8f9aa6'], ['#ffe27a', '#e08a1c']],
+  small: 44,     // bis zu dieser Größe: dicke Linien, ohne Augenschein, Nase, Mund, Hauer
+  openFace: 56,  // offen: ab dieser Größe gestrichelter Kopf
+  big: 100,      // ab dieser Größe: Rand 4 px, Band-Rand 3
+};

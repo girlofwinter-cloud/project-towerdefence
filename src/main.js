@@ -11,7 +11,8 @@ import { buildTapStep, aimStep, fieldPoint, canvasSize, moveFocusTile, rotatePau
 import { createSoundTracker, collectSounds, loadSoundOn, saveSoundOn } from './sound-events.js';
 import { unlockAudio, setSoundOn, playSound, updateMusic } from './audio.js';
 import { loadProgress, saveProgress, recordResult, isUnlocked, isNightmareUnlocked, nightmareResultLines, nightmareProgress, mapProgress, starText, resultLines, startMap, mapAfterResult, starsFor, MAP_ORDER } from './progress.js';
-import { mountStartScreen, endView, starsHtml, STAR_COUNT } from './screens.js';
+import { mountStartScreen, endView, starsHtml, STAR_COUNT, nightmareWinView } from './screens.js';
+import { badgeSvg } from './badge-art.js';
 import { fullscreenControl } from './fullscreen.js';
 import { createBossBars } from './boss-bar.js';
 import { ringRadius, tileCenterPx, ringCenter, infoOnLeft, pickTower, buildRingView, towerRingView } from './ring-menu.js';
@@ -157,6 +158,12 @@ for (const evName of ['pointerdown', 'keydown']) window.addEventListener(evName,
 // Merker: Ergebnis dieses Spiels schon gespeichert? (refreshUI läuft alle 0,1 s)
 let resultSaved = false;
 let resultText = []; // Zeilen fürs Overlay (resultLines)
+let winView = null; // B-184: Albtraum-Sieg (nightmareWinView), sonst null
+// B-184: Zeichen der Gold-Anzeige (erfüllt: Haken, verletzt: Kreuz), Bauvorlage Albtraum-Gold-Anzeige
+const GG_MARK = {
+  ok: '<svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="13" fill="var(--message-info)" stroke="var(--ink)" stroke-width="3"/><path d="M9 16.5 L14 21 L23 11" fill="none" stroke="var(--cream)" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  broken: '<svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="13" fill="var(--message-bad)" stroke="var(--ink)" stroke-width="3"/><path d="M11 11 L21 21 M21 11 L11 21" fill="none" stroke="var(--cream)" stroke-width="3.5" stroke-linecap="round"/></svg>',
+};
 
 // Für Tests und Neugierige: im Browser-Konsole `__game` eintippen.
 window.__game = () => state;
@@ -525,6 +532,7 @@ const startScreen = mountStartScreen($('start-screen'), {
   getProgress: () => progress,
   allOpen: TEST_MODE,
   currentMap: () => (TEST_MODE ? state.mapId : startMap(progress)),
+  currentMode: () => mode, // B-184: nach einem Albtraum-Spiel öffnet die Kartenauswahl in der Albtraum-Ansicht
   onPick: (id, pickedMode = 'normal') => {
     mapId = id;
     mode = pickedMode;
@@ -668,6 +676,7 @@ function restart() {
   state = createGame({ mapId, mode, autoWave: ui.autoWave });
   resultSaved = false;
   resultText = [];
+  winView = null;
   Object.assign(ui, { buildType: null, selectedTowerId: null, pending: null, aiming: false, hoverPx: null, speed: SPEED_STEPS[0], ring: null, ringPreview: null, upgradeHover: false, upgradePreview: null });
   refreshUI();
 }
@@ -778,13 +787,24 @@ function refreshUI() {
   const gg = goldGoalView(state.mode, checkGoldCondition(state, state.mapId));
   const ggEl = $('gold-goal');
   ggEl.hidden = gg.hidden;
-  if (!gg.hidden && ggEl.dataset.key !== `${gg.text}|${gg.ok}`) {
+  document.body.classList.toggle('mode-nightmare', state.mode === 'nightmare'); // B-184: Kartenwahl-Liste weicht dem Gold-Chip
+  if (gg.hidden) ggEl.dataset.key = '';
+  else if (ggEl.dataset.key !== `${gg.text}|${gg.ok}`) {
+    // B-184: Wechsel auf verletzt blitzt einmal auf; Handy quer (nur Zeichen): Meldung beim Start und beim Verletzen
+    const wasOk = ggEl.dataset.key?.endsWith('|true');
+    const first = !ggEl.dataset.key || !ggEl.dataset.key.startsWith(`${gg.text}|`);
     ggEl.dataset.key = `${gg.text}|${gg.ok}`;
     ggEl.classList.toggle('broken', !gg.ok);
+    ggEl.classList.remove('flash');
+    if (wasOk && !gg.ok && !ui.reducedMotion) { void ggEl.offsetWidth; ggEl.classList.add('flash'); }
     ggEl.title = gg.title;
     ggEl.setAttribute('aria-label', gg.title);
     ggEl.querySelector('.gg-text').textContent = gg.text;
-    ggEl.querySelector('.gg-mark').textContent = gg.mark;
+    setHtml(ggEl.querySelector('.gg-mark'), GG_MARK[gg.ok ? 'ok' : 'broken']);
+    if (landscapeQuery.matches && state.status === 'playing') {
+      if (first) flash(gg.text, 'info');
+      else if (wasOk && !gg.ok) flash(`Gold verfehlt: ${gg.text.replace(/^Gold: /, '')}`);
+    }
   }
 
   for (const [id, def] of Object.entries(ABILITIES)) {
@@ -857,6 +877,30 @@ function refreshUI() {
   $('overlay-stats').textContent = `Welle ${state.wave} · ${state.kills} Gegner besiegt`;
   if (state.status !== 'playing' && !resultSaved) saveResult();
   renderResultLines($('overlay-progress'), resultText);
+  renderNightmareWin(state.status !== 'playing' ? winView : null);
+}
+
+// B-184: Siegbildschirm im Albtraum (Medaille fliegt nur bei neuem Abzeichen ein); v = nightmareWinView oder null
+function renderNightmareWin(v) {
+  const over = $('overlay');
+  if (v) { $('overlay-title').textContent = 'Albtraum besiegt!'; $('end-ribbon-band').setAttribute('fill', '#c4452f'); }
+  const key = v ? `${v.title}|${v.fly}|${state.lives}` : '';
+  if (over.dataset.nmKey === key) return;
+  over.dataset.nmKey = key;
+  over.classList.toggle('nightmare-win', !!v);
+  over.classList.toggle('fresh', !!v?.fly);
+  $('end-nm').hidden = !v;
+  if (!v) { setHtml($('end-badge'), ''); return; }
+  setHtml($('end-badge'), badgeSvg(200, v.tier, `${v.title}`));
+  $('end-badge').classList.remove('fly');
+  if (v.fly) { void $('end-badge').offsetWidth; $('end-badge').classList.add('fly'); }
+  $('end-nm-title').textContent = v.title;
+  setHtml($('end-badges'), v.slots.map((x) => badgeSvg(40, x.reached ? x.tier : 0, x.label)).join(''));
+  $('end-cond').textContent = v.condition;
+  setHtml($('end-values'), `<span>Welle ${state.wave} / ${MAX_WAVES}</span><span>Leben ${Math.max(0, state.lives)} / ${maxLives(state)}</span>`);
+  $('end-reward').hidden = !v.reward;
+  $('end-reward').querySelector('span').textContent = v.reward ?? '';
+  $('restart').focus({ preventScroll: true });
 }
 
 // Erste Zeile normal, weitere als hervorgehobene Meldungen (nur neu bauen, wenn sich etwas ändert).
@@ -883,7 +927,9 @@ function saveResult() {
   if (state.mode === 'nightmare') { // B-182: Albtraum bleibt auf der Karte, Normal-Stand unberührt
     saveProgress(getStorage(), progress);
     resultText = nightmareResultLines(progress, state.mapId, res, nightmareBefore);
-    $('restart').textContent = 'Neues Spiel';
+    winView = state.status === 'won' ? nightmareWinView(progress, state.mapId, res) : null; // B-184
+    $('restart').textContent = winView ? 'Nochmal spielen' : 'Neues Spiel';
+    $('to-maps').textContent = winView ? 'Kartenauswahl' : 'Karten';
     return;
   }
   // Nach einem Sieg die nächste Karte vorwählen: „Neues Spiel“ startet dort, gemerkt auch fürs nächste Öffnen.
@@ -891,6 +937,8 @@ function saveResult() {
   if (mapId !== state.mapId) progress.lastMap = mapId;
   saveProgress(getStorage(), progress);
   refreshMapOptions();
+  winView = null;
+  $('to-maps').textContent = 'Karten';
   resultText = resultLines(progress, state.mapId, res, before);
   $('restart').textContent = mapId !== state.mapId ? `Weiter: ${MAPS[mapId].name}` : 'Neues Spiel';
 }
@@ -926,7 +974,7 @@ if (TEST_MODE) {
     ui,
     restartOn: (id) => { mapId = id; restart(); },
     // Weiterspielen nach erzwungenem Spielende: Overlay-Text des alten Ergebnisses verwerfen.
-    resume: () => { resultSaved = false; resultText = []; mapId = state.mapId; },
+    resume: () => { resultSaved = false; resultText = []; winView = null; mapId = state.mapId; },
     refresh: refreshUI,
   }));
 }

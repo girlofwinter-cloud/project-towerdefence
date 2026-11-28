@@ -1,8 +1,10 @@
 // Startbildschirm mit Kartenkarten und Spielende-Plakette (Stil 1, C5).
 // Reine Funktionen (mapCards, endView, starSvg) sind in Node testbar; mountStartScreen braucht das DOM
 // und wird nur von main.js aufgerufen. Fortschritt wird hier nur gelesen, nie gespeichert.
-import { MAPS, MAX_WAVES, STAR_LIVES_SHARE, VIEW_WIDTH, VIEW_HEIGHT, FRAME_MARGIN, SCREENS } from './config.js';
-import { MAP_ORDER, mapProgress, isUnlocked, isNightmareUnlocked } from './progress.js';
+import { MAPS, MAX_WAVES, STAR_LIVES_SHARE, VIEW_WIDTH, VIEW_HEIGHT, FRAME_MARGIN, SCREENS, BADGE_TIERS, GOLD_CONDITIONS, COSMETICS } from './config.js';
+import { MAP_ORDER, mapProgress, isUnlocked, isNightmareUnlocked, nightmareProgress, badgeCount, BADGE_MAX } from './progress.js';
+import { isGoldTowersUnlocked } from './cosmetics.js';
+import { badgeSvg } from './badge-art.js';
 import { createGame } from './game.js';
 import { buildPaintedSvg, rasterizePainted, paletteFor } from './render-painted.js';
 
@@ -23,6 +25,44 @@ export function mapCards(progress, { allOpen = false } = {}) {
     const nightmare = open && (allOpen || isNightmareUnlocked(progress, id)); // B-182: Knopf „Albtraum“
     return { id, name, open, stars, bestWave, line, label, nightmare };
   });
+}
+
+// ---------- B-184: Albtraum-Abzeichen in Kartenauswahl und Siegbildschirm ----------
+// Bedingungen der drei Stufen einer Karte (Bronze, Silber, Gold).
+export function badgeConditions(mapId) {
+  return [`Welle ${MAX_WAVES} im Albtraum`, 'ohne Lebensverlust', GOLD_CONDITIONS[mapId]?.label ?? ''];
+}
+// Drei Slots einer Karte: Stufe, erreicht ja/nein, zugänglicher Name (z. B. „Gold: ohne Fähigkeiten, offen“).
+export function badgeSlots(progress, mapId) {
+  const have = nightmareProgress(progress, mapId).badge ?? 0;
+  const cond = badgeConditions(mapId);
+  return BADGE_TIERS.map((name, i) => ({ tier: i + 1, reached: have > i, label: `${name}: ${cond[i]}${have > i ? '' : ', offen'}` }));
+}
+// Zähler im Kopf der Kartenauswahl (jede Stufe zählt, Gold auf einer Karte = 3)
+export function badgeCounterText(progress) {
+  return `Abzeichen ${badgeCount(progress)} / ${BADGE_MAX}`;
+}
+// Siegbildschirm im Albtraum. res = Rückgabe von recordResult (mit newBadge), progress = Stand danach.
+// tier = höchstes neue Abzeichen dieses Spiels, sonst die vorhandene höchste Stufe; fly nur bei neuem Abzeichen;
+// reward nur, wenn Gold neu erreicht wurde (Nacht-Look der Karte, beim letzten Gold die goldenen Türme). null = kein Albtraum-Sieg.
+export function nightmareWinView(progress, mapId, res = {}) {
+  const have = nightmareProgress(progress, mapId).badge ?? 0;
+  const fresh = res.newBadge > 0 ? Math.min(BADGE_TIERS.length, res.newBadge) : 0;
+  const tier = fresh || have;
+  if (!tier || !MAPS[mapId]) return null;
+  const name = MAPS[mapId].name;
+  let reward = null;
+  if (fresh === BADGE_TIERS.length) {
+    reward = `Neue Belohnung freigeschaltet: ${isGoldTowersUnlocked(progress) ? COSMETICS.goldTowers.name : `${COSMETICS.night.name} ${name}`}`;
+  }
+  return {
+    tier,
+    fly: fresh > 0,
+    title: `${name} – ${BADGE_TIERS[tier - 1]}-Abzeichen`,
+    condition: `${BADGE_TIERS[tier - 1]}: ${badgeConditions(mapId)[tier - 1]}`,
+    slots: badgeSlots(progress, mapId),
+    reward,
+  };
 }
 
 // Neuer Fokus in der Kartenreihe bei Pfeil links/rechts: nur offene Karten, am Rand bleibt er stehen.
@@ -75,45 +115,100 @@ function paintThumb(cv, mapId) {
 }
 
 // ---------- Startbildschirm (DOM) ----------
-// opts: getProgress(), allOpen, currentMap() (vorgewählte Karte), onPick(id, mode) (mode 'normal' | 'nightmare').
+// opts: getProgress(), allOpen, currentMap() (vorgewählte Karte), currentMode() (Ansicht beim Öffnen, B-184),
+// onPick(id, mode) (mode 'normal' | 'nightmare').
 // Rückgabe: show(closable), hide(), isOpen(), handleKey(ev) (true = Taste verbraucht).
+// B-184: kleines Schloss (Albtraum gesperrt) und Hinweistext
+const SMALL_LOCK = '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M7 11 V8 a5 5 0 0 1 10 0 V11" fill="none" stroke="#d9dde2" stroke-width="2.5"/>'
+  + '<rect x="4" y="10" width="16" height="12" rx="3" fill="#f2c14e" stroke="#2b1a10" stroke-width="2"/></svg>';
+const NM_LOCKED = 'Albtraum: 3 Sterne nötig';
 export function mountStartScreen(root, opts) {
   const list = root.querySelector('.map-cards');
+  const modeBar = root.querySelector('.start-mode');
+  const counter = root.querySelector('.badge-count');
+  const hint = root.querySelector('.start-hint');
   let closable = false;
   let cards = [];
+  let view = 'normal'; // B-184: Ansicht Normal oder Albtraum
+  const selectable = () => (view === 'nightmare' ? cards.map((c) => ({ ...c, open: c.nightmare })) : cards);
 
   function build() {
-    cards = mapCards(opts.getProgress(), { allOpen: opts.allOpen });
-    const current = opts.currentMap();
+    const progress = opts.getProgress();
+    cards = mapCards(progress, { allOpen: opts.allOpen });
+    const nm = view === 'nightmare';
+    // vorgewählte Karte; in der Albtraum-Ansicht die erste spielbare, wenn sie dort gesperrt ist
+    const usableIds = cards.filter((c) => (nm ? c.nightmare : c.open)).map((c) => c.id);
+    const current = usableIds.includes(opts.currentMap()) ? opts.currentMap() : (usableIds[0] ?? opts.currentMap());
+    root.classList.toggle('nightmare', nm);
+    for (const b of modeBar?.querySelectorAll('button') ?? []) b.setAttribute('aria-checked', String(b.dataset.mode === view));
+    if (counter) {
+      const text = badgeCounterText(progress);
+      counter.setAttribute('aria-label', text);
+      counter.innerHTML = `${badgeSvg(36, 3)}<span aria-hidden="true">${text.replace('Abzeichen ', '<span class="bc-word">Abzeichen </span>')}</span>`;
+    }
+    hint?.classList.remove('show-badges');
     list.replaceChildren(...cards.map((card) => {
       const btn = document.createElement('button');
       btn.className = 'map-card plq';
       btn.dataset.map = card.id;
-      btn.setAttribute('aria-label', card.label);
-      btn.disabled = !card.open;
+      const usable = nm ? card.nightmare : card.open;
+      btn.setAttribute('aria-label', nm ? `${card.name} im Albtraum${card.nightmare ? '' : `, gesperrt: ${NM_LOCKED}`}` : card.label);
+      btn.disabled = !usable;
       btn.classList.toggle('current', card.id === current);
-      btn.innerHTML = `<canvas class="map-thumb" width="${SCREENS.thumb.width}" height="${SCREENS.thumb.height}"></canvas>`
-        + (card.open ? '' : LOCK_SVG)
-        + `<span class="map-name">${card.name}</span><span class="map-stars">${starsHtml(card.stars, 24)}</span><span class="map-best">${card.line}</span>`;
+      const thumb = `<canvas class="map-thumb" width="${SCREENS.thumb.width}" height="${SCREENS.thumb.height}"></canvas>`;
+      const nmLocked = `<span class="map-nm-locked">${SMALL_LOCK}<span>${NM_LOCKED}</span></span>`;
+      const head = `<span class="map-name">${card.name}</span><span class="map-stars">${starsHtml(card.stars, 24)}</span>`;
+      btn.innerHTML = nm
+        ? `<span class="map-thumb-wrap">${thumb}${card.nightmare ? '' : LOCK_SVG}</span>${head}${card.nightmare ? '' : nmLocked}`
+        : thumb + (card.open ? '' : LOCK_SVG) + head + `<span class="map-best">${card.line}</span>`
+          + (card.open && !card.nightmare ? nmLocked : '');
       paintThumb(btn.querySelector('canvas'), card.id);
-      btn.addEventListener('click', () => pick(card.id));
-      // B-182: Karte und Albtraum-Knopf in einer Hülle (kein Knopf im Knopf); der Knopf liegt oben rechts auf der Karte
+      btn.addEventListener('click', () => pick(card.id, nm ? 'nightmare' : 'normal'));
+      // B-182: Karte und Albtraum-Knopf in einer Hülle (kein Knopf im Knopf); B-184: Knopf unten auf der Karte
       const slot = document.createElement('div');
       slot.className = 'map-slot';
       slot.setAttribute('role', 'listitem');
       slot.append(btn);
       if (card.nightmare) {
-        const nm = document.createElement('button');
-        nm.className = 'map-nightmare';
-        nm.dataset.map = card.id;
-        nm.textContent = 'Albtraum';
-        nm.setAttribute('aria-label', `${card.name} im Albtraum-Modus spielen`);
-        nm.addEventListener('click', () => pick(card.id, 'nightmare'));
-        slot.append(nm);
+        slot.classList.add('has-nm');
+        if (nm) slot.append(badgeRow(progress, card));
+        const b = document.createElement('button');
+        b.className = 'map-nightmare';
+        b.dataset.map = card.id;
+        b.textContent = nm ? 'Albtraum spielen' : 'Albtraum';
+        b.setAttribute('aria-label', `${card.name} im Albtraum-Modus spielen`);
+        b.addEventListener('click', () => pick(card.id, 'nightmare'));
+        slot.append(b);
       }
       return slot;
     }));
   }
+  // B-184: Slot-Reihe (ein Tippziel); Tipp schreibt die drei Bedingungen in den Hinweis
+  function badgeRow(progress, card) {
+    const slots = badgeSlots(progress, card.id);
+    const row = document.createElement('button');
+    row.className = 'map-badges';
+    row.dataset.map = card.id;
+    row.setAttribute('aria-label', `Abzeichen ${card.name}: ${slots.map((x) => x.label).join('; ')}`);
+    row.innerHTML = slots.map((x) => badgeSvg(44, x.reached ? x.tier : 0, x.label)).join('');
+    row.addEventListener('click', () => {
+      if (!hint) return;
+      let text = hint.querySelector('.badge-hint');
+      if (!text) { text = document.createElement('span'); text.className = 'badge-hint'; hint.append(text); }
+      text.textContent = `${card.name}: ${slots.map((x) => x.label.replace(', offen', '')).join(' · ')}`;
+      hint.classList.add('show-badges');
+    });
+    return row;
+  }
+  function setView(v) {
+    if (v === view) return;
+    view = v;
+    build(); // Fokus bleibt auf dem Umschalter
+  }
+  modeBar?.addEventListener('click', (ev) => {
+    const b = ev.target instanceof Element ? ev.target.closest('button[data-mode]') : null;
+    if (b) setView(b.dataset.mode === 'nightmare' ? 'nightmare' : 'normal');
+  });
   const cardBtn = (id) => list.querySelector(`.map-card[data-map="${id}"]`);
   function focusCard(id) {
     for (const b of list.querySelectorAll('.map-card')) b.classList.toggle('current', b.dataset.map === id);
@@ -127,11 +222,12 @@ export function mountStartScreen(root, opts) {
   }
   function show(canClose = false) {
     closable = canClose;
+    view = opts.currentMode?.() === 'nightmare' ? 'nightmare' : 'normal';
     build();
     root.hidden = false;
     document.body.classList.add('on-start');
     root.scrollTop = 0;
-    cardBtn(opts.currentMap())?.focus({ preventScroll: true });
+    list.querySelector('.map-card.current')?.focus({ preventScroll: true });
   }
   function hide() {
     root.hidden = true;
@@ -145,13 +241,16 @@ export function mountStartScreen(root, opts) {
     const onTopButton = ev.target instanceof Element && ev.target.closest('.top-buttons');
     if (key.toLowerCase() === 'm') return false;
     if (onTopButton && (key === 'Enter' || key === ' ')) return true; // Knopf löst selbst aus, Spiel bekommt die Taste nicht
-    if (key === 'ArrowLeft' || key === 'ArrowRight') { ev.preventDefault(); focusCard(moveFocus(cards, current(), key === 'ArrowLeft' ? -1 : 1)); }
+    // B-184: Umschalter und Slot-Reihe sind eigene Knöpfe
+    const ownButton = ev.target instanceof Element && ev.target.closest('.start-mode, .map-badges');
+    if (ownButton && (key === 'Enter' || key === ' ')) return true;
+    if (key === 'ArrowLeft' || key === 'ArrowRight') { ev.preventDefault(); focusCard(moveFocus(selectable(), current(), key === 'ArrowLeft' ? -1 : 1)); }
     else if (key === 'Enter' || key === ' ') {
       ev.preventDefault();
       const nm = ev.target instanceof Element ? ev.target.closest('.map-nightmare') : null;
       if (nm) { pick(nm.dataset.map, 'nightmare'); return true; }
       const focused = ev.target instanceof Element ? ev.target.closest('.map-card') : null;
-      pick(focused?.dataset.map ?? current());
+      pick(focused?.dataset.map ?? current(), view);
     } else if (key === 'Escape') close();
     return true; // alle Spieltasten sind gesperrt (Tab bewegt weiter den Fokus, main.js nutzt Tab nicht)
   }

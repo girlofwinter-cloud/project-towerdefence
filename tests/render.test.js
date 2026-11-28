@@ -2085,3 +2085,83 @@ test('Stufe 3: beim Aufstieg zeigt der Turm bis swapAt noch Stufe 2, danach das 
   s.effects.length = 0;
   assert.equal(displayLevel(s, t), 3);
 });
+
+// ---------- B-184: Albtraum-Stimmung und Abzeichen ----------
+// Mock, der Füllungen mit Mischmodus und Clip-Rechtecke mitschreibt
+function nightRecorder() {
+  const props = {};
+  const fills = [];
+  const rects = [];
+  const ctx = new Proxy({}, {
+    get(_, k) {
+      if (k in props) return props[k];
+      return (...a) => {
+        if (k === 'createLinearGradient' || k === 'createRadialGradient') return { addColorStop() {} };
+        if (k === 'fillRect') fills.push({ op: props.globalCompositeOperation ?? 'source-over', style: String(props.fillStyle) });
+        if (k === 'rect') rects.push(a);
+      };
+    },
+    set(_, k, v) { props[k] = v; return true; },
+  });
+  return { ctx, fills, rects };
+}
+
+test('B-184 Render: Nacht-Tönung (multiply, night-tint) nur im Albtraum oder mit ui.night, nur im Feld 20 x 14', async () => {
+  const { render, nightOn } = await import('../src/render.js?nacht');
+  const { WIDTH, HEIGHT } = await import('../src/config.js');
+  const isTint = (f) => f.op === 'multiply' && f.style.startsWith('rgba(20,12,40,');
+  const normal = createGame({ mapId: 'meadow' });
+  const a = nightRecorder();
+  render(a.ctx, normal, {});
+  assert.equal(nightOn(normal, {}), false);
+  assert.equal(a.fills.some(isTint), false, 'Normalmodus ohne Nacht-Look: keine Tönung');
+  const nm = createGame({ mapId: 'meadow', mode: 'nightmare' });
+  const b = nightRecorder();
+  render(b.ctx, nm, {});
+  assert.equal(nightOn(nm, {}), true);
+  assert.equal(b.fills.filter(isTint).length, 1, 'Albtraum: genau eine Tönung');
+  assert.ok(b.rects.some((r) => r.join() === `0,0,${WIDTH},${HEIGHT}`), 'Clip-Rechteck = Feld');
+  const c = nightRecorder();
+  render(c.ctx, normal, { night: true }); // Nacht-Look (B-185) im Normalmodus
+  assert.equal(c.fills.filter(isTint).length, 1);
+  // Spielfeld bleibt 20 x 14 Kacheln
+  assert.deepEqual([COLS, ROWS, WIDTH / TILE, HEIGHT / TILE], [20, 14, 20, 14]);
+});
+
+test('B-184 Glut am Weg: 10 Punkte, deterministisch, neben der Wegmitte (höchstens 0,6 Kacheln)', async () => {
+  const { emberPoints, drawEmbers } = await import('../src/render-light.js');
+  const { NIGHT_STYLE: N } = await import('../src/config.js');
+  const s = createGame({ mapId: 'meadow', mode: 'nightmare' });
+  const pts = emberPoints(s.path);
+  assert.equal(pts.length, N.glowCount);
+  assert.deepEqual(pts, emberPoints(s.path), 'gleicher Weg, gleiche Punkte');
+  const dist = (p) => Math.min(...s.path.segments.map(({ a, b }) => {
+    const len2 = (b.x - a.x) ** 2 + (b.y - a.y) ** 2;
+    const t = Math.max(0, Math.min(1, ((p.x - a.x) * (b.x - a.x) + (p.y - a.y) * (b.y - a.y)) / len2));
+    return Math.hypot(p.x - a.x - t * (b.x - a.x), p.y - a.y - t * (b.y - a.y));
+  }));
+  for (const p of pts) assert.ok(dist(p) > 0 && dist(p) <= N.glowSide * TILE + 1e-6, 'neben, aber nicht weiter als 0,6 Kacheln vom Weg');
+  assert.deepEqual(emberPoints({ segments: [], length: 0 }), []);
+  // je Punkt zwei Kreise (Hof, Kern), ohne Gradient
+  const m = mockCtx();
+  drawEmbers(m.ctx, pts, 1.3, N, true);
+  assert.equal(m.counts.arc, 2 * N.glowCount);
+  assert.equal(m.counts.createRadialGradient, undefined);
+});
+
+test('B-184 badgeSvg: gültiges SVG je Stufe, Band nur bei erreichten Stufen, Gold-Verlauf, klein ohne Mund', async () => {
+  const { badgeSvg, OGRE_MOUTH } = await import('../src/badge-art.js');
+  for (let t = 0; t <= 3; t++) {
+    const svg = badgeSvg(44, t);
+    assert.match(svg, /^<svg [^>]*viewBox="0 0 100 100"[^>]*>.*<\/svg>$/s);
+    assert.equal((svg.match(/<svg/g) || []).length, 1);
+    assert.equal(svg.includes('#c4452f'), t > 0, `Band (flag-red) bei Stufe ${t}`);
+    assert.equal(svg.includes(OGRE_MOUTH), false, 'S 44 ohne Mund');
+  }
+  assert.ok(badgeSvg(44, 3).includes('#ffe27a'), 'Gold-Verlauf gold-light');
+  assert.ok(badgeSvg(200, 3).includes(OGRE_MOUTH), 'groß mit Mund');
+  assert.match(badgeSvg(200, 3), /badge-glow/);
+  assert.doesNotMatch(badgeSvg(200, 2), /badge-glow/);
+  assert.match(badgeSvg(40, 1, 'Bronze: Welle 20 im Albtraum'), /role="img" aria-label="Bronze: Welle 20 im Albtraum"/);
+  assert.match(badgeSvg(120, 0), /stroke-dasharray/, 'offen: gestrichelt');
+});
