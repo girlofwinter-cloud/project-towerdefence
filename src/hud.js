@@ -144,3 +144,9 @@ export function goldGoalView(mode, check) {
     title: `Gold-Bedingung ${ok ? 'noch erfüllt' : 'verletzt'}: ${check.label}`,
   };
 }
+
+// B-193: Meldung beim Verpassen der Gold-Bedingung (Bauvorlage Albtraum-Gold-Anzeige). Silber ist noch möglich,
+// solange in diesem Spiel kein Leben verloren ging (state.track.livesLost).
+export function goldMissedText(state) {
+  return state?.track?.livesLost > 0 ? 'Gold verpasst' : 'Gold verpasst – Silber ist noch möglich';
+}

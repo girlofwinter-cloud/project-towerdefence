@@ -2371,3 +2371,56 @@ test('B-190: Render im Albtraum zeichnet alle Typen ohne Fehler', async () => {
     assert.equal(m.depth, 0);
   }
 });
+
+// ---------- B-193: HUD im Albtraum ----------
+
+test('B-193 nmWoodDeco: SVG ohne NaN für alle 5 Holzarten, Eisenband je Trenner, Zuordnung Karte -> Holz', async () => {
+  const { nmWoodDeco, nmWoodKind, NM_WOOD_OF_MAP, NM_WOOD_KINDS, NM_WOOD_OVERHANG, NM_STYLE_NAME } = await import('../src/nm-wood.js');
+  const { MAP_ORDER } = await import('../src/progress.js');
+  assert.deepEqual(NM_WOOD_OF_MAP, { meadow: 'moss', ice: 'ice', fork: 'rust', twin: 'iron', volcano: 'ember' });
+  for (const id of MAP_ORDER) {
+    assert.ok(NM_WOOD_KINDS.includes(nmWoodKind(id, true)), `Holz für ${id}`);
+    assert.ok(NM_STYLE_NAME[id], `Stilname für ${id}`);
+    assert.equal(nmWoodKind(id, false), null, 'ohne Albtraum/Nacht-Look heutiges Holz');
+  }
+  for (const kind of NM_WOOD_KINDS) {
+    const svg = nmWoodDeco(kind, 420, 56, [150, 290]);
+    assert.match(svg, /^<svg class="plq-deco" aria-hidden="true" [^>]*>.*<\/svg>$/s, kind);
+    assert.doesNotMatch(svg, /NaN|undefined/, kind);
+    assert.match(svg, new RegExp(`height="${56 + NM_WOOD_OVERHANG[kind]}"`), `Höhe mit Überstand (${kind})`);
+    assert.doesNotMatch(nmWoodDeco(kind, 0, 0), /NaN/, `leer ohne NaN (${kind})`);
+  }
+  assert.equal((nmWoodDeco('iron', 420, 56, [150, 290]).match(/class="nm-strap"/g) || []).length, 2, 'ein Band je Trenner');
+  assert.match(nmWoodDeco('iron', 420, 56, [150]), /x="143"/, 'Band mittig auf dem Trenner (14 breit)');
+  assert.equal(nmWoodDeco('moss', 420, 56, [150]).includes('nm-strap'), false);
+  assert.equal(nmWoodDeco('holz', 420, 56), '', 'unbekannte Art: keine Deko');
+  assert.equal(nmWoodKind('unbekannt', true), 'moss');
+});
+
+test('B-193 nmPlaquePlacement: Plakette 180 rechts neben dem HUD (Lücke 12), sonst null', async () => {
+  const { nmPlaquePlacement } = await import('../src/nm-wood.js');
+  assert.equal(nmPlaquePlacement(909, 1343, 8), 921);
+  assert.equal(nmPlaquePlacement(909, 1343, 288), null, 'kein Platz für Plakette plus volle Boss-Leiste');
+  assert.equal(nmPlaquePlacement(755, 853, 8), null, '1280 breit: zu eng');
+  assert.equal(nmPlaquePlacement(100, 300, 0), 112, 'genau passend');
+  assert.equal(nmPlaquePlacement(NaN, 300), null);
+});
+
+test('B-193 badgeSvg: gesperrt mit Schloss, Funkeln nur bei Gold ab 120', async () => {
+  const { badgeSvg } = await import('../src/badge-art.js');
+  const locked = badgeSvg(44, 0, '', { locked: true });
+  assert.match(locked, /class="badge-lock"/);
+  assert.match(locked, /stroke-dasharray/, 'offener Ring bleibt');
+  assert.doesNotMatch(badgeSvg(44, 0), /badge-lock/, 'Standardaufruf unverändert');
+  assert.equal((badgeSvg(200, 3).match(/class="badge-spark"/g) || []).length, 4, 'Gold groß: 4 Funkeln');
+  assert.doesNotMatch(badgeSvg(44, 3), /badge-spark/);
+  assert.doesNotMatch(badgeSvg(200, 2), /badge-spark/, 'Silber ohne Funkeln');
+  assert.doesNotMatch(badgeSvg(200, 3), /NaN/);
+});
+
+test('B-193 goldMissedText: Silber noch möglich nur ohne Lebensverlust', async () => {
+  const { goldMissedText } = await import('../src/hud.js');
+  assert.equal(goldMissedText({ track: { livesLost: 0 } }), 'Gold verpasst – Silber ist noch möglich');
+  assert.equal(goldMissedText({}), 'Gold verpasst – Silber ist noch möglich');
+  assert.equal(goldMissedText({ track: { livesLost: 2 } }), 'Gold verpasst');
+});

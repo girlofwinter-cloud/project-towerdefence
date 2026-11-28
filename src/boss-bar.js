@@ -2,10 +2,17 @@
 // nur; Ansichten und Lage rechnet src/hud.js. Nach dem Tod des letzten Bosses steht die leere Leiste noch
 // BOSS_BAR.fadeAfter Sekunden, dann verschwindet sie. ui.bossBarShown sagt render.js, dass über Bossen kein
 // kleiner Lebensbalken nötig ist.
-import { BOSS_BAR } from './config.js';
+import { BOSS_BAR, ENEMY_TYPES } from './config.js';
 import { bossBarViews, bossBarPlacement } from './hud.js';
 
 const PHASE_TEXT = ['', 'Phase I', 'Phase II'];
+
+// B-193: Zusatz zur Ansicht (Albtraum-Holz): Prozent gerundet 0–100, Krone statt Schädel beim Oger-König
+export function bossBarExtras(v) {
+  const f = Number.isFinite(v?.frac) ? Math.max(0, Math.min(1, v.frac)) : 0;
+  const crown = typeof v?.name === 'string' && v.name.startsWith(ENEMY_TYPES.boss.name);
+  return { pct: Math.round(f * 100), crown };
+}
 
 export function createBossBars(doc = document) {
   const box = doc.getElementById('boss-bars');
@@ -15,7 +22,9 @@ export function createBossBars(doc = document) {
     name: el.querySelector('.bb-name'),
     phase: el.querySelector('.bb-phase'),
     track: el.querySelector('.bb-track'),
+    pct: el.querySelector('.bb-pct'),
     key: '',
+    pctText: '',
   }));
   let last = [];
   let goneAt = null;
@@ -24,7 +33,10 @@ export function createBossBars(doc = document) {
   function place() {
     const hud = doc.getElementById('hud-bar')?.getBoundingClientRect();
     const btn = doc.querySelector('.top-buttons')?.getBoundingClientRect();
-    const p = hud && btn ? bossBarPlacement(hud.right, btn.left) : null;
+    // B-193: sichtbare Albtraum-Plakette rechts neben dem HUD: Leiste rückt daneben
+    const plq = doc.getElementById('nm-plaque');
+    const plqRight = plq && !plq.hidden ? plq.getBoundingClientRect().right : 0;
+    const p = hud && btn ? bossBarPlacement(Math.max(hud.right, plqRight || 0), btn.left) : null;
     if (!p) return;
     box.style.setProperty('--bb-left', `${Math.round(p.left)}px`);
     box.style.setProperty('--bb-w', `${Math.round(p.width)}px`);
@@ -55,10 +67,13 @@ export function createBossBars(doc = document) {
         b.name.textContent = v.name;
         b.phase.textContent = PHASE_TEXT[v.phase] || '';
         b.el.classList.toggle('p2', v.phase === 2);
+        b.el.classList.toggle('king', bossBarExtras(v).crown);
       }
       b.el.classList.toggle('shielded', v.shielded);
       b.el.style.setProperty('--f', v.frac.toFixed(3));
       b.track.setAttribute('aria-valuenow', String(Math.round(v.frac * 100)));
+      const pct = `${bossBarExtras(v).pct}%`;
+      if (b.pct && pct !== b.pctText) { b.pctText = pct; b.pct.textContent = pct; }
     });
   };
 }

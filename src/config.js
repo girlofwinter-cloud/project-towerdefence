@@ -1899,6 +1899,8 @@ export const BADGE_STYLE = {
   small: 44,     // bis zu dieser Größe: dicke Linien, ohne Augenschein, Nase, Mund, Hauer
   openFace: 56,  // offen: ab dieser Größe gestrichelter Kopf
   big: 100,      // ab dieser Größe: Rand 4 px, Band-Rand 3
+  // B-193: Funkeln (bolt) bei Gold ab sparkFrom; Schloss bei „gesperrt“ (gold, lock-shackle)
+  spark: '#fff6a8', sparkFrom: 120, lock: '#f2c14e', shackle: '#d9dde2',
 };
 
 // B-185: goldene Türme (nur Aussehen, Bauvorlage docs/design/elemente/Kosmetik-Aussehen.md).

@@ -14,11 +14,16 @@ export const OGRE_MOUTH = 'M37 70 Q50 77 63 70';
 const TUSK_L = 'M41 72 L42 63 L46 73 Z';
 const TUSK_R = 'M59 72 L58 63 L54 73 Z';
 const HEAD = 'translate(12,4) scale(0.76)'; // Kopf im Raster der Scheibe
+// B-193: Funkeln (Box 22) an vier Ecken der Scheibe, Schloss (Box 24, wie SMALL_LOCK in screens.js) für „gesperrt“
+const SPARK = 'M11 1 L13 9 L21 11 L13 13 L11 21 L9 13 L1 11 L9 9 Z';
+const SPARK_AT = [[14, 6], [86, 6], [8, 64], [92, 64]];
+const LOCK_SHACKLE = 'M7 11 V8 a5 5 0 0 1 10 0 V11';
 
 let uid = 0; // eindeutige Verlaufs-IDs (gleiche IDs in versteckten SVGs würden den Verlauf verlieren)
 
 // Abzeichen als SVG-Text. size = Zielgröße in px; label (optional) = zugänglicher Name, sonst aria-hidden.
-export function badgeSvg(size, tier, label = '') {
+// opts.locked (B-193): offener Ring mit Schloss in der Mitte (Albtraum der Karte noch gesperrt).
+export function badgeSvg(size, tier, label = '', opts = {}) {
   const t = Math.max(0, Math.min(B.tiers.length, Math.floor(tier) || 0));
   const px = (v) => +(v * 100 / size).toFixed(2); // Ziel-px in Box-Einheiten
   const small = size <= B.small;
@@ -33,6 +38,12 @@ export function badgeSvg(size, tier, label = '') {
     if (size >= B.openFace) {
       const line = `fill="none" stroke="${B.muted}" stroke-width="4" stroke-dasharray="6 5" stroke-linejoin="round"`;
       body += `<g transform="${HEAD}" opacity="0.28"><path d="${HORN_L}" ${line}/><path d="${HORN_R}" ${line}/><path d="${FACE}" ${line}/></g>`;
+    }
+    if (opts.locked) { // Schloss 0,5 × Scheibendurchmesser (38), mittig auf (50, 42)
+      const k = 38 / 24;
+      body += `<g class="badge-lock" transform="translate(${50 - 12 * k} ${42 - 12 * k}) scale(${+k.toFixed(4)})">`
+        + `<path d="${LOCK_SHACKLE}" fill="none" stroke="${B.shackle}" stroke-width="2.5"/>`
+        + `<rect x="4" y="10" width="16" height="12" rx="3" fill="${B.lock}" stroke="${B.ink}" stroke-width="2"/></g>`;
     }
   } else {
     const id = `bdg${++uid}`;
@@ -54,6 +65,9 @@ export function badgeSvg(size, tier, label = '') {
         + `<path d="${OGRE_MOUTH}" fill="none" stroke="${B.ink}" stroke-width="3" stroke-linecap="round"/>`
         + `<path d="${TUSK_L}" fill="${B.cream}" ${ink} stroke-width="2"/><path d="${TUSK_R}" fill="${B.cream}" ${ink} stroke-width="2"/>`)
       + '</g>';
+    if (t === B.tiers.length && size >= B.sparkFrom) { // Funkeln bei Gold groß (style.css: Pulsieren, reduced motion aus)
+      body += SPARK_AT.map(([x, y], i) => `<path class="badge-spark" style="animation-delay:${(i * 0.65).toFixed(2)}s" d="${SPARK}" transform="translate(${x - 11} ${y - 11})" fill="${B.spark}" stroke="${B.ink}" stroke-width="${px(1.5)}" stroke-linejoin="round"/>`).join('');
+    }
   }
   return `<svg class="${cls.join(' ')}" width="${size}" height="${size}" viewBox="0 0 100 100" ${a11y}>${body}</svg>`;
 }

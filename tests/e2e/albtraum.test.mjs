@@ -116,3 +116,79 @@ test('B-184 667x375: Kartenauswahl ohne Scrollen, Sieg-Medaille ganz im Fenster'
   assert.deepEqual(errors, []);
   await ctx.close();
 });
+
+// ---------- B-193: HUD im Albtraum (Holz je Karte, Rand-Deko, Plakette, Boss-Leiste, „Gold verpasst“) ----------
+async function openTest(viewport) {
+  const ctx = await browser.newContext({ viewport, reducedMotion: 'reduce' });
+  const page = await ctx.newPage();
+  const errors = [];
+  page.on('pageerror', (e) => errors.push(e.message));
+  await page.goto(`${url}?test`);
+  await page.waitForSelector('body.test-mode');
+  return { ctx, page, errors };
+}
+
+test('B-193 1280x800: Wiese im Albtraum mit Moos-Holz und Deko, Gold verpasst ohne Durchstreichen, Normalmodus ohne Deko', async () => {
+  const { ctx, page, errors } = await openTest({ width: 1280, height: 800 });
+  assert.equal(await page.locator('#app .plq-deco').count(), 0, 'Normalmodus: keine Deko');
+  assert.match(await page.evaluate(() => getComputedStyle(document.querySelector('.hud')).backgroundImage), /rgb\(164, 103, 47\)/, 'Normalmodus: heutiges Holz');
+  await page.selectOption('#map-select', 'meadow:nightmare');
+  await page.waitForSelector('#hud-bar > .plq-deco');
+  assert.match(await page.evaluate(() => getComputedStyle(document.querySelector('.hud')).backgroundImage), /rgb\(94, 78, 102\)/, 'nm-wood-moss-a');
+  assert.equal(await page.evaluate(() => getComputedStyle(document.querySelector('.plq-deco')).pointerEvents), 'none');
+  // Fähigkeit benutzt: Bedingung „ohne Fähigkeiten“ verpasst
+  await page.evaluate(() => { window.__game().abilities.freeze.uses = 1; });
+  await page.waitForSelector('#gold-goal.broken');
+  assert.equal(await page.isVisible('#gold-goal .gg-state'), true);
+  assert.equal(await page.locator('#gold-goal .gg-state').textContent(), 'Gold verpasst');
+  assert.equal(await page.locator('#gold-goal .gg-text').textContent(), 'ohne Fähigkeiten');
+  assert.equal(await page.evaluate(() => getComputedStyle(document.querySelector('#gold-goal .gg-state')).color), 'rgb(255, 154, 138)');
+  assert.equal(await page.evaluate(() => getComputedStyle(document.querySelector('#gold-goal .gg-text'), '::after').content), 'none', 'kein Strich');
+  const gg = await box(page, '#gold-goal');
+  assert.ok(Math.abs(gg.height - 36) <= 1 && gg.width <= 320, `Chip ${gg.width} x ${gg.height}`);
+  await page.waitForFunction(() => document.getElementById('message').textContent.includes('Gold verpasst – Silber ist noch möglich'));
+  // zurück auf Normal: Holz und Deko wieder weg
+  await page.selectOption('#map-select', 'meadow');
+  await page.waitForSelector('#gold-goal', { state: 'hidden' });
+  assert.equal(await page.locator('#app .plq-deco').count(), 0);
+  assert.deepEqual(errors, []);
+  await ctx.close();
+});
+
+test('B-193 1920x1080: Albtraum-Plakette 180 x 56 neben dem HUD, Boss-Leiste mit Prozentzahl und Krone', async () => {
+  const { ctx, page, errors } = await openTest({ width: 1920, height: 1080 });
+  await page.selectOption('#map-select', 'twin:nightmare');
+  await page.waitForSelector('#nm-plaque:not([hidden])');
+  const plq = await box(page, '#nm-plaque');
+  assert.deepEqual([Math.round(plq.width), Math.round(plq.height)], [180, 56]);
+  for (const sel of ['#gold-goal', '#hud-bar', '.top-buttons']) assert.equal(overlap(plq, await box(page, sel)), false, `überlappt ${sel} nicht`);
+  assert.match(await page.locator('#nm-plaque').getAttribute('aria-label'), /^Albtraum-Modus, Düstere Magie, bestes Abzeichen /);
+  // Eisenbänder (Zwei Fronten) liegen auf den Trennern
+  const straps = await page.evaluate(() => {
+    const seps = [...document.querySelectorAll('#hud-bar > .sep')].map((s) => { const r = s.getBoundingClientRect(); return r.left + r.width / 2; });
+    const bands = [...document.querySelectorAll('#hud-bar .nm-strap')].map((s) => { const r = s.getBoundingClientRect(); return r.left + r.width / 2; });
+    return { seps, bands };
+  });
+  assert.equal(straps.bands.length, straps.seps.length);
+  straps.seps.forEach((x, i) => assert.ok(Math.abs(straps.bands[i] - x) <= 2, `Band ${i} auf dem Trenner`));
+  // Oger-König mit 62 % Leben
+  await page.evaluate(async () => {
+    const g = await import('/src/game.js');
+    const s = window.__game();
+    g.spawnEnemy(s, 'boss', 20);
+    const e = s.enemies[s.enemies.length - 1];
+    e.hp = e.maxHp * 0.62;
+    s.paused = true;
+  });
+  await page.waitForSelector('#boss-bar:not([hidden])');
+  await page.waitForFunction(() => document.querySelector('#boss-bar .bb-pct').textContent === '62%');
+  assert.equal(await page.isVisible('#boss-bar .bb-crown'), true, 'Krone beim Oger-König');
+  assert.equal(await page.isVisible('#boss-bar .bb-skull'), false);
+  // Boss-Leiste hat Vorrang: Plakette nur, wenn daneben noch eine volle Leiste passt, sonst ausgeblendet
+  const bar = await box(page, '#boss-bar');
+  const plq2 = (await page.isVisible('#nm-plaque')) ? await box(page, '#nm-plaque') : null;
+  assert.ok(!plq2 || !overlap(bar, plq2), 'Boss-Leiste überdeckt die Plakette nicht');
+  assert.ok(bar.width >= 200, `Boss-Leiste breit genug (${bar.width})`);
+  assert.deepEqual(errors, []);
+  await ctx.close();
+});

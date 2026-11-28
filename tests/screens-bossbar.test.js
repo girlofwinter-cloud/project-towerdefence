@@ -33,3 +33,23 @@ test('B-180 Boss-Leiste: nach Niederlage mit lebendem Boss zeigt ein neues Spiel
   assert.equal(box.hidden, true, 'im neuen Spiel keine Boss-Leiste vom alten Spiel');
   assert.equal(ui.bossBarShown, false);
 });
+
+test('B-193 Boss-Leiste: Prozentzahl gerundet 0–100, Krone nur beim Oger-König', async () => {
+  const { bossBarExtras } = await import('../src/boss-bar.js');
+  const { ENEMY_TYPES: T } = await import('../src/config.js');
+  assert.deepEqual(bossBarExtras({ name: T.boss.name, frac: 0.624 }), { pct: 62, crown: true });
+  assert.deepEqual(bossBarExtras({ name: `${T.boss.name} ×2`, frac: 1.4 }), { pct: 100, crown: true });
+  assert.deepEqual(bossBarExtras({ name: T.necro.name, frac: -1 }), { pct: 0, crown: false });
+  assert.deepEqual(bossBarExtras({ name: 'Bosse ×3', frac: NaN }), { pct: 0, crown: false });
+  // Schein-DOM: .bb-pct bekommt den Text
+  const pct = { textContent: '' };
+  const el = () => ({ hidden: true, textContent: '', classList: { toggle() {} }, style: { setProperty() {} }, setAttribute() {} });
+  const bar = el();
+  const parts = { '.bb-name': el(), '.bb-phase': el(), '.bb-track': el(), '.bb-pct': pct };
+  bar.querySelector = (q) => parts[q];
+  const box = { ...el(), querySelectorAll: () => [bar], style: { setProperty() {} } };
+  const doc = { getElementById: (id) => (id === 'boss-bars' ? box : null), querySelector: () => null };
+  const { createBossBars } = await import('../src/boss-bar.js');
+  createBossBars(doc)({ time: 0, enemies: [{ type: 'boss', hp: 682, maxHp: 1100 }] }, {}, 0);
+  assert.equal(pct.textContent, '62%');
+});

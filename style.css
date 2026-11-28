@@ -27,6 +27,14 @@
   --message-info: #4f8a34; --message-bad: #b8432f; --darkwood-a: #6b4a2e; --darkwood-b: #3a2414;
   --gold-btn-a: #ffd45a; --gold-btn-b: #e08a1c; --wood-btn: #b97a3e; --flag-red: #c4452f; --map-locked: #c9b89a;
   --stone-line: #6b5a48; --lock-shackle: #d9dde2; /* B-185: Schalter gesperrt, Schloss-Bügel */
+  /* B-193 HUD im Albtraum (TOKENS.md): Holz je Karte, Rand-Deko, Augen je Stil, „Gold verpasst“ */
+  --nm-wood-moss-a: #5e4e66; --nm-wood-moss-b: #30263a; --nm-wood-ice-a: #4a5c8a; --nm-wood-ice-b: #1c2648;
+  --nm-wood-rust-a: #7a4a22; --nm-wood-rust-b: #3a1e0c; --nm-wood-iron-a: #4c3e6e; --nm-wood-iron-b: #1e1836;
+  --nm-wood-ember-a: #6a3620; --nm-wood-ember-b: #2a140a;
+  --nm-moss: #8aa890; --nm-moss-dark: #6a8a6a; --nm-icicle: #dff4ff; --nm-snow: #f2f8ff; --nm-char-edge: #1a0c06;
+  --nm-rust: #a0582e; --nm-iron: #8a92a8; --nm-iron-hi: #c8d0e0; --nm-rune: #c58aff;
+  --nm-eye-moss: #d8ff5a; --nm-eye-ember: #ffb02a; --nm-eye-rune: #e6b8ff; --lava: #ff7a1f; --lava-core: #ffc23a;
+  --bad-soft: #ff9a8a; --font-body: 'Trebuchet MS', 'Segoe UI', system-ui, sans-serif;
   --radius-card: 22px; --radius-pill-m: 20px; --radius-pill-l: 23px;
   --display: 'Lilita One', 'Trebuchet MS', sans-serif;
   /* C1 Lage, nur CSS (kein Warten auf resize): --u = CSS-px je Spiel-px. --view-w/-h, --field-w/-h, --frame setzt main.js einmal aus config.js.
@@ -120,8 +128,8 @@ canvas#game.over-flag { cursor: pointer; } /* Maus über der Wellenfahne */
 /* B-123: Münzen aus der Goldanzeige (unverändert übernommen) */
 .hud-item.gold-gain > b { animation: gold-gain .6s ease-out; }
 @keyframes gold-gain { 30% { transform: scale(1.35); color: #fff6c2; } }
-/* B-184: Gold-Anzeige im Albtraum (Bauvorlage Albtraum-Gold-Anzeige): Holz-Chip mit Zeichen; verletzt = dunkles Holz, Kreuz, durchgestrichen */
-.gold-goal { display: inline-flex; flex-direction: row-reverse; align-items: center; gap: 6px; height: 36px; max-width: 260px; padding: 0 12px 0 4px; margin-left: -6px;
+/* B-184/B-193: Gold-Anzeige im Albtraum (Bauvorlage Albtraum-Gold-Anzeige): Holz-Chip mit Zeichen; verpasst = dunkles Holz, Kreuz, „Gold verpasst“ + Bedingung */
+.gold-goal { position: relative; display: inline-flex; flex-direction: row-reverse; align-items: center; gap: 8px; height: 36px; max-width: 320px; padding: 0 14px 0 4px; margin-left: -6px;
   border: 3px solid var(--ink); border-radius: 18px; background: linear-gradient(var(--wood-a), var(--wood-b)); box-shadow: 0 3px 0 rgba(30,15,5,0.45);
   font: 15px/1 var(--display); color: var(--cream); white-space: nowrap; }
 .gold-goal[hidden] { display: none; }
@@ -129,9 +137,11 @@ canvas#game.over-flag { cursor: pointer; } /* Maus über der Wellenfahne */
 .gold-goal .gg-mark { flex: none; display: block; width: 28px; height: 28px; }
 .gold-goal .gg-mark svg { display: block; width: 100%; height: 100%; }
 .gold-goal.broken { background: linear-gradient(var(--darkwood-a), var(--darkwood-b)); }
-/* B-189: Durchstreichen als dünne rote Linie ohne Tinten-Schatten (text-decoration bekam die Kontur ab und verdeckte den Text) */
-.gold-goal.broken .gg-text { position: relative; }
-.gold-goal.broken .gg-text::after { content: ''; position: absolute; left: 0; right: 0; top: calc(50% - 1px); height: 2px; background: var(--bad); border-radius: 1px; }
+.gold-goal .gg-state { display: none; flex: none; font: 15px/1 var(--display); color: var(--bad-soft);
+  text-shadow: -1.5px 0 var(--ink), 1.5px 0 var(--ink), 0 -1.5px var(--ink), 0 1.5px var(--ink); }
+.gold-goal .gg-state::after { content: ' ·'; color: var(--muted); }
+.gold-goal.broken .gg-state { display: inline; }
+.gold-goal.broken .gg-text { font: 13px/1 var(--font-body); color: var(--muted); text-shadow: none; }
 .gold-goal.flash { animation: gg-flash .4s ease-out; }
 @keyframes gg-flash { 0% { border-color: var(--bad); transform: scale(1.1); } 100% { border-color: var(--ink); transform: none; } }
 @media (prefers-reduced-motion: reduce) { .gold-goal.flash { animation: none; } }
@@ -177,9 +187,43 @@ canvas#game.over-flag { cursor: pointer; } /* Maus über der Wellenfahne */
 /* schmale Leiste (z. B. 1280x720): kleinere Schrift, damit Name und Phase sich nicht überdecken */
 @container (max-width: 230px) { .bb-name { font-size: 13px; } .bb-phase { font-size: 11px; } }
 @media (prefers-reduced-motion: reduce) { .boss-bar, .boss-bar.shielded .bb-shield { animation: none; } .bb-fill, .bb-trail { transition: none; } }
+/* B-193: Holz je Karte im Albtraum und mit Nacht-Look (Bauvorlage HUD-Albtraum-Holz). main.js setzt nm-wood-<Art> an #app
+   und legt die Rand-Deko (.plq-deco, src/nm-wood.js) in HUD, Fähigkeiten, Boss-Leisten und Albtraum-Plakette. Startbildschirm und
+   Aussehen-Menü behalten das heutige Holz. */
+#app.nm-wood-moss  > :not(#start-screen):not(#cosmetics) { --wood-a: var(--nm-wood-moss-a);  --wood-b: var(--nm-wood-moss-b);  --nm-eye: var(--nm-eye-moss); }
+#app.nm-wood-ice   > :not(#start-screen):not(#cosmetics) { --wood-a: var(--nm-wood-ice-a);   --wood-b: var(--nm-wood-ice-b);   --nm-eye: var(--nm-eye-rune);  --plq-glow: 0 0 16px 4px rgba(160,100,255,.25); }
+#app.nm-wood-rust  > :not(#start-screen):not(#cosmetics) { --wood-a: var(--nm-wood-rust-a);  --wood-b: var(--nm-wood-rust-b);  --nm-eye: var(--nm-eye-ember); }
+#app.nm-wood-iron  > :not(#start-screen):not(#cosmetics) { --wood-a: var(--nm-wood-iron-a);  --wood-b: var(--nm-wood-iron-b);  --nm-eye: var(--nm-eye-rune);  --plq-glow: 0 0 16px 4px rgba(160,100,255,.4); }
+#app.nm-wood-ember > :not(#start-screen):not(#cosmetics) { --wood-a: var(--nm-wood-ember-a); --wood-b: var(--nm-wood-ember-b); --nm-eye: var(--nm-eye-ember); --plq-glow: 0 0 16px 4px rgba(255,90,42,.4); }
+#app[class*="nm-wood-"] > :not(#start-screen):not(#cosmetics) .plq, #app[class*="nm-wood-"] > .plq {
+  box-shadow: inset 0 2px 0 rgba(255,220,160,.3), inset 0 -3px 0 rgba(0,0,0,.3), 0 4px 0 rgba(10,5,15,.55), var(--plq-glow, 0 0 0 transparent); }
+.plq-deco { position: absolute; left: -3px; top: -3px; overflow: visible; pointer-events: none; z-index: 0; }
+.nm-pulse, .badge-spark { animation: pulse 2.6s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .nm-pulse, .badge-spark { animation: none; } }
+/* Boss-Leiste im Kartenholz: Prozentzahl rechts neben dem Balken, Krone beim Oger-König, Nekromantin Phase II mit leuchtenden Augen */
+.bb-pct, .bb-crown { display: none; }
+#app[class*="nm-wood-"] .bb-pct { display: block; position: absolute; right: 8px; bottom: 3px; font: 13px/16px var(--display); color: var(--cream);
+  text-shadow: -1.5px 0 var(--ink), 1.5px 0 var(--ink), 0 -1.5px var(--ink), 0 1.5px var(--ink); }
+#app[class*="nm-wood-"] .bb-track { right: 52px; }
+#app[class*="nm-wood-"] .boss-bar.king .bb-skull { display: none; }
+#app[class*="nm-wood-"] .boss-bar.king .bb-crown { display: block; position: absolute; left: 5px; top: 3px; width: 34px; height: 30px; }
+#app[class*="nm-wood-"] .boss-bar.p2 .bb-skull circle { fill: var(--necro-glow-2); }
+@container (max-width: 160px) { #app[class*="nm-wood-"] .bb-pct { display: none; } #app[class*="nm-wood-"] .bb-track { right: 18px; } } /* zu schmal: Balken vor Zahl */
+/* Albtraum-Plakette rechts neben der HUD-Leiste (Lücke 12; main.js setzt left und blendet sie aus, wenn kein Platz ist) */
+#nm-plaque { position: absolute; z-index: 10; pointer-events: none; top: max(2px, calc((var(--fy) - 56px) / 2)); left: var(--nmp-left, 0px);
+  width: 180px; height: 56px; box-sizing: border-box; }
+#nm-plaque[hidden] { display: none; }
+#nm-plaque .nmp-badge { position: absolute; left: 1px; top: -2px; width: 46px; height: 46px; }
+#nm-plaque .nmp-badge .badge { display: block; width: 46px; height: 46px; }
+#nm-plaque .nmp-title { position: absolute; left: 53px; top: 2px; font: 20px/24px var(--display); color: var(--cream);
+  text-shadow: -2px 0 var(--ink), 2px 0 var(--ink), 0 -2px var(--ink), 0 2px var(--ink); }
+#nm-plaque .nmp-style { position: absolute; left: 53px; top: 25px; font: 12px/16px var(--display); color: var(--muted); white-space: nowrap; }
 /* Kompakt (Handy quer und hoch): nur Schädel und Balken, 32 hoch */
 @media (max-height: 519.98px) and (orientation: landscape), (max-width: 759.98px) {
   .boss-bar { height: 32px; }
+  #nm-plaque { display: none; }
+  #app[class*="nm-wood-"] .bb-track { right: 44px; }
+  #app[class*="nm-wood-"] .boss-bar.king .bb-crown { width: 24px; height: 22px; top: 2px; }
   .bb-skull { left: 5px; top: 2px; width: 24px; height: 24px; }
   .bb-name, .bb-phase { display: none; }
   .bb-track { left: 36px; right: 8px; height: 10px; }
@@ -640,7 +684,7 @@ body.fs-gate #rotate-hint { position: fixed; inset: 0; z-index: 60; display: fle
   /* B-184: Gold-Anzeige nur als Zeichen (24) an der oberen rechten Ecke der Plakette; Text kommt über #message (main.js) */
   .gold-goal { position: absolute; top: -8px; right: -8px; margin: 0; padding: 0; width: 24px; height: 24px; border: 0; background: none; box-shadow: none; }
   .gold-goal.broken { background: none; }
-  .gold-goal .gg-text { display: none; }
+  .gold-goal .gg-text, .gold-goal.broken .gg-state { display: none; }
   .gold-goal .gg-mark { width: 24px; height: 24px; }
   .hud .num { font-size: 22px; line-height: 24px; white-space: nowrap; } .hud .num small { font-size: 15px; }
   .hud-ico { width: 22px; height: 22px; } #gold, #wave, #lives { min-width: 0; }
