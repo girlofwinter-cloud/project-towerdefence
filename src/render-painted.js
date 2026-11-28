@@ -161,7 +161,9 @@ export function buildPaintedScene(state, look = 'normal') {
   const nm = look === 'nightmare' ? nightmareOf(mapId) : null;
   const map = MAPS[mapId] || {};
   const rnd = rng(mapId);
-  const paths = state.paths || (state.path ? [state.path] : []);
+  // B-211: Friedhof-Wege laufen im Spiel bis zum Ausgang weiter; gezeichnet wird nur der kurze Weg bis zur Mündung
+  const sideWays = (map.graveyards || []).map((g) => buildPath(g.waypoints, TILE));
+  const paths = (state.paths || (state.path ? [state.path] : [])).map((p, i) => sideWays[i - (state.entranceCount ?? Infinity)] ?? p);
   const blocked = state.blocked || new Set();
   const obstacles = state.obstacles || new Set();
   const flagTiles = state.flagTiles || new Set(); // Fahnen-Kacheln: dort keine Tupfen (Fahne steht darüber)

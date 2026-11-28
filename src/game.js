@@ -80,7 +80,9 @@ export function createGame({ mapId, mode, ...overrides } = {}) {
   if (state.entranceCount == null) state.entranceCount = state.paths.length;
   const graveyards = overrides.graveyards ? [] : MAPS[id].graveyards || [];
   state.graveyards = overrides.graveyards || graveyards.map((g) => {
-    state.paths.push(buildPath(g.waypoints, TILE));
+    // B-211: Mündet der Friedhof-Weg auf dem Hauptweg, laufen die Skelette danach auf dem Hauptweg bis zum Ausgang weiter
+    // (nur der Lauf-Pfad; gesperrte Kacheln und Zeichnung bleiben beim kurzen Weg)
+    state.paths.push(buildPath(joinMainPath(g.waypoints, overrides.path ? [] : waypoints), TILE));
     for (const k of pathTiles(g.waypoints)) state.blocked.add(k);
     for (const [c, r] of g.tiles || []) state.blocked.add(`${c},${r}`);
     // area: Friedhoffläche in Spiel-px (für das Aufleuchten beim Trupp, B-212); ohne Kacheln null
@@ -104,6 +106,21 @@ export function nearLava(lava, col, row) {
 }
 
 // Weg, auf dem der Gegner läuft (Fallback: Hauptweg).
+// B-211: Wegpunkte eines Friedhof-Wegs, verlängert um den Rest des Hauptwegs ab der Mündung (letzter Wegpunkt liegt auf
+// einem Hauptweg-Abschnitt). Ohne Mündung unverändert.
+export function joinMainPath(side, main) {
+  const [x, y] = side[side.length - 1];
+  for (let i = 0; i + 1 < (main?.length ?? 0); i++) {
+    const [ax, ay] = main[i], [bx, by] = main[i + 1];
+    const on = (x - ax) * (by - ay) === (y - ay) * (bx - ax)
+      && x >= Math.min(ax, bx) && x <= Math.max(ax, bx) && y >= Math.min(ay, by) && y <= Math.max(ay, by);
+    if (!on) continue;
+    const rest = main.slice(i + 1).filter(([c, r]) => c !== x || r !== y);
+    return [...side, ...rest];
+  }
+  return side;
+}
+
 export function enemyPath(state, e) {
   return (state.paths && state.paths[e.lane || 0]) || state.path;
 }
