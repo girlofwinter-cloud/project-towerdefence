@@ -191,3 +191,8 @@ Anhängen ohne die Datei zu lesen: `cat >> docs/LEDGER.md <<'EOF' … EOF`. Übe
 ### Wiese Brücke Glanz (agent/wiese-bruecke-glanz)
 - Glanzlinien des Flusses bekommen an der Brücke eine Lücke (null im Punktzug), keine Striche mehr über der Brücke.
 - Optik-Test nach Regel 2 angepasst: Lücken zugelassen, neu geprüft, dass die Lücke existiert.
+
+### Design Albtraum (agent/design-albtraum, designer)
+- Albtraum-Karten auf Desktop geprüft, Rand ohne Vignette und Welt-Identitäten passen.
+- Vorschläge B-201 bis B-205 in IDEEN.md (Weg-Kontrast Fork/Twin, Vulkan-Risse, Deko vom Weg, Weg-Glühen).
+- Offen: Handy-Querformat nicht geprüft (Skript-Timeout).

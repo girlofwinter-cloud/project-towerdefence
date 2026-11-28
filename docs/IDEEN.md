@@ -534,3 +534,40 @@ Fläche mit vier Stilen für dieselbe Szene (Wiese, Welle 8): https://claude.ai/
 
 ## Stil 1 komplett übernehmen (Plan des designers, 2026-11-26)
 Der Mensch hat entschieden, das Zielbild `docs/design/stil1-ziel.png` komplett zu übernehmen. Plan mit Zeilenverweisen in den Entwurf: `docs/design/stil1-plan.md`, Entwurfscode `docs/design/stil1-entwurf.dc.html`. B-138, B-144 und B-145 gehen in B-150, B-151 und B-153 auf. Abnahme jeweils per Screenshot neben dem Zielbild. Nur Zeichnen, außer wo vermerkt. Blöcke: A = B-142, B-143, B-148, B-149, B-147; B = B-150, B-151, B-152; C = B-129, B-130, B-133, B-134, B-135, B-139, B-141, B-153; D = B-131, B-132, B-136; E = B-154, B-137.
+
+## Designprüfung Albtraum-Karten (designer, 2026-11-28)
+
+### B-201: Albtraum Zangenangriff: Weg-Kontrast anheben
+- Status: vorschlag
+- Aufwand: S
+- Idee: Weg (`path.main #d6ab70`) hebt sich kaum vom hellbraunen Boden ab (Muss-Befund). Weg heller/kühler (Richtung `#ecdcb8`) oder Boden ca. 15 % dunkler, nur Theme-Farben in `src/config.js`.
+- Akzeptanzkriterien:
+  - Luminanzabstand Weg-Mitte zu Boden mindestens 25 % (Pixelprobe im Screenshot).
+
+### B-202: Albtraum Zwei Fronten: Weg aufhellen
+- Status: vorschlag
+- Aufwand: S
+- Idee: Weg und Boden beide lila-grau, nur die Kanten tragen die Lesbarkeit. Weg heller (cremig-lila), Boden etwas dunkler.
+- Akzeptanzkriterien:
+  - Luminanzabstand Weg-Mitte zu Boden mindestens 25 %.
+
+### B-203: Albtraum Vulkan: Bodenrisse beruhigen, Weg wärmer
+- Status: vorschlag
+- Aufwand: S
+- Idee: Leuchtende Bodenrisse sind so laut wie die Lava, Feld wirkt unruhig. Risse ca. 50 % weniger Dichte/Deckkraft, volles Leuchten nur für Lavaflüsse. Weg-Mitte `#8b7468` wärmer setzen.
+- Akzeptanzkriterien:
+  - Höchstens halb so viele Rissstriche pro Fläche, Lavaflüsse unverändert.
+
+### B-204: Albtraum Zangenangriff: Glut-Deko vom Weg nehmen
+- Status: vorschlag
+- Aufwand: S
+- Idee: Orange Glut-Schnörkel und Glimmpunkte liegen auf dem Weg und sind mit Effekten verwechselbar. Nur neben den Weg legen.
+- Akzeptanzkriterien:
+  - Kein Deko-Element überlappt Wegkacheln, Test in `tests/decor`.
+
+### B-205: Albtraum-Signatur: leises Weg-Glühen in Weltfarbe (mutig)
+- Status: vorschlag
+- Aufwand: M
+- Idee: Einheitlicher, statischer, leiser Glüh-Strich am Wegrand in der Weltfarbe auf allen Albtraum-Karten. Stärkt Einheitlichkeit und Lesbarkeit. Neues Token je Welt im Design-System.
+- Akzeptanzkriterien:
+  - Wegrand auf allen 5 Karten sichtbar, Frame-Zeit unverändert, Token in `docs/design/system/`.
