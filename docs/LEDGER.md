@@ -131,3 +131,7 @@ Anhängen ohne die Datei zu lesen: `cat >> docs/LEDGER.md <<'EOF' … EOF`. Übe
 - Elite-Selbstheilung (regen) pausiert 2 s nach HP-Schaden (ELITE.regen.pauseAfterHit), Spieltest: im Albtraum zu stark.
 - Test in game.test.js, Unit + Balance grün; Albtraum-Sims fast unverändert.
 - Albtraum: Bosse und Elite höchstens +30 % Leben (NIGHTMARE.specialHpCap), Spieltest: Welle 15 zu schwer. Frühstart-Risiko rechnet mit.
+
+### agent/home-knopf (2026-11-28)
+- Kartenauswahl-Knopf im Pause-Schild als Home-Knopf (Haus-Symbol + „Menü“), Desktop und Handy.
+- Unit- und e2e-Tests grün, Screenshots 1280x800 und 844x390 geprüft.
