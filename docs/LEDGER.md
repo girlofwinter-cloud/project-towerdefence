@@ -110,3 +110,8 @@ Anhängen ohne die Datei zu lesen: `cat >> docs/LEDGER.md <<'EOF' … EOF`. Übe
 - Regel: Bauteil-Bibliothek in Claude Design nicht mehr vollständig pflegen; Fläche nur für große neue Elemente auf Auftrag.
 - Bauvorlage bleibt Pflicht. Geändert: `.claude/agents/designer.md`, `.claude/skills/design/SKILL.md`.
 - Keine Code-Änderung, keine Tests betroffen.
+
+### 2026-11-28 · Pipeline schneller
+- Pipeline-Skill: Auto-Merge statt CI-Warten, genaue Fundstellen im developer-Auftrag, nie Opus.
+- Blöcke bis 6 bei UI-Kleinkram, e2e/Balancing nur einmal am Blockende, parallele Spuren in Worktrees.
+- Keine Code-Änderung.
