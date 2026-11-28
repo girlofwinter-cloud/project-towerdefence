@@ -772,13 +772,14 @@ export const ELITE = {
 // Menschen zu schwer (verloren in Welle 1-5); jetzt Wellen 1-7 und Gold wie bisher, ab Welle 12 +40 %, dazwischen +20 %
 // (rewardFactor 0.9 -> 1). Messwerte in tests/balance/albtraum.test.js.
 export const NIGHTMARE = {
-  goldFactor: 1, rewardFactor: 1, lives: 5, repairUses: 1, hpGrowthLate: 1.16, eliteBonus: 2, eliteEarlier: 2,
-  hpSteps: [{ from: 8, factor: 1.2 }, { from: 12, factor: 1.4 }],
+  goldFactor: 1, rewardFactor: 1, lives: 5, repairUses: 1, hpGrowthLate: 1.16, eliteBonus: 1, eliteEarlier: 2,
+  hpSteps: [{ from: 8, factor: 1.2 }, { from: 12, factor: 1.3 }],
   // Spieltest 28.11. (Welle 15 zu schwer): Elite höchstens mal specialHpCap; Bosse behalten den vollen Faktor
-  specialHpCap: 1.3,
+  specialHpCap: 1.2,
   // Elite im Albtraum (ersetzt ELITE.shield/regen): Heilung immer, auch unter Beschuss (Entscheidung des Menschen 28.11.)
-  // Spieltest 28.11. (Welle 15 kaum schaffbar, Eliten zu stark): Schild 0.3 -> 0.2, Heilung 0.025 -> 0.015
-  elite: { shield: { wardShare: 0.2 }, regen: { healPerSec: 0.015, pauseAfterHit: 0 } },
+  // Spieltest 28.11. (Welle 15 kaum schaffbar, Eliten zu stark): Schild 0.3 -> 0.18, Heilung 0.025 -> 0.012 (knapp über Normalmodus), eliteBonus 2 -> 1,
+  // specialHpCap 1.3 -> 1.2, Leben ab Welle 12 mal 1.3 statt 1.4
+  elite: { shield: { wardShare: 0.18 }, regen: { healPerSec: 0.012, pauseAfterHit: 0 } },
   // Boss-Verstärkung (Wunsch des Menschen 28.11.): Nekromantin beschwört zusätzlich necroBats Fledermäuse je Beschwörung
   // (in Phase 2 necroBatsP2); Oger-König bekommt eine zweite Phase: bei at * maxHp Schild für shieldDuration s und
   // danach Tempo mal speedFactor (Wut). necroPhase2 ersetzt Werte der Nekromantin-Phase 2 (Spieltest 28.11.: Phase 2
@@ -786,7 +787,7 @@ export const NIGHTMARE = {
   bossBuff: {
     necroBats: 1, necroBatsP2: 2,
     ogrePhase2: { at: 0.5, shieldDuration: 2, speedFactor: 1.35 },
-    necroPhase2: { summonInterval: 3, summonCount: 4, speedFactor: 1.3 },
+    necroPhase2: { summonInterval: 5, summonCount: 4, speedFactor: 1.3 }, // Spieltest 28.11.: Takt 3 -> 5 s (zu oft)
     // Spieltest 28.11. (Welle 10 zu schwer): Bosse dieser Wellen ohne zweite Phase, ohne Heilung und ohne Magier-Schild
     plainBossWaves: [10],
   },
