@@ -109,14 +109,6 @@ Zwei developer parallel (je eigene Sitzung, eigener Unter-Branch von `agent/stuf
 
 ## Neue Karte "Nachtfriedhof" (freigegeben 2026-11-28, neue Mechanik, eine Sitzung je Eintrag, in dieser Reihenfolge)
 
-### B-210: Mechanik: Nebenwege mit Start mitten auf der Karte (Friedhof-Spawns)
-- Status: offen
-- Aufwand: M
-- Idee: `MAPS.<id>.graveyards`: Liste von Nebenwegen (Wegpunkte ab einem Friedhof im Feld bis in den Hauptweg oder zum Ausgang). Unabhängig von der Welle kommt alle `GRAVEYARD.interval` Sekunden je Friedhof ein Trupp von `GRAVEYARD.size` Skeletten (Zahlen in `config.js`, ab Welle `GRAVEYARD.fromWave`). Reine Logik in `game.js`, nutzt bestehende `paths`/`lane`.
-- Akzeptanzkriterien:
-  - Tests in `tests/game`: Trupps erscheinen am Friedhof-Startpunkt, im Takt, nur während einer laufenden Welle; Karten ohne `graveyards` unverändert.
-  - Friedhofkacheln sind nicht bebaubar; Welle gilt erst als beendet, wenn auch Trupps besiegt/durch sind.
-
 ### B-211: Karte Nachtfriedhof: Wege und Balancing
 - Status: offen
 - Aufwand: M
