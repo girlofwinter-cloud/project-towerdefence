@@ -96,3 +96,23 @@ test('B-184 844x390: Kartenauswahl ohne Scrollen, Tippziele >= 44, Gold-Zeichen 
   assert.deepEqual(errors, []);
   await ctx.close();
 });
+
+// Tester: kleines Handy quer (667x375). Die Medaille darf nicht aus dem Fenster ragen und die Plakette nicht verdecken.
+test('B-184 667x375: Kartenauswahl ohne Scrollen, Sieg-Medaille ganz im Fenster', async () => {
+  const { ctx, page, errors } = await open({ width: 667, height: 375 });
+  assert.ok(await page.evaluate(() => document.querySelector('#start-screen').scrollHeight <= innerHeight), 'kein Scrollen');
+  const heights = await page.evaluate(() => [...document.querySelectorAll('#start-screen button')].filter((b) => b.offsetParent).map((b) => b.getBoundingClientRect().height));
+  assert.ok(heights.length > 0 && heights.every((h) => h >= 44), `Tippziele: ${heights}`);
+  await page.click(`.map-nightmare[data-map="${LAST}"]`);
+  await page.waitForSelector('#start-screen', { state: 'hidden' });
+  await page.evaluate(([w]) => { const s = window.__game(); s.wave = w; s.lives = 5; s.status = 'won'; }, [MAX_WAVES]);
+  await page.waitForSelector('#overlay.nightmare-win');
+  const medal = await box(page, '#end-badge');
+  const card = await box(page, '.end-card');
+  for (const [name, r] of [['Medaille', medal], ['Plakette', card]]) {
+    assert.ok(r.x >= 0 && r.y >= 0 && r.x + r.width <= 667 && r.y + r.height <= 375, `${name} im Fenster: ${JSON.stringify(r)}`);
+  }
+  assert.equal(overlap(medal, card), false, 'Medaille neben der Plakette');
+  assert.deepEqual(errors, []);
+  await ctx.close();
+});
