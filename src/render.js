@@ -6,7 +6,7 @@ import { buildPaintedSvg, buildPaintedScene, rasterizePainted, canRasterize, ext
 import { drawPathStyled } from './render-path.js';
 import { drawTowerFigure, drawTowerBadge, towerFootY } from './render-towers.js';
 import { recoilOffset } from './tower-fx.js';
-import { drawEnemy, drawHealAura, enemyFootY } from './render-enemies.js';
+import { drawEnemy, drawHealAura, enemyFootY, nmEnemyStyle } from './render-enemies.js';
 import { drawNecroAura } from './render-necro.js';
 import { updateFx, shakeX, shakeY, drawProjectileFx, drawParticles, drawBossEntry, drawEffectUnder, drawEffectOver } from './render-fx.js';
 import { drawTreeFrame } from './render-trees.js';
@@ -599,9 +599,10 @@ function drawFigures(ctx, state, ui) {
   for (const t of state.towers) figures.push(t);
   for (const e of state.enemies) figures.push(e);
   figures.sort(byFoot);
+  const nm = nmEnemyStyle(state.mapId, nightOn(state, ui)); // B-190: Gegner im Albtraum-Look
   for (const o of figures) {
     if (o.hp === undefined) drawTower(ctx, o, ui.selectedTowerId === o.id, state.time, !!ui.reducedMotion, displayLevel(state, o), ui.goldTowers ? GOLD_OPT : null);
-    else drawEnemy(ctx, o, state.time, enemyPath(state, o), !!ui.reducedMotion, !!ui.bossBarShown); // B-180: Leiste im HUD
+    else drawEnemy(ctx, o, state.time, enemyPath(state, o), !!ui.reducedMotion, !!ui.bossBarShown, nm); // B-180: Leiste im HUD
   }
   figures.length = 0;
 }

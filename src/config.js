@@ -1875,6 +1875,22 @@ export const NIGHT_STYLE = {
   glowHot: '255,229,138', glowLava: '255,122,31', // lava-hot / lava
 };
 
+// B-190: Gegner im Albtraum-Look (Bauvorlage docs/design/elemente/Gegner-Albtraum.md), je Kartenstil A/B/C:
+// shade = Körper-Umfärbung (nm-shade-*), eye = Augen und Fußaura (nm-eye-*), rim = Randlicht (nm-rim-*)
+export const NM_ENEMY_STYLE = {
+  A: { shade: '#2a3448', eye: '#d8ff5a', rim: '#e8f4ff' }, // Verfluchter Wald
+  B: { shade: '#30201c', eye: '#ffb02a', rim: '#ffd0a0' }, // Verbrannte Erde
+  C: { shade: '#252d4c', eye: '#e6b8ff', rim: '#c8d8ff' }, // Düstere Magie
+};
+// Kartenstil je Karte (Entscheidung des Menschen; auch für HUD-Holz u. a.), unbekannte Karte: A
+export const NM_STYLE_OF_MAP = { meadow: 'A', ice: 'C', fork: 'B', twin: 'C', volcano: 'B' };
+// Zusätze: Randlicht-Verlauf [Anteil, Deckkraft], Fußaura-Deckkraft, Dornen (bone), Elite-Innenring (Abstand
+// nach innen zum Goldring und Breite in Entwurfs-px), Umfärbung (Entsättigung, Anteil Schattenfarbe)
+export const NM_ENEMY_FX = {
+  rimStops: [[0, 0.5], [0.6, 0.16], [1, 0]], auraAlpha: 0.5, bone: '#e8dcc0',
+  eliteInset: 4, eliteWidth: 2, desat: 0.28, shadeMix: 0.36, wispMix: 0.45,
+};
+
 // B-184: Albtraum-Abzeichen (Medaille mit Oger-Kopf), Bauvorlage Albtraum-Abzeichen. Nur Aussehen.
 export const BADGE_STYLE = {
   ink: '#2b1a10', ribbon: '#c4452f', cream: '#fff3d2', eye: '#ffc22a', eyeGlow: '#ff7a1f', muted: '#e8d3a8', // ink, flag-red, cream, ogre-eye, lava, muted

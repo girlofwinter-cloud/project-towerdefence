@@ -2292,3 +2292,82 @@ test('B-185 render(): goldene Türme nur mit ui.goldTowers (Spielfeld und Ring-V
   assert.ok(record({ ...ring, goldTowers: true }, s) > record(ring, s), 'Ring-Vorschau golden');
   assert.equal(JSON.stringify(s.towers), snap, 'Rendering ändert keine Spielwerte');
 });
+
+// ---------- B-190: Gegner im Albtraum-Look ----------
+test('B-190: Albtraum-Figur je Typ und Stil umschließt die normale Figur, Cache je Stil', async () => {
+  const { enemyFigure, ENEMY_KINDS } = await import('../src/figures.js');
+  for (const t of ENEMY_KINDS) {
+    const normal = enemyFigure(t, false);
+    for (const s of ['A', 'B', 'C']) {
+      const f = enemyFigure(t, false, undefined, s);
+      assert.ok(f && f.els.length > normal.els.length, `${t}/${s}: Figur`);
+      assert.ok(f.box[0] <= normal.box[0] && f.box[1] <= normal.box[1] && f.box[2] >= normal.box[2] && f.box[3] >= normal.box[3], `${t}/${s}: Box`);
+      assert.equal(f.w, normal.w); assert.equal(f.h, normal.h);
+      assert.equal(enemyFigure(t, false, undefined, s), f, `${t}/${s}: Cache`);
+      assert.ok(enemyFigure(t, true, undefined, s), `${t}/${s}: eingefroren`);
+    }
+    assert.notEqual(enemyFigure(t, false, undefined, 'A'), enemyFigure(t, false, undefined, null));
+    assert.equal(enemyFigure(t, false, undefined, null), normal, 'ohne Stil: heutige Figur');
+  }
+});
+
+test('B-190: nmColor nach Formel, NM_KEEP bleibt, Augen in Stilfarbe', async () => {
+  const { enemyFigure, ENEMY_KINDS, nmColor, NM_KEEP } = await import('../src/figures.js');
+  const { NM_ENEMY_STYLE } = await import('../src/config.js');
+  const { withAlpha } = await import('../src/svg-figure.js');
+  // #6cc03a = (108,192,58), L = 0.3*108 + 0.59*192 + 0.11*58 = 151.06; desat 0.28, dann 0.36 Richtung #2a3448
+  const L = 0.3 * 108 + 0.59 * 192 + 0.11 * 58;
+  const exp = [[108, 42], [192, 52], [58, 72]].map(([c, s]) => Math.round(c + (L - c) * 0.28 + (s - (c + (L - c) * 0.28)) * 0.36).toString(16).padStart(2, '0'));
+  assert.equal(nmColor('#6cc03a', '#2a3448'), '#' + exp.join(''));
+  const fills = (f) => new Set(f.els.flatMap((e) => [e.fill, e.stroke]).filter(Boolean));
+  const grunt = fills(enemyFigure('grunt', false, undefined, 'A'));
+  assert.ok(!grunt.has('#6cc03a'), 'Körper umgefärbt');
+  assert.ok(grunt.has('#2b1a10'), 'Kontur bleibt');
+  assert.ok(fills(enemyFigure('boss', false, undefined, 'B')).has('#f2c14e') && NM_KEEP.has('#f2c14e'), 'Krone bleibt Gold');
+  for (const s of ['A', 'B', 'C']) {
+    const eye = NM_ENEMY_STYLE[s].eye;
+    for (const t of ENEMY_KINDS) {
+      const f = enemyFigure(t, false, undefined, s);
+      assert.ok(f.els.some((e) => e.fill === withAlpha(eye, 0.5)), `${t}/${s}: Fußaura in Augenfarbe`);
+      if (t === 'wisp') assert.ok(fills(f).has(withAlpha(eye, 0.22)), `${s}: Irrlicht-Schein in Augenfarbe`);
+      else if (t !== 'necro') assert.ok(fills(f).has(eye), `${t}/${s}: Augenfarbe`);
+      if (t !== 'wisp' && t !== 'necro') assert.ok(enemyFigure(t, false, undefined, s).els.some((e) => e.fill === eye && e.d), `${t}/${s}: Augenschlitz`);
+    }
+  }
+  assert.ok(!enemyFigure('necro', false, undefined, 'A').els.some((e) => e.fill === NM_ENEMY_STYLE.A.eye && e.d), 'Nekromantin ohne Augen-Overlay');
+});
+
+test('B-190: Stil je Karte, Lebensbalken bleibt an der Figur', async () => {
+  const { nmEnemyStyle } = await import('../src/render-enemies.js');
+  assert.equal(nmEnemyStyle('meadow', false), null);
+  assert.deepEqual(['meadow', 'ice', 'fork', 'twin', 'volcano'].map((m) => nmEnemyStyle(m, true)), ['A', 'C', 'B', 'C', 'B']);
+  assert.equal(nmEnemyStyle('unbekannt', true), 'A');
+  const { enemyFigure } = await import('../src/figures.js');
+  const n = enemyFigure('tank', false), f = enemyFigure('tank', false, undefined, 'A');
+  assert.ok(f.box[1] < n.box[1] && Math.abs(f.body[1] - n.box[1]) <= 3, 'Box mit Randlicht, body ohne');
+});
+
+test('B-190: drawEliteRing mit nmEye zeichnet zusätzlich den Innenring', async () => {
+  const { drawEliteRing } = await import('../src/render-elite.js');
+  const e = { x: 100, y: 100 };
+  const a = mockCtx();
+  drawEliteRing(a.ctx, e, 120, 40, 1, false);
+  assert.equal(a.counts.ellipse, 1);
+  const b = mockCtx();
+  drawEliteRing(b.ctx, e, 120, 40, 1, false, '#d8ff5a');
+  assert.equal(b.counts.ellipse, 2);
+  assert.equal(b.props.strokeStyle, '#d8ff5a');
+  assert.equal(b.depth, 0);
+});
+
+test('B-190: Render im Albtraum zeichnet alle Typen ohne Fehler', async () => {
+  const { render } = await import('../src/render.js');
+  const { ENEMY_KINDS } = await import('../src/figures.js');
+  for (const mapId of ['meadow', 'fork', 'ice']) {
+    const s = createGame({ mode: 'nightmare', mapId });
+    ENEMY_KINDS.forEach((type, i) => s.enemies.push({ id: i + 1, type, x: 60 + i * 30, y: 100, dist: 10, radius: 10, hp: 5, maxHp: 10, slowUntil: i % 2 ? 99 : 0, elite: i === 0 ? 'swift' : null }));
+    const m = mockCtx();
+    render(m.ctx, s, {});
+    assert.equal(m.depth, 0);
+  }
+});

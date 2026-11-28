@@ -2,7 +2,7 @@
 // Stil 1 (G7): Figuren aus dem Entwurf (Goblin Z.110, Flitzer Z.112, Troll Z.113, eingefroren Z.111), übrige
 // Typen auf Goblin-Basis (src/figures.js). Je Typ x Frost x Pixeldichte ein Sprite, pro Frame nur drawImage
 // mit Wippen, Schwanken und Spiegelung. Fußpunkt FIGURE_STYLE.enemyFoot unter der Wegmitte. Lebensbalken nur bei Schaden.
-import { ENEMY_TYPES, ENEMY_STYLE, FIGURE_STYLE as S, TILE, ABILITIES, isBoss } from './config.js';
+import { ENEMY_TYPES, ENEMY_STYLE, FIGURE_STYLE as S, TILE, ABILITIES, isBoss, NM_ENEMY_STYLE, NM_STYLE_OF_MAP } from './config.js';
 import { enemyFigure, shellStage, NECRO_VARIANT_P2 } from './figures.js';
 import { drawNecroBack, drawNecroSkulls, drawNecroShield, necroGlowOverflow } from './render-necro.js';
 import { drawEliteRing, drawEliteBadge, drawEliteTrait, eliteBadgeSize, eliteGlyph } from './render-elite.js';
@@ -21,6 +21,12 @@ const HEAL_AURA_RING = 'rgba(120,240,170,0.28)';
 const HEAL_AURA_WIDTH = 1.5;
 const HEAL_AURA_PULSE = 0.04; // relative Radius-Schwankung
 const HEAL_AURA_SPEED = 2; // Bogenmass pro Sekunde
+
+// B-190: Albtraum-Stil der Gegner ('A' | 'B' | 'C') je Karte, wenn der Albtraum- oder Nacht-Look an ist, sonst null
+export function nmEnemyStyle(mapId, on) {
+  if (!on) return null;
+  return Object.hasOwn(NM_STYLE_OF_MAP, mapId ?? '') ? NM_STYLE_OF_MAP[mapId] : 'A';
+}
 
 // Fußpunkt (y in Spiel-px) für die Tiefen-Sortierung
 export function enemyFootY(e) {
@@ -90,7 +96,7 @@ function drawHpBar(ctx, e, f, k, rise = 0) {
   const frac = Math.max(0, Math.min(1, e.hp / e.maxHp));
   if (!Number.isFinite(frac)) return;
   const w = Math.max(HP.minW, HP.share * f.w) * k;
-  const top = enemyFootY(e) + (f.box[1] - f.h) * k - rise; // oberster Punkt der Figur (rise: Wippen, Lodern)
+  const top = enemyFootY(e) + ((f.body || f.box)[1] - f.h) * k - rise; // B-190: ohne Randlicht (f.body) // oberster Punkt der Figur (rise: Wippen, Lodern)
   const y = top - (HP.gap + HP.h) * U;
   const x = e.x - w / 2;
   ctx.fillStyle = HP.back;
@@ -119,13 +125,15 @@ function variantOf(e, type, time, still) {
 // path ist optional (state.path); ohne Weg blickt die Figur nach rechts. reduced: prefers-reduced-motion
 // (Fledermaus/Irrlicht wippen nicht, Glutling lodert nicht und sprüht keine Funken, Flügelschlag steht).
 // bossBar (B-180): die Boss-Leiste im HUD ist sichtbar, dann kein kleiner Lebensbalken über Bossen.
-export function drawEnemy(ctx, e, time, path, reduced = false, bossBar = false) {
+// nm (B-190): Albtraum-Stil der Karte (nmEnemyStyle), null = heutige Figuren
+export function drawEnemy(ctx, e, time, path, reduced = false, bossBar = false, nm = null) {
   const known = Object.hasOwn(ENEMY_TYPES, e.type) && enemyFigure(e.type, false);
   const type = known ? e.type : 'grunt'; // unbekannte Typen: Goblin
   const slowed = type !== 'ember' && time < e.slowUntil; // Glutling: nie Eis-Fassung
   const still = slowed || reduced;
   const variant = variantOf(e, type, time, still);
-  const f = enemyFigure(type, slowed, variant);
+  const style = nm && Object.hasOwn(NM_ENEMY_STYLE, nm) ? nm : null;
+  const f = enemyFigure(type, slowed, variant, style);
   const k = U * (f.big ? S[f.big] : 1);
   const angle = facingFor(path, e.dist);
   const flip = facingFlip(angle);
@@ -141,7 +149,7 @@ export function drawEnemy(ctx, e, time, path, reduced = false, bossBar = false) 
   const bob = slowed || floats ? 0 : Math.abs(s) * S.bob;
 
   const elite = e.elite && !isBoss(e) ? e.elite : null; // B-179: Bosse tragen nie ein Abzeichen
-  if (elite) drawEliteRing(ctx, e, enemyFootY(e), f.w * k, time, still);
+  if (elite) drawEliteRing(ctx, e, enemyFootY(e), f.w * k, time, still, style ? NM_ENEMY_STYLE[style].eye : null);
   if (type === 'bat') drawBatShadow(ctx, e, flip, lift);
   if (type === 'wisp' && !slowed) drawWispGlow(ctx, e, time, reduced, lift);
   if (type === 'necro') drawNecroSkulls(ctx, e, time, reduced, false); // hintere Schädel (Phase 2)
@@ -153,7 +161,7 @@ export function drawEnemy(ctx, e, time, path, reduced = false, bossBar = false) 
   ctx.scale(k, k * stretch);
   ctx.translate(-f.w / 2, -f.h - bob - lift);
   if (f.cloak) drawNecroBack(ctx, f, e, time, still); // B-180: Schatten, Kugelschein und Umhang live, Rest als Sprite
-  const sp = sprite(`enemy:${type}:${variant}:${slowed ? 1 : 0}:${dpr}`, f.box, k * dpr, (cx) => paintFigure(cx, f));
+  const sp = sprite(`enemy:${type}:${variant}:${slowed ? 1 : 0}:${style || ''}:${dpr}`, f.box, k * dpr, (cx) => paintFigure(cx, f));
   if (sp) drawSprite(ctx, sp);
   else paintFigure(ctx, f);
   ctx.restore();
