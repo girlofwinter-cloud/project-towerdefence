@@ -563,7 +563,7 @@ const startScreen = mountStartScreen($('start-screen'), {
   },
 });
 $('to-maps').addEventListener('click', () => startScreen.show(true));
-// Kartenauswahl aus dem Pause-Schild; „Zurück zum Spiel“ oder Esc kehrt ins pausierte Spiel zurück
+// Kartenauswahl aus dem HUD (Home-Knopf, pausiert ein laufendes Spiel); „Zurück zum Spiel“ oder Esc kehrt ins pausierte Spiel zurück
 $('menu-maps').addEventListener('click', () => {
   if (state.status === 'playing' && !state.paused) doTogglePause();
   startScreen.show(true);

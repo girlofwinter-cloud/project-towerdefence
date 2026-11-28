@@ -1,4 +1,4 @@
-// Browser-Test: Aus dem laufenden Spiel zur Kartenauswahl (Knopf im Pause-Schild),
+// Browser-Test: Aus dem laufenden Spiel zur Kartenauswahl (Home-Knopf im HUD, immer sichtbar),
 // zurück ohne Verlust und Rückfrage, bevor eine neue Karte das Spiel ersetzt.
 // Ausführen: npm run test:e2e   (braucht Playwright)
 import { test, before, after } from 'node:test';
@@ -45,6 +45,43 @@ test('Kartenauswahl mitten im Spiel: zurück behält das Spiel, neue Karte fragt
   await page.click('.map-card.current');
   await page.waitForSelector('#start-screen', { state: 'hidden' });
   assert.equal(await page.evaluate(() => window.__game().wave), 0);
+  assert.deepEqual(errors, []);
+  await ctx.close();
+});
+
+test('Home-Knopf im HUD: im laufenden Spiel sichtbar, Klick pausiert und öffnet die Kartenauswahl', async () => {
+  const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 }, reducedMotion: 'reduce' });
+  const page = await ctx.newPage();
+  const errors = [];
+  page.on('pageerror', (e) => errors.push(String(e)));
+  await page.goto(url);
+  await page.click('.map-card.current');
+  await page.waitForSelector('#start-screen', { state: 'hidden' });
+  await page.click('#start-wave');
+  assert.equal(await page.evaluate(() => window.__game().paused), false);
+  assert.equal(await page.isVisible('#menu-maps'), true);
+  const b = await page.locator('#menu-maps').boundingBox();
+  assert.ok(b.x >= 0 && b.y >= 0, `Home-Knopf im Fenster: ${JSON.stringify(b)}`);
+  await page.click('#menu-maps');
+  await page.waitForSelector('#start-screen', { state: 'visible' });
+  assert.equal(await page.evaluate(() => window.__game().paused), true);
+  assert.deepEqual(errors, []);
+  await ctx.close();
+});
+
+test('Home-Knopf im Kompakt-Layout 390x844: sichtbar, im Fenster, öffnet die Kartenauswahl', async () => {
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, reducedMotion: 'reduce' });
+  const page = await ctx.newPage();
+  const errors = [];
+  page.on('pageerror', (e) => errors.push(String(e)));
+  await page.goto(url);
+  await page.click('.map-card.current');
+  await page.waitForSelector('#start-screen', { state: 'hidden' });
+  assert.equal(await page.isVisible('#menu-maps'), true);
+  const b = await page.locator('#menu-maps').boundingBox();
+  assert.ok(b.x >= 0 && b.y >= 0 && b.x + b.width <= 390 && b.y + b.height <= 844, `Home-Knopf im Fenster: ${JSON.stringify(b)}`);
+  await page.click('#menu-maps');
+  await page.waitForSelector('#start-screen', { state: 'visible' });
   assert.deepEqual(errors, []);
   await ctx.close();
 });
