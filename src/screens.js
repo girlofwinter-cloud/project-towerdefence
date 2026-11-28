@@ -8,6 +8,20 @@ import { buildPaintedSvg, rasterizePainted, paletteFor } from './render-painted.
 
 export const STAR_COUNT = STAR_LIVES_SHARE.length;
 
+// Wert einer Option der Kartenauswahl im Band: 'meadow' (Normal) bzw. 'meadow:nightmare' (Albtraum).
+export const mapSelectValue = (mapId, mode = 'normal') => (mode === 'nightmare' ? `${mapId}:nightmare` : mapId);
+export function parseMapSelectValue(value) {
+  const [mapId, m] = String(value).split(':');
+  return { mapId, mode: m === 'nightmare' ? 'nightmare' : 'normal' };
+}
+// Optionen der Kartenauswahl im Band. testMode: zusätzlich je Karte eine Albtraum-Variante.
+export function mapSelectOptions({ testMode = false } = {}) {
+  const ids = Object.keys(MAPS);
+  const opts = ids.map((mapId) => ({ value: mapId, mapId, mode: 'normal' }));
+  if (testMode) for (const mapId of ids) opts.push({ value: mapSelectValue(mapId, 'nightmare'), mapId, mode: 'nightmare' });
+  return opts;
+}
+
 // Daten je Kartenkarte in MAP_ORDER. allOpen: Testseite (alle Karten offen).
 export function mapCards(progress, { allOpen = false } = {}) {
   return MAP_ORDER.map((id, i) => {

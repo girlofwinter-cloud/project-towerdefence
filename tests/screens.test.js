@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { MAPS, MAX_WAVES } from '../src/config.js';
 import { emptyProgress, MAP_ORDER } from '../src/progress.js';
-import { mapCards, moveFocus, endView, starsHtml, STAR_COUNT } from '../src/screens.js';
+import { mapCards, moveFocus, endView, starsHtml, STAR_COUNT, mapSelectOptions, mapSelectValue, parseMapSelectValue } from '../src/screens.js';
 
 const [M0, M1, M2] = MAP_ORDER;
 
@@ -104,4 +104,22 @@ test('B-182: mapCards zeigt den Albtraum nur bei allen Sternen', () => {
   assert.equal(cards[1].nightmare, false);
   assert.equal(cards[2].nightmare, false);
   assert.ok(mapCards(emptyProgress(), { allOpen: true }).every((c) => c.nightmare));
+});
+
+test('mapSelectOptions: normal nur Karten, Testmodus zusätzlich je Karte eine Albtraum-Variante', () => {
+  const ids = Object.keys(MAPS);
+  assert.deepEqual(mapSelectOptions().map((o) => o.value), ids);
+  assert.ok(mapSelectOptions().every((o) => o.mode === 'normal'));
+  const t = mapSelectOptions({ testMode: true });
+  assert.equal(t.length, ids.length * 2);
+  assert.deepEqual(t.slice(ids.length).map((o) => o.value), ids.map((id) => `${id}:nightmare`));
+  assert.ok(t.slice(ids.length).every((o, i) => o.mode === 'nightmare' && o.mapId === ids[i]));
+});
+
+test('mapSelectValue/parseMapSelectValue: Karte und Modus hin und zurück', () => {
+  assert.deepEqual(parseMapSelectValue('meadow:nightmare'), { mapId: 'meadow', mode: 'nightmare' });
+  assert.deepEqual(parseMapSelectValue('meadow'), { mapId: 'meadow', mode: 'normal' });
+  assert.equal(mapSelectValue('meadow'), 'meadow');
+  assert.equal(mapSelectValue('meadow', 'nightmare'), 'meadow:nightmare');
+  for (const o of mapSelectOptions({ testMode: true })) assert.deepEqual(parseMapSelectValue(o.value), { mapId: o.mapId, mode: o.mode });
 });
