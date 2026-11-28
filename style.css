@@ -26,13 +26,16 @@
      Seitenzonen mindestens --side-min breit (Fähigkeiten, Türme), Bänder oben/unten mindestens --band-min hoch (HUD, Wellenknopf). */
   --view-w: 900; --view-h: 660; --field-w: 800; --field-h: 560; --frame: 50;
   --side-min: 100px; --band-min: 58px;
-  --u: min(100vw / var(--view-w), 100vh / var(--view-h), (100vw - 2 * var(--side-min)) / var(--field-w), (100vh - 2 * var(--band-min)) / var(--field-h));
+  /* --vh: sichtbare Höhe. iOS Safari zählt bei 100vh die Adress- und Tab-Leiste nicht ab, dvh schon (sonst Feld oben abgeschnitten) */
+  --vh: 100vh;
+  --u: min(100vw / var(--view-w), var(--vh) / var(--view-h), (100vw - 2 * var(--side-min)) / var(--field-w), (var(--vh) - 2 * var(--band-min)) / var(--field-h));
   --cw: calc(var(--u) * var(--view-w));  --ch: calc(var(--u) * var(--view-h));
-  --cx: calc((100vw - var(--cw)) / 2);   --cy: calc((100vh - var(--ch)) / 2);
+  --cx: calc((100vw - var(--cw)) / 2);   --cy: calc((var(--vh) - var(--ch)) / 2);
   --fw: calc(var(--u) * var(--field-w)); --fh: calc(var(--u) * var(--field-h));
   --fx: calc(var(--cx) + var(--u) * var(--frame)); --fy: calc(var(--cy) + var(--u) * var(--frame));
   --fr: var(--fx); --fb: var(--fy); /* symmetrisch */
 }
+@supports (height: 100dvh) { :root { --vh: 100dvh; } }
 * { box-sizing: border-box; }
 html, body { height: 100%; margin: 0; overflow: hidden; }
 body {
@@ -472,7 +475,7 @@ body.on-start .top-buttons { z-index: 41; } /* Ton und Hilfe bleiben erreichbar 
      dass neben ihm je Seite Safe-Area plus --col frei bleibt (Bedienung überdeckt das Feld nie), sonst füllt es die Höhe. */
   :root { --safe-l: max(8px, env(safe-area-inset-left, 0px)); --safe-r: max(8px, env(safe-area-inset-right, 0px));
     --safe-t: max(8px, env(safe-area-inset-top, 0px)); --safe-b: max(8px, env(safe-area-inset-bottom, 0px)); --col: 104px; /* size-side-col-mobile */
-    --u: min(100vh / var(--field-h), (100vw - 2 * (max(var(--safe-l), var(--safe-r)) + var(--col))) / var(--field-w));
+    --u: min(var(--vh) / var(--field-h), (100vw - 2 * (max(var(--safe-l), var(--safe-r)) + var(--col))) / var(--field-w));
     --side: calc((100vw - var(--fw)) / 2); }
   /* Oben links: HUD-Plakette Gold, Welle, Leben untereinander (Zahlen num-compact 22 px) */
   .hud { left: var(--safe-l); top: var(--safe-t); height: 124px; min-width: 92px; max-width: var(--col); flex-direction: column; align-items: flex-start; justify-content: space-evenly; gap: 0; padding: 0 10px 0 8px; }
@@ -502,7 +505,7 @@ body.on-start .top-buttons { z-index: 41; } /* Ton und Hilfe bleiben erreichbar 
   .rbtn { width: 48px; height: 48px; left: -24px; top: -24px; } .rbtn > svg { width: 30px; height: 30px; }
   .rbtn-small { width: 44px; height: 44px; left: -22px; top: -22px; }
   .ring-tower .ring-info, .ring-tower.info-left .ring-info { position: fixed; left: auto; right: var(--safe-r); top: calc(var(--safe-t) + 112px); z-index: 16;
-    width: min(130px, calc(var(--side) - var(--safe-r))); max-height: calc(100vh - var(--safe-t) - var(--safe-b) - 112px - 112px); overflow: hidden; padding: 8px; text-align: center; }
+    width: min(130px, calc(var(--side) - var(--safe-r))); max-height: calc(var(--vh) - var(--safe-t) - var(--safe-b) - 112px - 112px); overflow: hidden; padding: 8px; text-align: center; }
   .ring-info h3 { font-size: 15px; } .ring-info p { font-size: 12px; line-height: 1.25; } #ti-special { display: none; }
   #message { max-width: calc(var(--fw) - 20px); white-space: normal; text-align: center; }
   #overlay { position: fixed; inset: 0; z-index: 30; background: rgba(16,28,14,.78); overflow: auto; }
@@ -519,4 +522,15 @@ body.on-start .top-buttons { z-index: 41; } /* Ton und Hilfe bleiben erreichbar 
   .map-name { font-size: 18px; } .map-stars svg { width: 18px; height: 18px; } .map-best { font-size: 12px; line-height: 1.2; }
   .map-lock { top: 26px; }
   .start-hint { margin-top: 12px; }
+}
+
+/* Sehr niedriges Querformat (iOS Safari mit Adress- und Tab-Leiste, ca. 300 px): HUD (124) plus drei Fähigkeiten (56) passen
+   nicht mehr untereinander und überlappten. HUD flacher, Fähigkeiten 44 px (Mindest-Tippfläche) mit engerem Abstand. */
+@media (max-height: 359.98px) and (orientation: landscape) {
+  .hud { height: 96px; }
+  .hud .num { font-size: 19px; line-height: 21px; } .hud .num small { font-size: 13px; }
+  .hud-ico { width: 19px; height: 19px; }
+  .abilities { gap: 8px; bottom: var(--safe-b); }
+  .ab { width: 44px; height: 44px; } .ab > svg { width: 28px; height: 28px; }
+  .ab-num { font-size: 19px; }
 }

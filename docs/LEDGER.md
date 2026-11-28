@@ -64,3 +64,8 @@ Anhängen ohne die Datei zu lesen: `cat >> docs/LEDGER.md <<'EOF' … EOF`. Übe
 - Stufe 3: Schaden 1,9x statt 2,25x (LEVEL_DAMAGE), Schritt 2->3 kostet 2x Baupreis; HP-Zuwachs ab Welle 11 1,16; perfektes Spiel rüstet auf; neuer Test gegen übermächtige Stufe 3.
 - Freigegebene Test-Änderungen: Kanonen-Mix darf ab Welle 15 verlieren (Wiese, Zangenangriff, Vulkan), Zwei Fronten ab 13, Kanone zuerst (fork) ab 14, hpScale-Vergleich mit der Mitte; Vollbild-e2e wartet. unit 633, balance 21, e2e 98 grün.
 - Nachtrag: Max (2->3) kostet 3x Baupreis (Wunsch des Menschen), dafür Spätphase 1,14 statt 1,16; perfektes Spiel je Karte eigene Turmzahl vor dem Aufrüsten.
+
+### 2026-11-28 – Handy quer in Safari mit Leisten
+- Bug (nur über towerdefence.pages.dev im normalen Safari-Tab): bei ca. 300 px Höhe lag die HUD-Plakette über dem Kanonen-Knopf, Feld oben abgeschnitten.
+- style.css: Höhe aus `--vh` (100dvh, Fallback 100vh) statt 100vh; unter 360 px Höhe HUD flacher (96) und Fähigkeiten 44 px mit Abstand 8.
+- Neuer e2e-Test 932x300 und 844x280 (scheitert ohne Fix). unit 633, e2e 100 grün.

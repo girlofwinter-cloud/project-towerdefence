@@ -95,6 +95,24 @@ for (const [width, height] of [[844, 390], [932, 430], [740, 360]]) {
   });
 }
 
+// iOS Safari quer mit Adress- und Tab-Leiste lässt nur ca. 300 px Höhe: HUD und Fähigkeiten überlappten (Kanone über dem HUD)
+for (const [width, height] of [[932, 300], [844, 280]]) {
+  test(`Querformat niedrig ${width}x${height}: HUD und Fähigkeiten überlappen nicht, Feld ganz sichtbar, Tippziele >= 44`, async () => {
+    const { ctx, page, errors } = await openPhone({ width, height });
+    const r = await layoutInfo(page, CONTROLS);
+    assertInside(r);
+    const f = fieldRect(await page.locator('#game').boundingBox());
+    assert.ok(f.top >= -0.5 && f.bottom <= height + 0.5, `Feld im Fenster: ${JSON.stringify(f)}`);
+    const b = r.boxes;
+    assert.ok(b['#abilities'].top >= b['#hud-bar'].bottom, `Fähigkeiten unter dem HUD: ${b['#hud-bar'].bottom} / ${b['#abilities'].top}`);
+    for (const sel of CONTROLS) assert.ok(!cut(r.boxes[sel], f), `${sel} schneidet das Feld: ${JSON.stringify(r.boxes[sel])}`);
+    const hs = await page.$$eval('#abilities button, #sound, #speed, #pause, #start-wave', (els) => els.map((e) => e.getBoundingClientRect().toJSON()));
+    for (const h of hs) assert.ok(h.height >= MIN_TOUCH && h.width >= MIN_TOUCH, `Tippziel ${h.width}x${h.height}`);
+    assert.deepEqual(errors, []);
+    await ctx.close();
+  });
+}
+
 test('B-137 Querformat 844x390: Bedienung bleibt außerhalb der Safe-Area (Notch links, Rand rechts und unten)', async () => {
   const { ctx, page } = await openPhone({ width: 844, height: 390 });
   // env(safe-area-inset-*) liefert im Test 0: Werte wie beim iPhone quer über die Variablen setzen, die style.css daraus bildet
