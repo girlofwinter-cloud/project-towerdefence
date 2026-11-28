@@ -204,7 +204,8 @@ export function drawNightmareMotion(ctx, state, t, reduced = false, compact = fa
       ctx.setLineDash(G.dash);
       ctx.lineDashOffset = -T * G.speed;
       ctx.beginPath();
-      p.points.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
+      // null im Punktzug = Lücke (z. B. Brücke über dem Fluss): neu ansetzen statt durchziehen
+      p.points.forEach((q, i, a) => { if (q) (i && a[i - 1] ? ctx.lineTo(...q) : ctx.moveTo(...q)); });
       ctx.stroke();
       ctx.setLineDash([]);
     } else if (p.kind === 'ripple') {

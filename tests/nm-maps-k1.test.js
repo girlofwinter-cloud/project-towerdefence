@@ -72,7 +72,11 @@ test('B-195/B-197: Teilchen höchstens maxDesktop bzw. maxCompact, Glanz und Wel
   const water = motionParticles('meadow').filter((p) => p.kind === 'glint' || p.kind === 'ripple');
   assert.equal(water.length, 5);
   for (const p of water.filter((q) => q.kind === 'ripple')) assert.ok(p.at[0] > 0 && p.at[1] < HEIGHT && p.at[1] > HEIGHT / 2, 'Wellen im See unten links');
-  for (const p of water.filter((q) => q.kind === 'glint')) assert.ok(p.points.length > 10 && p.points.every(([x]) => x < 3 * TILE), 'Glanz am Fluss links');
+  for (const p of water.filter((q) => q.kind === 'glint')) {
+    // null = Lücke an der Brücke (Glanz läuft nicht über die Brücke)
+    assert.ok(p.points.length > 10 && p.points.every((q) => !q || q[0] < 3 * TILE), 'Glanz am Fluss links');
+    assert.ok(p.points.includes(null), 'Lücke an der Brücke');
+  }
 });
 
 test('B-195/B-197: reduced motion zeichnet zwei Frames gleich, ohne Verläufe je Frame', () => {
