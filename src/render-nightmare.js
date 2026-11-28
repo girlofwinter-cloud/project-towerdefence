@@ -92,10 +92,47 @@ function spot(ctx, color, x, y, rx, ry) {
   ctx.fill();
 }
 
+// Nebelband vorab auf Geräte-px vergrößert (gleiche Abtastung wie spot), je Frame nur ein ungeskalierter Ausschnitt
+// innerhalb des Feldes (ersetzt das Clippen). false = gedrehte/schiefe Transformation oder ohne Canvas
+const fogCache = new Map();
+function fogBlit(ctx, m, color, x, y) {
+  if (!m || m.b !== 0 || m.c !== 0 || !(m.a > 0) || !(m.d > 0)) return false;
+  const F = NM_MOTION.fog, sx = Math.round(m.a * 100) / 100, sy = Math.round(m.d * 100) / 100;
+  const key = `${color}|${sx}|${sy}`;
+  let cv = fogCache.get(key);
+  if (cv === undefined) {
+    const s = soft(color), w = Math.round(2 * F.rx * sx), h = Math.round(2 * F.ry * sy);
+    cv = null;
+    if (s) {
+      cv = typeof document !== 'undefined' ? document.createElement('canvas') : new OffscreenCanvas(w, h);
+      cv.width = w; cv.height = h;
+      cv.getContext('2d').drawImage(s, 0, 0, w, h);
+    }
+    fogCache.set(key, cv);
+  }
+  if (!cv) return false;
+  // Feld und Band in Geräte-px, Schnitt auf ganze px
+  const fx0 = Math.round(m.e), fy0 = Math.round(m.f), fx1 = Math.round(m.e + WIDTH * m.a), fy1 = Math.round(m.f + HEIGHT * m.d);
+  const bx = Math.round(m.e + (x - F.rx) * m.a), by = Math.round(m.f + (y - F.ry) * m.d);
+  const x0 = Math.max(fx0, bx), y0 = Math.max(fy0, by), x1 = Math.min(fx1, bx + cv.width), y1 = Math.min(fy1, by + cv.height);
+  if (x1 <= x0 || y1 <= y0) return true;
+  ctx.save();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.drawImage(cv, x0 - bx, y0 - by, x1 - x0, y1 - y0, x0, y0, x1 - x0, y1 - y0);
+  ctx.restore();
+  return true;
+}
+
 const layoutCache = new WeakMap(); // Weg -> Map(Schlüssel -> Teilchen)
 const emberCache = new WeakMap(); // Weg -> Glutpunkte
+const marksKeys = new WeakMap(); // Marken-Objekt der Szene -> Schlüsselteil (einmal je Szene statt je Frame)
+function marksKey(marks) {
+  let k = marksKeys.get(marks);
+  if (k === undefined) { k = Object.entries(marks).map(([n, l]) => `${n}${l.length}`).join(); marksKeys.set(marks, k); }
+  return k;
+}
 function layoutFor(state, compact, eyes, marks) {
-  const key = `${state.mapId}|${compact ? 1 : 0}|${eyes.length}|${Object.entries(marks).map(([n, l]) => `${n}${l.length}`).join()}`;
+  const key = `${state.mapId}|${compact ? 1 : 0}|${eyes.length}|${marksKey(marks)}`;
   const host = state.path || state;
   if (!layoutCache.has(host)) layoutCache.set(host, new Map());
   const m = layoutCache.get(host);
@@ -108,17 +145,26 @@ function layoutFor(state, compact, eyes, marks) {
 export function drawNightmareMotion(ctx, state, t, reduced = false, compact = false, eyes = [], marks = {}) {
   const T = reduced ? 0 : t;
   const parts = layoutFor(state, compact, eyes, marks);
+  const m = typeof ctx.getTransform === 'function' ? ctx.getTransform() : null;
+  let clipped = false;
   ctx.save();
-  for (const p of parts) {
+  for (let i = 0; i < parts.length; i++) {
+    const p = parts[i];
     if (p.kind === 'fog') {
       const F = NM_MOTION.fog;
-      ctx.save(); // Nebel nur über dem Feld, nie am Rand
-      ctx.beginPath();
-      ctx.rect(0, 0, WIDTH, HEIGHT);
-      ctx.clip();
       ctx.globalAlpha = p.alpha;
-      spot(ctx, p.color, p.x + F.sway * Math.sin(TAU * (T / F.period + p.phase)), p.y, F.rx, F.ry);
-      ctx.restore();
+      const x = p.x + F.sway * Math.sin(TAU * (T / F.period + p.phase));
+      if (!fogBlit(ctx, m, p.color, x, p.y)) {
+        if (!clipped) { // Nebel nur über dem Feld, nie am Rand (einmal clippen für alle Bänder)
+          clipped = true;
+          ctx.save();
+          ctx.beginPath();
+          ctx.rect(0, 0, WIDTH, HEIGHT);
+          ctx.clip();
+        }
+        spot(ctx, p.color, x, p.y, F.rx, F.ry);
+      }
+      if (clipped && parts[i + 1]?.kind !== 'fog') { ctx.restore(); clipped = false; }
     } else if (p.kind === 'fall') {
       const F = NM_MOTION.fall;
       const v = frac(T / p.period + p.phase);
@@ -144,7 +190,8 @@ export function drawNightmareMotion(ctx, state, t, reduced = false, compact = fa
       ctx.globalAlpha = 1;
       ctx.fillStyle = p.color;
       const rx = p.rx ?? B.rx, ry = p.ry ?? B.ry, gap = p.gap ?? B.gap;
-      for (const dx of [-gap, gap]) {
+      for (let j = -1; j <= 1; j += 2) {
+        const dx = j * gap;
         ctx.beginPath();
         ctx.ellipse(p.x + dx, p.y, rx, shut ? ry * B.shut : ry, 0, 0, TAU);
         ctx.fill();
@@ -179,7 +226,10 @@ export function drawNightmareMotion(ctx, state, t, reduced = false, compact = fa
       ctx.globalAlpha = lerp(p.alpha[0], p.alpha[1], v);
       ctx.fillStyle = p.color;
       ctx.beginPath();
-      [[0, -r], [w, -w], [r, 0], [w, w], [0, r], [-w, w], [-r, 0], [-w, -w]].forEach(([dx, dy], i) => (i ? ctx.lineTo(p.x + dx, p.y + dy) : ctx.moveTo(p.x + dx, p.y + dy)));
+      for (let i = 0; i < STAR.length; i++) {
+        const [ar, aw, br, bw] = STAR[i], px = p.x + ar * r + aw * w, py = p.y + br * r + bw * w;
+        if (i) ctx.lineTo(px, py); else ctx.moveTo(px, py);
+      }
       ctx.closePath();
       ctx.fill();
     } else if (p.kind === 'pulse') {
@@ -205,6 +255,8 @@ export function drawNightmareMotion(ctx, state, t, reduced = false, compact = fa
   }
 }
 
+// Vierzack-Stern: Ecken als Anteile [x von r, x von Taille, y von r, y von Taille] (einmal statt je Frame)
+const STAR = [[0, 0, -1, 0], [0, 1, 0, -1], [1, 0, 0, 0], [0, 1, 0, 1], [0, 0, 1, 0], [0, -1, 0, 1], [-1, 0, 0, 0], [0, -1, 0, -1]];
 // Schwingung 0..1 (Sinus) mit Phase des Teilchens
 function wave(T, p) { return 0.5 + 0.5 * Math.sin(TAU * (T / p.period + p.phase)); }
 // Eisscholle (Vorlage Eiswelt: Sechseck 22 x 13 Fläche-px, Kontur ink), Mitte x, y

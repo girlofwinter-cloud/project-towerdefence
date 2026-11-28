@@ -2551,3 +2551,55 @@ test('Tester: Normalmodus ohne Nacht-Look zeichnet keine Albtraum-Lichtinsel und
     assert.ok(n.calls.some(([k, v]) => k === '=fillStyle' && v === NM_WARM_LIGHT.color), `${id}: Gegenprobe Nacht-Look`);
   }
 });
+
+test('B-190 Bildrate: Albtraum-Figur getrennt in Fußaura, Randlicht und Körper (Nekromantin-Live-Teil ohne Randlicht)', async () => {
+  const { enemyFigure, ENEMY_KINDS } = await import('../src/figures.js');
+  const { NM_ENEMY_STYLE } = await import('../src/config.js');
+  const { withAlpha } = await import('../src/svg-figure.js');
+  for (const t of ENEMY_KINDS) for (const s of ['A', 'B', 'C']) {
+    const f = enemyFigure(t, false, undefined, s);
+    assert.ok(f.nm, `${t}/${s}: Aufteilung`);
+    assert.equal(f.nm.under[0].fill, withAlpha(NM_ENEMY_STYLE[s].eye, 0.5), `${t}/${s}: Fußaura`);
+    assert.equal(f.nm.rim.grad, `nm-rim-${s.toLowerCase()}`);
+    assert.equal(f.nm.els.length, f.els.length - 2, `${t}/${s}: Körper ohne Aura und Randlicht`);
+    assert.ok(!f.nm.els.includes(f.nm.rim) && !f.nm.els.includes(f.nm.under[0]));
+    if (f.cloak) assert.ok(!f.nm.live.back.some((el) => el.grad), `${t}/${s}: Live-Teil ohne Randlicht`);
+  }
+  assert.equal(enemyFigure('grunt', false).nm, undefined, 'ohne Stil: keine Aufteilung');
+});
+
+test('B-190 Bildrate: Albtraum-Gegner je Frame nur aus Sprites, Randlicht ungedreht auf ganzen Geräte-px', async () => {
+  const { setSpriteFactory } = await import('../src/sprites.js');
+  const { drawEnemy } = await import('../src/render-enemies.js');
+  setSpriteFactory((w, h) => { const m = mockCtx(); return { width: w, height: h, getContext: () => m.ctx }; });
+  try {
+    for (const type of ['grunt', 'tank', 'necro']) {
+      const e = { id: 1, type, x: 200, y: 150, dist: 20, hp: 10, maxHp: 10, slowUntil: 0 };
+      const draw = () => {
+        const m = mockCtx();
+        const blits = [];
+        m.props.getTransform = () => ({ a: 1.5, b: 0, c: 0, d: 1.5, e: 3, f: 4 });
+        m.props.drawImage = (...a) => { blits.push(a); };
+        drawEnemy(m.ctx, e, 1, null, true, false, 'A');
+        assert.equal(m.depth, 0);
+        return { counts: m.counts, blits };
+      };
+      draw(); // Sprites bauen
+      const { counts, blits } = draw();
+      assert.ok(!counts.createRadialGradient && !counts.createLinearGradient, `${type}: kein Verlauf je Frame`);
+      assert.ok(blits.some((a) => a.length === 3 && Number.isInteger(a[1]) && Number.isInteger(a[2])), `${type}: Randlicht als ganzzahliger Blit`);
+      assert.ok(counts.setTransform >= 1, `${type}: Randlicht ohne Drehung`);
+      if (type !== 'necro') assert.equal(blits.length, 2, `${type}: Randlicht + ein Sprite`);
+    }
+  } finally { setSpriteFactory(); }
+});
+
+test('B-194 Bildrate: Nebelbänder werden ohne Canvas einmal geclippt, nicht je Band', async () => {
+  const { drawNightmareMotion, motionParticles } = await import('../src/render-nightmare.js');
+  const s = createGame({ mapId: 'ice' });
+  assert.ok(motionParticles('ice').filter((p) => p.kind === 'fog').length > 1);
+  const m = mockCtx();
+  drawNightmareMotion(m.ctx, s, 1);
+  assert.equal(m.counts.clip, 1);
+  assert.equal(m.depth, 0);
+});

@@ -83,6 +83,51 @@ function iceLayer(c, f, els) {
   c.restore();
 }
 
+// B-190 Bildrate: Albtraum-Figur als Randlicht (ungedreht, schneller Blit) + ein Sprite (Eis-Schein, Fußaura, Körper,
+// Eis-Hülle). Das Randlicht liegt damit unter der Fußaura statt darüber (am Fuß Deckkraft ~0,1, kaum sichtbar).
+// Nekromantin: Randlicht, Fußaura, Live-Teil ohne Randlicht, Rest. false = ohne Sprites, Aufrufer zeichnet wie bisher.
+const unionBox = (a, b) => [Math.min(a[0], b[0]), Math.min(a[1], b[1]), Math.max(a[2], b[2]), Math.max(a[3], b[3])];
+function drawNmSplit(ctx, f, key, scale, e, time, still) {
+  const n = f.nm;
+  const box = f.cloak ? n.underBox : unionBox(n.underBox, f.body);
+  const sp = sprite(`enemy-nm:${key}`, box, scale, (c) => {
+    if (f.glow) iceLayer(c, f, f.glow);
+    drawElements(c, n.under);
+    if (f.cloak) return;
+    drawElements(c, n.els);
+    if (f.shell) iceLayer(c, f, f.shell);
+  });
+  if (!sp) return false;
+  drawRim(ctx, n.rim, key, scale);
+  drawSprite(ctx, sp);
+  if (!f.cloak) return true;
+  drawNecroBack(ctx, n.live, e, time, still);
+  const front = sprite(`enemy-nm-front:${key}`, f.body, scale, (c) => drawElements(c, f.front));
+  if (front) drawSprite(ctx, front);
+  return true;
+}
+// Randlicht (Kreis mit radialem Verlauf, dreh- und spiegelgleich): bei gleichmäßiger Skalierung ungedreht auf ganze
+// Geräte-px (schneller Blit ohne Neuabtastung), sonst (Lodern des Glutlings) als Sprite in Figur-Koordinaten
+function drawRim(ctx, rim, key, scale) {
+  const m = typeof ctx.getTransform === 'function' ? ctx.getTransform() : null;
+  const sx = m ? Math.hypot(m.a, m.b) : 0, sy = m ? Math.hypot(m.c, m.d) : 0;
+  if (!(sx > 0) || Math.abs(sx - sy) > 1e-3 * sx || Math.abs(m.a * m.c + m.b * m.d) > 1e-3 * sx * sx) {
+    const sp = sprite(`enemy-nm-rim:${key}`, rim.box, scale, (c) => drawElements(c, [rim]));
+    if (sp) drawSprite(ctx, sp);
+    return;
+  }
+  const ds = Math.round(sx * 100) / 100;
+  const [x0, y0, x1, y1] = rim.box;
+  const sp = sprite(`enemy-nm-rimd:${rim.grad}:${x1 - x0}:${ds}`, rim.box, ds, (c) => drawElements(c, [rim]));
+  if (!sp) return;
+  const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+  const X = m.a * cx + m.c * cy + m.e, Y = m.b * cx + m.d * cy + m.f;
+  ctx.save();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.drawImage(sp.canvas, Math.round(X - (cx - x0) * ds), Math.round(Y - (cy - y0) * ds));
+  ctx.restore();
+}
+
 // Lebensbalken (Z.113) in Weltkoordinaten über der Figur: dunkle Kapsel, farbige Füllung
 function capsule(ctx, x, y, w, h) {
   const r = h / 2;
@@ -160,10 +205,13 @@ export function drawEnemy(ctx, e, time, path, reduced = false, bossBar = false, 
   ctx.rotate(facingTilt(angle) * S.tilt + sway);
   ctx.scale(k, k * stretch);
   ctx.translate(-f.w / 2, -f.h - bob - lift);
-  if (f.cloak) drawNecroBack(ctx, f, e, time, still); // B-180: Schatten, Kugelschein und Umhang live, Rest als Sprite
-  const sp = sprite(`enemy:${type}:${variant}:${slowed ? 1 : 0}:${style || ''}:${dpr}`, f.box, k * dpr, (cx) => paintFigure(cx, f));
-  if (sp) drawSprite(ctx, sp);
-  else paintFigure(ctx, f);
+  const key = `${type}:${variant}:${slowed ? 1 : 0}:${style || ''}:${dpr}`;
+  if (!(f.nm && drawNmSplit(ctx, f, key, k * dpr, e, time, still))) {
+    if (f.cloak) drawNecroBack(ctx, f, e, time, still); // B-180: Schatten, Kugelschein und Umhang live, Rest als Sprite
+    const sp = sprite(`enemy:${key}`, f.box, k * dpr, (cx) => paintFigure(cx, f));
+    if (sp) drawSprite(ctx, sp);
+    else paintFigure(ctx, f);
+  }
   ctx.restore();
   if (type === 'necro') {
     drawNecroSkulls(ctx, e, time, reduced, true);

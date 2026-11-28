@@ -317,6 +317,14 @@ function build(def, extra = '', type = '', nm = null) {
     f.cloak = parsed.groups[ci].els;
     f.front = parsed.groups.slice(ci + 1).flatMap((g) => g.els);
   }
+  // Bildrate: Aura, Randlicht und Körper getrennt (render-enemies.js zeichnet das Randlicht ungedreht auf ganze Geräte-px,
+  // die Nekromantin ohne Randlicht im Live-Teil). Reihenfolge bleibt: Aura, Randlicht, Körper.
+  const rim = nm && parsed.all[1];
+  if (rim && rim.grad === `nm-rim-${nm.toLowerCase()}` && (!f.back || f.back[1] === rim)) {
+    const under = parsed.all.slice(0, 1);
+    f.nm = { under, underBox: pad(boxOf(under), 2), rim, els: parsed.all.slice(NM_BEHIND_COUNT) };
+    if (f.back) f.nm.live = { ...f, back: f.back.slice(NM_BEHIND_COUNT) };
+  }
   return f;
 }
 // Figur eines Gegnertyps; frozen: eingefrorene Fassung (Goblin eigener Entwurf, sonst mit Eis-Überzug, Glutling nie).

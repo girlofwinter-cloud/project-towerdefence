@@ -89,6 +89,7 @@ export function bgCacheKey(id, scale) {
 const paintedCache = new Map(); // mapId -> { status, canvas, key, size, loading, wantKey, wantSince, scene, look, failedKey }
 // B-194: Look des gemalten Bilds ('normal' oder 'nightmare' = Albtraum bzw. Nacht-Look), gesetzt von renderView/render
 let paintLook = 'normal';
+const NO_EYES = [], NO_MARKS = {}; // feste Leer-Werte (Schlüssel-Cache der Bewegungsschicht)
 // Karten im Cache (Tests: nach einem Kartenwechsel nur noch die aktuelle)
 export function paintedCacheIds() {
   return [...paintedCache.keys()];
@@ -135,7 +136,7 @@ function paintedFor(state, ctx) {
     paintedCache.set(id, e);
   }
   // B-194: Moduswechsel (Albtraum, Nacht-Look): neue Szene, neu rastern (Schlüssel hängt am Look); altes Bild bleibt bis dahin
-  if (e.look !== paintLook) { e.look = paintLook; e.scene = buildPaintedScene(state, paintLook); e.failedKey = null; if (e.status === 'failed') e.status = 'loading'; }
+  if (e.look !== paintLook) { e.look = paintLook; e.scene = buildPaintedScene(state, paintLook); e.failedKey = null; e.loading = null; if (e.status === 'failed') e.status = 'loading'; }
   const { w, h } = deviceSizeOf(ctx);
   const x = paintedExt;
   const key = `${bgCacheKey(id, `${w}x${h}`)}+${x.l},${x.t},${x.r},${x.b}+${e.look}`;
@@ -191,7 +192,8 @@ export function render(ctx, state, ui) {
   }
   // B-194: Albtraum-Bewegung statt Tönung und Vignette, über dem Boden, unter allen Figuren
   if (nightOn(state, ui)) {
-    drawNightmareMotion(ctx, state, now() / 1000, reduced, !!ui?.compactMotion, paintedCache.get(state.mapId)?.scene?.eyes ?? [], paintedCache.get(state.mapId)?.scene?.marks ?? {});
+    const scene = paintedCache.get(state.mapId)?.scene;
+    drawNightmareMotion(ctx, state, now() / 1000, reduced, !!ui?.compactMotion, scene?.eyes ?? NO_EYES, scene?.marks ?? NO_MARKS);
     drawWarmLights(ctx, state.towers);
   }
   drawHover(ctx, state, ui);
