@@ -113,3 +113,11 @@ B-184: Den designer-Prototyp (`/design`) vor der Umsetzung anfertigen; er kann p
 - Akzeptanzkriterien:
   - Simulation in `tests/balance/` misst je Karte den Kanonen-Mix im Albtraum und gibt Welle und Leben aus (Messung, keine harte Grenze).
   - `npm run test:balance` für den Normalmodus bleibt grün und unverändert.
+
+### B-187: Eigene Musik im Albtraum
+- Status: offen
+- Aufwand: S
+- Idee: Wunsch des Menschen (28.11.): Der Albtraum braucht eine eigene, dunklere Musik. Ein Titel für alle Karten im Albtraum, z. B. `SOUND.music.nightmare` neben `byMap` in `config.js`, mit Lautstärkefaktor per RMS-Messung wie bei B-118. Die Datei lädt der Mensch selbst herunter (CC0, Lizenz bestätigt er), Umwandlung per `afconvert` nach `assets/music/`, Nachweis in `assets/sounds/LIZENZ.md`. Bis die Datei da ist, wird die Mechanik mit dem normalen Kartentitel als Rückfall gebaut.
+- Akzeptanzkriterien:
+  - `pickMusicUrl` (src/sound-events.js) wählt im Albtraum den Albtraum-Titel und sonst den Kartentitel (Unit-Test); ohne Albtraum-Datei gilt der Kartentitel.
+  - Asset-Grenzen im Test bleiben eingehalten (3 MB je Musikdatei, 10 MB gesamt).
