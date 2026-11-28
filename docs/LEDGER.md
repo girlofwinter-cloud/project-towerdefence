@@ -138,3 +138,8 @@ Anhängen ohne die Datei zu lesen: `cat >> docs/LEDGER.md <<'EOF' … EOF`. Übe
 ### agent/home-knopf (2026-11-28)
 - Kartenauswahl-Knopf im Pause-Schild als Home-Knopf (Haus-Symbol + „Menü“), Desktop und Handy.
 - Unit- und e2e-Tests grün, Screenshots 1280x800 und 844x390 geprüft.
+
+### 2026-11-28 – Scharfschütze: eigener Schuss-Ton
+- Scharfschütze: einzelner Gewehrknall (Free Firearm Sound Library, CC0; Tikka, Arisaka, Mosin), alter Ton war ~20x leiser als die Kanone.
+- Stufe 3 "Falkenauge": eigener Ton `shot:sniper:master` (Kenney laserLarge), über das vorhandene Geschoss-Feld `master`.
+- Blitz bleibt unverändert (Wunsch des Menschen). Neuer Test in `tests/sound.test.js`, Schlüsselliste im B-114-Test ergänzt.

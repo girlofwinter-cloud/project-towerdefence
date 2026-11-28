@@ -410,7 +410,7 @@ import { fileURLToPath } from 'node:url';
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 
 test('B-114: jedes B-113-Ereignis hat 2–4 Aufnahmen, Dateien vorhanden, zusammen höchstens 400 KB, Lizenz je Datei', () => {
-  const keys = [...Object.keys(TOWER_TYPES).map((t) => `shot:${t}`), 'death', 'boss', 'lifeLost', 'meteorFlight', 'meteorImpact'];
+  const keys = [...Object.keys(TOWER_TYPES).map((t) => `shot:${t}`), 'shot:sniper:master', 'death', 'boss', 'lifeLost', 'meteorFlight', 'meteorImpact'];
   assert.deepEqual(Object.keys(SOUND.samples.sounds).sort(), keys.sort());
   const lic = fs.readFileSync(`${ROOT}assets/sounds/LIZENZ.md`, 'utf8');
   assert.match(lic, /CC0/);
@@ -1564,4 +1564,35 @@ test('B-188: setVolumes setzt den Effekte-Master sofort (Web Audio nachgebaut), 
   } finally {
     if (hadWindow) globalThis.window = undefined; else delete globalThis.window;
   }
+});
+
+test('Scharfschütze: Stufe 3 (Falkenauge) hat eigenen Schuss-Ton, andere Türme fallen auf den normalen zurück', async () => {
+  const { upgradeTower } = await import('../src/game.js');
+  assert.equal(soundKey({ kind: 'shot', tower: 'sniper', master: true }), 'shot:sniper:master');
+  assert.equal(soundKey({ kind: 'shot', tower: 'sniper' }), 'shot:sniper');
+  assert.equal(soundKey({ kind: 'shot', tower: 'arrow', master: true }), 'shot:arrow', 'ohne eigene Aufnahme -> normaler Ton');
+  const tr = createSoundTracker();
+  const state = { status: 'playing', paused: false, time: 1, projectiles: [], effects: [], enemies: [], towers: [], lives: 20 };
+  detectSoundEvents(tr, state);
+  state.time = 2;
+  state.projectiles.push({ towerType: 'sniper', master: true }, { towerType: 'sniper', master: false });
+  assert.deepEqual(detectSoundEvents(tr, state).map(soundKey), ['shot:sniper:master', 'shot:sniper']);
+});
+
+test('Scharfschütze: Geschosse tragen master (Ton-Schlüssel) erst auf Stufe 3', async () => {
+  const { upgradeTower } = await import('../src/game.js');
+  const shotsOf = (level) => {
+    const s = createGame();
+    s.gold = 99999;
+    const [c, r] = freeTileNearPath(s);
+    buildTower(s, 'sniper', c, r);
+    const t = s.towers[0];
+    for (let l = 1; l < level; l++) upgradeTower(s, t.id);
+    assert.equal(t.level, level);
+    startWave(s);
+    for (let i = 0; i < 600 && s.projectiles.length === 0; i++) update(s, 1 / 30);
+    return s.projectiles;
+  };
+  assert.ok(shotsOf(1).length > 0 && shotsOf(1).every((p) => !p.master));
+  assert.ok(shotsOf(3).length > 0 && shotsOf(3).every((p) => !!p.master));
 });
