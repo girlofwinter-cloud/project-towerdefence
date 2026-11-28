@@ -922,6 +922,12 @@ body.fs-gate #rotate-hint { position: fixed; inset: 0; z-index: 60; display: fle
   #overlay.nightmare-lose :is(.end-keep, .end-badges) { margin-top: 8px; }
   #overlay:is(.nightmare-win, .nightmare-lose) .end-actions { margin-top: 10px; flex-wrap: wrap; gap: 8px; }
   #overlay:is(.nightmare-win, .nightmare-lose) .end-actions .wbtn { min-height: 46px; font-size: 17px; padding: 0 12px; }
+  /* Niedrige Handys (z. B. 667x375): Plakette höher ansetzen und Abstände enger, damit sie ganz ins Fenster passt (Linux-Schrift ist höher) */
+  @media (max-height: 400px) {
+    #overlay:is(.nightmare-win, .nightmare-lose) .end-card { top: max(6px, calc(50% - 184px)); }
+    .end-values, .end-conds { margin-top: 4px; } .end-reward, .end-next, .end-tip { margin-top: 5px; }
+    #overlay:is(.nightmare-win, .nightmare-lose) .end-actions { margin-top: 6px; }
+  }
   #overlay:is(.nightmare-win, .nightmare-lose) #to-maps, #end-look, #overlay:is(.nightmare-win, .nightmare-lose) #restart { min-width: 0; }
 }
 
