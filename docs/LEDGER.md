@@ -106,6 +106,21 @@ Anhängen ohne die Datei zu lesen: `cat >> docs/LEDGER.md <<'EOF' … EOF`. Übe
 - Entscheidungen/Abweichungen: Zwei Spieltests des Menschen: +40 % ab Welle 1 zu schwer → gestuft (8–11 ×1,2, ab 12 ×1,4), Kopfgeld normal, mehr Elite ab Welle 8. Oger-König kostet im Albtraum weiter alle Leben (Mensch: so lassen). Skript-Strategien schaffen den Albtraum nicht mehr (Regel „perfektes Spiel“ gilt hier bewusst nicht). Mit Gold-Anzeige-Fix und Testmodus-Gold aus. Tester PASS, Reviewer APPROVE.
 - Offen: Albtraum-Design (Runde 1 Stilrichtung in Claude Design, Auswahl durch den Menschen).
 
+### 2026-11-28 · Bibliothek schlank
+- Regel: Bauteil-Bibliothek in Claude Design nicht mehr vollständig pflegen; Fläche nur für große neue Elemente auf Auftrag.
+- Bauvorlage bleibt Pflicht. Geändert: `.claude/agents/designer.md`, `.claude/skills/design/SKILL.md`.
+- Keine Code-Änderung, keine Tests betroffen.
+
+### 2026-11-28 · Pipeline schneller
+- Pipeline-Skill: Auto-Merge statt CI-Warten, genaue Fundstellen im developer-Auftrag, nie Opus.
+- Blöcke bis 6 bei UI-Kleinkram, e2e/Balancing nur einmal am Blockende, parallele Spuren in Worktrees.
+- Keine Code-Änderung.
+
+### agent/menue-knopf (2026-11-28)
+- Knopf „Kartenauswahl“ im Pause-Schild öffnet die Kartenauswahl mitten im Spiel.
+- „Zurück zum Spiel“ in der Auswahl kehrt ins pausierte Spiel zurück; neue Karte fragt vorher nach, wenn schon gespielt wurde.
+- Test: tests/e2e/menue-knopf.test.mjs; Unit- und e2e-Tests grün.
+
 ## 2026-11-28 – Block Albtraum-Design (B-190 bis B-199)
 - Rollen: designer (Sonnet + ein Opus-Vergleich), developer (4 parallele Worktrees), tester, reviewer.
 - Neu: echter Albtraum-Look statt Filter: je Karte eigener Stil (A/B/C), Bewegung (Wellen, Glut, Nebel), Gegner-Look, Holz-HUD, Kartenauswahl/Sieg/Aussehen; keine Vignette.

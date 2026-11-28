@@ -250,6 +250,9 @@ export function mountStartScreen(root, opts) {
   const modeBar = root.querySelector('.start-mode');
   const counter = root.querySelector('.badge-count');
   const hint = root.querySelector('.start-hint');
+  // Knopf „Zurück zum Spiel“: nur sichtbar, wenn die Auswahl aus einem Spiel heraus geöffnet wurde
+  const back = root.querySelector('.start-back');
+  back?.addEventListener('click', () => close());
   let closable = false;
   let cards = [];
   let view = 'normal'; // B-184: Ansicht Normal oder Albtraum
@@ -333,11 +336,13 @@ export function mountStartScreen(root, opts) {
   function pick(id, mode = 'normal') {
     const card = cards.find((c) => c.id === id);
     if (!card?.open || (mode === 'nightmare' && !card.nightmare)) return;
+    if (closable && opts.confirmLeave && !opts.confirmLeave()) return; // laufendes Spiel nicht ungefragt verwerfen
     hide();
     opts.onPick(id, mode);
   }
   function show(canClose = false) {
     closable = canClose;
+    if (back) back.hidden = !canClose;
     view = opts.currentMode?.() === 'nightmare' ? 'nightmare' : 'normal';
     build();
     root.hidden = false;
@@ -358,7 +363,7 @@ export function mountStartScreen(root, opts) {
     if (key.toLowerCase() === 'm') return false;
     if (onTopButton && (key === 'Enter' || key === ' ')) return true; // Knopf löst selbst aus, Spiel bekommt die Taste nicht
     // B-184: Umschalter und Slot-Reihe sind eigene Knöpfe (B-185: auch „Aussehen“)
-    const ownButton = ev.target instanceof Element && ev.target.closest('.start-mode, .map-badges, .cos-open, .nm-teaser'); // B-185: Knopf „Aussehen“
+    const ownButton = ev.target instanceof Element && ev.target.closest('.start-mode, .map-badges, .cos-open, .nm-teaser, .start-back'); // B-185: Knopf „Aussehen“
     if (ownButton && (key === 'Enter' || key === ' ')) return true;
     if (key === 'ArrowLeft' || key === 'ArrowRight') { ev.preventDefault(); focusCard(moveFocus(selectable(), current(), key === 'ArrowLeft' ? -1 : 1)); }
     else if (key === 'Enter' || key === ' ') {

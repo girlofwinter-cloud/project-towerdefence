@@ -376,6 +376,7 @@ body.mode-nightmare .map-pick { display: none; } /* B-184: im Albtraum steht dor
   box-shadow: inset 0 2px 0 rgba(255,220,160,.55), 0 6px 0 rgba(30,15,5,.45);
 }
 #pause-banner .key { font-size: 16px; opacity: .8; }
+#menu-maps { display: block; margin: 10px auto 0; min-height: 44px; font-size: 20px; pointer-events: auto; text-shadow: none; } /* zurück zur Kartenauswahl */
 #pause-banner[hidden] { display: none; }
 #overlay {
   position: absolute; inset: 0; z-index: 20; display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -570,6 +571,8 @@ body.on-start .help-pop { top: auto; bottom: 58px; }
 /* Unten: „Aussehen“ 196 x 52 bei (40, 718), Hinweis daneben */
 .start-head .cos-open { position: fixed; left: 40px; bottom: 30px; width: 196px; height: 52px; font-size: 20px; border-radius: 26px; gap: 8px; flex: none; }
 .start-head .cos-open svg { flex: none; }
+.start-head .start-back { position: fixed; left: 40px; bottom: 94px; width: 196px; min-height: 44px; font-size: 20px; border-radius: 22px; flex: none; } /* über „Aussehen“ */
+.start-head .start-back[hidden] { display: none; }
 .start-foot { position: fixed; left: 252px; right: 340px; bottom: 30px; min-height: 52px; display: flex; flex-direction: column; justify-content: center; gap: 4px; }
 .start-hint { margin: 0; font: 15px var(--font-body); color: var(--ink); }
 .start-keys { margin: 0; font: 13px var(--font-body); color: var(--ink); }
@@ -893,6 +896,7 @@ body.fs-gate #rotate-hint { position: fixed; inset: 0; z-index: 60; display: fle
   .map-cond, .nm-learn, .nm-teaser, .start-keys { display: none !important; }
   .map-nightmare { left: max(6px, calc(50% - 70px)); width: min(140px, calc(100% - 12px)); bottom: 6px; font-size: 16px; }
   .map-nightmare .nm-long { display: none; } .map-nightmare .nm-short { display: inline; }
+  .start-head .start-back { left: max(12px, var(--safe-l)); bottom: 70px; width: 170px; font-size: 18px; }
   .start-head .cos-open { left: max(12px, var(--safe-l)); bottom: 14px; width: 170px; height: 48px; font-size: 18px; border-radius: 24px; }
   .start-foot { left: calc(max(12px, var(--safe-l)) + 182px); right: calc(var(--safe-r) + 110px); bottom: 14px; min-height: 48px; }
   .start-hint { font-size: 13px; line-height: 1.2; }
