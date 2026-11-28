@@ -144,3 +144,8 @@ Anhängen ohne die Datei zu lesen: `cat >> docs/LEDGER.md <<'EOF' … EOF`. Übe
 - Elite: Normalmodus leichter (Schild 15 %, Heilung 1 %/s nach 2 s), Albtraum eigene Werte (Heilung immer).
 - Albtraum-Bosse: Nekromantin mit Fledermäusen und stärkerer Phase 2, Oger-König Phase 2; Bosse ohne Leben-Deckel.
 - Tests: unit, balance, e2e grün.
+
+### 2026-11-28 – Albtraum Welle 10: schlichter Oger-König
+- Wunsch des Menschen (Spieltest): Boss in Welle 10 zu schwer.
+- NIGHTMARE.bossBuff.plainBossWaves [10]: Oger-König ohne Phase 2 (Schild/Wut), ohne Schamanen-Heilung und Magier-Schild.
+- Neuer Test; bestehender Phase-2-Test nutzt jetzt Welle 5. Unit 768/768, Balance 26/26 grün.

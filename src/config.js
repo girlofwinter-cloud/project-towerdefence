@@ -786,6 +786,8 @@ export const NIGHTMARE = {
     necroBats: 1, necroBatsP2: 2,
     ogrePhase2: { at: 0.5, shieldDuration: 2, speedFactor: 1.35 },
     necroPhase2: { summonInterval: 3, summonCount: 4, speedFactor: 1.3 },
+    // Spieltest 28.11. (Welle 10 zu schwer): Bosse dieser Wellen ohne zweite Phase, ohne Heilung und ohne Magier-Schild
+    plainBossWaves: [10],
   },
 };
 

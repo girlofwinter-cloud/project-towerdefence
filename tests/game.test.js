@@ -4019,7 +4019,7 @@ test('Albtraum: Oger-König bekommt Phase 2 (Schild, dann schneller), Normalmodu
   const P = NIGHTMARE.bossBuff.ogrePhase2;
   for (const mode of ['normal', 'nightmare']) {
     const s = createGame({ mode });
-    const b = spawnEnemy(s, 'boss', 10);
+    const b = spawnEnemy(s, 'boss', 5); // Welle 10 ist schlicht (plainBossWaves)
     const speed = b.speed;
     s.projectiles.push({ x: b.x, y: b.y, targetId: b.id, speed: 1e6, damage: b.maxHp * (1 - P.at) + 1, splash: 0 });
     update(s, 1e-3);
@@ -4033,6 +4033,27 @@ test('Albtraum: Oger-König bekommt Phase 2 (Schild, dann schneller), Normalmodu
       assert.equal(s.effects.filter((fx) => fx.kind === 'phase2').length, 1);
     }
   }
+});
+
+test('Albtraum: Boss in plainBossWaves ohne Phase 2, Heilung und Magier-Schild', () => {
+  const wave = NIGHTMARE.bossBuff.plainBossWaves[0];
+  const s = createGame({ mode: 'nightmare' });
+  const b = spawnEnemy(s, 'boss', wave);
+  b.dist = 5 * TILE; b.speed = 0;
+  const speed = b.speed;
+  for (const type of ['healer', 'mage']) {
+    const h = spawnEnemy(s, type, wave);
+    h.dist = b.dist; h.x = b.x; h.y = b.y; h.speed = 0;
+  }
+  s.projectiles.push({ x: b.x, y: b.y, targetId: b.id, speed: 1e6, damage: b.maxHp * 0.6, splash: 0 });
+  update(s, 1e-3);
+  const hp = b.hp;
+  s.waveActive = true;
+  for (let i = 0; i < 60; i++) update(s, 0.1);
+  assert.notEqual(b.phase, 2);
+  assert.equal(b.speed, speed);
+  assert.equal(b.hp, hp, 'keine Heilung');
+  assert.ok(!(b.ward > 0), 'kein Magier-Schild');
 });
 
 test('Albtraum: Nekromantin Phase 2 deutlich stärker (Takt, Anzahl, Tempo aus bossBuff.necroPhase2)', () => {
