@@ -213,10 +213,8 @@ export function drawEnemy(ctx, e, time, path, reduced = false, bossBar = false, 
     else paintFigure(ctx, f);
   }
   ctx.restore();
-  if (type === 'necro') {
-    drawNecroSkulls(ctx, e, time, reduced, true);
-    drawNecroShield(ctx, e, time);
-  }
+  if (type === 'necro') drawNecroSkulls(ctx, e, time, reduced, true);
+  if (type === 'necro' || type === 'boss') drawNecroShield(ctx, e, time); // Albtraum: auch Oger-König Phase 2
 
   if (type === 'ember') {
     if (!reduced) drawEmberSparks(ctx, e, time);
