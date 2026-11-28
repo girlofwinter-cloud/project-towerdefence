@@ -3527,3 +3527,80 @@ test('B-180: zweite Phase beschwört im Takt phase2.summonInterval je phase2.sum
   while (s.time < t0 + 2 * P2.summonInterval + 0.05) update(s, step);
   assert.equal(skeletons(), 2 * P2.summonCount);
 });
+
+// ---------- Schalter Auto-Start ----------
+import { setAutoWave } from '../src/game.js';
+import { loadAutoWave, saveAutoWave } from '../src/hud.js';
+import { AUTO_WAVE_SETTING } from '../src/config.js';
+
+function endFirstWave(s) {
+  startWave(s);
+  s.spawnQueue = [];
+  s.enemies = [];
+  update(s, 1 / 60);
+}
+
+test('Auto-Start: Standard an, per createGame abschaltbar', () => {
+  assert.equal(createGame().autoWave, true);
+  const s = createGame({ autoWave: false });
+  endFirstWave(s);
+  assert.equal(s.autoWaveIn, null, 'aus: kein Countdown nach Wellenende');
+  run(s, AUTO_WAVE_DELAY * 3);
+  assert.equal(s.wave, 1, 'aus: nächste Welle startet nicht von selbst');
+  assert.equal(startButtonView(s).label, 'Welle 2 starten');
+  assert.equal(startWave(s).ok, true, 'manueller Start geht weiter');
+});
+
+test('Auto-Start: Ausschalten beendet den laufenden Countdown', () => {
+  const s = createGame();
+  endFirstWave(s);
+  assert.equal(s.autoWaveIn, AUTO_WAVE_DELAY);
+  assert.equal(setAutoWave(s, false), false);
+  assert.equal(s.autoWaveIn, null);
+  run(s, AUTO_WAVE_DELAY * 2);
+  assert.equal(s.wave, 1);
+});
+
+test('Auto-Start: Einschalten zwischen zwei Wellen startet den Countdown neu', () => {
+  const s = createGame({ autoWave: false });
+  endFirstWave(s);
+  setAutoWave(s, true);
+  assert.equal(s.autoWaveIn, AUTO_WAVE_DELAY);
+  run(s, AUTO_WAVE_DELAY + 0.1);
+  assert.equal(s.wave, 2);
+});
+
+test('Auto-Start: Einschalten vor Welle 1, während einer Welle oder nach Spielende startet keinen Countdown', () => {
+  const pre = createGame({ autoWave: false });
+  setAutoWave(pre, true);
+  assert.equal(pre.autoWaveIn, null, 'vor Welle 1');
+  const running = createGame({ autoWave: false });
+  startWave(running);
+  setAutoWave(running, true);
+  assert.equal(running.autoWaveIn, null, 'Welle läuft');
+  const lost = createGame({ autoWave: false });
+  endFirstWave(lost);
+  lost.status = 'lost';
+  setAutoWave(lost, true);
+  assert.equal(lost.autoWaveIn, null, 'Spiel vorbei');
+  const last = createGame({ autoWave: false });
+  endFirstWave(last);
+  last.wave = MAX_WAVES;
+  setAutoWave(last, true);
+  assert.equal(last.autoWaveIn, null, 'nach der letzten Welle');
+});
+
+test('Auto-Start: Wahl wird gespeichert und gelesen, kaputter Speicher fällt auf den Standard', () => {
+  const mem = new Map();
+  const storage = { getItem: (k) => mem.get(k) ?? null, setItem: (k, v) => mem.set(k, v) };
+  assert.equal(loadAutoWave(storage), AUTO_WAVE_SETTING.defaultOn);
+  saveAutoWave(storage, false);
+  assert.equal(mem.get(AUTO_WAVE_SETTING.storageKey), '0');
+  assert.equal(loadAutoWave(storage), false);
+  saveAutoWave(storage, true);
+  assert.equal(loadAutoWave(storage), true);
+  const broken = { getItem: () => { throw new Error('gesperrt'); }, setItem: () => { throw new Error('voll'); } };
+  assert.equal(loadAutoWave(broken), AUTO_WAVE_SETTING.defaultOn);
+  assert.doesNotThrow(() => saveAutoWave(broken, false));
+  assert.equal(loadAutoWave(null), AUTO_WAVE_SETTING.defaultOn);
+});

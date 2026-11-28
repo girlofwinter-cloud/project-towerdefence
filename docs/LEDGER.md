@@ -73,3 +73,8 @@ Anhängen ohne die Datei zu lesen: `cat >> docs/LEDGER.md <<'EOF' … EOF`. Übe
 ### 2026-11-28 – Start im Hochformat brach das Laden ab
 - Bug (Android Chrome): Seite im Hochformat geöffnet, gedreht -> kein Vollbild-Knopf. Ursache: applyRotateHint rief refreshUI vor `const updateBossBars` (seit B-180), main.js brach ab.
 - Fix: erster Drehhinweis-Aufruf ans Ende der Initialisierung verschoben. Neuer e2e-Test (Hochformat -> quer, keine Fehler, Knopf da). unit 633, e2e 101 grün.
+
+### 2026-11-28 – Schalter Auto-Start der nächsten Welle
+- Neu: Knopf neben "Welle starten" (Handy quer: über dem runden Wellenknopf), Taste A. Aus = kein Countdown nach Wellenende; Wahl in localStorage (`td-auto-wave`), Standard an.
+- Logik `setAutoWave` in game.js (aus beendet Countdown, an startet ihn nur zwischen zwei Wellen), Laden/Speichern in hud.js.
+- Tests: 5 unit, neuer e2e `auto-wave` (Desktop 1280/1920, Handy 844x390/667x375). unit 638, e2e 105, balance 21 grün. Reviewer: APPROVE.

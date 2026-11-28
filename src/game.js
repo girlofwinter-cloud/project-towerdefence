@@ -26,6 +26,7 @@ export function createGame({ mapId, ...overrides } = {}) {
     waveActive: false,
     waveTime: 0,
     autoWaveIn: null, // B-121: Sekunden bis zum automatischen Start der nächsten Welle (null = kein Countdown)
+    autoWave: true, // Schalter: nächste Welle nach Wellenende automatisch starten (Spieler-Wahl, main.js merkt sie sich)
     spawnQueue: [],
     towers: [],
     enemies: [],
@@ -913,5 +914,16 @@ function waveEndCheck(state) {
   state.waveActive = false;
   state.gold += waveBonus(state.wave);
   if (state.wave >= MAX_WAVES) state.status = 'won';
-  else state.autoWaveIn = AUTO_WAVE_DELAY; // B-121: nach Welle 20 kein Countdown
+  else if (state.autoWave) state.autoWaveIn = AUTO_WAVE_DELAY; // B-121: nach Welle 20 kein Countdown
+}
+
+// Schalter Auto-Start: aus beendet einen laufenden Countdown; an startet ihn neu, wenn gerade zwischen zwei Wellen
+// gewartet wird (nicht vor Welle 1, nicht nach Spielende oder der letzten Welle).
+export function setAutoWave(state, on) {
+  state.autoWave = Boolean(on);
+  if (!state.autoWave) state.autoWaveIn = null;
+  else if (state.autoWaveIn === null && state.status === 'playing' && state.wave >= 1 && state.wave < MAX_WAVES && !state.waveActive) {
+    state.autoWaveIn = AUTO_WAVE_DELAY;
+  }
+  return state.autoWave;
 }
