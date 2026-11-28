@@ -105,3 +105,8 @@ Anhängen ohne die Datei zu lesen: `cat >> docs/LEDGER.md <<'EOF' … EOF`. Übe
 - Tests: npm test 717, test:balance 26, E2E 129 grün
 - Entscheidungen/Abweichungen: Zwei Spieltests des Menschen: +40 % ab Welle 1 zu schwer → gestuft (8–11 ×1,2, ab 12 ×1,4), Kopfgeld normal, mehr Elite ab Welle 8. Oger-König kostet im Albtraum weiter alle Leben (Mensch: so lassen). Skript-Strategien schaffen den Albtraum nicht mehr (Regel „perfektes Spiel“ gilt hier bewusst nicht). Mit Gold-Anzeige-Fix und Testmodus-Gold aus. Tester PASS, Reviewer APPROVE.
 - Offen: Albtraum-Design (Runde 1 Stilrichtung in Claude Design, Auswahl durch den Menschen).
+
+### 2026-11-28 · Bibliothek schlank
+- Regel: Bauteil-Bibliothek in Claude Design nicht mehr vollständig pflegen; Fläche nur für große neue Elemente auf Auftrag.
+- Bauvorlage bleibt Pflicht. Geändert: `.claude/agents/designer.md`, `.claude/skills/design/SKILL.md`.
+- Keine Code-Änderung, keine Tests betroffen.
