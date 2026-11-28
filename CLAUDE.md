@@ -19,7 +19,7 @@ Zweck des Repos: Lernprojekt für agentische Entwicklung mit Claude Code. Siehe 
 
 ## Regeln für alle Agenten
 1. Kleine Änderungen: ein Feature oder ein Fix pro Eintrag. Mehrere zusammengehörige Einträge dürfen als Block (ein Branch, ein PR) laufen, siehe Pipeline.
-2. Neue Logik braucht einen Test in `tests/` (passende Datei nach Modul: `game`, `decor`, `render`, `fx`, `input`; Strategie-Simulationen über viele Wellen in `tests/balance/`; gemeinsame Helfer in `tests/helpers.js` und `tests/balance/sim.js`). Tests nie löschen oder abschwächen, um grün zu werden.
+2. Neue Logik braucht einen Test in `tests/` (passende Datei nach Modul: `game`, `decor`, `render`, `fx`, `input`; Strategie-Simulationen über viele Wellen in `tests/balance/`; gemeinsame Helfer in `tests/helpers.js` und `tests/balance/sim.js`). Tests nie löschen oder abschwächen, um grün zu werden. Ausnahme ohne Rückfrage: reine Optik-Zähltests (Partikel, Formen, Zeichenaufrufe) dürfen angepasst werden, wenn die Optik absichtlich geändert wurde; im PR steht dann, welcher Test wie und warum. Tests zu Spiel-Logik, Balancing, perfektem Spiel und Eingabe sowie jedes Löschen oder Abschwächen einer Prüfung entscheidet der Mensch.
 3. Nie direkt auf `main` pushen. Immer Branch `agent/<kurzname>`, Änderung per Pull Request.
 4. Geschützte Dateien (`.claude/settings.json`, `.claude/hooks/`, `.github/workflows/`) ändern nur Menschen.
 5. Keine neuen Abhängigkeiten ohne Rückfrage.
@@ -29,6 +29,6 @@ Zweck des Repos: Lernprojekt für agentische Entwicklung mit Claude Code. Siehe 
 
 ## Pipeline
 Rollen liegen in `.claude/agents/`, der Ablauf in `.claude/skills/pipeline/SKILL.md`.
-Standard ist der schnelle Ablauf (Details im Skill): Blöcke von 3 bis 4 Einträgen auf einem Branch, nur der `developer` pro Eintrag, Tester und Reviewer nur bei Risiko (Spiel-Logik, Balancing, Eingabe, Layout) und dann einmal über den ganzen Block. Der Orchestrator mergt einen PR selbst, wenn die CI grün ist und die Merge-Bedingungen im Skill erfüllt sind. Der Mensch entscheidet nur noch Wichtiges: Spiel-Logik und Balancing-Änderungen, neue Mechaniken, neue Abhängigkeiten, Änderungen an `.claude/`, `.github/` und Regeln, sowie alles, wo Tests geändert werden müssten.
+Standard ist der schnelle Ablauf (Details im Skill): Blöcke von 3 bis 4 Einträgen auf einem Branch, nur der `developer` pro Eintrag, Tester und Reviewer nur bei Risiko (Spiel-Logik, Balancing, Eingabe, Layout) und dann einmal über den ganzen Block. Der Orchestrator mergt einen PR selbst, wenn die CI grün ist und die Merge-Bedingungen im Skill erfüllt sind. Der Mensch entscheidet nur noch Wichtiges: Spiel-Logik und Balancing-Änderungen, neue Mechaniken, neue Abhängigkeiten, Änderungen an `.claude/`, `.github/` und Regeln, sowie alles, wo Tests zu Logik, Balancing oder Eingabe geändert werden müssten (Optik-Zähltests siehe Regel 2).
 Freigegebene Einträge: `docs/BACKLOG.md`. Ideen (Status `vorschlag`): `docs/IDEEN.md`. Große Docs nur per `grep "^### "`/`"^## "` überfliegen, nicht ganz lesen.
 Der `designer` prüft auf Anfrage Optik und Bedienung (Desktop und Handy, mit Screenshots) und macht Designvorschläge: `/design`. Er ändert keinen Code.
