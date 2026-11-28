@@ -107,7 +107,7 @@ test('Randfall: Silber nach Lebensverlust plus Reparatur darf nicht vergeben wer
   s.wave = MAX_WAVES;
   // wie saveResult in main.js
   const p = allStars();
-  const res = recordResult(p, { mapId: s.mapId, status: s.status, wave: s.wave, lives: s.lives, mode: s.mode, goldOk: checkGoldCondition(s, s.mapId).ok, maxLives: maxLives(s) });
+  const res = recordResult(p, { mapId: s.mapId, status: s.status, wave: s.wave, lives: s.lives, mode: s.mode, goldOk: checkGoldCondition(s, s.mapId).ok, maxLives: maxLives(s), noLoss: !(s.track?.livesLost > 0) });
   assert.equal(res.newBadge, 1, 'Leben verloren -> nur Bronze');
 });
 
