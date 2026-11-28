@@ -115,3 +115,8 @@ Anhängen ohne die Datei zu lesen: `cat >> docs/LEDGER.md <<'EOF' … EOF`. Übe
 - Pipeline-Skill: Auto-Merge statt CI-Warten, genaue Fundstellen im developer-Auftrag, nie Opus.
 - Blöcke bis 6 bei UI-Kleinkram, e2e/Balancing nur einmal am Blockende, parallele Spuren in Worktrees.
 - Keine Code-Änderung.
+
+### agent/menue-knopf (2026-11-28)
+- Knopf „Kartenauswahl“ im Pause-Schild öffnet die Kartenauswahl mitten im Spiel.
+- „Zurück zum Spiel“ in der Auswahl kehrt ins pausierte Spiel zurück; neue Karte fragt vorher nach, wenn schon gespielt wurde.
+- Test: tests/e2e/menue-knopf.test.mjs; Unit- und e2e-Tests grün.
