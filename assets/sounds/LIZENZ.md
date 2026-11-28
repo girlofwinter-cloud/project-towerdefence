@@ -71,4 +71,5 @@ Albtraum-Modus (B-187): Lizenz CC0 hat der Mensch am 28.11.2026 auf der OpenGame
 
 | Datei | Modus | Titel | Autor | Quelle | Lizenz | Bearbeitung |
 |---|---|---|---|---|---|---|
-| ../music/music-nightmare.m4a | Albtraum (alle Karten) | Fantasy - Battlegrounds (Remastered) | Doge | https://opengameart.org/node/114717 | CC0 | battleground_remastered.mp3 (192 kbit/s) nach AAC (.m4a, 96 kbit/s) umgewandelt; Lautstärke über `SOUND.music.nightmare.gain` (0,52) |
+| ../music/music-nightmare.m4a | Albtraum Wiese | Fantasy - Battlegrounds (Remastered) | Doge | https://opengameart.org/node/114717 | CC0 | battleground_remastered.mp3 (192 kbit/s) nach AAC (.m4a, 96 kbit/s) umgewandelt; Lautstärke über `SOUND.music.nightmare.gain` (0,52) |
+| ../music/music-nightmare-ice.m4a | Albtraum Eiswelt | A Long Winter at Home (Classical) | FAINOD (Erlend Svetanden) | OpenGameArt, Seite „A Long Winter at Home (Classical) - FAINOD“ (Screenshot des Menschen, 28.11.2026) | CC0 | A Long Winter at Home.flac: erste 120 s, Einblenden 0,5 s, Ausblenden 4 s, nach AAC (.m4a, 80 kbit/s); Lautstärke über `SOUND.music.nightmare.byMap.ice.gain` (0,97) |
