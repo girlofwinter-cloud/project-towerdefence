@@ -218,7 +218,7 @@ export function buildPaintedScene(state, look = 'normal') {
   }
 
   // Burg am Ausgang, Fahne am Eingang, Klippen oben und unten im Rand
-  const keep = []; // freie Bahnen im Rand: dort keine Randbäume
+  const keep = [...(nm?.reserve || [])]; // freie Bahnen im Rand: dort keine Randbäume (B-199: reserve = Rand-Lava der Karte)
   for (const path of paths) {
     const pts = path.points;
     if (pts.length < 2) continue;
@@ -608,7 +608,7 @@ function hash01(mapId, i, j) {
 function sideTrees(sc, box, far, reach, nm = null) {
   const pal = paletteFor(sc.mapId, sc.look);
   const zone = nm?.frame ? [...(nm.frame.big || []), ...(nm.frame.mid || [])] : []; // B-194: Reihe 3 und 4 im Albtraum
-  const keep = [...sc.flags.map((l) => l.box), ...sc.castles.map((l) => l.box)];
+  const keep = [...sc.flags.map((l) => l.box), ...sc.castles.map((l) => l.box), ...(nm?.reserve || [])];
   const corridor = (pts, half) => { for (const [x, y] of riverSamplesOf(pts)) if (outsideCanvas([x, y])) keep.push([x - half, y - half, x + half, y + half]); };
   for (const pts of sc.paths) corridor(reach(pts), P.keepOut);
   if (sc.river) corridor(reach(sc.river), 50);
