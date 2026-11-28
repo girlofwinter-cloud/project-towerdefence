@@ -87,3 +87,9 @@ Anhängen ohne die Datei zu lesen: `cat >> docs/LEDGER.md <<'EOF' … EOF`. Übe
 ### 2026-11-28 – B-178 Fehlende Effekte der neuen Gegner
 - Neu: Dampf bei jedem Frosttreffer auf Glutling (`steam`), Splitter je verlorener Käferschicht (`shellChip`, letzte bleibt `shellBreak`), Irrlicht-Ausweichen mit enemyId/Richtung, 9 px Zucken, ein "Verfehlt" je Irrlicht. Spielwerte unverändert.
 - Tester PASS, Reviewer APPROVE (Hinweise: steam ohne Dedupe, steam.life doppelt zu ember.steamLife; unkritisch). unit 644, balance 21, e2e 107 grün.
+
+## 2026-11-28 · B-188 · Lautstärkeregler für Musik und Effekte
+- Ergebnis: fertig, Branch agent/lautstaerke, PR folgt
+- Tests: npm test 648 grün, E2E 121 grün (neu: lautstaerke + Randfälle des Testers)
+- Entscheidungen/Abweichungen: Mensch hat „kein Lautstärkeregler“ umentschieden (Musik und Effekte getrennt, eigener PR). Tester fand Feld offen über Startbildschirm (behoben), Reviewer APPROVE ohne Muss-Punkte; Hinweise (M auf Touch, Tab-Schließen, Hochformat) mit umgesetzt.
+- Offen: neues Bauteil (Plakette mit Schiebern) im Design-System nachtragen.

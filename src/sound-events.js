@@ -213,6 +213,38 @@ export function saveSoundOn(storage, on) {
   try { storage?.setItem(SOUND.storageKey, on ? '1' : '0'); } catch { /* Speicher voll oder gesperrt */ }
 }
 
+// ---------- B-188: Lautstärke Musik und Effekte (localStorage, Speicher wird übergeben) ----------
+// Auf 0..1 begrenzen; ungültige Werte (fehlend, kein Zahlwert) -> Standard (100 %)
+export function clampVolume(v) {
+  const n = typeof v === 'string' && v.trim() !== '' ? Number(v) : v;
+  if (typeof n !== 'number' || !Number.isFinite(n)) return SOUND.defaultVolume;
+  return Math.min(1, Math.max(0, n));
+}
+
+// Schieberwert -> Gain-Faktor (leicht quadratisch, siehe SOUND.volumeCurve); 0 ist still, 1 bleibt 1
+export function volumeGain(v) {
+  return clampVolume(v) ** SOUND.volumeCurve;
+}
+
+// Gain am Master der Effekte
+export function sfxGain(v) {
+  return SOUND.masterGain * volumeGain(v);
+}
+
+// Gespeicherte Werte { music, sfx }; alte Speicherstände ohne Eintrag oder kaputtes JSON -> je 100 %
+export function loadVolumes(storage) {
+  let raw = null;
+  try { raw = JSON.parse(storage?.getItem(SOUND.volumeStorageKey) ?? 'null'); } catch { /* Standard */ }
+  const obj = raw && typeof raw === 'object' ? raw : {};
+  return { music: clampVolume(obj.music), sfx: clampVolume(obj.sfx) };
+}
+
+export function saveVolumes(storage, { music, sfx } = {}) {
+  const v = { music: clampVolume(music), sfx: clampVolume(sfx) };
+  try { storage?.setItem(SOUND.volumeStorageKey, JSON.stringify(v)); } catch { /* Speicher voll oder gesperrt */ }
+  return v;
+}
+
 // ---------- B-114: Aufnahmen (Zuordnung, Variante, Ersatz) ----------
 // Standard: Aufnahmen der Schüsse usw. (B-114) und der Ereignis-Töne (B-115). Einzelne Gruppe oder Liste erlaubt.
 const SAMPLE_GROUPS = [SOUND.samples, SOUND.eventSamples];
@@ -271,9 +303,10 @@ export function pickMusicUrl(mapId, failed = [], cfg = SOUND.music) {
 
 // Ziel-Lautstärke der Musik: aus bei Ton aus und nach Sieg/Niederlage, bei Pause leiser.
 // B-118: url = laufender Titel, dessen Faktor (musicGainFactor) auf gain wirkt.
-export function musicLevel({ soundOn, status, paused, url }, cfg = SOUND.music) {
+// B-188: volume = Musik-Schieber (0..1, fehlt -> 100 %), wirkt über volumeGain.
+export function musicLevel({ soundOn, status, paused, url, volume }, cfg = SOUND.music) {
   if (!soundOn || status !== 'playing') return 0;
-  const gain = cfg.gain * musicGainFactor(url, cfg);
+  const gain = cfg.gain * musicGainFactor(url, cfg) * volumeGain(volume);
   return paused ? gain * cfg.pausedFactor : gain;
 }
 
