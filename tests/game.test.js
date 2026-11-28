@@ -3653,7 +3653,7 @@ describe('B-178: Effekt-Ereignisse der neuen Gegner', () => {
 });
 
 // ---------- B-182: Albtraum-Modus ----------
-import { NIGHTMARE, HP_GROWTH } from '../src/config.js';
+import { NIGHTMARE, HP_GROWTH, nightmareHpFactor } from '../src/config.js';
 import { modeModifiers, abilityMaxUses, maxLives } from '../src/game.js';
 
 describe('B-182: Albtraum-Modus', () => {
@@ -3705,26 +3705,46 @@ describe('B-182: Albtraum-Modus', () => {
 
   test('spätes HP-Wachstum hpGrowthLate', () => {
     const s = createGame({ mode: 'nightmare' });
-    // B-189: dazu überall mal hpFactor
-    assert.equal(spawnEnemy(s, 'grunt', 10).maxHp, Math.round(ENEMY_TYPES.grunt.hp * hpScale(10) * NIGHTMARE.hpFactor), 'bis Welle 10 gleiches Wachstum');
-    assert.equal(spawnEnemy(s, 'grunt', 15).maxHp, Math.round(ENEMY_TYPES.grunt.hp * hpScale(15, NIGHTMARE.hpGrowthLate) * NIGHTMARE.hpFactor));
+    // B-189: dazu mal gestuften Leben-Faktor (nightmareHpFactor)
+    assert.equal(spawnEnemy(s, 'grunt', 10).maxHp, Math.round(ENEMY_TYPES.grunt.hp * hpScale(10) * nightmareHpFactor(10, NIGHTMARE)), 'bis Welle 10 gleiches Wachstum');
+    assert.equal(spawnEnemy(s, 'grunt', 15).maxHp, Math.round(ENEMY_TYPES.grunt.hp * hpScale(15, NIGHTMARE.hpGrowthLate) * nightmareHpFactor(15, NIGHTMARE)));
     assert.ok(NIGHTMARE.hpGrowthLate > HP_GROWTH.late);
     assert.ok(hpScale(15, NIGHTMARE.hpGrowthLate) > hpScale(15));
   });
 
-  // B-189: Gegner-Leben im Albtraum ab Welle 1 mal hpFactor (normaler Gegner und Boss), Normalmodus ohne Faktor
-  test('hpFactor: Gegner-Leben im Albtraum höher, auch beim Boss', () => {
-    assert.ok(NIGHTMARE.hpFactor > 1);
-    assert.equal(modeModifiers('nightmare').hpFactor, NIGHTMARE.hpFactor);
+  // B-189: Gegner-Leben im Albtraum gestuft (vor Welle 8 gleich, 8-11 mal 1.2, ab 12 mal 1.4), auch beim Boss;
+  // Normalmodus immer Faktor 1
+  test('nightmareHpFactor: gestufte Gegner-Leben im Albtraum', () => {
+    const mods = modeModifiers('nightmare');
+    for (const [w, f] of [[1, 1], [7, 1], [8, 1.2], [11, 1.2], [12, 1.4], [20, 1.4]]) {
+      assert.equal(nightmareHpFactor(w, mods), f, `Welle ${w}`);
+      assert.equal(nightmareHpFactor(w, modeModifiers('normal')), 1, `normal Welle ${w}`);
+      assert.equal(nightmareHpFactor(w, mapModifiers('volcano')), 1, `Karte Welle ${w}`);
+    }
+    assert.equal(nightmareHpFactor(12), 1);
     const normal = createGame({ mapId: 'meadow' });
     const nm = createGame({ mapId: 'meadow', mode: 'nightmare' });
-    for (const [type, wave] of [['grunt', 1], ['boss', 5]]) {
+    for (const [type, wave] of [['grunt', 5], ['grunt', 12], ['boss', 5], ['boss', 15]]) {
       const n = spawnEnemy(normal, type, wave);
       const a = spawnEnemy(nm, type, wave);
-      assert.equal(n.maxHp, Math.round(ENEMY_TYPES[type].hp * hpScale(wave)), `${type} normal`);
-      assert.equal(a.maxHp, Math.round(ENEMY_TYPES[type].hp * hpScale(wave) * NIGHTMARE.hpFactor), `${type} Albtraum`);
+      assert.equal(n.maxHp, Math.round(ENEMY_TYPES[type].hp * hpScale(wave)), `${type} ${wave} normal`);
+      assert.equal(a.maxHp, Math.round(ENEMY_TYPES[type].hp * hpScale(wave, NIGHTMARE.hpGrowthLate) * nightmareHpFactor(wave, mods)), `${type} ${wave} Albtraum`);
       assert.equal(a.hp, a.maxHp);
     }
+    assert.equal(spawnEnemy(nm, 'grunt', 5).maxHp, spawnEnemy(normal, 'grunt', 5).maxHp, 'vor Welle 8 gleich');
+    assert.ok(spawnEnemy(nm, 'boss', 15).maxHp > spawnEnemy(normal, 'boss', 15).maxHp * 1.4, 'Boss ab Welle 12 deutlich zäher');
+  });
+
+  // B-189: Frühstart-Risiko nutzt dieselben Leben wie der Spawn (frische Welle 12 = Risiko 1)
+  test('earlyStartRisk passt zum gestuften Leben-Faktor', () => {
+    const s = createGame({ mapId: 'meadow', mode: 'nightmare' });
+    s.wave = 11;
+    startWave(s);
+    for (const e of s.spawnQueue) spawnEnemy(s, e.type, e.wave, e.lane);
+    s.spawnQueue = [];
+    const alive = s.enemies.reduce((sum, e) => sum + e.hp, 0);
+    assert.equal(alive, waveHp(12, 'meadow', NIGHTMARE.hpGrowthLate, 1.4));
+    assert.equal(earlyStartRisk(s), 1);
   });
 
   // B-186: Lava und Meteor wachsen im Albtraum wie die Gegner-HP (hpGrowthLate), im Normalmodus wie bisher

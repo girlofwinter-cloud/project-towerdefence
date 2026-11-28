@@ -759,16 +759,29 @@ export const ELITE = {
 // goldFactor: mal START_GOLD (gerundet); rewardFactor: mal Kopfgeld (gerundet, mindestens 1); lives: Start- und Höchstleben
 // (auch Grenze der Reparatur); repairUses: Einsätze der Reparatur; hpGrowthLate: ersetzt HP_GROWTH.late;
 // eliteBonus: Elite-Gegner mehr je Welle (auch über ELITE.max hinaus); eliteEarlier: so viele Wellen früher ab ELITE.from;
-// hpFactor (B-189): mal Gegner-Leben in allen Wellen.
+// hpSteps (B-189): Gegner-Leben ab Welle from mal factor (siehe nightmareHpFactor).
 // B-186 (28.11., grob, Feinabstimmung macht der Mensch): vorher goldFactor 0.7, rewardFactor 0.8, hpGrowthLate 1.18,
 // eliteEarlier 2. Damit scheiterten Kanonen-Mix und perfektes Spiel schon in Welle 2-10 (Start-Gold reichte nicht).
 // Jetzt (tests/balance/albtraum.test.js, dt 1/30): Kanonen-Mix scheitert in Welle 10-16 (normal 16-20), perfektes Spiel
 // erreicht Welle 19-20 (meist knapp verloren, Zangenangriff ohne Lebensverlust); Start-Gold kürzen kippt Eiswelt und
 // Zwei Fronten schon in Welle 2-3.
-// B-189 (28.11., Entscheidung des Menschen „deutlich“ nach eigenem Spiel: Albtraum war leicht): hpFactor neu (Gegner-Leben
-// ab Welle 1 mal hpFactor, auch Bosse und Elite; Lava und Meteor wachsen nicht mit), rewardFactor 0.9 -> 0.8,
-// Elite ab Welle 8 (eliteEarlier 0 -> 2) mit einem mehr (eliteBonus 1 -> 2). Messwerte in tests/balance/albtraum.test.js.
-export const NIGHTMARE = { goldFactor: 1, rewardFactor: 0.8, lives: 5, repairUses: 1, hpGrowthLate: 1.16, eliteBonus: 2, eliteEarlier: 2, hpFactor: 1.4 };
+// B-189 (28.11., Entscheidung des Menschen „deutlich“ nach eigenem Spiel: Albtraum war leicht): Elite ab Welle 8
+// (eliteEarlier 0 -> 2) mit einem mehr (eliteBonus 1 -> 2); hpSteps neu (Gegner-Leben gestuft, auch Bosse und Elite;
+// Lava und Meteor wachsen nicht mit). Erster Versuch (hpFactor 1.4 ab Welle 1, rewardFactor 0.8) war im Spieltest des
+// Menschen zu schwer (verloren in Welle 1-5); jetzt Wellen 1-7 und Gold wie bisher, ab Welle 12 +40 %, dazwischen +20 %
+// (rewardFactor 0.9 -> 1). Messwerte in tests/balance/albtraum.test.js.
+export const NIGHTMARE = {
+  goldFactor: 1, rewardFactor: 1, lives: 5, repairUses: 1, hpGrowthLate: 1.16, eliteBonus: 2, eliteEarlier: 2,
+  hpSteps: [{ from: 8, factor: 1.2 }, { from: 12, factor: 1.4 }],
+};
+
+// B-189: Leben-Faktor der Gegner in Welle `wave`: factor der letzten Stufe aus mods.hpSteps mit from <= wave, sonst 1
+// (Normalmodus ohne hpSteps immer 1).
+export function nightmareHpFactor(wave, mods = {}) {
+  let f = 1;
+  for (const step of mods?.hpSteps || []) if (wave >= step.from) f = step.factor;
+  return f;
+}
 
 // B-179: Anzahl der Elite-Gegner in Welle `wave` (0 vor ELITE.from). mods (B-182): { eliteBonus, eliteEarlier }.
 export function eliteCount(wave, mods = {}) {
