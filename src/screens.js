@@ -1,11 +1,13 @@
 // Startbildschirm mit Kartenkarten und Spielende-Plakette (Stil 1, C5).
 // Reine Funktionen (mapCards, endView, starSvg) sind in Node testbar; mountStartScreen braucht das DOM
 // und wird nur von main.js aufgerufen. Fortschritt wird hier nur gelesen, nie gespeichert.
-import { MAPS, MAX_WAVES, STAR_LIVES_SHARE, VIEW_WIDTH, VIEW_HEIGHT, FRAME_MARGIN, SCREENS, BADGE_TIERS, GOLD_CONDITIONS, COSMETICS } from './config.js';
+import { MAPS, MAX_WAVES, STAR_LIVES_SHARE, VIEW_WIDTH, VIEW_HEIGHT, FRAME_MARGIN, SCREENS, BADGE_TIERS, GOLD_CONDITIONS, COSMETICS, NM_STYLE_OF_MAP, NM_ENEMY_STYLE, TOWER_TYPES } from './config.js';
+import { NM_STYLE_NAME } from './nm-wood.js';
 import { MAP_ORDER, mapProgress, isUnlocked, isNightmareUnlocked, nightmareProgress, badgeCount, BADGE_MAX } from './progress.js';
 import { isGoldTowersUnlocked, isNightUnlocked, goldMapsProgress, nightLookChosen, goldTowersChosen, setNightLook, setGoldTowers } from './cosmetics.js';
 import { badgeSvg } from './badge-art.js';
 import { createGame } from './game.js';
+import { drawTowerFigure, towerFootY } from './render-towers.js';
 import { buildPaintedSvg, rasterizePainted, paletteFor } from './render-painted.js';
 
 export const STAR_COUNT = STAR_LIVES_SHARE.length;
@@ -55,6 +57,22 @@ export function badgeSlots(progress, mapId) {
 // Zähler im Kopf der Kartenauswahl (jede Stufe zählt, Gold auf einer Karte = 3)
 export function badgeCounterText(progress) {
   return `Abzeichen ${badgeCount(progress)} / ${BADGE_MAX}`;
+}
+// B-191: Zähler im Normalmodus (Sterne über alle Karten)
+export function starCounterText(progress) {
+  const n = MAP_ORDER.reduce((sum, id) => sum + mapProgress(progress, id).stars, 0);
+  return `Sterne ${n} / ${MAP_ORDER.length * STAR_COUNT}`;
+}
+// B-191: Albtraum-Stil einer Karte (Name und Augenfarbe, Karten-Bauvorlagen); unbekannte Karte: Stil A
+export function nmStyleOf(mapId) {
+  const style = NM_STYLE_OF_MAP[mapId] ?? 'A';
+  return { name: NM_STYLE_NAME[mapId] ?? NM_STYLE_NAME.meadow, eye: NM_ENEMY_STYLE[style].eye };
+}
+// B-191: Bedingungskasten einer Albtraum-Karte (Gold-Bedingung und nächste offene Stufe)
+export function nightmareCardInfo(progress, mapId) {
+  const have = nightmareProgress(progress, mapId).badge ?? 0;
+  return { cond: `Gold: ${GOLD_CONDITIONS[mapId]?.label ?? ''}`,
+    next: have >= BADGE_TIERS.length ? 'alle Abzeichen geholt' : `nächstes: ${BADGE_TIERS[have]}` };
 }
 // Siegbildschirm im Albtraum. res = Rückgabe von recordResult (mit newBadge), progress = Stand danach.
 // tier = höchstes neue Abzeichen dieses Spiels, sonst die vorhandene höchste Stufe; fly nur bei neuem Abzeichen;
@@ -106,22 +124,24 @@ const LOCK_SVG = '<svg class="map-lock" width="44" height="44" viewBox="0 0 44 4
 
 // ---------- Vorschaubilder (nur Browser) ----------
 // Gemaltes SVG der Karte klein rastern (Faktor 0.25), davon nur das Feld zeigen. Gecacht, eines nach dem anderen.
+// night (B-191): Vorschau im Albtraum-Look des Kartenstils; buildPaintedSvg malt ihn ab den Karten (B-194ff), bis dahin wie heute.
 const THUMB_SCALE = 0.25;
 const thumbCache = new Map();
 let thumbQueue = Promise.resolve();
-function thumbFor(mapId) {
-  if (!thumbCache.has(mapId)) {
-    thumbCache.set(mapId, thumbQueue = thumbQueue.then(() => new Promise((r) => setTimeout(r, 0)))
-      .then(() => rasterizePainted(buildPaintedSvg(createGame({ mapId })), THUMB_SCALE))
+function thumbFor(mapId, night = false) {
+  const key = `${mapId}|${night ? 'night' : 'day'}`;
+  if (!thumbCache.has(key)) {
+    thumbCache.set(key, thumbQueue = thumbQueue.then(() => new Promise((r) => setTimeout(r, 0)))
+      .then(() => rasterizePainted(buildPaintedSvg(createGame({ mapId }), { night }), THUMB_SCALE))
       .catch(() => null));
   }
-  return thumbCache.get(mapId);
+  return thumbCache.get(key);
 }
-function paintThumb(cv, mapId) {
+function paintThumb(cv, mapId, { night = false } = {}) {
   const c = cv.getContext('2d');
   c.fillStyle = paletteFor(mapId).ground?.[1] ?? '#78a043'; // Bodenfarbe, bis das Bild fertig ist
   c.fillRect(0, 0, cv.width, cv.height);
-  thumbFor(mapId).then((img) => {
+  thumbFor(mapId, night).then((img) => {
     if (!img) return;
     const m = FRAME_MARGIN * THUMB_SCALE;
     c.drawImage(img, m, m, (VIEW_WIDTH - 2 * FRAME_MARGIN) * THUMB_SCALE, (VIEW_HEIGHT - 2 * FRAME_MARGIN) * THUMB_SCALE, 0, 0, cv.width, cv.height);
@@ -136,6 +156,61 @@ function paintThumb(cv, mapId) {
 const SMALL_LOCK = '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M7 11 V8 a5 5 0 0 1 10 0 V11" fill="none" stroke="var(--lock-shackle)" stroke-width="2.5"/>'
   + '<rect x="4" y="10" width="16" height="12" rx="3" fill="#f2c14e" stroke="#2b1a10" stroke-width="2"/></svg>';
 const NM_LOCKED = 'Albtraum: 3 Sterne nötig';
+export const NM_NEED = '3 Sterne nötig';
+// B-191: Mond (24er Box) und Fahne (Symbol im Kopf, Normal)
+export const MOON_SVG = (size) => `<svg class="moon" width="${size}" height="${size}" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3 A9 9 0 1 0 21 14 A7 7 0 1 1 14 3 Z" fill="var(--cream)" stroke="var(--ink)" stroke-width="2" stroke-linejoin="round"/></svg>`;
+const FLAG_SVG = '<svg width="60" height="60" viewBox="0 0 60 60" aria-hidden="true"><path d="M18 8 V54" stroke="var(--ink)" stroke-width="5" stroke-linecap="round"/>'
+  + '<path d="M20 10 L50 20 L20 32 Z" fill="var(--flag-red)" stroke="var(--ink)" stroke-width="3" stroke-linejoin="round"/><path d="M10 54 H28" stroke="var(--ink)" stroke-width="5" stroke-linecap="round"/></svg>';
+// Kopfzeile je Ansicht
+export function startHeadView(view) {
+  return view === 'nightmare'
+    ? { title: 'Albtraum', sub: 'Für Profis: jede Karte mit 3 Sternen' }
+    : { title: 'Wähle deine Karte', sub: 'Hol 3 Sterne, um den Albtraum zu öffnen' };
+}
+
+// B-191: Inhalt einer Kartenhülle (.map-slot) als HTML (rein, testbar). view 'normal' | 'nightmare'.
+// Normal: Karte mit Bestwert und Albtraum-Hinweis. Albtraum: Vorschau mit Stil-Schild, Slots, Bedingungskasten und Knopf;
+// gesperrt mit Schloss, „3 Sterne nötig“ und Knopf „Gesperrt“ (aria-disabled).
+export function mapSlotHtml(card, view, progress) {
+  const nm = view === 'nightmare';
+  const thumb = `<canvas class="map-thumb" width="${SCREENS.thumb.width}" height="${SCREENS.thumb.height}"></canvas>`;
+  const head = `<span class="map-name">${card.name}</span><span class="map-stars">${starsHtml(card.stars, 28)}</span>`;
+  const label = nm ? `${card.name} im Albtraum${card.nightmare ? '' : `, gesperrt: ${NM_LOCKED}`}` : card.label;
+  const usable = nm ? card.nightmare : card.open;
+  const open = `<button class="map-card plq" data-map="${card.id}" aria-label="${label}"${usable ? '' : ' disabled'}>`;
+  if (!nm) {
+    const nmLine = !card.open ? '' : card.nightmare
+      ? `<span class="map-nm-open">${MOON_SVG(16)}Albtraum offen</span>`
+      : '<span class="map-nm-locked">Albtraum ab 3 Sternen</span>';
+    return `${open}${thumb}${card.open ? '' : LOCK_SVG}${head}<span class="map-best">${card.line}</span>${nmLine}</button>`;
+  }
+  const st = nmStyleOf(card.id);
+  const shield = `<span class="map-style"><i style="background:${st.eye}"></i>${st.name}</span>`;
+  const wrap = `<span class="map-thumb-wrap">${thumb}${card.nightmare ? '' : LOCK_SVG}${shield}</span>`;
+  if (!card.nightmare) {
+    return `${open}${wrap}${head}<span class="map-need"><b>${NM_NEED}</b><span>Hol den 3. Stern im Normalmodus</span></span></button>`
+      + `<button type="button" class="map-nightmare locked" data-map="${card.id}" aria-disabled="true" aria-label="${card.name} im Albtraum: gesperrt, ${NM_NEED}">${SMALL_LOCK}Gesperrt</button>`;
+  }
+  const slots = badgeSlots(progress, card.id);
+  const info = nightmareCardInfo(progress, card.id);
+  return `${open}${wrap}${head}</button>`
+    + `<button type="button" class="map-badges" data-map="${card.id}" aria-label="Abzeichen ${card.name}: ${slots.map((x) => x.label).join('; ')}">`
+    + `${slots.map((x) => badgeSvg(44, x.reached ? x.tier : 0, x.label)).join('')}</button>`
+    + `<span class="map-cond"><span>${info.cond}</span><span>${info.next}</span></span>`
+    + `<button type="button" class="map-nightmare" data-map="${card.id}" aria-label="${card.name} im Albtraum-Modus spielen">`
+    + '<span class="nm-long">Albtraum spielen</span><span class="nm-short">Spielen</span></button>';
+}
+// B-191: Lernzeile (Albtraum) und Lockplakette (Normal) als HTML
+function learnHtml() {
+  const tiers = [['Bronze', `Welle ${MAX_WAVES} im Albtraum schaffen`], ['Silber', 'dazu kein Leben verlieren'], ['Gold', 'dazu die Bedingung der Karte']];
+  return `<div class="nl-intro"><h2>So holst du Abzeichen</h2><p>Jede Karte hat drei Stufen. Tippe auf die Slots einer Karte für ihre Bedingungen.</p></div>`
+    + tiers.map(([name, text], i) => `<div class="nl-tier t${i + 1}">${badgeSvg(64, i + 1)}<span><b>${name}</b>${text}</span></div>`).join('')
+    + '<p class="nl-reward">Gold schaltet den Nacht-Look der Karte frei, Gold auf allen Karten die goldenen Türme.</p>';
+}
+function teaserHtml(n) {
+  return `${badgeSvg(62, 3)}<span class="nt-text"><b>Albtraum offen auf ${n} ${n === 1 ? 'Karte' : 'Karten'}</b>Stärkere Gegner, drei Abzeichen je Karte und Belohnungen.</span>`
+    + `<button type="button" class="wbtn wbtn-night nt-switch">${MOON_SVG(20)}Umschalten</button>`;
+}
 export function mountStartScreen(root, opts) {
   const list = root.querySelector('.map-cards');
   const modeBar = root.querySelector('.start-mode');
@@ -146,6 +221,11 @@ export function mountStartScreen(root, opts) {
   let view = 'normal'; // B-184: Ansicht Normal oder Albtraum
   const selectable = () => (view === 'nightmare' ? cards.map((c) => ({ ...c, open: c.nightmare })) : cards);
 
+  const sym = root.querySelector('.start-sym');
+  const title = root.querySelector('.start-title');
+  const sub = root.querySelector('.start-sub');
+  const learn = root.querySelector('.nm-learn');
+  const teaser = root.querySelector('.nm-teaser');
   function build() {
     const progress = opts.getProgress();
     cards = mapCards(progress, { allOpen: opts.allOpen });
@@ -155,64 +235,52 @@ export function mountStartScreen(root, opts) {
     const current = usableIds.includes(opts.currentMap()) ? opts.currentMap() : (usableIds[0] ?? opts.currentMap());
     root.classList.toggle('nightmare', nm);
     for (const b of modeBar?.querySelectorAll('button') ?? []) b.setAttribute('aria-checked', String(b.dataset.mode === view));
+    // B-191: Kopf (Symbol, Titel, Untertitel) und Zähler je Ansicht
+    const hv = startHeadView(view);
+    if (title) title.textContent = hv.title;
+    if (sub) sub.textContent = hv.sub;
+    if (sym) sym.innerHTML = nm ? badgeSvg(60, 3) : FLAG_SVG;
     if (counter) {
-      const text = badgeCounterText(progress);
+      const text = nm ? badgeCounterText(progress) : starCounterText(progress);
+      const [word, num] = [text.slice(0, text.indexOf(' ')), text.slice(text.indexOf(' ') + 1)];
       counter.setAttribute('aria-label', text);
-      counter.innerHTML = `${badgeSvg(36, 3)}<span aria-hidden="true">${text.replace('Abzeichen ', '<span class="bc-word">Abzeichen </span>')}</span>`;
+      counter.innerHTML = `${nm ? badgeSvg(38, 3) : starSvg(true, 36)}<span aria-hidden="true"><span class="bc-word">${word} </span><span class="bc-num">${num}</span></span>`;
     }
     hint?.classList.remove('show-badges');
     list.replaceChildren(...cards.map((card) => {
-      const btn = document.createElement('button');
-      btn.className = 'map-card plq';
-      btn.dataset.map = card.id;
-      const usable = nm ? card.nightmare : card.open;
-      btn.setAttribute('aria-label', nm ? `${card.name} im Albtraum${card.nightmare ? '' : `, gesperrt: ${NM_LOCKED}`}` : card.label);
-      btn.disabled = !usable;
-      btn.classList.toggle('current', card.id === current);
-      const thumb = `<canvas class="map-thumb" width="${SCREENS.thumb.width}" height="${SCREENS.thumb.height}"></canvas>`;
-      const nmLocked = `<span class="map-nm-locked">${SMALL_LOCK}<span>${NM_LOCKED}</span></span>`;
-      const head = `<span class="map-name">${card.name}</span><span class="map-stars">${starsHtml(card.stars, 24)}</span>`;
-      btn.innerHTML = nm
-        ? `<span class="map-thumb-wrap">${thumb}${card.nightmare ? '' : LOCK_SVG}</span>${head}${card.nightmare ? '' : nmLocked}`
-        : thumb + (card.open ? '' : LOCK_SVG) + head + `<span class="map-best">${card.line}</span>`
-          + (card.open && !card.nightmare ? nmLocked : '');
-      paintThumb(btn.querySelector('canvas'), card.id);
-      btn.addEventListener('click', () => pick(card.id, nm ? 'nightmare' : 'normal'));
-      // B-182: Karte und Albtraum-Knopf in einer Hülle (kein Knopf im Knopf); B-184: Knopf unten auf der Karte
       const slot = document.createElement('div');
       slot.className = 'map-slot';
       slot.setAttribute('role', 'listitem');
-      slot.append(btn);
-      if (card.nightmare) {
-        slot.classList.add('has-nm');
-        if (nm) slot.append(badgeRow(progress, card));
-        const b = document.createElement('button');
-        b.className = 'map-nightmare';
-        b.dataset.map = card.id;
-        b.textContent = nm ? 'Albtraum spielen' : 'Albtraum';
-        b.setAttribute('aria-label', `${card.name} im Albtraum-Modus spielen`);
-        b.addEventListener('click', () => pick(card.id, 'nightmare'));
-        slot.append(b);
-      }
+      slot.innerHTML = mapSlotHtml(card, view, progress);
+      const btn = slot.querySelector('.map-card');
+      btn.classList.toggle('current', card.id === current);
+      paintThumb(btn.querySelector('canvas'), card.id, { night: nm });
+      btn.addEventListener('click', () => pick(card.id, nm ? 'nightmare' : 'normal'));
+      // B-182: Karte und Albtraum-Knopf in einer Hülle (kein Knopf im Knopf); B-184: Knopf unten auf der Karte
+      slot.classList.toggle('has-nm', nm);
+      slot.querySelector('.map-nightmare:not(.locked)')?.addEventListener('click', () => pick(card.id, 'nightmare'));
+      slot.querySelector('.map-badges')?.addEventListener('click', () => showBadgeHint(progress, card));
       return slot;
     }));
+    // B-191: Lernzeile nur im Albtraum (Höhe per CSS), Lockplakette nur im Normalmodus mit mindestens einer offenen Karte
+    const nmOpen = cards.filter((c) => c.nightmare).length;
+    if (learn) { learn.hidden = !nm; if (nm && !learn.firstChild) learn.innerHTML = learnHtml(); }
+    if (teaser) {
+      teaser.hidden = nm || nmOpen === 0;
+      if (!teaser.hidden) {
+        teaser.innerHTML = teaserHtml(nmOpen);
+        teaser.querySelector('.nt-switch').addEventListener('click', () => setView('nightmare'));
+      }
+    }
   }
-  // B-184: Slot-Reihe (ein Tippziel); Tipp schreibt die drei Bedingungen in den Hinweis
-  function badgeRow(progress, card) {
+  // B-184: Tipp auf die Slot-Reihe schreibt die drei Bedingungen in den Hinweis
+  function showBadgeHint(progress, card) {
+    if (!hint) return;
     const slots = badgeSlots(progress, card.id);
-    const row = document.createElement('button');
-    row.className = 'map-badges';
-    row.dataset.map = card.id;
-    row.setAttribute('aria-label', `Abzeichen ${card.name}: ${slots.map((x) => x.label).join('; ')}`);
-    row.innerHTML = slots.map((x) => badgeSvg(44, x.reached ? x.tier : 0, x.label)).join('');
-    row.addEventListener('click', () => {
-      if (!hint) return;
-      let text = hint.querySelector('.badge-hint');
-      if (!text) { text = document.createElement('span'); text.className = 'badge-hint'; hint.append(text); }
-      text.textContent = `${card.name}: ${slots.map((x) => x.label.replace(', offen', '')).join(' · ')}`;
-      hint.classList.add('show-badges');
-    });
-    return row;
+    let text = hint.querySelector('.badge-hint');
+    if (!text) { text = document.createElement('span'); text.className = 'badge-hint'; hint.append(text); }
+    text.textContent = `${card.name}: ${slots.map((x) => x.label.replace(', offen', '')).join(' · ')}`;
+    hint.classList.add('show-badges');
   }
   function setView(v) {
     if (v === view) return;
@@ -256,12 +324,13 @@ export function mountStartScreen(root, opts) {
     if (key.toLowerCase() === 'm') return false;
     if (onTopButton && (key === 'Enter' || key === ' ')) return true; // Knopf löst selbst aus, Spiel bekommt die Taste nicht
     // B-184: Umschalter und Slot-Reihe sind eigene Knöpfe (B-185: auch „Aussehen“)
-    const ownButton = ev.target instanceof Element && ev.target.closest('.start-mode, .map-badges, .cos-open'); // B-185: Knopf „Aussehen“
+    const ownButton = ev.target instanceof Element && ev.target.closest('.start-mode, .map-badges, .cos-open, .nm-teaser'); // B-185: Knopf „Aussehen“
     if (ownButton && (key === 'Enter' || key === ' ')) return true;
     if (key === 'ArrowLeft' || key === 'ArrowRight') { ev.preventDefault(); focusCard(moveFocus(selectable(), current(), key === 'ArrowLeft' ? -1 : 1)); }
     else if (key === 'Enter' || key === ' ') {
       ev.preventDefault();
       const nm = ev.target instanceof Element ? ev.target.closest('.map-nightmare') : null;
+      if (nm?.classList.contains('locked')) return true; // B-191: Knopf „Gesperrt“
       if (nm) { pick(nm.dataset.map, 'nightmare'); return true; }
       const focused = ev.target instanceof Element ? ev.target.closest('.map-card') : null;
       pick(focused?.dataset.map ?? current(), view);
@@ -282,33 +351,67 @@ export const COS_LOCKED_NIGHT = 'Gold im Albtraum nötig';
 export const COS_LOCKED_GOLD = 'Gold auf allen Karten nötig';
 // Zeilen des Menüs: je Karte (MAP_ORDER) der Nacht-Look, dazu die goldenen Türme mit Fortschritt.
 // on = freigeschaltet und nicht abgeschaltet; gesperrt = immer aus.
+// B-191: state (Zustandswort), sub (Unterzeile: frei mit Stilname, gesperrt mit Grund und eigener Stufe), tier (bestes Abzeichen)
+const tierName = (t) => (t > 0 ? BADGE_TIERS[t - 1] : 'kein Abzeichen');
 export function cosmeticsView(progress) {
   const row = (key, mapId, title, unlocked, chosen, reason) => {
     const on = unlocked && chosen;
     return { key, mapId, title, unlocked, on, reason: unlocked ? '' : reason,
+      state: unlocked ? (on ? 'An' : 'Aus') : 'Gesperrt',
       label: `${title}, ${unlocked ? (on ? 'an' : 'aus') : 'gesperrt'}` };
   };
-  const night = MAP_ORDER.map((id) => row(`night:${id}`, id, `${COSMETICS.night.name} ${MAPS[id].name}`,
-    isNightUnlocked(progress, id), nightLookChosen(progress, id), COS_LOCKED_NIGHT));
+  const night = MAP_ORDER.map((id) => {
+    const r = row(`night:${id}`, id, `${COSMETICS.night.name} ${MAPS[id].name}`, isNightUnlocked(progress, id), nightLookChosen(progress, id), COS_LOCKED_NIGHT);
+    const tier = nightmareProgress(progress, id).badge ?? 0;
+    const style = nmStyleOf(id).name;
+    return { ...r, tier, style, sub: r.unlocked ? `Frei · Stil ${style}` : `${COS_LOCKED_NIGHT} (du: ${tierName(tier)})` };
+  });
   const prog = goldMapsProgress(progress);
-  const gold = { ...row('gold', null, COSMETICS.goldTowers.name, isGoldTowersUnlocked(progress), goldTowersChosen(progress), COS_LOCKED_GOLD),
+  const g = row('gold', null, COSMETICS.goldTowers.name, isGoldTowersUnlocked(progress), goldTowersChosen(progress), COS_LOCKED_GOLD);
+  const gold = { ...g, sub: g.unlocked ? 'Frei · alle Türme in Gold' : `${COS_LOCKED_GOLD} (du: ${prog.done} / ${prog.total})`,
     done: prog.done, total: prog.total, progressText: `Gold auf ${prog.done} / ${prog.total} Karten` };
   return { night, gold };
 }
-// Eine Zeile als HTML (Name, ggf. Schloss + Grund, Schalter rechts). name: sichtbarer Name (beim Nacht-Look nur die Karte).
+// Eine Zeile als HTML: Mini-Vorschau (Canvas, main/screens malt), Name mit Unterzeile, Zustandswort, Schalter rechts.
+// name: sichtbarer Name (beim Nacht-Look nur die Karte). Gesperrt: Schloss in Vorschau, Name und Schalter.
 function cosRowHtml(r, name) {
-  const lock = r.unlocked ? '' : `<span class="cos-lock">${SMALL_LOCK}<span>${r.reason}</span></span>`;
-  return `<div class="cos-row${r.unlocked ? '' : ' locked'}"><span class="cos-name">${name}</span>${lock}`
-    + `<button type="button" class="sw" role="switch" data-key="${r.key}" aria-checked="${r.on}" aria-label="${r.label}"${r.unlocked ? '' : ' disabled'}><span class="knob"></span></button></div>`;
+  const lock = r.unlocked ? '' : SMALL_LOCK;
+  const mini = r.mapId
+    ? `<canvas class="cos-mini" data-map="${r.mapId}" width="128" height="88"></canvas>`
+    : '<canvas class="cos-mini cos-mini-gold" width="120" height="88"></canvas>';
+  return `<div class="cos-row${r.unlocked ? '' : ' locked'}" data-row="${r.key}"><span class="cos-thumb">${mini}${lock}</span>`
+    + `<span class="cos-text"><span class="cos-name">${lock}${name}</span><span class="cos-sub">${r.sub}</span></span>`
+    + `<span class="cos-state">${r.state}</span>`
+    + `<button type="button" class="sw" role="switch" data-key="${r.key}" aria-checked="${r.on}" aria-label="${r.label}"${r.unlocked ? '' : ' disabled'}><span class="knob"></span>${lock}</button></div>`;
 }
-// Inhalt der Plakette (rein, testbar). Fortschrittsleiste nur, solange die goldenen Türme gesperrt sind.
+const MOON_SEC = (size) => MOON_SVG(size).replace('class="moon"', 'class="moon cos-moon"');
+// Inhalt der Plakette (rein, testbar). Fortschrittsleiste mit Medaillenreihe nur, solange die goldenen Türme gesperrt sind.
 export function cosmeticsHtml(view) {
   const g = view.gold;
   const pct = g.total ? Math.round((100 * g.done) / g.total) : 0;
+  const medals = view.night.map((r) => `<span>${badgeSvg(24, r.tier >= BADGE_TIERS.length ? BADGE_TIERS.length : 0)}${MAPS[r.mapId].name}</span>`).join('');
   const prog = g.unlocked ? '' : `<div class="cos-prog"><span class="cos-prog-text">${g.progressText}</span>`
-    + `<span class="cos-bar" role="progressbar" aria-label="${g.progressText}" aria-valuemin="0" aria-valuemax="${g.total}" aria-valuenow="${g.done}"><span style="width:${pct}%"></span></span></div>`;
-  return `<h3 class="cos-sec">${COSMETICS.night.name}</h3>${view.night.map((r) => cosRowHtml(r, MAPS[r.mapId].name)).join('')}`
-    + `<h3 class="cos-sec">${COSMETICS.goldTowers.name}</h3>${cosRowHtml(g, COSMETICS.goldTowers.name)}${prog}`;
+    + `<span class="cos-bar" role="progressbar" aria-label="${g.progressText}" aria-valuemin="0" aria-valuemax="${g.total}" aria-valuenow="${g.done}"><span style="width:${pct}%"></span></span>`
+    + `<span class="cos-medals" aria-hidden="true">${medals}</span></div>`;
+  return `<h3 class="cos-sec">${MOON_SEC(22)}${COSMETICS.night.name} je Karte</h3>${view.night.map((r) => cosRowHtml(r, MAPS[r.mapId].name)).join('')}`
+    + `<h3 class="cos-sec">${MOON_SEC(22)}${COSMETICS.goldTowers.name}</h3>${cosRowHtml(g, COSMETICS.goldTowers.name)}${prog}`;
+}
+// B-191: Vorschau rechts (ab 1200 px Breite) für eine Zeile (rein, testbar): Titel, Zustand, Beschriftungen und Freischalt-Kasten.
+export function cosPreviewView(view, key) {
+  const r = view.night.find((x) => x.key === key) ?? (key === 'gold' ? view.gold : view.night[0]);
+  const state = r.state;
+  if (!r.mapId) {
+    return { key: r.key, title: `Vorschau: ${COSMETICS.goldTowers.name}`, state, kind: 'gold', unlocked: r.unlocked,
+      text: 'Gleiche Türme, gleiche Werte: Holz und Stein werden zu Gold, dazu ein leises Funkeln.',
+      unlockTitle: r.unlocked ? 'Freigeschaltet mit Gold auf allen Karten' : 'Gold-Abzeichen auf allen Karten holen',
+      unlockText: `Welle ${MAX_WAVES} im Albtraum, ohne Lebensverlust und mit der Bedingung jeder Karte. Du hast: Gold auf ${view.gold.done} / ${view.gold.total} Karten.` };
+  }
+  const name = MAPS[r.mapId].name;
+  const cond = badgeConditions(r.mapId);
+  return { key: r.key, title: `Vorschau: ${name}`, state, kind: 'night', mapId: r.mapId, unlocked: r.unlocked, nightLabel: `Nacht-Look · ${r.style}`,
+    text: `Im Nacht-Look spielst du ${name} im Albtraum-Aussehen (${r.style}), auch im Normalmodus. Nur Optik, keine Spielwerte.`,
+    unlockTitle: r.unlocked ? `Freigeschaltet mit Gold auf ${name}` : `Gold-Abzeichen auf ${name} holen`,
+    unlockText: `${cond.join(', ')}. Du hast: ${tierName(r.tier)}.` };
 }
 // Schalter umlegen (verändert progress); false, wenn gesperrt oder unbekannt.
 export function toggleCosmetic(progress, key) {
@@ -318,25 +421,84 @@ export function toggleCosmetic(progress, key) {
   return r ? setNightLook(progress, r.mapId, !r.on) : false;
 }
 
+// B-191: Türme fürs Menü „Aussehen“ (nur Browser): Figuren über drawTowerFigure, golden wie im Spiel (GOLD_TOWER_STYLE)
+const PREVIEW_TOWERS = ['arrow', 'cannon', 'frost', 'lightning', 'sniper'];
+function paintTowers(cv, types, gold, footY = cv.height - 8, scale = 1) {
+  const c = cv.getContext('2d');
+  const step = cv.width / types.length;
+  types.forEach((type, i) => {
+    if (!TOWER_TYPES[type]) return;
+    c.save();
+    c.translate(step * (i + 0.5), footY);
+    c.scale(scale, scale);
+    drawTowerFigure(c, { type, x: 0, y: -towerFootY({ y: 0 }), level: 1, angle: -Math.PI / 2 }, 0, 0, true, 1, gold ? { gold: true } : null);
+    c.restore();
+  });
+}
+// Vorschau „Goldene Türme“: oben 5 normal, unten 5 golden (Fußlinien bei 130 / 276 von 290, doppelt aufgelöst)
+function paintTowerRows(cv) {
+  const c = cv.getContext('2d');
+  c.clearRect(0, 0, cv.width, cv.height);
+  const k = cv.height / 290;
+  paintTowers(cv, PREVIEW_TOWERS, false, 130 * k, 1.35 * k);
+  paintTowers(cv, PREVIEW_TOWERS, true, 276 * k, 1.35 * k);
+}
 // Dialog (DOM, nur Browser). opts: getProgress(), onChange() (speichern und Optik anwenden), returnFocus (Element).
 // Rückgabe: open(), close(), isOpen(), handleKey(ev) (true = Taste verbraucht).
 export function mountCosmeticsMenu(root, opts) {
   const body = root.querySelector('.cos-body');
+  const preview = root.querySelector('.cos-preview');
   let lastFocus = null;
+  let selected = null; // B-191: gewählte Zeile (Vorschau rechts)
   function build() {
     const focusedKey = document.activeElement?.closest?.('.sw')?.dataset.key;
-    body.innerHTML = cosmeticsHtml(cosmeticsView(opts.getProgress()));
+    const view = cosmeticsView(opts.getProgress());
+    body.innerHTML = cosmeticsHtml(view);
+    for (const cv of body.querySelectorAll('canvas.cos-mini[data-map]')) paintThumb(cv, cv.dataset.map, { night: true });
+    const goldCv = body.querySelector('canvas.cos-mini-gold');
+    if (goldCv) paintTowers(goldCv, ['arrow'], true, goldCv.height - 6, 2.4);
     if (focusedKey) body.querySelector(`.sw[data-key="${focusedKey}"]`)?.focus({ preventScroll: true });
+    select(selected ?? view.night[0].key, view);
+  }
+  // Zeile wählen: Rahmen und Vorschau rechts
+  function select(key, view = cosmeticsView(opts.getProgress())) {
+    selected = key;
+    for (const row of body.querySelectorAll('.cos-row')) row.classList.toggle('chosen', row.dataset.row === key);
+    if (!preview) return;
+    const v = cosPreviewView(view, key);
+    preview.querySelector('.cp-title').textContent = v.title;
+    const st = preview.querySelector('.cp-state');
+    st.textContent = v.state;
+    st.dataset.state = v.state;
+    preview.dataset.kind = v.kind;
+    preview.querySelector('.cp-text').textContent = v.text;
+    preview.querySelector('.cp-medal').innerHTML = badgeSvg(66, v.unlocked ? BADGE_TIERS.length : 0);
+    preview.querySelector('.cp-utitle').textContent = v.unlockTitle;
+    preview.querySelector('.cp-utext').textContent = v.unlockText;
+    if (v.kind === 'night') {
+      preview.querySelector('.cp-nightfig figcaption').textContent = v.nightLabel;
+      paintThumb(preview.querySelector('.cp-day'), v.mapId);
+      paintThumb(preview.querySelector('.cp-nightcv'), v.mapId, { night: true });
+    } else {
+      paintTowerRows(preview.querySelector('.cp-towers'));
+    }
   }
   body.addEventListener('click', (ev) => {
     const sw = ev.target instanceof Element ? ev.target.closest('.sw') : null;
+    const row = ev.target instanceof Element ? ev.target.closest('.cos-row') : null;
+    if (row && !sw) { select(row.dataset.row); return; }
     if (!sw || sw.disabled) return;
-    if (toggleCosmetic(opts.getProgress(), sw.dataset.key)) { opts.onChange(); build(); }
+    if (toggleCosmetic(opts.getProgress(), sw.dataset.key)) { opts.onChange(); selected = sw.dataset.key; build(); }
+  });
+  body.addEventListener('focusin', (ev) => { // Tastatur: Fokus auf einem Schalter wählt seine Zeile
+    const sw = ev.target instanceof Element ? ev.target.closest('.sw') : null;
+    if (sw && sw.dataset.key !== selected) select(sw.dataset.key);
   });
   root.querySelector('.cos-close')?.addEventListener('click', close);
   root.addEventListener('click', (ev) => { if (ev.target === root) close(); }); // Tipp neben die Plakette
   function open() {
     lastFocus = document.activeElement;
+    selected = null;
     build();
     root.hidden = false;
     body.scrollTop = 0;

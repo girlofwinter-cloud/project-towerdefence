@@ -4,7 +4,7 @@ import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 import { createServer } from '../../scripts/serve.mjs';
-import { PROGRESS_KEY, MAX_WAVES, BADGE_TIERS } from '../../src/config.js';
+import { PROGRESS_KEY, MAX_WAVES, BADGE_TIERS, MAPS } from '../../src/config.js';
 import { MAP_ORDER } from '../../src/progress.js';
 import { enterGame } from './tile.mjs';
 
@@ -151,5 +151,27 @@ test('Testseite: Kartenwahl bleibt im Albtraum sichtbar (zurück auf Normal), Go
   await page.selectOption('#map-select', MAP_ORDER[0]);
   await page.waitForSelector('#gold-goal', { state: 'hidden' });
   assert.equal(await page.evaluate(() => document.body.classList.contains('mode-nightmare')), false, 'zurück im Normalmodus');
+  assert.deepEqual(errors, []);
+});
+
+test('B-191 Aussehen 1280x800: Vorschau rechts 612 breit, Zeile wählen wechselt die Vorschau; 844x390 ohne Vorschau', async () => {
+  const [A, B] = MAP_ORDER;
+  const page = await openWith(seed([A]));
+  await page.click('#start-screen .cos-open');
+  await page.waitForSelector('#cosmetics:not([hidden])');
+  const [card, prev] = [await page.locator('.cos-card').boundingBox(), await page.locator('.cos-preview').boundingBox()];
+  assert.ok(Math.abs(card.width - 560) <= 2 && Math.abs(prev.width - 612) <= 2, `Breiten ${card.width} / ${prev.width}`);
+  for (const r of [card, prev]) assert.ok(Math.abs(r.y - 36) <= 4 && r.y + r.height <= 768, `Lage ${JSON.stringify(r)}`);
+  assert.equal(await page.textContent('.cos-preview .cp-title'), `Vorschau: ${MAPS[A].name}`);
+  await page.click(`.cos-row[data-row="night:${B}"] .cos-name`);
+  assert.equal(await page.textContent('.cos-preview .cp-title'), `Vorschau: ${MAPS[B].name}`);
+  assert.equal(await page.textContent('.cos-preview .cp-state'), 'Gesperrt');
+  assert.equal(await page.isVisible(`.cos-row[data-row="night:${B}"] .sw svg`), true, 'Schloss im gesperrten Schalter');
+  await page.click('.cos-row[data-row="gold"] .cos-name');
+  assert.equal(await page.isVisible('.cos-preview .cp-towers'), true, 'Turm-Vorschau');
+  const phone = await openWith(seed([A]), { viewport: { width: 844, height: 390 }, hasTouch: true, isMobile: true });
+  await phone.locator('#start-screen .cos-open').tap();
+  await phone.waitForSelector('#cosmetics:not([hidden])');
+  assert.equal(await phone.isVisible('.cos-preview'), false, 'keine Vorschau auf dem Handy');
   assert.deepEqual(errors, []);
 });

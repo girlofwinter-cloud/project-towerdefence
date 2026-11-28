@@ -37,6 +37,10 @@
   --bad-soft: #ff9a8a; --font-body: 'Trebuchet MS', 'Segoe UI', system-ui, sans-serif;
   --radius-card: 22px; --radius-pill-m: 20px; --radius-pill-l: 23px;
   --display: 'Lilita One', 'Trebuchet MS', sans-serif;
+  /* B-191/B-192: Kartenauswahl, Aussehen und Sieg im Albtraum */
+  --sky-a: #8fd0e8; --sky-b: #d8f0e8; --map-meadow-2: #6aa83f; --map-meadow-3: #3f7a35; --path-mid: #e8c185;
+  --night-a-2: #3a2a5c; --nm-soulflame: #9fe8ff; --flag-red-dark: #8f2e20; --gold-light: #ffe27a; --star-empty: #5a3a22;
+  --wood-fig-a: #c88a4c; --wood-fig-b: #8a5326; --badge-bronze-a: #f0b47a; --badge-silver-hi: #e6ecf2; --stone-b: #b9a283; --bolt: #fff6a8;
   /* C1 Lage, nur CSS (kein Warten auf resize): --u = CSS-px je Spiel-px. --view-w/-h, --field-w/-h, --frame setzt main.js einmal aus config.js.
      Seitenzonen mindestens --side-min breit (Fähigkeiten, Türme), Bänder oben/unten mindestens --band-min hoch (HUD, Wellenknopf). */
   --view-w: 900; --view-h: 660; --field-w: 800; --field-h: 560; --frame: 50;
@@ -447,86 +451,159 @@ body:has(#tower-info:not([hidden])) #app { padding-bottom: calc(var(--tower-info
 }
 
 /* ---------- C5: Startbildschirm und Spielende-Plakette (Bauvorlagen Start-Kartenwahl.md, Overlay-Spielende.md) ---------- */
-#start-screen { position: fixed; inset: 0; z-index: 40; display: flex; flex-direction: column; align-items: center; padding-top: 70px; background: rgba(16,28,14,.45); overflow: auto; }
+/* B-191: Kartenauswahl (Bauvorlage Albtraum-Kartenauswahl): Himmel mit Hügeln (Normal) bzw. Nachthimmel mit Glut, kahlen Bäumen
+   und Seelenlichtern (Albtraum), Kopf-Plakette 1200 x 80, Karten 224 breit (Normal 300, Albtraum 420 hoch), Lernzeile, Lockplakette */
+#start-screen { position: fixed; inset: 0; z-index: 40; display: flex; flex-direction: column; align-items: center; padding-top: 24px; overflow: auto; box-sizing: border-box;
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='170' height='230'%3E%3Crect x='76' y='130' width='18' height='100' rx='4' fill='%238a5326' stroke='%232b1a10' stroke-width='4'/%3E%3Ccircle cx='85' cy='98' r='58' fill='%236aa83f' stroke='%232b1a10' stroke-width='4'/%3E%3Ccircle cx='36' cy='170' r='32' fill='%233f7a35' stroke='%232b1a10' stroke-width='4'/%3E%3C/svg%3E") left -40px bottom 90px / 170px 230px no-repeat,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='170' height='230'%3E%3Crect x='76' y='130' width='18' height='100' rx='4' fill='%238a5326' stroke='%232b1a10' stroke-width='4'/%3E%3Ccircle cx='85' cy='98' r='58' fill='%236aa83f' stroke='%232b1a10' stroke-width='4'/%3E%3Ccircle cx='134' cy='170' r='32' fill='%233f7a35' stroke='%232b1a10' stroke-width='4'/%3E%3C/svg%3E") right -40px bottom 90px / 170px 230px no-repeat,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1280 300' preserveAspectRatio='none'%3E%3Cpath d='M-10 110 Q320 10 660 100 T1290 70 V310 H-10 Z' fill='%233f7a35' stroke='%232b1a10' stroke-width='4'/%3E%3Cpath d='M-10 190 Q400 120 820 180 T1290 160 V310 H-10 Z' fill='%236aa83f' stroke='%232b1a10' stroke-width='4'/%3E%3C/svg%3E") left bottom / 100% 300px no-repeat,
+    linear-gradient(var(--sky-a), var(--sky-b)); }
 #start-screen[hidden] { display: none; }
 body.on-start .hud, body.on-start .abilities, body.on-start .wave-row, body.on-start .stage, body.on-start #shop, body.on-start #tower-info,
 body.on-start #speed, body.on-start #pause { visibility: hidden; }
-body.on-start .top-buttons { z-index: 41; } /* Ton und Hilfe bleiben erreichbar */
-.start-title { position: relative; margin: 0; width: 640px; max-width: calc(100vw - 16px); height: 86px; flex: none; border-radius: 22px; display: flex; align-items: center; justify-content: center; gap: 12px; font: 50px/1 var(--display); font-weight: 400;
-  text-shadow: -3px 0 #2b1a10, 3px 0 #2b1a10, 0 -3px #2b1a10, 0 3px #2b1a10, 0 5px 0 #2b1a10; }
-.start-castle { flex: none; margin-top: -8px; }
-.map-cards { display: flex; gap: 20px; margin-top: 54px; }
-.map-card { position: relative; width: 196px; height: 290px; padding: 12px; border-radius: 18px; display: flex; flex-direction: column; align-items: center; gap: 6px; cursor: pointer; flex: none;
-  transition: transform .12s ease-out; }
-.map-thumb { width: 172px; height: 120px; border-radius: 10px; border: 3px solid #2b1a10; box-sizing: border-box; flex: none; }
-.map-name { font: 24px/1.1 var(--display); color: #fff3d2; text-shadow: -2px 0 #2b1a10, 2px 0 #2b1a10, 0 -2px #2b1a10, 0 2px #2b1a10; margin-top: 4px; }
-.map-stars { display: flex; gap: 4px; }
-.map-best { font: 14px 'Trebuchet MS', sans-serif; color: #e8d3a8; text-align: center; }
-.map-card:hover:not(:disabled) { filter: brightness(1.08); }
-.map-card:focus-visible, .map-card.current { transform: translateY(-6px); box-shadow: 0 0 0 4px #ffe266, 0 10px 0 rgba(30,15,5,.45); outline: none; }
-.map-card:disabled { cursor: default; } .map-card:disabled .map-thumb { filter: grayscale(1) brightness(.45); } .map-card:disabled .map-name { color: #c9b89a; }
-.map-lock { position: absolute; left: calc(50% - 22px); top: 50px; }
-/* B-182/B-184: Hülle je Karte; Albtraum-Knopf unten auf der Karte (Bauvorlage Albtraum-Kartenauswahl) */
-.map-slot { position: relative; flex: none; display: flex; flex-direction: column; }
-.map-slot > .map-card { flex: 1 0 auto; }
-.map-nightmare { position: absolute; left: calc(50% - 80px); width: 160px; bottom: 12px; height: 44px; font: 17px/1 var(--display); color: var(--cream); cursor: pointer;
-  border: 3px solid var(--ink); border-radius: var(--radius-card); background: linear-gradient(var(--nightmare-btn-a), var(--nightmare-btn-b));
-  box-shadow: inset 0 2px 0 rgba(255,235,190,.25), 0 3px 0 rgba(30,15,5,.5); text-shadow: 0 2px 0 var(--ink); transition: transform .12s ease-out; }
-.map-nightmare:hover { filter: brightness(1.08); }
-.map-nightmare:active { transform: translateY(2px); box-shadow: inset 0 2px 0 rgba(255,235,190,.25), 0 1px 0 rgba(30,15,5,.5); }
-.map-slot:has(.map-card.current) :is(.map-nightmare, .map-badges), .map-slot:has(.map-card:focus-visible) :is(.map-nightmare, .map-badges) { transform: translateY(-6px); }
-.map-nightmare:focus-visible, .map-badges:focus-visible, .start-mode button:focus-visible { box-shadow: 0 0 0 4px var(--hl); outline: none; }
-.map-slot.has-nm .map-card { padding-bottom: 62px; }
-.map-nm-locked { display: inline-flex; align-items: center; gap: 4px; font: 15px/1.1 var(--display); color: var(--map-locked); text-align: left; }
-.map-nm-locked svg { flex: none; }
-/* Kopf: Titel, Umschalter Normal/Albtraum, Zähler */
-.start-head { display: flex; align-items: center; justify-content: center; gap: 16px; flex: none; max-width: calc(100vw - 16px); }
-.start-head .start-title { width: 560px; flex: 0 1 auto; min-width: 0; }
-.start-mode { display: flex; gap: 3px; padding: 3px; border-radius: 24px; background: var(--ink); flex: none; }
-.start-mode button { min-width: 130px; height: 44px; border: 0; border-radius: var(--radius-pill-m); background: transparent; color: var(--muted); font: 20px/1 var(--display); cursor: pointer; }
+/* Ton und Hilfe bleiben erreichbar: unten rechts (oben liegt die Kopf-Plakette), Ausklapper öffnen nach oben */
+body.on-start .top-buttons { z-index: 41; position: fixed; top: auto; right: 40px; bottom: 30px; }
+body.on-start .sound-pop { top: auto; bottom: calc(100% + 10px); }
+body.on-start .help-pop { top: auto; bottom: 58px; }
+/* Albtraum: Nachthimmel, Glut von unten (300 hoch), Sterne, Seelenlichter, kahle Bäume mit Augen im Rand; Wechsel blendet 0,45 s */
+#start-screen::before { content: ''; position: fixed; inset: 0; z-index: -1; opacity: 0; transition: opacity .45s; pointer-events: none;
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='190' height='330'%3E%3Cg fill='none' stroke-linecap='round'%3E%3Cpath d='M95 330 V180 Q75 130 30 105 M95 200 Q125 140 168 118 M95 160 Q90 100 106 40 M62 122 L40 76 M136 130 L156 84' stroke='%232b1a10' stroke-width='16'/%3E%3Cpath d='M95 330 V180 Q75 130 30 105 M95 200 Q125 140 168 118 M95 160 Q90 100 106 40 M62 122 L40 76 M136 130 L156 84' stroke='%234a3550' stroke-width='9'/%3E%3C/g%3E%3Ccircle cx='86' cy='236' r='4' fill='%23d8ff5a'/%3E%3Ccircle cx='104' cy='236' r='4' fill='%23d8ff5a'/%3E%3C/svg%3E") left -30px bottom 0 / 190px 330px no-repeat,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='190' height='330'%3E%3Cg fill='none' stroke-linecap='round'%3E%3Cpath d='M95 330 V180 Q115 130 160 105 M95 200 Q65 140 22 118 M95 160 Q100 100 84 40 M128 122 L150 76 M54 130 L34 84' stroke='%232b1a10' stroke-width='16'/%3E%3Cpath d='M95 330 V180 Q115 130 160 105 M95 200 Q65 140 22 118 M95 160 Q100 100 84 40 M128 122 L150 76 M54 130 L34 84' stroke='%234a3550' stroke-width='9'/%3E%3C/g%3E%3Ccircle cx='86' cy='236' r='4' fill='%23d8ff5a'/%3E%3Ccircle cx='104' cy='236' r='4' fill='%23d8ff5a'/%3E%3C/svg%3E") right -30px bottom 0 / 190px 330px no-repeat,
+    radial-gradient(circle at 7% 62%, var(--nm-soulflame) 0 3px, rgba(159,232,255,.25) 4px 10px, transparent 12px),
+    radial-gradient(circle at 94% 54%, var(--nm-soulflame) 0 3px, rgba(159,232,255,.25) 4px 10px, transparent 12px),
+    radial-gradient(circle at 12% 14%, var(--bolt) 0 1.5px, transparent 2.5px), radial-gradient(circle at 31% 6%, var(--bolt) 0 1.5px, transparent 2.5px),
+    radial-gradient(circle at 68% 9%, var(--bolt) 0 1.5px, transparent 2.5px), radial-gradient(circle at 88% 18%, var(--bolt) 0 1.5px, transparent 2.5px),
+    radial-gradient(circle at 52% 3%, var(--bolt) 0 1.5px, transparent 2.5px),
+    linear-gradient(to top, rgba(255,90,42,.42), rgba(255,90,42,0) 300px),
+    radial-gradient(circle at 50% 10%, var(--night-a), var(--night-b)); }
+#start-screen.nightmare::before { opacity: 1; }
+@media (prefers-reduced-motion: reduce) { #start-screen::before, #start-screen .map-card { transition: none; } }
+/* Kopf-Plakette: Symbol 60, Titel 32 mit Untertitel 13, Umschalter 328 x 56, Zähler 220 x 48 */
+.start-head { position: relative; display: flex; align-items: center; gap: 16px; flex: none; width: 1200px; max-width: calc(100vw - 16px); height: 80px;
+  box-sizing: border-box; padding: 0 16px 0 12px; border-width: 4px; border-radius: var(--radius-card); transition: background .45s; }
+#start-screen.nightmare .start-head { background: linear-gradient(var(--night-card-a), var(--night-card-b)); }
+.start-sym { flex: none; width: 60px; height: 60px; } .start-sym svg { display: block; width: 100%; height: 100%; }
+.start-titles { flex: 1; min-width: 0; }
+.start-title { margin: 0; font: 32px/1.05 var(--display); font-weight: 400; color: var(--cream); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  text-shadow: -2px 0 var(--ink), 2px 0 var(--ink), 0 -2px var(--ink), 0 2px var(--ink), 0 3px 0 var(--ink); }
+.start-sub { margin: 2px 0 0; font: 13px/1.2 var(--font-body); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.start-mode { display: flex; gap: 4px; padding: 3px; width: 328px; height: 56px; box-sizing: border-box; border-radius: 28px; background: var(--ink); flex: none; }
+.start-mode button { flex: 1; min-width: 130px; height: 50px; border: 0; border-radius: 25px; background: transparent; color: var(--muted); font: 20px/1 var(--display); cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
 .start-mode button[aria-checked="true"][data-mode="normal"] { background: linear-gradient(var(--gold-btn-a), var(--gold-btn-b)); color: var(--ink); }
 .start-mode button[aria-checked="true"][data-mode="nightmare"] { background: linear-gradient(var(--nightmare-btn-a), var(--nightmare-btn-b)); color: var(--cream); box-shadow: 0 0 12px rgba(255,90,42,.6); }
-.badge-count { display: inline-flex; align-items: center; gap: 8px; padding: 6px 16px 6px 8px; border-radius: 22px; background: var(--ink); color: var(--cream); font: 22px/1 var(--display); white-space: nowrap; flex: none; }
-.badge-count .badge { display: block; }
-/* Albtraum-Ansicht: Nachthimmel mit Glut unten, nachtfarbene Karten, Slots und Knopf */
-#start-screen::before { content: ''; position: fixed; inset: 0; z-index: -1; opacity: 0; transition: opacity .45s; pointer-events: none;
-  background: linear-gradient(to top, rgba(255,90,42,.45), rgba(255,90,42,0) 45%), radial-gradient(circle at 50% 30%, var(--night-a), var(--night-b)); }
-#start-screen.nightmare::before { opacity: 1; }
-#start-screen.nightmare .has-nm .map-card { padding-bottom: 114px; }
-#start-screen.nightmare .map-card { height: 360px; background: linear-gradient(var(--night-card-a), var(--night-card-b)); }
-#start-screen .map-card { transition: transform .12s ease-out, background .45s; }
-.map-thumb-wrap { position: relative; display: block; flex: none; line-height: 0; }
-.map-thumb-wrap::after { content: ''; position: absolute; inset: 0; border-radius: 10px; background: rgba(20,12,40,0.62); opacity: .35; pointer-events: none; }
-.map-card:disabled .map-thumb-wrap::after { opacity: .7; }
+.start-mode .moon { flex: none; }
+.badge-count { display: inline-flex; align-items: center; gap: 8px; width: 220px; height: 48px; box-sizing: border-box; padding: 0 14px 0 6px; border-radius: 24px;
+  background: var(--ink); color: var(--cream); font: 24px/1 var(--display); white-space: nowrap; flex: none; }
+.badge-count > svg { display: block; flex: none; }
+.bc-word { font-size: 14px; color: var(--muted); }
+/* Kartenkarten: Vorschau 200 x 140 im Rahmen 206 x 146, Name 24, Sterne 28 */
+.map-cards { display: flex; gap: 20px; margin-top: 20px; }
+.map-slot { position: relative; flex: none; display: flex; flex-direction: column; }
+.map-slot > .map-card { flex: 1 0 auto; }
+.map-card { position: relative; width: 224px; height: 300px; padding: 6px 6px 0; border-radius: 18px; display: flex; flex-direction: column; align-items: center; gap: 0; cursor: pointer; flex: none;
+  transition: transform .12s ease-out, background .45s; }
+.map-thumb { width: 206px; height: 146px; border-radius: 12px; border: 3px solid var(--ink); box-sizing: border-box; flex: none; }
+.map-name { font: 24px/28px var(--display); color: var(--cream); text-shadow: -2px 0 var(--ink), 2px 0 var(--ink), 0 -2px var(--ink), 0 2px var(--ink); margin-top: 5px; white-space: nowrap; }
+.map-stars { display: flex; gap: 6px; margin-top: 6px; } .map-stars svg { display: block; }
+.map-best { margin-top: 14px; font: 15px/18px var(--font-body); color: var(--muted); text-align: center; }
+.map-nm-open { display: inline-flex; align-items: center; justify-content: center; gap: 6px; margin-top: 8px; width: 164px; height: 24px; border-radius: 12px; background: var(--ink); color: var(--cream); font: 13px/1 var(--display); }
+.map-nm-locked { margin-top: 10px; font: 13px/1.2 var(--font-body); color: var(--muted); }
+.map-card:hover:not(:disabled) { filter: brightness(1.08); }
+.map-card:focus-visible, .map-card.current { transform: translateY(-8px); box-shadow: 0 0 0 5px var(--hl), 0 10px 0 rgba(30,15,5,.45); outline: none; }
+#start-screen.nightmare .map-card:focus-visible, #start-screen.nightmare .map-card.current { box-shadow: 0 0 0 5px var(--hl), 0 10px 0 rgba(30,15,5,.45), 0 0 30px rgba(255,90,42,.5); }
+.map-card:disabled { cursor: default; } .map-card:disabled .map-thumb { filter: grayscale(1) brightness(.45); } .map-card:disabled .map-name { color: var(--map-locked); }
+.map-lock { position: absolute; left: calc(50% - 22px); top: 60px; }
+/* Albtraum: Karte 420 hoch, Slots (bei y 232), Bedingungskasten (290), Knopf 160 x 44 (346); von unten gemessen, damit schmalere Karten passen */
+#start-screen.nightmare .map-card { height: 420px; background: linear-gradient(var(--night-card-a), var(--night-card-b)); }
 #start-screen.nightmare .map-card:disabled .map-thumb { filter: none; }
-.map-thumb-wrap .map-lock { left: calc(50% - 26px); top: calc(50% - 26px); width: 52px; height: 52px; z-index: 1; }
-.map-badges { position: absolute; left: calc(50% - 80px); bottom: 64px; width: 160px; height: 44px; display: flex; justify-content: center; gap: 8px; padding: 0;
+.map-thumb-wrap { position: relative; display: block; flex: none; line-height: 0; }
+.map-thumb-wrap::after { content: ''; position: absolute; inset: 0; border-radius: 12px; background: var(--night-tint); opacity: .35; pointer-events: none; }
+.map-card:disabled .map-thumb-wrap::after { opacity: 1; }
+.map-thumb-wrap .map-lock { left: calc(50% - 24px); top: calc(50% - 24px); width: 48px; height: 48px; z-index: 1; }
+.map-style { position: absolute; z-index: 2; left: 5px; top: 5px; display: inline-flex; align-items: center; gap: 5px; padding: 3px 8px 3px 4px; border-radius: 10px;
+  background: var(--ink); color: var(--cream); font: 12px/1 var(--display); white-space: nowrap; }
+.map-style i { width: 12px; height: 12px; border-radius: 50%; border: 1.5px solid var(--ink); box-sizing: border-box; }
+.map-need { display: flex; flex-direction: column; align-items: center; gap: 4px; margin-top: 16px; text-align: center; color: var(--map-locked); }
+.map-need b { font: 16px/1.1 var(--display); font-weight: 400; } .map-need span { font: 13px/1.2 var(--font-body); color: var(--muted); }
+.map-badges { position: absolute; left: calc(50% - 74px); bottom: 144px; width: 148px; height: 44px; display: flex; justify-content: center; gap: 8px; padding: 0;
   border: 0; border-radius: 12px; background: none; cursor: pointer; transition: transform .12s ease-out; }
 .map-badges .badge { flex: none; }
+.map-cond { position: absolute; left: 10px; right: 10px; bottom: 90px; height: 40px; box-sizing: border-box; padding: 3px 8px; border-radius: 12px; background: rgba(14,11,26,.55);
+  display: flex; flex-direction: column; justify-content: center; font: 12px/1.3 var(--font-body); color: var(--cream); text-align: center; pointer-events: none; transition: transform .12s ease-out; }
+.map-cond span + span { color: var(--muted); }
+.map-nightmare { position: absolute; left: calc(50% - 80px); width: 160px; bottom: 30px; height: 44px; font: 18px/1 var(--display); color: var(--cream); cursor: pointer;
+  border: 3px solid var(--ink); border-radius: 22px; background: linear-gradient(var(--nightmare-btn-a), var(--nightmare-btn-b));
+  box-shadow: inset 0 2px 0 rgba(255,235,190,.25), 0 3px 0 rgba(30,15,5,.5); text-shadow: 0 2px 0 var(--ink); transition: transform .12s ease-out;
+  display: inline-flex; align-items: center; justify-content: center; gap: 4px; }
+.map-nightmare .nm-short { display: none; }
+.map-nightmare:hover:not(.locked) { filter: brightness(1.08); }
+.map-nightmare:active:not(.locked) { transform: translateY(2px); box-shadow: inset 0 2px 0 rgba(255,235,190,.25), 0 1px 0 rgba(30,15,5,.5); }
+.map-nightmare.locked { background: var(--darkwood-b); color: var(--map-locked); cursor: default; box-shadow: none; }
+.map-nightmare.locked svg { width: 18px; height: 18px; flex: none; }
+.map-slot:has(.map-card.current) :is(.map-nightmare, .map-badges, .map-cond), .map-slot:has(.map-card:focus-visible) :is(.map-nightmare, .map-badges, .map-cond) { transform: translateY(-8px); }
+.map-nightmare:focus-visible, .map-badges:focus-visible, .start-mode button:focus-visible, .nt-switch:focus-visible, .cos-open:focus-visible { box-shadow: 0 0 0 4px var(--hl); outline: none; }
 .start-hint.show-badges > :not(.badge-hint) { display: none !important; }
 .start-hint:not(.show-badges) .badge-hint { display: none; }
+/* Lernzeile (nur Albtraum, ab 790 Höhe) */
+.nm-learn { display: flex; align-items: center; gap: 18px; flex: none; width: 1200px; max-width: calc(100vw - 16px); height: 132px; margin-top: 16px; box-sizing: border-box; padding: 0 20px;
+  background: linear-gradient(var(--night-card-a), var(--night-card-b)); border-width: 3px; border-radius: var(--radius-card); }
+.nm-learn[hidden] { display: none; }
+@media (max-height: 789.98px) { .nm-learn { display: none; } }
+.nl-intro { flex: 1.2; min-width: 0; } .nl-intro h2 { margin: 0; font: 20px/1.1 var(--display); font-weight: 400; }
+.nl-intro p, .nl-tier span, .nl-reward { margin: 4px 0 0; font: 13px/1.3 var(--font-body); color: var(--muted); }
+.nl-tier { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; } .nl-tier > svg { flex: none; }
+.nl-tier span { margin: 0; } .nl-tier b { display: block; font: 19px/1.1 var(--display); font-weight: 400; }
+.nl-tier.t1 b { color: var(--badge-bronze-a); } .nl-tier.t2 b { color: var(--badge-silver-hi); } .nl-tier.t3 b { color: var(--gold-light); }
+.nl-reward { flex: none; width: 176px; margin: 0; }
+/* Lockplakette (Normal, sobald eine Karte 3 Sterne hat): 680 x 84 */
+.nm-teaser { display: flex; align-items: center; gap: 14px; flex: none; width: 680px; max-width: calc(100vw - 16px); height: 84px; margin-top: 46px; box-sizing: border-box; padding: 0 16px 0 10px;
+  border: 3px solid var(--ink); border-radius: var(--radius-card); background: linear-gradient(var(--nightmare-btn-a), var(--nightmare-btn-b)); box-shadow: 0 0 22px rgba(255,90,42,.35);
+  color: var(--muted); font: 14px/1.3 var(--font-body); }
+.nm-teaser[hidden] { display: none; }
+.nm-teaser > svg { flex: none; }
+.nt-text { flex: 1; min-width: 0; } .nt-text b { display: block; font: 22px/1.1 var(--display); font-weight: 400; color: var(--cream); text-shadow: 0 2px 0 var(--ink); }
+.wbtn-night { background: linear-gradient(var(--nightmare-btn-a), var(--nightmare-btn-b)); }
+.nt-switch { flex: none; width: 172px; min-height: 46px; font-size: 20px; border-radius: var(--radius-pill-l); }
+/* Unten: „Aussehen“ 196 x 52 bei (40, 718), Hinweis daneben */
+.start-head .cos-open { position: fixed; left: 40px; bottom: 30px; width: 196px; height: 52px; font-size: 20px; border-radius: 26px; gap: 8px; flex: none; }
+.start-head .cos-open svg { flex: none; }
+.start-foot { position: fixed; left: 252px; right: 340px; bottom: 30px; min-height: 52px; display: flex; flex-direction: column; justify-content: center; gap: 4px; }
+.start-hint { margin: 0; font: 15px var(--font-body); color: var(--ink); }
+.start-keys { margin: 0; font: 13px var(--font-body); color: var(--ink); }
+#start-screen.nightmare .start-hint, #start-screen.nightmare .start-keys { color: var(--muted); text-shadow: 0 2px 0 var(--ink); }
+.start-keys kbd { font: 13px/18px var(--display); padding: 0 5px; border-radius: 6px; background: var(--ink); color: var(--cream); }
+@media (hover: none), (pointer: coarse), (max-width: 700px) { .start-hint .no-touch { display: none; } }
 .badge-shadow { filter: drop-shadow(0 4px 0 rgba(30,15,5,.5)); }
 .badge-glow { filter: drop-shadow(0 4px 0 rgba(30,15,5,.5)) drop-shadow(0 0 24px rgba(255,212,90,.55)); }
-@media (prefers-reduced-motion: reduce) { #start-screen::before, #start-screen .map-card { transition: none; } }
-.start-hint { margin: 26px 0 0; font: 16px 'Trebuchet MS', sans-serif; color: #fff3d2; text-shadow: 0 2px 0 #2b1a10; }
-.start-keys { margin: 8px 0 0; font: 14px 'Trebuchet MS', sans-serif; color: #e8d3a8; text-shadow: 0 2px 0 #2b1a10; text-align: center; }
-.start-keys kbd { font: 13px/18px var(--display); padding: 0 5px; border-radius: 6px; background: #2b1a10; color: #fff3d2; }
-@media (hover: none), (pointer: coarse), (max-width: 700px) { .start-hint .no-touch { display: none; } }
-/* B-185: Menü „Aussehen“ (Bauvorlage Kosmetik-Aussehen): Plakette 560 breit auf Nacht-Hintergrund, Zeilen 56, Schalter 64 x 44 */
-.start-head .cos-open { min-height: 44px; font-size: 20px; padding: 0 18px; border-radius: 22px; flex: none; }
-#cosmetics { position: fixed; inset: 0; z-index: 45; display: flex; align-items: center; justify-content: center; padding: 16px; box-sizing: border-box;
-  background: linear-gradient(var(--night-a), var(--night-b)); }
+/* B-185/B-191: Menü „Aussehen“ (Bauvorlage Kosmetik-Aussehen): Plakette 560 x 728 und Vorschau 612 x 728 (ab 1200 px), Zeilen 56, Schalter 64 x 44 */
+#cosmetics { position: fixed; inset: 0; z-index: 45; display: flex; align-items: center; justify-content: center; gap: 28px; padding: 16px; box-sizing: border-box;
+  background: radial-gradient(circle at 50% 15%, var(--night-a), var(--night-b)); }
 #cosmetics[hidden] { display: none; }
-.cos-card { width: 560px; max-width: 100%; max-height: min(680px, 100%); box-sizing: border-box; padding: 24px 28px; border-radius: var(--radius-card); display: flex; flex-direction: column; }
-.cos-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex: none; }
+.cos-card { width: 560px; max-width: 100%; height: min(728px, 100%); box-sizing: border-box; padding: 20px 24px; border-width: 4px; border-radius: var(--radius-card); display: flex; flex-direction: column; flex: none; }
+.cos-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex: none; }
 .cos-head h2 { margin: 0; font: 34px/1 var(--display); text-shadow: 0 3px 0 var(--ink); }
-.cos-close { min-height: 44px; font-size: 20px; padding: 0 18px; border-radius: 22px; }
-.cos-body { overflow: auto; min-height: 0; margin-top: 8px; }
-.cos-sec { margin: 14px 0 0; font: 20px/1.2 var(--display); color: var(--gold); text-shadow: 0 2px 0 var(--ink); }
-.cos-row { display: flex; align-items: center; gap: 10px; height: 56px; border-bottom: 2px solid rgba(43,26,16,.35); }
-.cos-name { flex: 1; min-width: 0; font: 20px/1 var(--display); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.cos-lock { display: inline-flex; align-items: center; gap: 4px; font: 14px/1.1 'Trebuchet MS', sans-serif; color: var(--muted); }
-.cos-lock svg { flex: none; width: 22px; height: 22px; }
+.cos-intro { margin: 4px 0 0; font: 14px/1.3 var(--font-body); color: var(--cream); }
+.cos-close { min-height: 44px; font-size: 20px; padding: 0 18px; border-radius: 22px; flex: none; }
+.cos-body { overflow: auto; min-height: 0; margin-top: 6px; }
+.cos-sec { display: flex; align-items: center; gap: 6px; margin: 12px 0 6px; font: 21px/1.2 var(--display); font-weight: 400; color: var(--gold-light); text-shadow: 0 2px 0 var(--ink); }
+.cos-moon { flex: none; }
+.cos-row { display: flex; align-items: center; gap: 10px; height: 56px; box-sizing: border-box; padding: 0 6px; margin-bottom: 2px; border-radius: 14px; background: rgba(43,26,16,.28); cursor: pointer; }
+.cos-row.chosen { background: rgba(255,226,102,.18); box-shadow: inset 0 0 0 3px var(--hl); }
+.cos-thumb { position: relative; flex: none; width: 64px; height: 44px; line-height: 0; }
+.cos-mini { width: 64px; height: 44px; box-sizing: border-box; border: 2.5px solid var(--ink); border-radius: 6px; background: var(--ink); }
+.cos-mini-gold { width: 60px; margin-left: 2px; }
+.cos-row.locked .cos-thumb::after { content: ''; position: absolute; inset: 0; border-radius: 6px; background: var(--night-tint); }
+.cos-thumb > svg { position: absolute; z-index: 1; left: 21px; top: 11px; }
+.cos-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.cos-name { display: flex; align-items: center; gap: 4px; font: 20px/1 var(--display); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cos-name svg { flex: none; width: 18px; height: 18px; }
+.cos-row.locked .cos-name { color: var(--muted); }
+.cos-sub { font: 14px/1.15 var(--font-body); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cos-state { flex: none; width: 70px; text-align: right; font: 16px/1 var(--display); color: var(--muted); }
+.cos-row:has(.sw[aria-checked="true"]) .cos-state { color: var(--cream); }
 .sw { position: relative; flex: none; width: 64px; height: 44px; padding: 0; border: 3px solid var(--ink); border-radius: 22px; background: var(--ink); cursor: pointer; transition: background .2s; }
 .sw[aria-checked="true"] { background: var(--message-info); }
 .sw .knob { position: absolute; top: 4px; left: 4px; width: 30px; height: 30px; box-sizing: border-box; border: 3px solid var(--ink); border-radius: 50%;
@@ -534,22 +611,47 @@ body.on-start .top-buttons { z-index: 41; } /* Ton und Hilfe bleiben erreichbar 
 .sw[aria-checked="true"] .knob { left: 26px; }
 .sw:disabled { background: var(--darkwood-b); cursor: default; }
 .sw:disabled .knob { background: var(--stone-line); }
+.sw > svg { position: absolute; left: 8px; top: 8px; width: 22px; height: 22px; z-index: 1; }
 .sw:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--hl); }
 .cos-prog { padding: 10px 0 4px; display: flex; flex-direction: column; gap: 6px; }
 .cos-prog-text { font: 16px/1.2 var(--display); }
-.cos-bar { display: block; height: 16px; box-sizing: border-box; border: 2px solid var(--ink); border-radius: 8px; background: var(--ink); overflow: hidden; }
+.cos-bar { display: block; height: 18px; box-sizing: border-box; border: 2px solid var(--ink); border-radius: 9px; background: var(--ink); overflow: hidden; }
 .cos-bar > span { display: block; height: 100%; background: linear-gradient(90deg, var(--gold-btn-a), var(--gold-btn-b)); }
+.cos-medals { display: flex; justify-content: space-between; }
+.cos-medals > span { display: flex; flex-direction: column; align-items: center; gap: 2px; font: 11px/1.1 var(--font-body); color: var(--muted); }
 @media (prefers-reduced-motion: reduce) { .sw, .sw .knob { transition: none; } }
-/* Handy quer: Plakette volle Höhe minus Ränder, nur der Inhalt scrollt; Zeilen und Schalter bleiben 44 hoch */
+/* Vorschau rechts */
+.cos-preview { width: 612px; height: min(728px, 100%); flex: none; box-sizing: border-box; padding: 20px 24px; display: flex; flex-direction: column; gap: 14px;
+  border: 4px solid var(--ink); border-radius: var(--radius-card); background: linear-gradient(var(--night-card-a), var(--night-card-b)); color: var(--cream);
+  box-shadow: 0 4px 0 rgba(30,15,5,.45); }
+.cp-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.cp-title { margin: 0; font: 28px/1.1 var(--display); font-weight: 400; text-shadow: 0 2px 0 var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cp-state { flex: none; height: 32px; padding: 0 14px; border-radius: 16px; display: inline-flex; align-items: center; background: var(--ink); font: 16px/1 var(--display); }
+.cp-state[data-state="An"] { background: var(--message-info); } .cp-state[data-state="Gesperrt"] { background: var(--darkwood-b); color: var(--muted); }
+.cp-night { display: flex; gap: 16px; margin-top: 30px; } .cos-preview:not([data-kind="night"]) .cp-night { display: none; }
+.cp-night figure { margin: 0; display: flex; flex-direction: column; align-items: center; gap: 6px; font: 18px/1 var(--display); }
+.cp-night canvas { width: 270px; height: 189px; box-sizing: border-box; border: 4px solid var(--ink); border-radius: 12px; }
+.cp-nightfig figcaption { color: var(--gold-light); } .cp-nightfig canvas { box-shadow: 0 0 24px rgba(255,90,42,.35); }
+.cp-gold { position: relative; width: 564px; height: 290px; border: 3px solid var(--ink); border-radius: 14px; box-sizing: border-box; overflow: hidden;
+  background: linear-gradient(var(--map-meadow-2), var(--map-meadow-3)); } .cos-preview:not([data-kind="gold"]) .cp-gold { display: none; }
+.cp-gold canvas { width: 100%; height: 100%; display: block; }
+.cp-lab { position: absolute; left: 10px; top: 8px; padding: 3px 10px; border-radius: 12px; background: var(--ink); font: 14px/1 var(--display); color: var(--cream); } .cp-lab-g { top: 154px; color: var(--gold-light); }
+.cp-text { margin: 0; font: 15px/1.4 var(--font-body); color: var(--muted); }
+.cos-preview[data-kind="gold"] .cp-text { font-size: 14px; }
+.cp-unlock { margin-top: auto; display: flex; align-items: center; gap: 14px; min-height: 96px; box-sizing: border-box; padding: 10px 16px; border: 3px solid var(--ink); border-radius: 14px;
+  background: linear-gradient(90deg, var(--night-a), var(--night-a-2)); }
+.cp-medal { flex: none; line-height: 0; } .cp-utitle { font: 19px/1.15 var(--display); font-weight: 400; color: var(--gold-light); }
+.cp-utext { margin: 4px 0 0; font: 14px/1.3 var(--font-body); color: var(--cream); }
+@media (max-width: 1199.98px) { .cos-preview { display: none; } .cos-card { height: auto; max-height: min(680px, 100%); } }
+/* Handy quer: nur die Plakette, volle Höhe minus Ränder, nur der Inhalt scrollt; Zeilen 56, Schalter 64 x 44 */
 @media (max-height: 519.98px) and (orientation: landscape) {
   #cosmetics { padding: 8px; }
   .cos-card { height: 100%; max-height: none; padding: 10px 20px 8px; }
-  .cos-head h2 { font-size: 26px; }
+  .cos-head h2 { font-size: 26px; } .cos-intro { font-size: 13px; }
   .cos-sec { margin-top: 6px; font-size: 18px; }
-  .cos-row { height: 48px; } .cos-name { font-size: 18px; }
-  .start-head .cos-open { position: fixed; right: max(8px, var(--safe-r)); bottom: 8px; font-size: 18px; padding: 0 14px; } /* Kopfzeile ist voll: unten rechts */
+  .cos-name { font-size: 18px; }
 }
-@media (max-width: 1100px) { .map-card { width: 172px; } .map-thumb { width: 148px; height: 104px; } .map-cards { gap: 12px; } }
+@media (max-width: 1100px) { .map-card { width: 172px; } .map-thumb { width: 154px; height: 108px; } .map-cards { gap: 12px; } .start-foot { right: 300px; } }
 
 #overlay { background: rgba(16,28,14,.7); }
 .end-card { position: relative; width: 520px; max-width: calc(100vw - 56px); padding: 64px 24px 22px; border-radius: 22px; text-align: center; }
@@ -592,11 +694,7 @@ body.on-start .top-buttons { z-index: 41; } /* Ton und Hilfe bleiben erreichbar 
 @media (prefers-reduced-motion: reduce) { .end-badge.fly, #overlay.nightmare-win.fresh .end-rays { animation: none; } }
 
 @media (max-width: 759.98px), (max-height: 519.98px) {
-  #start-screen { position: fixed; padding: 64px 8px 16px; }
-  body.on-start .top-buttons { position: fixed; right: 6px; top: 6px; }
-  .start-title { width: 100%; height: 64px; font-size: 32px; gap: 8px; } .start-castle { width: 44px; height: 50px; }
-  .map-cards { flex-wrap: wrap; justify-content: center; gap: 12px; margin-top: 18px; } .map-card { width: 168px; height: 250px; } .map-thumb { width: 144px; height: 100px; }
-  .map-lock { top: 40px; }
+  .map-cards { flex-wrap: wrap; justify-content: center; gap: 12px; } /* schmal hochkant: Karten umbrechen (quer: eine Reihe, unten) */
   #overlay { position: fixed; z-index: 30; }
   .end-card { padding: 48px 16px 18px; } .end-ribbon text { font-size: 50px; }
   .end-stars svg { width: 44px; height: 44px; }
@@ -718,29 +816,37 @@ body.fs-gate #rotate-hint { position: fixed; inset: 0; z-index: 60; display: fle
   #message { max-width: calc(var(--fw) - 20px); white-space: normal; text-align: center; }
   #overlay { position: fixed; inset: 0; z-index: 30; background: rgba(16,28,14,.78); overflow: auto; }
   #test-panel { position: fixed; left: var(--side); bottom: 0; width: var(--fw); max-height: 40vh; overflow: auto; z-index: 25; }
-  /* Startbildschirm: Titel oben, fünf Karten in einer Reihe */
-  #start-screen { padding: 6px 8px 10px; }
-  body.on-start .top-buttons { position: fixed; right: var(--safe-r); top: 6px; display: flex; width: auto; }
+  /* B-191 Startbildschirm Handy quer: Kopf 828 x 56, Karten 158 breit und 240 hoch ab y 70, Slots 36, Knopf „Spielen“ 140 x 44,
+     kein Bedingungskasten, keine Lern- und Lockplakette; „Aussehen“ 170 x 48 unten links, Ton/Vollbild unten rechts */
+  #start-screen { padding: 8px 8px 0; }
+  body.on-start .top-buttons { position: fixed; top: auto; right: var(--safe-r); bottom: 14px; display: flex; width: auto; }
+  body.on-start .sound-pop { top: auto; bottom: 0; }
   body.on-start #speed, body.on-start #pause { display: none; }
-  .start-title { width: min(520px, calc(100vw - 120px)); height: 46px; font-size: 26px; gap: 8px; border-radius: 16px; }
-  .start-castle { width: 32px; height: 36px; margin-top: -4px; }
-  .map-cards { flex-wrap: nowrap; justify-content: center; gap: 8px; margin-top: 12px; }
-  .map-card { width: min(160px, calc((100vw - 48px) / 5)); height: auto; padding: 8px 8px 10px; gap: 4px; border-radius: 16px; }
-  .map-thumb { width: 100%; height: auto; aspect-ratio: 16 / 10; object-fit: cover; }
-  .map-name { font-size: 18px; } .map-stars svg { width: 18px; height: 18px; } .map-best { font-size: 12px; line-height: 1.2; }
+  .start-head { width: 828px; height: 56px; gap: 8px; padding: 0 6px 0 8px; border-width: 3px; border-radius: 16px; }
+  .start-sym { width: 40px; height: 40px; } .start-title { font-size: 22px; } .start-sub { display: none; }
+  .start-mode { width: 240px; height: 46px; padding: 1px; gap: 0; border-radius: 23px; }
+  .start-mode button { min-width: 0; height: 44px; border-radius: 22px; font-size: 18px; }
+  .badge-count { width: 172px; height: 42px; padding: 0 10px 0 4px; gap: 6px; font-size: 20px; border-radius: 21px; } .badge-count > svg { width: 32px; height: 32px; }
+  .bc-word { font-size: 12px; }
+  .map-cards { flex-wrap: nowrap; justify-content: center; gap: 8px; margin-top: 6px; }
+  .map-card, #start-screen.nightmare .map-card { width: min(158px, calc((100vw - 48px) / 5)); height: min(240px, calc(100vh - 136px)); padding: 5px 5px 0; border-radius: 16px; }
+  .map-thumb-wrap { width: 100%; }
+  .map-thumb { width: 100%; height: auto; aspect-ratio: 142 / 99; border-radius: 10px; }
+  .map-name { font-size: 18px; line-height: 20px; margin-top: 2px; } .map-stars { gap: 3px; margin-top: 1px; } .map-stars svg { width: 16px; height: 16px; }
+  .map-best { margin-top: 6px; font-size: 12px; line-height: 1.2; }
+  .map-nm-open { width: auto; padding: 0 8px; margin-top: 6px; font-size: 12px; } .map-nm-open svg { width: 14px; height: 14px; }
+  .map-nm-locked { margin-top: 6px; font-size: 12px; }
   .map-lock { top: 26px; }
-  .start-hint { margin-top: 12px; }
-  /* B-184: Kopf in einer Zeile (Titel kleiner), Umschalter 44 hoch, Zähler ohne Wort; Albtraum-Karten mit Slots 36 und Knopf */
-  .start-head { gap: 8px; max-width: calc(100vw - 2 * var(--safe-r) - 200px); }
-  .start-head .start-title { width: auto; padding: 0 14px; font-size: 20px; } .start-head .start-castle { display: none; }
-  .start-mode button { min-width: 110px; font-size: 18px; }
-  .badge-count { font-size: 18px; padding: 4px 12px 4px 4px; } .bc-word { display: none; } .badge-count .badge { width: 32px; height: 32px; }
-  .map-slot.has-nm .map-card { padding-bottom: 58px; }
-  .map-nightmare { left: 8px; width: calc(100% - 16px); bottom: 8px; font-size: 15px; }
-  #start-screen.nightmare .map-card { height: auto; } #start-screen.nightmare .has-nm .map-card { padding-bottom: 104px; } #start-screen.nightmare .map-cards { margin-top: 8px; }
-  .map-thumb-wrap { width: 100%; } .map-thumb-wrap .map-lock { width: 44px; height: 44px; left: calc(50% - 22px); top: calc(50% - 22px); }
-  .map-badges { left: 8px; width: calc(100% - 16px); bottom: 56px; gap: 6px; } .map-badges .badge { width: 36px; height: 36px; align-self: center; }
-  .map-nm-locked { font-size: 12px; } .map-nm-locked svg { width: 16px; height: 16px; }
+  .map-thumb-wrap .map-lock { width: 44px; height: 44px; left: calc(50% - 22px); top: calc(50% - 22px); }
+  .map-style { left: 3px; top: 3px; font-size: 10px; padding: 2px 6px 2px 3px; } .map-style i { width: 9px; height: 9px; }
+  .map-need { margin-top: 4px; } .map-need b { font-size: 13px; } .map-need span { font-size: 11px; }
+  .map-badges { left: 6px; width: calc(100% - 12px); bottom: 52px; gap: 2px; } .map-badges .badge { width: 36px; height: 36px; align-self: center; flex: 0 1 auto; }
+  .map-cond, .nm-learn, .nm-teaser, .start-keys { display: none !important; }
+  .map-nightmare { left: max(6px, calc(50% - 70px)); width: min(140px, calc(100% - 12px)); bottom: 6px; font-size: 16px; }
+  .map-nightmare .nm-long { display: none; } .map-nightmare .nm-short { display: inline; }
+  .start-head .cos-open { left: max(12px, var(--safe-l)); bottom: 14px; width: 170px; height: 48px; font-size: 18px; border-radius: 24px; }
+  .start-foot { left: calc(max(12px, var(--safe-l)) + 182px); right: calc(var(--safe-r) + 110px); bottom: 14px; min-height: 48px; }
+  .start-hint { font-size: 13px; line-height: 1.2; }
   /* Schmale Fenster (z. B. 667x375): Plakette schmaler und nach rechts, damit die Medaille links (120 + 16 Abstand + 8 Rand) Platz hat; 24 rechts für das überstehende Band */
   #overlay.nightmare-win .end-card { margin-top: 0; padding: 40px 16px 14px; max-width: calc(100vw - 168px);
     left: max(0px, calc(144px - (100vw - min(520px, 100vw - 168px)) / 2)); }

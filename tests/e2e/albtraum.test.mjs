@@ -192,3 +192,25 @@ test('B-193 1920x1080: Albtraum-Plakette 180 x 56 neben dem HUD, Boss-Leiste mit
   assert.deepEqual(errors, []);
   await ctx.close();
 });
+
+// ---------- B-191: Kartenauswahl im Albtraum (Karten 224 x 420, Lernzeile nur bei genug Höhe) ----------
+test('B-191 1280x800: Albtraum-Karten 224 x 420 mit Lücke 20, Lernzeile im Fenster; 1366x768 ohne Lernzeile, kein Scrollen', async () => {
+  const { ctx, page, errors } = await open({ width: 1280, height: 800 });
+  const cards = await page.$$eval('.map-card', (bs) => bs.map((b) => b.getBoundingClientRect().toJSON()));
+  assert.equal(cards.length, MAP_ORDER.length);
+  for (const r of cards) assert.ok(Math.abs(r.width - 224) <= 1 && Math.abs(r.height - 420) <= 1, `Karte ${r.width} x ${r.height}`);
+  assert.ok(Math.abs(cards[2].x - (cards[1].x + 224) - 20) <= 1, 'Lücke 20');
+  assert.equal(await page.isVisible('.nm-learn'), true, 'Lernzeile sichtbar');
+  assert.ok((await box(page, '.nm-learn')).y + (await box(page, '.nm-learn')).height <= 800, 'Lernzeile im Fenster');
+  assert.ok(await page.evaluate(() => document.scrollingElement.scrollHeight <= innerHeight && document.getElementById('start-screen').scrollHeight <= innerHeight));
+  await page.setViewportSize({ width: 1366, height: 768 });
+  assert.equal(await page.isVisible('.nm-learn'), false, 'Lernzeile versteckt');
+  assert.ok(await page.evaluate(() => document.scrollingElement.scrollHeight <= innerHeight && document.getElementById('start-screen').scrollHeight <= innerHeight), 'kein Scrollen');
+  // Normal: Lockplakette mit „Umschalten“ führt in den Albtraum
+  await page.click('.start-mode [data-mode="normal"]');
+  assert.equal(await page.isVisible('.nm-learn'), false);
+  await page.click('.nm-teaser .nt-switch');
+  assert.equal(await page.locator('#start-screen').getAttribute('class'), 'nightmare');
+  assert.deepEqual(errors, []);
+  await ctx.close();
+});

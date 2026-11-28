@@ -216,3 +216,74 @@ test('B-185 toggleCosmetic: schaltet um, gesperrt/unbekannt bleibt unverändert'
   assert.equal(toggleCosmetic(g, 'gold'), true);
   assert.equal(activeCosmetics(g, M2).goldTowers, false);
 });
+
+// ---------- B-191: Kartenauswahl und Menü „Aussehen“ im Albtraum ----------
+import { mapSlotHtml, starCounterText, nightmareCardInfo, nmStyleOf, startHeadView, cosPreviewView, NM_NEED } from '../src/screens.js';
+import { GOLD_CONDITIONS, NM_STYLE_OF_MAP, NM_ENEMY_STYLE } from '../src/config.js';
+import { NM_STYLE_NAME } from '../src/nm-wood.js';
+// alle Karten mit drei Sternen außer der letzten; erste Karte Bronze
+const threeStars = () => ({
+  maps: Object.fromEntries(MAP_ORDER.map((id, i) => [id, { bestWave: MAX_WAVES, stars: i < MAP_ORDER.length - 1 ? 3 : 2 }])),
+  nightmare: { [M0]: { bestWave: MAX_WAVES, badge: 1 } },
+});
+
+test('B-191 mapSlotHtml Albtraum: Stil-Schild je Karte, Bedingungskasten mit Gold-Bedingung, gesperrt mit Hinweis und aria-disabled', () => {
+  const p = threeStars();
+  const cards = mapCards(p);
+  for (const card of cards.filter((c) => c.nightmare)) {
+    const html = mapSlotHtml(card, 'nightmare', p);
+    assert.match(html, new RegExp(`class="map-style"><i style="background:${NM_ENEMY_STYLE[NM_STYLE_OF_MAP[card.id]].eye}"></i>${NM_STYLE_NAME[card.id]}<`));
+    assert.match(html, new RegExp(`class="map-cond"><span>Gold: ${GOLD_CONDITIONS[card.id].label}</span>`));
+    assert.match(html, new RegExp(`class="map-nightmare" data-map="${card.id}"`));
+    assert.doesNotMatch(html, /aria-disabled/);
+  }
+  const locked = cards.find((c) => !c.nightmare);
+  const html = mapSlotHtml(locked, 'nightmare', p);
+  assert.match(html, new RegExp(NM_NEED));
+  assert.match(html, /class="map-nightmare locked"[^>]*aria-disabled="true"/);
+  assert.match(html, /Gesperrt<\/button>$/);
+  assert.doesNotMatch(html, /map-badges|map-cond/);
+  // Bedingungskasten: nächste Stufe bzw. alles geholt
+  assert.deepEqual(nightmareCardInfo(p, M0), { cond: `Gold: ${GOLD_CONDITIONS[M0].label}`, next: 'nächstes: Silber' });
+  assert.equal(nightmareCardInfo(p, M1).next, 'nächstes: Bronze');
+  p.nightmare[M0].badge = 3;
+  assert.equal(nightmareCardInfo(p, M0).next, 'alle Abzeichen geholt');
+  assert.equal(nmStyleOf('unbekannt').name, NM_STYLE_NAME.meadow);
+});
+
+test('B-191 mapSlotHtml Normal: Bestwert, „Albtraum offen“ bzw. „ab 3 Sternen“, kein Albtraum-Knopf; Kopf und Zähler je Ansicht', () => {
+  const p = threeStars();
+  const cards = mapCards(p);
+  const open = mapSlotHtml(cards[0], 'normal', p);
+  assert.match(open, /class="map-best">Beste Welle 20 \/ 20</);
+  assert.match(open, /Albtraum offen/);
+  assert.doesNotMatch(open, /map-nightmare|map-style/);
+  assert.match(mapSlotHtml(cards[cards.length - 1], 'normal', p), /Albtraum ab 3 Sternen/);
+  assert.equal(starCounterText(p), `Sterne ${3 * (MAP_ORDER.length - 1) + 2} / ${MAP_ORDER.length * STAR_COUNT}`);
+  assert.equal(starCounterText(emptyProgress()), `Sterne 0 / ${MAP_ORDER.length * STAR_COUNT}`);
+  assert.equal(startHeadView('nightmare').title, 'Albtraum');
+  assert.equal(startHeadView('normal').title, 'Wähle deine Karte');
+});
+
+test('B-191 cosmeticsHtml: Unterzeile mit Stilname (frei) bzw. eigener Stufe (gesperrt), Zustandswort; Vorschau-Daten je Zeile', () => {
+  const p = goldOn([M1]);
+  p.nightmare[M0] = { bestWave: MAX_WAVES, badge: 2 };
+  const view = cosmeticsView(p);
+  const html = cosmeticsHtml(view);
+  assert.match(html, new RegExp(`Frei · Stil ${NM_STYLE_NAME[M1]}`));
+  assert.match(html, new RegExp(`${COS_LOCKED_NIGHT} \\(du: Silber\\)`));
+  assert.match(html, new RegExp(`${COS_LOCKED_NIGHT} \\(du: kein Abzeichen\\)`));
+  assert.match(html, /class="cos-state">An</);
+  assert.equal((html.match(/class="cos-state">Gesperrt</g) || []).length, MAP_ORDER.length, 'vier Karten und goldene Türme gesperrt');
+  const r1 = view.night.find((r) => r.mapId === M1);
+  assert.deepEqual([r1.state, r1.style, r1.tier], ['An', NM_STYLE_NAME[M1], 3]);
+  // Vorschau: Karte bzw. goldene Türme, Freischalt-Kasten mit den Bedingungen und der eigenen Stufe
+  const v0 = cosPreviewView(view, `night:${M0}`);
+  assert.deepEqual([v0.kind, v0.title, v0.state, v0.unlocked], ['night', `Vorschau: ${MAPS[M0].name}`, 'Gesperrt', false]);
+  assert.match(v0.unlockText, /Du hast: Silber\.$/);
+  assert.equal(v0.nightLabel, `Nacht-Look · ${NM_STYLE_NAME[M0]}`);
+  const vg = cosPreviewView(view, 'gold');
+  assert.deepEqual([vg.kind, vg.state], ['gold', 'Gesperrt']);
+  assert.match(vg.unlockText, /Gold auf 1 \/ 5 Karten/);
+  assert.equal(cosPreviewView(view, 'quatsch').key, `night:${M0}`, 'unbekannt: erste Zeile');
+});
