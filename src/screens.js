@@ -166,7 +166,7 @@ function thumbFor(mapId, night = false) {
   const key = `${mapId}|${night ? 'night' : 'day'}`;
   if (!thumbCache.has(key)) {
     thumbCache.set(key, thumbQueue = thumbQueue.then(() => new Promise((r) => setTimeout(r, 0)))
-      .then(() => rasterizePainted(buildPaintedSvg(createGame({ mapId }), { night }), THUMB_SCALE))
+      .then(() => rasterizePainted(buildPaintedSvg(createGame({ mapId }), { look: night ? 'nightmare' : 'normal' }), THUMB_SCALE))
       .catch(() => null));
   }
   return thumbCache.get(key);
