@@ -105,3 +105,9 @@ Anhängen ohne die Datei zu lesen: `cat >> docs/LEDGER.md <<'EOF' … EOF`. Übe
 - Tests: npm test 717, test:balance 26, E2E 129 grün
 - Entscheidungen/Abweichungen: Zwei Spieltests des Menschen: +40 % ab Welle 1 zu schwer → gestuft (8–11 ×1,2, ab 12 ×1,4), Kopfgeld normal, mehr Elite ab Welle 8. Oger-König kostet im Albtraum weiter alle Leben (Mensch: so lassen). Skript-Strategien schaffen den Albtraum nicht mehr (Regel „perfektes Spiel“ gilt hier bewusst nicht). Mit Gold-Anzeige-Fix und Testmodus-Gold aus. Tester PASS, Reviewer APPROVE.
 - Offen: Albtraum-Design (Runde 1 Stilrichtung in Claude Design, Auswahl durch den Menschen).
+
+## 2026-11-28 – Block Albtraum-Design (B-190 bis B-199)
+- Rollen: designer (Sonnet + ein Opus-Vergleich), developer (4 parallele Worktrees), tester, reviewer.
+- Neu: echter Albtraum-Look statt Filter: je Karte eigener Stil (A/B/C), Bewegung (Wellen, Glut, Nebel), Gegner-Look, Holz-HUD, Kartenauswahl/Sieg/Aussehen; keine Vignette.
+- Gold-Bedingung (Mensch): Zangenangriff ohne Kanone, Vulkan ohne Blitzturm statt "höchstens 3 Turmtypen"; Tests dazu angepasst.
+- Offen: Plakette bei 1280x800, nm-Tokens nach Claude Design abgleichen.
