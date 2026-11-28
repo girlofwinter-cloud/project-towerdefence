@@ -272,3 +272,46 @@ test('B-192 844x390: Niederlage im Albtraum ohne Überlappung, Knöpfe >= 44', a
   assert.deepEqual(errors, []);
   await ctx.close();
 });
+
+// Tester: Handy quer 844x390, sichtbare Knöpfe/Karten überlappen sich nicht und liegen im Fenster, Tippziele >= 44.
+// Ausnahme: Knöpfe auf einer Kartenfläche (Abzeichen, Albtraum spielen) liegen absichtlich über ihr; dann muss der Tipp
+// in der Mitte des Knopfs aber ihn selbst treffen (hit).
+async function visibleBoxes(page, sel) {
+  return page.evaluate((s) => {
+    const slots = [...document.querySelectorAll('.map-slot')];
+    return [...document.querySelectorAll(s)].filter((b) => b.offsetParent && getComputedStyle(b).visibility !== 'hidden' && !b.parentElement.closest(s))
+      .map((b) => {
+        const r = b.getBoundingClientRect();
+        const top = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
+        return { id: b.id || b.className || b.textContent.trim().slice(0, 20), card: b.classList.contains('map-card'), slot: slots.indexOf(b.closest('.map-slot')), hit: !!top && (top === b || b.contains(top)), x: r.x, y: r.y, width: r.width, height: r.height };
+      });
+  }, sel);
+}
+function noOverlap(list, what) {
+  for (let i = 0; i < list.length; i++) for (let k = i + 1; k < list.length; k++) {
+    const a = list[i], b = list[k];
+    if (a.slot >= 0 && a.slot === b.slot && (a.card || b.card)) continue; // Knopf auf seiner Karte
+    const ov = Math.min(a.x + a.width, b.x + b.width) - Math.max(a.x, b.x) > 1 && Math.min(a.y + a.height, b.y + b.height) - Math.max(a.y, b.y) > 1;
+    assert.equal(ov, false, `${what}: ${a.id} überlappt ${b.id}`);
+  }
+  for (const b of list) if (!b.card) assert.ok(b.hit, `${what}: Tipp auf ${b.id} trifft etwas anderes`);
+}
+test('Tester 844x390: Albtraum-Kartenauswahl und Gold-Sieg mit „Aussehen“ ohne Überlappung, alle Knöpfe >= 44 und im Fenster', async () => {
+  const { ctx, page, errors } = await open({ width: 844, height: 390 });
+  const sel = await visibleBoxes(page, '#start-screen button');
+  assert.ok(sel.length > 0);
+  for (const b of sel) assert.ok(b.height >= 44 && b.width >= 44 && b.x >= 0 && b.y >= 0 && b.x + b.width <= 844 && b.y + b.height <= 390, `Knopf ${b.id}: ${JSON.stringify(b)}`);
+  noOverlap(sel, 'Kartenauswahl');
+  noOverlap(await visibleBoxes(page, '.map-slot'), 'Karten');
+  await endIn(page, LAST, { state: { lives: 5 }, status: 'won' });
+  await page.waitForSelector('#overlay.nightmare-win');
+  assert.equal(await page.isVisible('#end-look'), true, 'Gold: Knopf „Aussehen“');
+  const btns = await visibleBoxes(page, '#overlay button');
+  for (const b of btns) assert.ok(b.height >= 44 && b.x >= 0 && b.y >= 0 && b.x + b.width <= 844 && b.y + b.height <= 390, `Sieg-Knopf ${b.id}: ${JSON.stringify(b)}`);
+  noOverlap(btns, 'Sieg-Knöpfe');
+  const medal = await box(page, '#end-badge');
+  for (const b of btns) assert.equal(overlap(medal, b), false, `Medaille überdeckt ${b.id}`);
+  assert.ok(await page.evaluate(() => document.documentElement.scrollHeight <= innerHeight), 'Seite scrollt nicht');
+  assert.deepEqual(errors, []);
+  await ctx.close();
+});

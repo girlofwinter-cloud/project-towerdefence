@@ -480,3 +480,42 @@ test('B-194 (alle Karten): keine Albtraum-Rand-Deko auf einer bebaubaren Kachel 
     } finally { Object.assign(nm, saved); }
   }
 });
+
+// ---------- Tester: Cache des Looks (normal <-> Albtraum <-> Nacht-Look) ----------
+const lookOf = (img) => img?.key.split('+').pop();
+test('Tester: Look-Wechsel normal -> Albtraum -> Nacht-Look -> normal liefert jeweils das passende Bild', async () => {
+  const { renderView, paintedImage, setPaintedExtent } = await import('../src/render.js?tester-look');
+  await withRasterMock(async () => {
+    setPaintedExtent(null);
+    const normal = createGame({ mapId: 'volcano' });
+    const nm = createGame({ mapId: 'volcano', mode: 'nightmare' });
+    const steps = [[normal, {}, 'normal'], [nm, {}, 'nightmare'], [normal, { night: true }, 'nightmare'], [normal, {}, 'normal']];
+    for (const [s, ui, want] of steps) {
+      renderView(mockCtx().ctx, s, ui);
+      await settle();
+      const img = paintedImage('volcano');
+      assert.equal(lookOf(img), want, `Raster-Schlüssel ${want}`);
+      assert.equal(img.look, want, `paintedImage.look ${want}`);
+    }
+  });
+});
+
+test('Tester: schnelles Hin- und Zurückschalten (Albtraum-Raster noch unterwegs) lässt kein Albtraum-Bild im Normalmodus stehen', async () => {
+  const { renderView, paintedImage, setPaintedExtent } = await import('../src/render.js?tester-look-race');
+  await withRasterMock(async () => {
+    setPaintedExtent(null);
+    const s = createGame({ mapId: 'meadow' });
+    renderView(mockCtx().ctx, s, {});
+    await settle();
+    assert.equal(lookOf(paintedImage('meadow')), 'normal');
+    // Nacht-Look an (Albtraum-Raster startet) und im selben Frame-Takt wieder aus, bevor es fertig ist
+    renderView(mockCtx().ctx, s, { night: true });
+    renderView(mockCtx().ctx, s, {});
+    await settle();
+    renderView(mockCtx().ctx, s, {});
+    const img = paintedImage('meadow');
+    // Bild und gemeldeter Look müssen zusammenpassen und zum aktuellen Modus (normal) gehören
+    assert.equal(lookOf(img), img.look, 'paintedImage.look passt nicht zum gezeigten Raster');
+    assert.equal(lookOf(img), 'normal', 'Albtraum-Raster überschreibt das normale Bild');
+  });
+});

@@ -1,7 +1,7 @@
 // Unit-Tests für Rendering mit Mock-Kontext (Gelände, Türme, Effekte)
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createGame, buildTower, towerStats } from '../src/game.js';
+import { createGame, buildTower, towerStats, spawnEnemy } from '../src/game.js';
 import { decorFor } from '../src/decor.js';
 
 import { recoilOffset } from '../src/tower-fx.js';
@@ -2498,4 +2498,56 @@ test('B-193 goldMissedText: Silber noch möglich nur ohne Lebensverlust', async 
   assert.equal(goldMissedText({ track: { livesLost: 0 } }), 'Gold verpasst – Silber ist noch möglich');
   assert.equal(goldMissedText({}), 'Gold verpasst – Silber ist noch möglich');
   assert.equal(goldMissedText({ track: { livesLost: 2 } }), 'Gold verpasst');
+});
+
+// ---------- Tester: Albtraum-Look im ganzen render() ----------
+function logCtx() {
+  const calls = [];
+  const props = {};
+  const ctx = new Proxy({}, {
+    get: (_, k) => (k in props ? props[k] : (...a) => { calls.push([k, ...a.map((v) => (typeof v === 'object' ? '#' : v))]); return k.startsWith('create') ? { addColorStop() {} } : undefined; }),
+    set: (_, k, v) => { props[k] = v; calls.push(['=' + String(k), v]); return true; },
+  });
+  return { ctx, calls };
+}
+const withEnemies = (mapId, mode) => {
+  const s = createGame({ mapId, mode });
+  s.gold = 99999;
+  buildTower(s, 'arrow', 0, 0);
+  buildTower(s, 'cannon', COLS - 1, ROWS - 1);
+  for (const type of ['grunt', 'runner', 'tank', 'grunt', 'runner', 'tank']) spawnEnemy(s, type, 5);
+  s.enemies.forEach((e, i) => { e.dist += i * 20; });
+  return s;
+};
+
+test('Tester: reduced motion im ganzen render() steht still (alle Karten, Albtraum und Nacht-Look, mit Gegnern)', async () => {
+  const { render } = await import('../src/render.js?tester-still');
+  for (const id of Object.keys(MAPS)) {
+    for (const [mode, ui] of [['nightmare', {}], [undefined, { night: true }]]) {
+      const s = withEnemies(id, mode);
+      const frame = () => { const m = logCtx(); render(m.ctx, s, { ...ui, reducedMotion: true }); return m.calls; };
+      frame(); // Effekte einschwingen
+      const a = frame();
+      await new Promise((r) => setTimeout(r, 40));
+      const b = frame();
+      const i = a.findIndex((c, k) => JSON.stringify(c) !== JSON.stringify(b[k]));
+      assert.equal(i, -1, `${id}/${mode || 'night'}: zwei Frames mit 40 ms Abstand gleich, erster Unterschied bei ${i}: ${JSON.stringify(a[i])} vs ${JSON.stringify(b[i])} (Länge ${a.length}/${b.length})`);
+    }
+  }
+});
+
+test('Tester: Normalmodus ohne Nacht-Look zeichnet keine Albtraum-Lichtinsel und keine Albtraum-Gegner (alle Karten)', async () => {
+  const { render } = await import('../src/render.js?tester-normal');
+  const { NM_WARM_LIGHT } = await import('../src/config.js');
+  const { nmEnemyStyle } = await import('../src/render-enemies.js');
+  for (const id of Object.keys(MAPS)) {
+    assert.equal(nmEnemyStyle(id, false), null, `${id}: Gegner normal`);
+    const s = withEnemies(id);
+    const m = logCtx();
+    render(m.ctx, s, {});
+    assert.ok(!m.calls.some(([k, v]) => k === '=fillStyle' && v === NM_WARM_LIGHT.color), `${id}: keine Lichtinsel im Normalmodus`);
+    const n = logCtx();
+    render(n.ctx, s, { night: true });
+    assert.ok(n.calls.some(([k, v]) => k === '=fillStyle' && v === NM_WARM_LIGHT.color), `${id}: Gegenprobe Nacht-Look`);
+  }
 });
