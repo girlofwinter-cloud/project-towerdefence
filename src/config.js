@@ -53,7 +53,7 @@ const MEADOW_LAKE = [[0, 11], [1, 11], [2, 11], [3, 11], [0, 12], [1, 12], [2, 1
 // [Start, dann je 3 Punkte; Breite PAINTED_STYLE.river], See als Ellipse des Wassers [cx, cy, rx, ry] (Sandufer im Zeichnen +22/+18 wie im Entwurf).
 const MEADOW_PAINTED_WATER = {
   // Karten-Feinschliff: Fluss eng über den Flusskacheln geführt, See etwas kleiner (Bauplätze höchstens 15 % unter Wasser)
-  river: [[80, -98], [82, -40], [90, 40], [86, 130], [84, 185], [70, 198], [40, 200], [18, 201], [28, 225], [28, 250], [28, 264], [-30, 262], [-81, 266]],
+  river: [[80, -98], [82, -40], [90, 40], [86, 130], [86, 185], [72, 200], [50, 202], [30, 204], [27, 222], [27, 240], [27, 262], [-40, 265], [-81, 266]], // knickfrei: Tangenten an den Stoßstellen gleich gerichtet
   lake: [114, 688, 118, 60],
 };
 const MEADOW_BRIDGES = [[1, 2]];

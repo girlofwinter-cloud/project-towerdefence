@@ -40,6 +40,13 @@ const LAKES = [
   'M-700 422.8 C-201.9 403.8 -106.9 399 -57 427.5 C-11.9 453.6 -26.1 517.8 -71.2 536.8 C-118.7 558.1 -190 551 -700 541.5 Z',
   'M1840 280.3 C1341.9 270.8 1246.9 268.4 1206.5 301.6 C1175.6 330.1 1197 389.5 1246.9 403.8 C1294.4 415.6 1353.8 410.9 1840 403.8 Z',
 ];
+// Innenleben der Seen (wie Fluss und Tümpel): heller Kern, Glutstrich, Krustenschollen [x, y, rx, ry, Drehung]
+const LAKE_CORES = [
+  'M-700 446 C-220 432 -128 430 -84 452 C-56 468 -64 504 -94 515 C-132 528 -204 524 -700 518 Z',
+  'M1840 300 C1352 292 1262 292 1230 314 C1207 334 1220 372 1254 382 C1294 392 1352 390 1840 384 Z',
+];
+const LAKE_HOT = ['M-300 470 C-200 464 -130 466 -100 478', 'M1500 334 C1380 330 1290 332 1250 346'];
+const LAKE_PLATES = [[-150, 500, 11, 6, 20], [-230, 455, 9, 5, -15], [1290, 362, 11, 6, -25], [1370, 312, 9, 5, 10]];
 const FALL = { x: 1268, y1: 404, y2: 589, w: 31 };
 const FAR = 2000;
 const nums = (d) => d.match(/-?\d+(\.\d+)?/g).map(Number);
@@ -120,6 +127,9 @@ function under(sc, c) {
       `<path d="${d}" fill="${L.body}" stroke="${OL}" stroke-width="10" stroke-linejoin="round"/>`,
       `<path d="${d}" fill="none" stroke="${L.plate}" stroke-width="5" stroke-linejoin="round"/>`);
   }
+  out.push(...LAKE_CORES.map((d) => `<path d="${d}" fill="${L.core}"/>`),
+    ...LAKE_HOT.map((d) => `<path d="${d}" fill="none" stroke="${L.hot}" stroke-width="4" stroke-dasharray="20 30" stroke-linecap="round" opacity=".85"/>`),
+    ...LAKE_PLATES.map(([x, y, rx, ry, rot]) => `<ellipse cx="${x}" cy="${y}" rx="${rx}" ry="${ry}" fill="${L.plate}" stroke="${L.crust}" stroke-width="1.5" transform="rotate(${rot} ${x} ${y})"/>`));
   // Lavafall rechts: Felsstufe, Lavaband mit Kern, Gischt unten
   const { x, y1, y2, w } = FALL;
   out.push(`<path d="M${x - 55} ${y1 + 12} Q${x - 36} ${y1 - 14} ${x} ${y1 - 7} Q${x + 40} ${y1 - 14} ${x + 62} ${y1 + 10} L${x + 55} ${(y1 + y2) / 2} L${x + 64} ${y2 - 10} Q${x + 36} ${y2 + 7} ${x + 21} ${y2 - 2} L${x - 21} ${y2 - 2} Q${x - 40} ${y2 + 7} ${x - 59} ${y2 - 7} L${x - 48} ${(y1 + y2) / 2} Z" fill="url(#nm-char)" stroke="${OL}" stroke-width="4" stroke-linejoin="round"/>`,
