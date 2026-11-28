@@ -2,7 +2,7 @@
 
 Erzeugt aus `tokens.json` mit `node scripts/design-tokens.mjs`. Nicht von Hand ändern.
 
-## Farben (334)
+## Farben (346)
 
 | Token | Wert | Verwendung |
 |---|---|---|
@@ -154,6 +154,18 @@ Erzeugt aus `tokens.json` mit `node scripts/design-tokens.mjs`. Nicht von Hand �
 | `map-graveyard-yard-edge` | `#4a4038` | Karte Nachtfriedhof (B-212): Friedhof-Rand, Strich 6/5 gestrichelt. |
 | `map-graveyard-lantern` | `#ffd27a` | Karte Nachtfriedhof (B-212): Laternenlicht, Aufleuchten beim Skelett-Trupp. |
 | `map-graveyard-light` | `#c8d6ff` | Karte Nachtfriedhof (B-212): kühles Mondlicht (light.tint). |
+| `nm-graveyard-1` | `#3e3446` | Karte Nachtfriedhof im Albtraum (B-216): Bodenverlauf Stufe 1 von 3. |
+| `nm-graveyard-2` | `#2a2232` | Karte Nachtfriedhof im Albtraum (B-216): Bodenverlauf Stufe 2 von 3. |
+| `nm-graveyard-3` | `#1a1420` | Karte Nachtfriedhof im Albtraum (B-216): Bodenverlauf Stufe 3 von 3. |
+| `nm-graveyard-path-groove` | `#120c16` | Karte Nachtfriedhof im Albtraum (B-216): Weg-Rinne. |
+| `nm-graveyard-path-edge` | `#4a3036` | Karte Nachtfriedhof im Albtraum (B-216): Weg-Rand. |
+| `nm-graveyard-path-earth` | `#9a8a9a` | Karte Nachtfriedhof im Albtraum (B-216): Weg-Erde. |
+| `nm-graveyard-path-mid` | `#b8a8b6` | Karte Nachtfriedhof im Albtraum (B-216): Weg-Mitte. |
+| `nm-graveyard-path-dot` | `#e6d8e6` | Karte Nachtfriedhof im Albtraum (B-216): heller Weg-Tupfen. |
+| `nm-graveyard-yard` | `#241c2a` | Karte Nachtfriedhof im Albtraum (B-216): Friedhof-Boden. |
+| `nm-graveyard-yard-edge` | `#5a2030` | Karte Nachtfriedhof im Albtraum (B-216): Friedhof-Rand. |
+| `nm-graveyard-pool` | `#2a0f14` | Karte Nachtfriedhof im Albtraum (B-216): Blutpfütze (alpha 0,8). |
+| `nm-eye-red` | `#ff3a3a` | Karte Nachtfriedhof im Albtraum (B-216): rote Augen im Randwald. |
 | `figure-shadow` | `rgba(20,30,40,0.4)` | Bodenschatten unter Figuren (Gegner, Türme). |
 | `enemy-bat-wing` | `#4a3560` | Fledermaus: Flügel (B-167). |
 | `enemy-bat-body` | `#6b4a80` | Fledermaus: Körper und Ohren. |

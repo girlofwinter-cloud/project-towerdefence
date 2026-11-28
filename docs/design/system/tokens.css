@@ -148,6 +148,18 @@
   --map-graveyard-yard-edge: #4a4038;
   --map-graveyard-lantern: #ffd27a;
   --map-graveyard-light: #c8d6ff;
+  --nm-graveyard-1: #3e3446;
+  --nm-graveyard-2: #2a2232;
+  --nm-graveyard-3: #1a1420;
+  --nm-graveyard-path-groove: #120c16;
+  --nm-graveyard-path-edge: #4a3036;
+  --nm-graveyard-path-earth: #9a8a9a;
+  --nm-graveyard-path-mid: #b8a8b6;
+  --nm-graveyard-path-dot: #e6d8e6;
+  --nm-graveyard-yard: #241c2a;
+  --nm-graveyard-yard-edge: #5a2030;
+  --nm-graveyard-pool: #2a0f14;
+  --nm-eye-red: #ff3a3a;
   --figure-shadow: rgba(20,30,40,0.4);
   --enemy-bat-wing: #4a3560;
   --enemy-bat-body: #6b4a80;
