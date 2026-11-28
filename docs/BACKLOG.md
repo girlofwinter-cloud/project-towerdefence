@@ -120,7 +120,7 @@ Zwei developer parallel (je eigene Sitzung, eigener Unter-Branch von `agent/stuf
 ### B-211: Karte Nachtfriedhof: Wege und Balancing
 - Status: offen
 - Aufwand: M
-- Idee: Neue Karte `graveyard` (20x14): ein langer Hauptweg vom Rand, zwei kurze Nebenwege ab je einem Friedhof, die erst spät in den Hauptweg münden, sodass man an jedem Nebenweg 1-2 Türme braucht. Wenige Hindernisse.
+- Idee: Neue Karte `graveyard` (20x14): ein langer Hauptweg vom Rand, zwei kurze Nebenwege ab je einem Friedhof, die früh (im ersten Drittel) in den Hauptweg münden; Türme an den Mündungen decken Haupt- und Nebenweg, ein Turm je Nebenweg reicht. Wenige Hindernisse.
 - Akzeptanzkriterien:
   - Balancing-Sim: Welle 20 ohne Lebensverlust mit optimalem Spiel möglich; ohne Türme an den Nebenwegen gehen Leben verloren. Kanonen-Mix mitmessen.
   - Karte in der Kartenauswahl wählbar.
