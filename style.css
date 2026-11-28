@@ -376,7 +376,7 @@ body.mode-nightmare .map-pick { display: none; } /* B-184: im Albtraum steht dor
   box-shadow: inset 0 2px 0 rgba(255,220,160,.55), 0 6px 0 rgba(30,15,5,.45);
 }
 #pause-banner .key { font-size: 16px; opacity: .8; }
-#menu-maps { display: block; margin: 10px auto 0; min-height: 44px; font-size: 20px; pointer-events: auto; text-shadow: none; } /* zurück zur Kartenauswahl */
+#menu-maps { display: flex; align-items: center; gap: 8px; margin: 10px auto 0; min-height: 44px; font-size: 20px; pointer-events: auto; text-shadow: none; } /* zurück zur Kartenauswahl */
 #pause-banner[hidden] { display: none; }
 #overlay {
   position: absolute; inset: 0; z-index: 20; display: flex; flex-direction: column; align-items: center; justify-content: center;
