@@ -74,11 +74,16 @@
         <div class="ring-info plq"><h3 id="ti-name"></h3><p id="ti-stats"></p><p id="ti-special"></p></div>
       </div>
       <p id="message" role="status"></p>
-      <div id="pause-banner" hidden>PAUSE<span class="key"> – P drücken zum Fortsetzen</span><span class="touch-hint">Tippe auf Weiter</span><button id="menu-maps" type="button" class="wbtn" title="Zurück zum Menü (Kartenauswahl)"><svg width="28" height="28" viewBox="0 0 40 40" aria-hidden="true"><path d="M6 20 L20 7 L34 20" fill="none" stroke="#2b1a10" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/><path d="M10 18 V33 H17 V25 H23 V33 H30 V18" fill="#fff3d2" stroke="#2b1a10" stroke-width="3" stroke-linejoin="round"/></svg><span>Menü</span></button></div>
+      <div id="pause-banner" hidden>PAUSE<span class="key"> – P drücken zum Fortsetzen</span><span class="touch-hint">Tippe auf Weiter</span></div>
     </div>
 
-    <!-- C2: Holzleiste Gold | Welle | Leben (nur Anzeige, Klicks gehen durch) -->
+    <!-- C2: Holzleiste Home | Gold | Welle | Leben (nur der Home-Knopf ist anklickbar) -->
     <div class="hud plq" id="hud-bar">
+      <!-- B-200: Home-Knopf links an der Holzleiste, immer sichtbar -->
+      <button id="menu-maps" class="rb" type="button" title="Zurück zum Menü (Kartenauswahl)">
+        <svg width="40" height="40" viewBox="0 0 40 40" aria-hidden="true"><path d="M6 20 L20 7 L34 20" fill="none" stroke="#2b1a10" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/><path d="M10 18 V33 H17 V25 H23 V33 H30 V18" fill="#fff3d2" stroke="#2b1a10" stroke-width="3" stroke-linejoin="round"/></svg>
+        <span class="sr">Menü</span>
+      </button>
       <span class="hud-item" id="gold-box" title="Gold">
         <svg class="hud-ico" width="40" height="40" viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="15" fill="#f2c14e" stroke="#2b1a10" stroke-width="3.5"/><circle cx="20" cy="20" r="9" fill="none" stroke="#b9851d" stroke-width="3"/><path d="M13 12 Q18 8 24 10" stroke="#fff3d2" stroke-width="3" fill="none" stroke-linecap="round"/></svg>
         <span class="sr">Gold</span><b id="gold" class="num">0</b>
@@ -121,6 +126,7 @@
 
     <!-- C2: runde Knöpfe oben rechts (Hilfe, Ton, Tempo, Pause) -->
     <div class="top-buttons">
+      
       <details class="help">
         <summary class="rb" aria-label="Steuerung"><span class="rb-q" aria-hidden="true">?</span></summary>
         <div class="help-pop plq">
