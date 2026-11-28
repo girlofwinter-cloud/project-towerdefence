@@ -2106,10 +2106,16 @@ function nightRecorder() {
   return { ctx, fills, rects };
 }
 
-test('B-184 Render: Nacht-Tönung (multiply, night-tint) nur im Albtraum oder mit ui.night, nur im Feld 20 x 14', async () => {
+// B-194 (Entscheidung des Menschen): ersetzt den Test der Nacht-Tönung; im Albtraum keine Tönung und keine Vignette mehr
+test('B-194 Render: im Albtraum und mit ui.night keine Tönung (multiply) und keine Vignette, Spielfeld bleibt 20 x 14', async () => {
   const { render, nightOn } = await import('../src/render.js?nacht');
   const { WIDTH, HEIGHT } = await import('../src/config.js');
-  const isTint = (f) => f.op === 'multiply' && f.style.startsWith('rgba(20,12,40,');
+  const isTint = (f) => f.op === 'multiply' || f.style.startsWith('rgba(20,12,40,') || f.style.startsWith('rgba(8,4,16,');
+  const grads = (state, ui) => {
+    const m = mockCtx();
+    render(m.ctx, state, ui);
+    return (m.counts.createRadialGradient ?? 0) + (m.counts.createLinearGradient ?? 0);
+  };
   const normal = createGame({ mapId: 'meadow' });
   const a = nightRecorder();
   render(a.ctx, normal, {});
@@ -2119,13 +2125,45 @@ test('B-184 Render: Nacht-Tönung (multiply, night-tint) nur im Albtraum oder mi
   const b = nightRecorder();
   render(b.ctx, nm, {});
   assert.equal(nightOn(nm, {}), true);
-  assert.equal(b.fills.filter(isTint).length, 1, 'Albtraum: genau eine Tönung');
-  assert.ok(b.rects.some((r) => r.join() === `0,0,${WIDTH},${HEIGHT}`), 'Clip-Rechteck = Feld');
+  assert.equal(b.fills.some(isTint), false, 'Albtraum: keine Tönung, keine Vignette');
   const c = nightRecorder();
   render(c.ctx, normal, { night: true }); // Nacht-Look (B-185) im Normalmodus
-  assert.equal(c.fills.filter(isTint).length, 1);
-  // Spielfeld bleibt 20 x 14 Kacheln
+  assert.equal(c.fills.some(isTint), false);
+  // Vignette und rotes Licht waren Verläufe: im Albtraum nicht mehr als im Normalmodus
+  assert.equal(grads(nm, {}), grads(normal, {}), 'keine zusätzlichen Verläufe im Albtraum');
   assert.deepEqual([COLS, ROWS, WIDTH / TILE, HEIGHT / TILE], [20, 14, 20, 14]);
+});
+
+test('B-194 Bewegung: Teilchen je Karte höchstens 60 (Handy 28), reduced motion steht still, je Frame keine Verläufe', async () => {
+  const { motionParticles, drawNightmareMotion } = await import('../src/render-nightmare.js');
+  const { NM_MOTION } = await import('../src/config.js');
+  const { NM_MAPS } = await import('../src/nm-maps/index.js');
+  const eyes = Array.from({ length: 40 }, (_, i) => ({ x: -20, y: i * 10 }));
+  for (const id of Object.keys(MAPS)) {
+    assert.ok(NM_MAPS[id], `${id}: eigene Albtraum-Datei`);
+    const d = motionParticles(id, false, eyes), h = motionParticles(id, true, eyes);
+    assert.ok(d.length > 0 && d.length <= NM_MOTION.maxDesktop, `${id}: ${d.length} Teilchen`);
+    assert.ok(h.length <= NM_MOTION.maxCompact && h.length <= d.length, `${id}: Handy ${h.length}`);
+    assert.deepEqual(motionParticles(id, false, eyes), d, `${id}: deterministisch`);
+    const s = createGame({ mapId: id, mode: 'nightmare' });
+    const rec = (t) => {
+      const calls = [];
+      const ctx = new Proxy({}, { get: (_, k) => (...a) => { calls.push([k, ...a]); return { addColorStop() {} }; }, set: (_, k, v) => { calls.push(['=' + String(k), v]); return true; } });
+      drawNightmareMotion(ctx, s, t, true, false, eyes);
+      return calls;
+    };
+    assert.deepEqual(rec(0), rec(3), `${id}: reduced motion zeichnet t = 0 und t = 3 gleich`);
+    const m = mockCtx();
+    drawNightmareMotion(m.ctx, s, 1.7, false, false, eyes);
+    assert.equal(m.counts.createRadialGradient, undefined, `${id}: kein Verlauf je Frame`);
+    assert.equal(m.counts.createLinearGradient, undefined);
+  }
+  // Obergrenze greift auch bei zu vielen Einträgen
+  NM_MAPS.meadow.motion.push({ kind: 'fall', count: [99, 99], color: '#fff' });
+  try {
+    assert.equal(motionParticles('meadow', false, eyes).length, NM_MOTION.maxDesktop);
+    assert.equal(motionParticles('meadow', true, eyes).length, NM_MOTION.maxCompact);
+  } finally { NM_MAPS.meadow.motion.pop(); }
 });
 
 test('B-184 Glut am Weg: 10 Punkte, deterministisch, neben der Wegmitte (höchstens 0,6 Kacheln)', async () => {
