@@ -149,3 +149,7 @@ Anhängen ohne die Datei zu lesen: `cat >> docs/LEDGER.md <<'EOF' … EOF`. Übe
 - Wunsch des Menschen (Spieltest): Boss in Welle 10 zu schwer.
 - NIGHTMARE.bossBuff.plainBossWaves [10]: Oger-König ohne Phase 2 (Schild/Wut), ohne Schamanen-Heilung und Magier-Schild.
 - Neuer Test; bestehender Phase-2-Test nutzt jetzt Welle 5. Unit 768/768, Balance 26/26 grün.
+### 2026-11-28 – Scharfschütze: eigener Schuss-Ton
+- Scharfschütze: einzelner Gewehrknall (Free Firearm Sound Library, CC0; Tikka, Arisaka, Mosin), alter Ton war ~20x leiser als die Kanone.
+- Stufe 3 "Falkenauge": eigener Ton `shot:sniper:master` (Kenney laserLarge), über das vorhandene Geschoss-Feld `master`.
+- Blitz bleibt unverändert (Wunsch des Menschen). Neuer Test in `tests/sound.test.js`, Schlüsselliste im B-114-Test ergänzt.
