@@ -357,6 +357,8 @@ export function spawnEnemy(state, type, wave = state.wave, lane = null, elite = 
   if (def.summonInterval) enemy.summonAt = state.time + def.summonInterval; // B-127: nächste Beschwörung
   if (def.shellHits) enemy.shell = def.shellHits; // B-169: Schichten der Schale (Panzerkäfer)
   if (elite && ELITE[elite]) makeElite(state, enemy, elite);
+  // Albtraum: schlichter Boss in bossBuff.plainBossWaves (Oger-König ohne zweite Phase, Heilung und Magier-Schild)
+  if (type === 'boss' && state.modifiers?.bossBuff?.plainBossWaves?.includes(wave)) enemy.plain = true;
   state.enemies.push(enemy);
   return enemy;
 }
@@ -555,7 +557,7 @@ function healStep(state) {
     if (!def || !def.healRadius || h.hp <= 0) continue;
     const reach = def.healRadius * TILE;
     for (const e of list) {
-      if (e === h || e.hp <= 0 || e.hp >= e.maxHp || e.healTick === tick) continue;
+      if (e === h || e.plain || e.hp <= 0 || e.hp >= e.maxHp || e.healTick === tick) continue;
       if (Math.hypot(e.x - h.x, e.y - h.y) > reach) continue;
       e.hp = Math.min(e.maxHp, e.hp + e.maxHp * def.healPerSec * def.healInterval);
       e.healTick = tick;
@@ -626,7 +628,7 @@ function wardStep(state) {
     if (!def || !def.wardRadius || m.hp <= 0) continue;
     const reach = def.wardRadius * TILE;
     for (const e of list) {
-      if (e === m || e.hp <= 0) continue;
+      if (e === m || e.plain || e.hp <= 0) continue;
       if (Math.hypot(e.x - m.x, e.y - m.y) > reach) continue;
       e.ward = Math.max(e.ward || 0, def.wardShare * e.maxHp);
     }
@@ -969,6 +971,7 @@ function damage(state, enemy, p, direct = false) {
 function bossPhase2(state, enemy) {
   const buff = state.modifiers?.bossBuff;
   const base = ENEMY_TYPES[enemy.type]?.phase2;
+  if (enemy.plain) return null;
   if (enemy.type === 'boss') return buff?.ogrePhase2;
   if (enemy.type === 'necro' && base && buff?.necroPhase2) return { ...base, ...buff.necroPhase2 };
   return base;
