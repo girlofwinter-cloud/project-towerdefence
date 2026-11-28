@@ -571,7 +571,7 @@ function drawHover(ctx, state, ui) {
   if (ringType) {
     ctx.save();
     ctx.globalAlpha *= RING_MENU.ghostAlpha;
-    drawTowerFigure(ctx, { type: ringType, x, y, level: 1, angle: -Math.PI / 4 }, 0);
+    drawTowerFigure(ctx, { type: ringType, x, y, level: 1, angle: -Math.PI / 4 }, 0, undefined, false, 1, ui.goldTowers ? GOLD_OPT : null);
     ctx.restore();
   }
 }
@@ -591,6 +591,7 @@ function rangeCircle(ctx, x, y, r, fill) {
 
 // Tiefen-Sortierung ohne Allokation pro Frame: eine Liste wird wiederverwendet
 const figures = [];
+const GOLD_OPT = { gold: true }; // B-185: goldene Türme (Kosmetik), ein Objekt statt einem je Frame
 const footOf = (o) => (o.hp === undefined ? towerFootY(o) : enemyFootY(o));
 const byFoot = (a, b) => footOf(a) - footOf(b);
 function drawFigures(ctx, state, ui) {
@@ -599,7 +600,7 @@ function drawFigures(ctx, state, ui) {
   for (const e of state.enemies) figures.push(e);
   figures.sort(byFoot);
   for (const o of figures) {
-    if (o.hp === undefined) drawTower(ctx, o, ui.selectedTowerId === o.id, state.time, !!ui.reducedMotion, displayLevel(state, o));
+    if (o.hp === undefined) drawTower(ctx, o, ui.selectedTowerId === o.id, state.time, !!ui.reducedMotion, displayLevel(state, o), ui.goldTowers ? GOLD_OPT : null);
     else drawEnemy(ctx, o, state.time, enemyPath(state, o), !!ui.reducedMotion, !!ui.bossBarShown); // B-180: Leiste im HUD
   }
   figures.length = 0;
@@ -607,11 +608,12 @@ function drawFigures(ctx, state, ui) {
 
 // Exportiert, damit Tests einen einzelnen Turm gegen einen Mock-Kontext zeichnen koennen (ohne Stufenmarke).
 // time/reduced: Ruhe-Animation der Stufe 3; level: angezeigte Stufe (Aufstieg), sonst t.level.
-export function drawTower(ctx, t, selected, time, reduced = false, level = t.level) {
+// opts.gold: goldene Türme (B-185, ui.goldTowers aus main.js); reine Optik.
+export function drawTower(ctx, t, selected, time, reduced = false, level = t.level, opts = null) {
   const def = TOWER_TYPES[t.type];
   // Rückstoß aus der Abklingzeit (game.js setzt cooldown beim Schuss auf das Intervall)
   if (selected) drawSelectRing(ctx, t);
-  drawTowerFigure(ctx, t, def ? recoilOffset(t.cooldown / def.rate) : 0, time, reduced, level);
+  drawTowerFigure(ctx, t, def ? recoilOffset(t.cooldown / def.rate) : 0, time, reduced, level, opts);
 }
 
 // C-Abnahme 8: Auswahl als Bodenellipse unter dem Turm (Maße und Farben in SELECT_RING, config.js)

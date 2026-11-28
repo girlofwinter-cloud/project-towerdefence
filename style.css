@@ -26,6 +26,7 @@
   --nightmare-btn-a: #5b3f7a; --nightmare-btn-b: #2a1d40; --night-ember: #ff5a2a; --night-tint: rgba(20,12,40,0.62);
   --message-info: #4f8a34; --message-bad: #b8432f; --darkwood-a: #6b4a2e; --darkwood-b: #3a2414;
   --gold-btn-a: #ffd45a; --gold-btn-b: #e08a1c; --wood-btn: #b97a3e; --flag-red: #c4452f; --map-locked: #c9b89a;
+  --stone-line: #6b5a48; --lock-shackle: #d9dde2; /* B-185: Schalter gesperrt, Schloss-Bügel */
   --radius-card: 22px; --radius-pill-m: 20px; --radius-pill-l: 23px;
   --display: 'Lilita One', 'Trebuchet MS', sans-serif;
   /* C1 Lage, nur CSS (kein Warten auf resize): --u = CSS-px je Spiel-px. --view-w/-h, --field-w/-h, --frame setzt main.js einmal aus config.js.
@@ -273,6 +274,11 @@ body:has(#fullscreen:not([hidden])) .map-pick { right: calc(var(--fr) + 5 * 48px
 .map-pick select { font: 15px var(--display); color: var(--ink); background: #fff3d2; border: 2px solid var(--ink); border-radius: 12px; padding: 3px 6px; max-width: 170px; min-height: 44px; box-sizing: border-box; } /* Tippziel: size-touch-min */
 .map-pick:has(select:disabled) { display: none; } /* nur vor Welle 1 wählbar */
 body.mode-nightmare .map-pick { display: none; } /* B-184: im Albtraum steht dort die Gold-Anzeige; Karte über die Kartenauswahl */
+/* B-185: Testseite: Kartenwahl auch im Albtraum (zurück auf Normal), dann unten rechts statt neben der Gold-Anzeige. Handy quer bleibt ohne. */
+@media (min-height: 520px), (orientation: portrait) {
+  body.test-mode.mode-nightmare .map-pick:has(#map-select) { display: flex; top: auto; bottom: max(2px, calc((var(--fb) - 56px) / 2)); right: 8px; }
+  body.test-mode.mode-nightmare .map-pick:has(select:disabled) { display: none; }
+}
 
 /* ---------- C4: Turmknöpfe (im Bau-Ring, Lage siehe Block C4 am Ende) ---------- */
 .tower-btn {
@@ -449,6 +455,43 @@ body.on-start .top-buttons { z-index: 41; } /* Ton und Hilfe bleiben erreichbar 
 .start-keys { margin: 8px 0 0; font: 14px 'Trebuchet MS', sans-serif; color: #e8d3a8; text-shadow: 0 2px 0 #2b1a10; text-align: center; }
 .start-keys kbd { font: 13px/18px var(--display); padding: 0 5px; border-radius: 6px; background: #2b1a10; color: #fff3d2; }
 @media (hover: none), (pointer: coarse), (max-width: 700px) { .start-hint .no-touch { display: none; } }
+/* B-185: Menü „Aussehen“ (Bauvorlage Kosmetik-Aussehen): Plakette 560 breit auf Nacht-Hintergrund, Zeilen 56, Schalter 64 x 44 */
+.start-head .cos-open { min-height: 44px; font-size: 20px; padding: 0 18px; border-radius: 22px; flex: none; }
+#cosmetics { position: fixed; inset: 0; z-index: 45; display: flex; align-items: center; justify-content: center; padding: 16px; box-sizing: border-box;
+  background: linear-gradient(var(--night-a), var(--night-b)); }
+#cosmetics[hidden] { display: none; }
+.cos-card { width: 560px; max-width: 100%; max-height: min(680px, 100%); box-sizing: border-box; padding: 24px 28px; border-radius: var(--radius-card); display: flex; flex-direction: column; }
+.cos-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex: none; }
+.cos-head h2 { margin: 0; font: 34px/1 var(--display); text-shadow: 0 3px 0 var(--ink); }
+.cos-close { min-height: 44px; font-size: 20px; padding: 0 18px; border-radius: 22px; }
+.cos-body { overflow: auto; min-height: 0; margin-top: 8px; }
+.cos-sec { margin: 14px 0 0; font: 20px/1.2 var(--display); color: var(--gold); text-shadow: 0 2px 0 var(--ink); }
+.cos-row { display: flex; align-items: center; gap: 10px; height: 56px; border-bottom: 2px solid rgba(43,26,16,.35); }
+.cos-name { flex: 1; min-width: 0; font: 20px/1 var(--display); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cos-lock { display: inline-flex; align-items: center; gap: 4px; font: 14px/1.1 'Trebuchet MS', sans-serif; color: var(--muted); }
+.cos-lock svg { flex: none; width: 22px; height: 22px; }
+.sw { position: relative; flex: none; width: 64px; height: 44px; padding: 0; border: 3px solid var(--ink); border-radius: 22px; background: var(--ink); cursor: pointer; transition: background .2s; }
+.sw[aria-checked="true"] { background: var(--message-info); }
+.sw .knob { position: absolute; top: 4px; left: 4px; width: 30px; height: 30px; box-sizing: border-box; border: 3px solid var(--ink); border-radius: 50%;
+  background: linear-gradient(var(--btn-a), var(--btn-b)); transition: left .2s; }
+.sw[aria-checked="true"] .knob { left: 26px; }
+.sw:disabled { background: var(--darkwood-b); cursor: default; }
+.sw:disabled .knob { background: var(--stone-line); }
+.sw:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--hl); }
+.cos-prog { padding: 10px 0 4px; display: flex; flex-direction: column; gap: 6px; }
+.cos-prog-text { font: 16px/1.2 var(--display); }
+.cos-bar { display: block; height: 16px; box-sizing: border-box; border: 2px solid var(--ink); border-radius: 8px; background: var(--ink); overflow: hidden; }
+.cos-bar > span { display: block; height: 100%; background: linear-gradient(90deg, var(--gold-btn-a), var(--gold-btn-b)); }
+@media (prefers-reduced-motion: reduce) { .sw, .sw .knob { transition: none; } }
+/* Handy quer: Plakette volle Höhe minus Ränder, nur der Inhalt scrollt; Zeilen und Schalter bleiben 44 hoch */
+@media (max-height: 519.98px) and (orientation: landscape) {
+  #cosmetics { padding: 8px; }
+  .cos-card { height: 100%; max-height: none; padding: 10px 20px 8px; }
+  .cos-head h2 { font-size: 26px; }
+  .cos-sec { margin-top: 6px; font-size: 18px; }
+  .cos-row { height: 48px; } .cos-name { font-size: 18px; }
+  .start-head .cos-open { position: fixed; right: max(8px, var(--safe-r)); bottom: 8px; font-size: 18px; padding: 0 14px; } /* Kopfzeile ist voll: unten rechts */
+}
 @media (max-width: 1100px) { .map-card { width: 172px; } .map-thumb { width: 148px; height: 104px; } .map-cards { gap: 12px; } }
 
 #overlay { background: rgba(16,28,14,.7); }

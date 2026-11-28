@@ -2258,3 +2258,37 @@ test('B-185 goldene Türme: eigener Sprite-Satz, normaler Satz bleibt', async ()
     assert.equal(spriteStats.builds - b0, 2 * normal, 'danach nichts neu gebaut');
   } finally { setSpriteFactory(); }
 });
+
+test('B-185 render(): goldene Türme nur mit ui.goldTowers (Spielfeld und Ring-Vorschau), Spielwerte unverändert', async () => {
+  const { render } = await import('../src/render.js?goldui');
+  const goldDark = '#b9851d'; // gold-dark: Steinfugen der goldenen Türme
+  const record = (ui, s) => {
+    const seen = [];
+    const grad = { addColorStop: (_, c) => seen.push(String(c).toLowerCase()) };
+    const props = {};
+    const ctx = new Proxy({}, {
+      get(_, k) {
+        if (k in props) return props[k];
+        if (k === 'canvas') return { width: 900, height: 660 };
+        if (k === 'getTransform') return () => ({ a: 1, d: 1 });
+        if (k === 'measureText') return () => ({ width: 10 });
+        if (k === 'createLinearGradient' || k === 'createRadialGradient' || k === 'createPattern') return () => grad;
+        return () => {};
+      },
+      set(_, k, v) { props[k] = v; if (typeof v === 'string') seen.push(v.toLowerCase()); return true; },
+    });
+    render(ctx, s, ui);
+    return seen.filter((c) => c === goldDark).length;
+  };
+  const s = createGame({ mapId: 'meadow' });
+  assert.ok(buildTower(s, 'arrow', 8, 5).ok);
+  const snap = JSON.stringify(s.towers);
+  const off = record({}, s);
+  const on = record({ goldTowers: true }, s);
+  assert.ok(on > off, 'mit Option werden Gold-Farben gezeichnet');
+  assert.equal(record({ goldTowers: false }, s), off, 'ausgeschaltet wie ohne Option');
+  // Ring-Vorschau (Geisterturm) folgt der Option
+  const ring = { ring: { col: 3, row: 3 }, ringPreview: 'cannon' };
+  assert.ok(record({ ...ring, goldTowers: true }, s) > record(ring, s), 'Ring-Vorschau golden');
+  assert.equal(JSON.stringify(s.towers), snap, 'Rendering ändert keine Spielwerte');
+});

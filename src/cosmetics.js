@@ -1,6 +1,8 @@
 // B-185: Kosmetik-Belohnungen (Nacht-Look je Karte, goldene Türme). Reine Logik ohne DOM.
 // Die Auswahl liegt in progress.cosmetics = { night: { [mapId]: bool }, goldTowers: bool }.
 // Freischaltung ergibt sich immer aus den Albtraum-Abzeichen; abgeschaltete Elemente bleiben frei.
+// Entscheidung: eine frisch freigeschaltete Belohnung ist sofort an. Nur ein bewusstes Aus (false) schaltet sie ab;
+// fehlt der Eintrag, gilt sie als an.
 import { BADGE_TIERS } from './config.js';
 import { MAP_ORDER, nightmareProgress } from './progress.js';
 
@@ -28,7 +30,7 @@ export function isGoldTowersUnlocked(progress) {
 // Schaltet den Nacht-Look einer Karte an oder aus (verändert progress). Nur wenn freigeschaltet; Rückgabe true bei Erfolg.
 export function setNightLook(progress, mapId, on) {
   if (!isNightUnlocked(progress, mapId)) return false;
-  progress.cosmetics ??= { night: {}, goldTowers: false };
+  progress.cosmetics ??= { night: {} };
   progress.cosmetics.night ??= {};
   progress.cosmetics.night[mapId] = !!on;
   return true;
@@ -37,17 +39,24 @@ export function setNightLook(progress, mapId, on) {
 // Schaltet die goldenen Türme an oder aus (verändert progress). Nur wenn freigeschaltet; Rückgabe true bei Erfolg.
 export function setGoldTowers(progress, on) {
   if (!isGoldTowersUnlocked(progress)) return false;
-  progress.cosmetics ??= { night: {}, goldTowers: false };
+  progress.cosmetics ??= { night: {} };
   progress.cosmetics.goldTowers = !!on;
   return true;
 }
 
-// Für das Rendering: was auf dieser Karte aktiv ist (freigeschaltet und angeschaltet; nicht gewählt = aus).
+// Gewählt = nicht ausdrücklich abgeschaltet (Default an, auch wenn noch nie etwas gespeichert wurde).
+export function nightLookChosen(progress, mapId) {
+  return progress?.cosmetics?.night?.[mapId] !== false;
+}
+export function goldTowersChosen(progress) {
+  return progress?.cosmetics?.goldTowers !== false;
+}
+
+// Für das Rendering: was auf dieser Karte aktiv ist (freigeschaltet und nicht abgeschaltet).
 export function activeCosmetics(progress, mapId) {
-  const c = progress?.cosmetics;
   const p = progress ?? { maps: {} };
   return {
-    night: c?.night?.[mapId] === true && isNightUnlocked(p, mapId),
-    goldTowers: c?.goldTowers === true && isGoldTowersUnlocked(p),
+    night: nightLookChosen(p, mapId) && isNightUnlocked(p, mapId),
+    goldTowers: goldTowersChosen(p) && isGoldTowersUnlocked(p),
   };
 }

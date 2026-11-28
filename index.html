@@ -165,11 +165,20 @@
           <button type="button" role="radio" data-mode="nightmare" aria-checked="false">Albtraum</button>
         </div>
         <span class="badge-count" role="status"></span>
+        <!-- B-185: Menü „Aussehen“ (Kosmetik-Belohnungen) -->
+        <button type="button" class="wbtn cos-open" aria-haspopup="dialog" aria-controls="cosmetics">Aussehen</button>
       </div>
       <div class="map-cards" role="list"></div>
       <p class="start-hint"><span class="no-touch">Klicke eine Karte zum Starten</span><span class="touch-hint">Tippe eine Karte zum Starten</span></p>
       <p class="start-keys key"><kbd>←</kbd> <kbd>→</kbd> Karte wählen · <kbd>Enter</kbd> starten · Im Spiel: <kbd>1</kbd>–<kbd>5</kbd> Türme, <kbd>Leertaste</kbd> Welle, <kbd>P</kbd> Pause · alle Tasten unter ? oben rechts</p>
     </section>
+    <!-- B-185: Menü „Aussehen“ (screens.js baut die Zeilen aus cosmetics.js) -->
+    <div id="cosmetics" role="dialog" aria-modal="true" aria-labelledby="cos-title" hidden>
+      <div class="cos-card plq">
+        <div class="cos-head"><h2 id="cos-title">Aussehen</h2><button type="button" class="wbtn wbtn-gold cos-close">Fertig</button></div>
+        <div class="cos-body"></div>
+      </div>
+    </div>
   </div>
   <!-- B-137: Handy im Hochformat: nur dieser Hinweis (style.css), Spiel pausiert solange (main.js) -->
   <div id="rotate-hint" role="status">

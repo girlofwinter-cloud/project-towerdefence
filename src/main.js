@@ -1,5 +1,5 @@
 // Verbindet Spiel-Logik, Rendering und Bedienung (DOM, Maus, Tastatur).
-import { TILE, FRAME_MARGIN, VIEW_WIDTH, VIEW_HEIGHT, PAINTED_STYLE, FIGURE_STYLE, SHOP_CARD, TOWER_TYPES, ENEMY_TYPES, MAX_WAVES, MAPS, SPEED_STEPS, TARGET_MODES, MAX_SUBSTEP, LOW_LIVES, ABILITIES, ICON, VIEW_FIT, COIN_BURST, HUD_BAR, waveSummary, meteorText } from './config.js';
+import { BADGE_TIERS, TILE, FRAME_MARGIN, VIEW_WIDTH, VIEW_HEIGHT, PAINTED_STYLE, FIGURE_STYLE, SHOP_CARD, TOWER_TYPES, ENEMY_TYPES, MAX_WAVES, MAPS, SPEED_STEPS, TARGET_MODES, MAX_SUBSTEP, LOW_LIVES, ABILITIES, ICON, VIEW_FIT, COIN_BURST, HUD_BAR, waveSummary, meteorText } from './config.js';
 import {
   createGame, stepGame, togglePause, buildTower, upgradeTower, sellTower, setTargetMode, startWave, setAutoWave,
   useAbility, abilityCooldownLeft, abilityMaxUses, canBuild, towerAt, towerStats, masterInfo, checkGoldCondition, maxLives,
@@ -11,7 +11,8 @@ import { buildTapStep, aimStep, fieldPoint, canvasSize, moveFocusTile, rotatePau
 import { createSoundTracker, collectSounds, loadSoundOn, saveSoundOn } from './sound-events.js';
 import { unlockAudio, setSoundOn, playSound, updateMusic } from './audio.js';
 import { loadProgress, saveProgress, recordResult, isUnlocked, isNightmareUnlocked, nightmareResultLines, nightmareProgress, mapProgress, starText, resultLines, startMap, mapAfterResult, starsFor, MAP_ORDER } from './progress.js';
-import { mountStartScreen, endView, starsHtml, STAR_COUNT, nightmareWinView, mapSelectOptions, mapSelectValue, parseMapSelectValue } from './screens.js';
+import { mountStartScreen, mountCosmeticsMenu, endView, starsHtml, STAR_COUNT, nightmareWinView, mapSelectOptions, mapSelectValue, parseMapSelectValue } from './screens.js';
+import { activeCosmetics } from './cosmetics.js';
 import { badgeSvg } from './badge-art.js';
 import { fullscreenControl } from './fullscreen.js';
 import { createBossBars } from './boss-bar.js';
@@ -552,6 +553,25 @@ const startScreen = mountStartScreen($('start-screen'), {
   },
 });
 $('to-maps').addEventListener('click', () => startScreen.show(true));
+// ---------- B-185: Menü „Aussehen“ (Kosmetik) ----------
+// Testseite: echter Fortschritt fehlt, darum ein eigener Stand im Speicher mit allen Belohnungen frei, anfangs aus
+// (sonst sähen alle Testseiten-Spiele golden aus). Normal: Auswahl im Spielfortschritt, gespeichert.
+const cosProgress = TEST_MODE ? testCosmeticsProgress() : progress;
+function testCosmeticsProgress() {
+  const nightmare = Object.fromEntries(MAP_ORDER.map((id) => [id, { bestWave: MAX_WAVES, badge: BADGE_TIERS.length }]));
+  return { maps: {}, nightmare, cosmetics: { night: Object.fromEntries(MAP_ORDER.map((id) => [id, false])), goldTowers: false } };
+}
+// Nacht-Look und goldene Türme fürs Rendering (render.js liest ui.night und ui.goldTowers); reine Optik
+function applyCosmetics() {
+  const c = activeCosmetics(cosProgress, state.mapId);
+  ui.night = c.night;
+  ui.goldTowers = c.goldTowers;
+}
+const cosMenu = mountCosmeticsMenu($('cosmetics'), {
+  getProgress: () => cosProgress,
+  onChange: () => { if (!TEST_MODE) saveProgress(getStorage(), progress); applyCosmetics(); },
+});
+document.querySelector('#start-screen .cos-open')?.addEventListener('click', () => cosMenu.open());
 if (!TEST_MODE) startScreen.show();
 // B-137: Drehhinweis im Hochformat pausiert das Spiel; nach dem Drehen weiter, wenn die Pause vom Hinweis kam
 let pausedByRotate = false;
@@ -722,6 +742,7 @@ function keepFocus() {
 }
 
 window.addEventListener('keydown', (ev) => {
+  if (cosMenu.handleKey(ev)) return; // B-185: Menü „Aussehen“ offen
   if (startScreen.handleKey(ev)) return; // C5: Startbildschirm offen
   if (fieldKey(ev)) return;
   const key = String(ev.key ?? '').toLowerCase(); // manche Ereignisse (Autofill) haben kein key
@@ -750,6 +771,7 @@ window.addEventListener('keydown', (ev) => {
 // ---------- HUD ----------
 const updateBossBars = createBossBars(); // B-180: Boss-Leiste im HUD
 function refreshUI() {
+  applyCosmetics(); // B-185: folgt Karte und Auswahl
   if (state.status !== 'playing' || state.paused) ui.aiming = false; // Zielmodus nur im laufenden Spiel
   updateBossBars(state, ui, performance.now() / 1000);
   $('gold').textContent = state.gold.toLocaleString('de-DE');

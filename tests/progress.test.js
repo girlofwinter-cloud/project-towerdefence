@@ -508,7 +508,7 @@ test('B-185: an- und abschalten nur wenn freigeschaltet; abgeschaltet bleibt fre
   assert.equal(setNightLook(p, 'meadow', true), false);
   assert.equal(setGoldTowers(p, true), false);
   assert.equal(p.cosmetics, undefined); // unverändert
-  assert.deepEqual(activeCosmetics(p, 'ice'), { night: false, goldTowers: false }); // frei, aber nicht gewählt = aus
+  assert.deepEqual(activeCosmetics(p, 'ice'), { night: true, goldTowers: false }); // B-185 Entscheidung: frei und nie abgeschaltet = an
   assert.equal(setNightLook(p, 'ice', true), true);
   assert.deepEqual(activeCosmetics(p, 'ice'), { night: true, goldTowers: false });
   assert.deepEqual(activeCosmetics(p, 'meadow'), { night: false, goldTowers: false });
@@ -517,7 +517,7 @@ test('B-185: an- und abschalten nur wenn freigeschaltet; abgeschaltet bleibt fre
   assert.equal(isNightUnlocked(p, 'ice'), true);
   const g = allGold();
   assert.equal(setGoldTowers(g, true), true);
-  assert.deepEqual(activeCosmetics(g, 'volcano'), { night: false, goldTowers: true });
+  assert.deepEqual(activeCosmetics(g, 'volcano'), { night: true, goldTowers: true }); // Nacht-Look nie abgeschaltet = an (B-185 Entscheidung)
   assert.equal(setGoldTowers(g, false), true);
   assert.equal(isGoldTowersUnlocked(g), true);
   assert.deepEqual(activeCosmetics(undefined, 'ice'), { night: false, goldTowers: false });
@@ -533,9 +533,10 @@ test('B-185: sanitizeProgress säubert den Kosmetik-Bereich, alte Stände ohne B
   assert.equal(old.cosmetics, undefined);
   assert.deepEqual(activeCosmetics(old, 'meadow'), { night: false, goldTowers: false });
   const dirty = sanitizeProgress({ maps: {}, cosmetics: { night: { meadow: true, ice: 'ja', forest: true, __proto__: { twin: true } }, goldTowers: 1, extra: 5 } });
-  assert.deepEqual(dirty.cosmetics, { night: { meadow: true }, goldTowers: false });
+  assert.deepEqual(dirty.cosmetics, { night: { meadow: true } }); // ungültiges goldTowers fällt weg (= Default an)
   assert.equal(sanitizeProgress({ maps: {}, cosmetics: [] }).cosmetics, undefined);
-  assert.deepEqual(sanitizeProgress({ maps: {}, cosmetics: { night: [true] } }).cosmetics, { night: {}, goldTowers: false });
+  assert.deepEqual(sanitizeProgress({ maps: {}, cosmetics: { night: [true] } }).cosmetics, { night: {} });
+  assert.deepEqual(sanitizeProgress({ maps: {}, cosmetics: { goldTowers: false } }).cosmetics, { night: {}, goldTowers: false }, 'bewusstes Aus bleibt');
 });
 
 test('B-185: Auswahl bleibt nach Speichern und Laden erhalten', () => {
@@ -569,4 +570,28 @@ test('B-185: Kosmetik ändert keine Spielwerte (createGame kennt sie nicht)', ()
   assert.equal('cosmetics' in cosmetic, false);
   const snap = (s) => ({ gold: s.gold, lives: s.lives, wave: s.wave, enemies: s.enemies.length, towers: s.towers.map((t) => ({ ...t })) });
   assert.deepEqual(snap(cosmetic), snap(plain));
+});
+
+test('B-185: frisch freigeschaltete Belohnung ist sofort an, bewusstes Aus bleibt nach Neuladen aus', () => {
+  // Nacht-Look: Gold auf einer Karte, noch nie etwas gewählt
+  const p = withBadges({ ice: GOLD_BADGE });
+  assert.equal(p.cosmetics, undefined);
+  assert.deepEqual(activeCosmetics(p, 'ice'), { night: true, goldTowers: false });
+  // fünfte Gold-Karte: goldene Türme sofort an, auf allen Karten auch der Nacht-Look
+  const g = allGold();
+  for (const id of MAP_ORDER) assert.deepEqual(activeCosmetics(g, id), { night: true, goldTowers: true }, id);
+  // Freischaltung später als die (alte) Auswahl: nur gespeichertes false schaltet ab
+  const s = fakeStorage();
+  const q = withBadges({ meadow: GOLD_BADGE });
+  setNightLook(q, 'meadow', false);
+  saveProgress(s, q);
+  const back = loadProgress(s);
+  assert.deepEqual(activeCosmetics(back, 'meadow'), { night: false, goldTowers: false });
+  back.nightmare.ice = { bestWave: MAX_WAVES, badge: GOLD_BADGE }; // neue Gold-Karte nach dem Laden
+  assert.deepEqual(activeCosmetics(back, 'ice'), { night: true, goldTowers: false });
+  // gespeichert wird nur die bewusste Wahl, kein goldTowers-Feld ohne Eingriff
+  assert.equal('goldTowers' in back.cosmetics, false);
+  setGoldTowers(g, false);
+  saveProgress(s, g);
+  assert.deepEqual(activeCosmetics(loadProgress(s), 'meadow'), { night: true, goldTowers: false });
 });

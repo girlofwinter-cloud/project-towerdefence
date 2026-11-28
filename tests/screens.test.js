@@ -171,3 +171,48 @@ test('B-184: Siegbildschirm zeigt das höchste neue Abzeichen, Einflug nur bei n
   // kein Albtraum-Abzeichen (z. B. verloren): kein Albtraum-Siegbildschirm
   assert.equal(nightmareWinView(emptyProgress(), M1, { newBadge: 0 }), null);
 });
+
+// ---------- B-185: Menü „Aussehen“ ----------
+import { cosmeticsView, cosmeticsHtml, toggleCosmetic, COS_LOCKED_NIGHT, COS_LOCKED_GOLD } from '../src/screens.js';
+import { BADGE_TIERS } from '../src/config.js';
+import { activeCosmetics } from '../src/cosmetics.js';
+const goldOn = (ids) => ({ maps: {}, nightmare: Object.fromEntries(ids.map((id) => [id, { bestWave: MAX_WAVES, badge: BADGE_TIERS.length }])) });
+
+test('B-185 cosmeticsView: je Karte ein Nacht-Look, frisch frei = an, gesperrt mit Grund und Fortschritt', () => {
+  const v = cosmeticsView(goldOn([M1]));
+  assert.deepEqual(v.night.map((r) => r.mapId), MAP_ORDER);
+  const r1 = v.night.find((r) => r.mapId === M1);
+  assert.deepEqual([r1.unlocked, r1.on, r1.reason], [true, true, '']);
+  assert.equal(r1.label, `Nacht-Look ${MAPS[M1].name}, an`);
+  const r0 = v.night.find((r) => r.mapId === M0);
+  assert.deepEqual([r0.unlocked, r0.on, r0.reason], [false, false, COS_LOCKED_NIGHT]);
+  assert.match(r0.label, /, gesperrt$/);
+  assert.deepEqual([v.gold.unlocked, v.gold.on, v.gold.reason, v.gold.progressText], [false, false, COS_LOCKED_GOLD, 'Gold auf 1 / 5 Karten']);
+});
+
+test('B-185 cosmeticsHtml: gesperrter Schalter disabled mit „gesperrt“ im Label, Fortschritt nur bis 5 / 5', () => {
+  const html = cosmeticsHtml(cosmeticsView(goldOn([M1])));
+  assert.equal((html.match(/role="switch"/g) || []).length, MAP_ORDER.length + 1);
+  assert.match(html, new RegExp(`data-key="night:${M0}" aria-checked="false" aria-label="Nacht-Look ${MAPS[M0].name}, gesperrt" disabled`));
+  assert.match(html, new RegExp(`data-key="night:${M1}" aria-checked="true" aria-label="Nacht-Look ${MAPS[M1].name}, an">`));
+  assert.match(html, /Gold auf 1 \/ 5 Karten/);
+  assert.match(html, /aria-valuenow="1"/);
+  const all = cosmeticsHtml(cosmeticsView(goldOn(MAP_ORDER)));
+  assert.doesNotMatch(all, /disabled|cos-prog|gesperrt/);
+});
+
+test('B-185 toggleCosmetic: schaltet um, gesperrt/unbekannt bleibt unverändert', () => {
+  const p = goldOn([M1]);
+  assert.equal(toggleCosmetic(p, `night:${M0}`), false);
+  assert.equal(toggleCosmetic(p, 'gold'), false);
+  assert.equal(toggleCosmetic(p, 'quatsch'), false);
+  assert.equal(p.cosmetics, undefined);
+  assert.equal(toggleCosmetic(p, `night:${M1}`), true);
+  assert.deepEqual(p.cosmetics, { night: { [M1]: false } }, 'nur das bewusste Aus wird gespeichert');
+  assert.equal(activeCosmetics(p, M1).night, false);
+  assert.equal(toggleCosmetic(p, `night:${M1}`), true);
+  assert.equal(activeCosmetics(p, M1).night, true);
+  const g = goldOn(MAP_ORDER);
+  assert.equal(toggleCosmetic(g, 'gold'), true);
+  assert.equal(activeCosmetics(g, M2).goldTowers, false);
+});

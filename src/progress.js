@@ -34,7 +34,8 @@ export function sanitizeProgress(raw) {
 }
 
 // B-185: Kosmetik-Auswahl bereinigen: nur Booleans, nur bekannte Karten (alte Spielstände bleiben ohne Bereich).
-// Ob ein Element freigeschaltet ist, prüft src/cosmetics.js bei jeder Abfrage.
+// Ob ein Element freigeschaltet ist, prüft src/cosmetics.js bei jeder Abfrage. Fehlt goldTowers, bleibt es weg
+// (Default an, B-185); nur ein gespeichertes false ist ein bewusstes Aus.
 function sanitizeCosmetics(raw, progress) {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return;
   const night = {};
@@ -42,7 +43,8 @@ function sanitizeCosmetics(raw, progress) {
   for (const id of MAP_ORDER) {
     if (Object.prototype.hasOwnProperty.call(rawNight, id) && typeof rawNight[id] === 'boolean') night[id] = rawNight[id];
   }
-  progress.cosmetics = { night, goldTowers: raw.goldTowers === true };
+  progress.cosmetics = { night };
+  if (typeof raw.goldTowers === 'boolean') progress.cosmetics.goldTowers = raw.goldTowers;
 }
 
 // B-182: Albtraum-Bereich bereinigen (alte Spielstände ohne Bereich bleiben ohne)

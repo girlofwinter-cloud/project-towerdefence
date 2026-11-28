@@ -3,7 +3,7 @@
 // und wird nur von main.js aufgerufen. Fortschritt wird hier nur gelesen, nie gespeichert.
 import { MAPS, MAX_WAVES, STAR_LIVES_SHARE, VIEW_WIDTH, VIEW_HEIGHT, FRAME_MARGIN, SCREENS, BADGE_TIERS, GOLD_CONDITIONS, COSMETICS } from './config.js';
 import { MAP_ORDER, mapProgress, isUnlocked, isNightmareUnlocked, nightmareProgress, badgeCount, BADGE_MAX } from './progress.js';
-import { isGoldTowersUnlocked } from './cosmetics.js';
+import { isGoldTowersUnlocked, isNightUnlocked, goldMapsProgress, nightLookChosen, goldTowersChosen, setNightLook, setGoldTowers } from './cosmetics.js';
 import { badgeSvg } from './badge-art.js';
 import { createGame } from './game.js';
 import { buildPaintedSvg, rasterizePainted, paletteFor } from './render-painted.js';
@@ -255,8 +255,8 @@ export function mountStartScreen(root, opts) {
     const onTopButton = ev.target instanceof Element && ev.target.closest('.top-buttons');
     if (key.toLowerCase() === 'm') return false;
     if (onTopButton && (key === 'Enter' || key === ' ')) return true; // Knopf löst selbst aus, Spiel bekommt die Taste nicht
-    // B-184: Umschalter und Slot-Reihe sind eigene Knöpfe
-    const ownButton = ev.target instanceof Element && ev.target.closest('.start-mode, .map-badges');
+    // B-184: Umschalter und Slot-Reihe sind eigene Knöpfe (B-185: auch „Aussehen“)
+    const ownButton = ev.target instanceof Element && ev.target.closest('.start-mode, .map-badges, .cos-open'); // B-185: Knopf „Aussehen“
     if (ownButton && (key === 'Enter' || key === ' ')) return true;
     if (key === 'ArrowLeft' || key === 'ArrowRight') { ev.preventDefault(); focusCard(moveFocus(selectable(), current(), key === 'ArrowLeft' ? -1 : 1)); }
     else if (key === 'Enter' || key === ' ') {
@@ -275,4 +275,91 @@ export function mountStartScreen(root, opts) {
     if (b && !b.disabled) for (const x of list.querySelectorAll('.map-card')) x.classList.toggle('current', x === b);
   });
   return { show, hide, handleKey, isOpen: () => !root.hidden };
+}
+
+// ---------- B-185: Menü „Aussehen“ (Bauvorlage docs/design/elemente/Kosmetik-Aussehen.md) ----------
+export const COS_LOCKED_NIGHT = 'Gold im Albtraum nötig';
+export const COS_LOCKED_GOLD = 'Gold auf allen Karten nötig';
+// Zeilen des Menüs: je Karte (MAP_ORDER) der Nacht-Look, dazu die goldenen Türme mit Fortschritt.
+// on = freigeschaltet und nicht abgeschaltet; gesperrt = immer aus.
+export function cosmeticsView(progress) {
+  const row = (key, mapId, title, unlocked, chosen, reason) => {
+    const on = unlocked && chosen;
+    return { key, mapId, title, unlocked, on, reason: unlocked ? '' : reason,
+      label: `${title}, ${unlocked ? (on ? 'an' : 'aus') : 'gesperrt'}` };
+  };
+  const night = MAP_ORDER.map((id) => row(`night:${id}`, id, `${COSMETICS.night.name} ${MAPS[id].name}`,
+    isNightUnlocked(progress, id), nightLookChosen(progress, id), COS_LOCKED_NIGHT));
+  const prog = goldMapsProgress(progress);
+  const gold = { ...row('gold', null, COSMETICS.goldTowers.name, isGoldTowersUnlocked(progress), goldTowersChosen(progress), COS_LOCKED_GOLD),
+    done: prog.done, total: prog.total, progressText: `Gold auf ${prog.done} / ${prog.total} Karten` };
+  return { night, gold };
+}
+// Eine Zeile als HTML (Name, ggf. Schloss + Grund, Schalter rechts). name: sichtbarer Name (beim Nacht-Look nur die Karte).
+function cosRowHtml(r, name) {
+  const lock = r.unlocked ? '' : `<span class="cos-lock">${SMALL_LOCK}<span>${r.reason}</span></span>`;
+  return `<div class="cos-row${r.unlocked ? '' : ' locked'}"><span class="cos-name">${name}</span>${lock}`
+    + `<button type="button" class="sw" role="switch" data-key="${r.key}" aria-checked="${r.on}" aria-label="${r.label}"${r.unlocked ? '' : ' disabled'}><span class="knob"></span></button></div>`;
+}
+// Inhalt der Plakette (rein, testbar). Fortschrittsleiste nur, solange die goldenen Türme gesperrt sind.
+export function cosmeticsHtml(view) {
+  const g = view.gold;
+  const pct = g.total ? Math.round((100 * g.done) / g.total) : 0;
+  const prog = g.unlocked ? '' : `<div class="cos-prog"><span class="cos-prog-text">${g.progressText}</span>`
+    + `<span class="cos-bar" role="progressbar" aria-label="${g.progressText}" aria-valuemin="0" aria-valuemax="${g.total}" aria-valuenow="${g.done}"><span style="width:${pct}%"></span></span></div>`;
+  return `<h3 class="cos-sec">${COSMETICS.night.name}</h3>${view.night.map((r) => cosRowHtml(r, MAPS[r.mapId].name)).join('')}`
+    + `<h3 class="cos-sec">${COSMETICS.goldTowers.name}</h3>${cosRowHtml(g, COSMETICS.goldTowers.name)}${prog}`;
+}
+// Schalter umlegen (verändert progress); false, wenn gesperrt oder unbekannt.
+export function toggleCosmetic(progress, key) {
+  const view = cosmeticsView(progress);
+  if (key === 'gold') return setGoldTowers(progress, !view.gold.on);
+  const r = view.night.find((x) => x.key === key);
+  return r ? setNightLook(progress, r.mapId, !r.on) : false;
+}
+
+// Dialog (DOM, nur Browser). opts: getProgress(), onChange() (speichern und Optik anwenden), returnFocus (Element).
+// Rückgabe: open(), close(), isOpen(), handleKey(ev) (true = Taste verbraucht).
+export function mountCosmeticsMenu(root, opts) {
+  const body = root.querySelector('.cos-body');
+  let lastFocus = null;
+  function build() {
+    const focusedKey = document.activeElement?.closest?.('.sw')?.dataset.key;
+    body.innerHTML = cosmeticsHtml(cosmeticsView(opts.getProgress()));
+    if (focusedKey) body.querySelector(`.sw[data-key="${focusedKey}"]`)?.focus({ preventScroll: true });
+  }
+  body.addEventListener('click', (ev) => {
+    const sw = ev.target instanceof Element ? ev.target.closest('.sw') : null;
+    if (!sw || sw.disabled) return;
+    if (toggleCosmetic(opts.getProgress(), sw.dataset.key)) { opts.onChange(); build(); }
+  });
+  root.querySelector('.cos-close')?.addEventListener('click', close);
+  root.addEventListener('click', (ev) => { if (ev.target === root) close(); }); // Tipp neben die Plakette
+  function open() {
+    lastFocus = document.activeElement;
+    build();
+    root.hidden = false;
+    body.scrollTop = 0;
+    (body.querySelector('.sw:not(:disabled)') ?? root.querySelector('.cos-close'))?.focus({ preventScroll: true });
+  }
+  function close() {
+    if (root.hidden) return;
+    root.hidden = true;
+    lastFocus?.focus?.({ preventScroll: true });
+  }
+  const focusables = () => [...root.querySelectorAll('button:not(:disabled)')];
+  function handleKey(ev) {
+    if (root.hidden) return false;
+    if (ev.key === 'Escape') { ev.preventDefault(); close(); return true; }
+    if (ev.key === 'Tab') { // Fokus bleibt im Dialog
+      const f = focusables();
+      const i = f.indexOf(document.activeElement);
+      if (ev.shiftKey && i <= 0) { ev.preventDefault(); f[f.length - 1]?.focus(); }
+      else if (!ev.shiftKey && i === f.length - 1) { ev.preventDefault(); f[0]?.focus(); }
+      return true;
+    }
+    if (String(ev.key).toLowerCase() === 'm') return false; // Ton bleibt schaltbar
+    return true; // Enter/Leertaste lösen den fokussierten Knopf selbst aus; keine Spieltasten
+  }
+  return { open, close, handleKey, isOpen: () => !root.hidden };
 }
