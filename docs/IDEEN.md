@@ -571,3 +571,32 @@ Der Mensch hat entschieden, das Zielbild `docs/design/stil1-ziel.png` komplett z
 - Idee: Einheitlicher, statischer, leiser Glüh-Strich am Wegrand in der Weltfarbe auf allen Albtraum-Karten. Stärkt Einheitlichkeit und Lesbarkeit. Neues Token je Welt im Design-System.
 - Akzeptanzkriterien:
   - Wegrand auf allen 5 Karten sichtbar, Frame-Zeit unverändert, Token in `docs/design/system/`.
+
+### B-206: Albtraum-Wiese: mehr Baum- und Buschaugen
+- Status: vorschlag
+- Aufwand: S
+- Idee: Jeder 2.-3. Randbaum (oben/rechts) bekommt ein Augenpaar im Astloch (`twistedTreeEyes` öfter), dazu 2-3 Büsche unten mit selten blinzelnden Augen (period ~8 s). Teilchen-Budget: `blink` 10 -> 14, `rise` 24 -> 18. Nur Rand, mind. 1 Kachel Abstand zum Weg, Handy höchstens halb so viele, Augen höchstens 6 px.
+- Akzeptanzkriterien:
+  - Mindestens 8 sichtbare Augenpaare im Rand (Desktop 1280x800).
+  - Test: kein neues Element auf Weg-Kacheln; Teilchensumme unter `maxDesktop`/`maxCompact`.
+
+### B-207: Albtraum-Augen folgen dem Geschehen
+- Status: vorschlag
+- Aufwand: M
+- Idee: Pupillen aller Albtraum-Augen verschieben sich um höchstens 1 px Richtung Mauszeiger oder nächsten Gegner. Gemeinsames Merkmal aller Albtraum-Karten, in `src/render-nightmare.js`.
+- Akzeptanzkriterien:
+  - Test prüft Pupillenversatz <= 1 px und Richtung; bei `prefers-reduced-motion` statisch.
+
+### B-208: Albtraum-Wiese: Schattenhand und Irrlichter
+- Status: vorschlag
+- Aufwand: M
+- Idee: Alle 20-30 s taucht kurz (1,5 s) eine dunkle Hand am Seeufer auf; statt einzelner `rise`-Funken 2 langsam pendelnde türkise Irrlichter mit Halo.
+- Akzeptanzkriterien:
+  - Höchstens 1 Hand gleichzeitig, nie auf dem Weg; Teilchenzahl nicht höher als heute.
+
+### B-209: Kleine Gruselelemente auf den übrigen Albtraum-Karten
+- Status: vorschlag
+- Aufwand: M (je Karte S)
+- Idee: Je Karte zuerst ein S-Element: Eis – schwache Augen hinter Eisblöcken (alpha 0,5) oder Atemwölkchen aus dem Tannendickicht; Zangenangriff – Glutaugen in verkohlten Baumstümpfen; Zwei Fronten – Augen in den Gruftfenstern blinzeln echt, Geisterschleier zwischen Grabsteinen; Vulkan – Augenpaare mit Lid in Basaltspalten. Später (M): Gesicht unter dem Eis, Krähen, Grabhand, Lava-Schlitzauge.
+- Akzeptanzkriterien:
+  - Je Karte sichtbar im Screenshot, nicht auf dem Weg (Test), Teilchenbudget eingehalten, Augen nicht mit Glutpunkten/Gegnern verwechselbar.

@@ -196,3 +196,4 @@ Anhängen ohne die Datei zu lesen: `cat >> docs/LEDGER.md <<'EOF' … EOF`. Übe
 - Albtraum-Karten auf Desktop geprüft, Rand ohne Vignette und Welt-Identitäten passen.
 - Vorschläge B-201 bis B-205 in IDEEN.md (Weg-Kontrast Fork/Twin, Vulkan-Risse, Deko vom Weg, Weg-Glühen).
 - Offen: Handy-Querformat nicht geprüft (Skript-Timeout).
+- Nachtrag: Gruselelemente B-206 bis B-209 (mehr Baumaugen Wiese, folgende Pupillen, Schattenhand/Irrlichter, Elemente je Karte).
