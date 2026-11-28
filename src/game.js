@@ -83,7 +83,11 @@ export function createGame({ mapId, mode, ...overrides } = {}) {
     state.paths.push(buildPath(g.waypoints, TILE));
     for (const k of pathTiles(g.waypoints)) state.blocked.add(k);
     for (const [c, r] of g.tiles || []) state.blocked.add(`${c},${r}`);
-    return { lane: state.paths.length - 1, timer: GRAVEYARD.interval, queue: [] };
+    // area: Friedhoffläche in Spiel-px (für das Aufleuchten beim Trupp, B-212); ohne Kacheln null
+    const t = g.tiles || [];
+    const area = t.length ? [Math.min(...t.map((p) => p[0])) * TILE, Math.min(...t.map((p) => p[1])) * TILE,
+      (Math.max(...t.map((p) => p[0])) + 1) * TILE, (Math.max(...t.map((p) => p[1])) + 1) * TILE] : null;
+    return { lane: state.paths.length - 1, timer: GRAVEYARD.interval, queue: [], area };
   });
   // B-030: Wegkacheln direkt neben Lava, einmal berechnet (lavaStep schlägt pro Gegner nur nach)
   if (!overrides.hotPath) state.hotPath = new Set([...state.blocked].filter((k) => nearLava(state.lava, ...k.split(',').map(Number))));
@@ -518,21 +522,26 @@ export function graveyardStep(state, dt) {
   if (!state.graveyards || !state.graveyards.length) return;
   const waveEnemiesLeft = state.spawnQueue.length > 0
     || state.enemies.some((e) => (e.lane ?? 0) < state.entranceCount);
-  for (const g of state.graveyards) {
+  state.graveyards.forEach((g, index) => {
     if (state.waveActive && state.wave >= GRAVEYARD.fromWave && waveEnemiesLeft) {
       g.timer -= dt;
       if (g.timer <= 1e-9) {
         for (let i = 0; i < GRAVEYARD.size; i++) g.queue.push(i * GRAVEYARD.spacing);
         g.timer += GRAVEYARD.interval;
+        // B-212: Friedhof leuchtet auf, wenn ein Trupp kommt (nur Optik)
+        if (g.area) {
+          const [x0, y0, x1, y1] = g.area, life = FX_STYLE.graveyardGlow.life;
+          state.effects.push({ kind: 'graveyardGlow', index, x: (x0 + x1) / 2, y: (y0 + y1) / 2, area: g.area, ttl: life, max: life });
+        }
       }
     }
-    if (!g.queue.length) continue;
+    if (!g.queue.length) return;
     g.queue = g.queue.map((t) => t - dt);
     while (g.queue.length && g.queue[0] <= 1e-9) {
       g.queue.shift();
       spawnEnemy(state, GRAVEYARD.type, state.wave, g.lane);
     }
-  }
+  });
 }
 
 function moveEnemies(state, dt) {

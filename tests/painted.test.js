@@ -519,3 +519,17 @@ test('Tester: schnelles Hin- und Zurückschalten (Albtraum-Raster noch unterwegs
     assert.equal(lookOf(img), 'normal', 'Albtraum-Raster überschreibt das normale Bild');
   });
 });
+
+// B-212: Nachtfriedhof: zwei Friedhöfe mit gestricheltem Rand, je vier Grabsteine und eine Gruft; andere Karten ohne
+test('B-212: Friedhöfe im gemalten Hintergrund (Fläche, Grabsteine, Gruft), nur auf dem Nachtfriedhof', () => {
+  const s = createGame({ mapId: 'graveyard' });
+  const sc = buildPaintedScene(s);
+  assert.equal(sc.yards.length, 2);
+  for (const y of sc.yards) assert.equal(y.graves.length, 4);
+  const svg = buildPaintedSvg(s);
+  assert.equal((svg.match(/class="yard"/g) || []).length, 2);
+  assert.equal((svg.match(/class="crypt"/g) || []).length, 2);
+  assert.ok(svg.includes('fill="#2c3a30" stroke="#4a4038" stroke-width="4" stroke-dasharray="6 5"'));
+  assert.ok(!svg.includes('NaN'));
+  assert.equal(buildPaintedScene(createGame({ mapId: 'meadow' })).yards.length, 0);
+});

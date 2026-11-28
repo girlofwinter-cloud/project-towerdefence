@@ -1754,7 +1754,7 @@ test('Wegsaum: unterbrochene Büschel über der Fuge, 30 bis 50 % der Randlänge
     drawPathStyled(m.ctx, s.paths || [s.path], MAPS[id].theme);
     assert.equal(m.depth, 0);
   }
-  assert.deepEqual(kinds, { meadow: 'blades', ice: 'snow', fork: 'leaves', twin: 'blades', volcano: 'ash' });
+  assert.deepEqual(kinds, { meadow: 'blades', ice: 'snow', fork: 'leaves', twin: 'blades', volcano: 'ash', graveyard: 'blades' });
   assert.equal(MAPS.fork.theme.path.fringe, '#e0803a', 'Herbstlaub im Zangenangriff');
 });
 

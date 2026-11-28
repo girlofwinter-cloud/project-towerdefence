@@ -2,7 +2,7 @@
 
 Erzeugt aus `tokens.json` mit `node scripts/design-tokens.mjs`. Nicht von Hand ändern.
 
-## Farben (316)
+## Farben (334)
 
 | Token | Wert | Verwendung |
 |---|---|---|
@@ -136,6 +136,24 @@ Erzeugt aus `tokens.json` mit `node scripts/design-tokens.mjs`. Nicht von Hand �
 | `map-volcano-path-edge` | `#4a3836` | Karte Vulkan: Weg edge (theme.painted.path). |
 | `map-volcano-path-earth` | `#8b7468` | Karte Vulkan: Weg earth (theme.painted.path). |
 | `map-volcano-path-mid` | `#9c857a` | Karte Vulkan: Weg mid (theme.painted.path). |
+| `map-graveyard-1` | `#5a6a52` | Karte Nachtfriedhof (B-212): Bodenverlauf Stufe 1 von 3 (Moorboden Nacht, MAPS.graveyard.theme.painted.ground). |
+| `map-graveyard-2` | `#3e4c40` | Karte Nachtfriedhof (B-212): Bodenverlauf Stufe 2 von 3. |
+| `map-graveyard-3` | `#263028` | Karte Nachtfriedhof (B-212): Bodenverlauf Stufe 3 von 3. |
+| `map-graveyard-path-groove` | `#1c2420` | Karte Nachtfriedhof (B-212): Weg-Rinne. |
+| `map-graveyard-path-edge` | `#4a3a28` | Karte Nachtfriedhof (B-212): Weg-Rand und dunkler Weg-Tupfen. |
+| `map-graveyard-path-earth` | `#b0a07e` | Karte Nachtfriedhof (B-212): Weg-Erde. |
+| `map-graveyard-path-mid` | `#c8b890` | Karte Nachtfriedhof (B-212): Weg-Mitte. |
+| `map-graveyard-path-dot` | `#e8dcb8` | Karte Nachtfriedhof (B-212): heller Weg-Tupfen, Mittelstrich der Nebenwege. |
+| `map-graveyard-dot-1` | `#8aa68a` | Karte Nachtfriedhof (B-212): Boden-Tupfen Moos. |
+| `map-graveyard-dot-3` | `#e6d27a` | Karte Nachtfriedhof (B-212): Boden-Tupfen Pilz. |
+| `map-graveyard-pine-1` | `#1a2a24` | Karte Nachtfriedhof (B-212): Tanne Stufe 1 von 4. |
+| `map-graveyard-pine-2` | `#22362c` | Karte Nachtfriedhof (B-212): Tanne Stufe 2 von 4. |
+| `map-graveyard-pine-3` | `#2e4636` | Karte Nachtfriedhof (B-212): Tanne Stufe 3 von 4. |
+| `map-graveyard-pine-4` | `#5a6a52` | Karte Nachtfriedhof (B-212): Tanne Stufe 4 von 4. |
+| `map-graveyard-yard` | `#2c3a30` | Karte Nachtfriedhof (B-212): Friedhof-Boden (Friedhofkacheln). |
+| `map-graveyard-yard-edge` | `#4a4038` | Karte Nachtfriedhof (B-212): Friedhof-Rand, Strich 6/5 gestrichelt. |
+| `map-graveyard-lantern` | `#ffd27a` | Karte Nachtfriedhof (B-212): Laternenlicht, Aufleuchten beim Skelett-Trupp. |
+| `map-graveyard-light` | `#c8d6ff` | Karte Nachtfriedhof (B-212): kühles Mondlicht (light.tint). |
 | `figure-shadow` | `rgba(20,30,40,0.4)` | Bodenschatten unter Figuren (Gegner, Türme). |
 | `enemy-bat-wing` | `#4a3560` | Fledermaus: Flügel (B-167). |
 | `enemy-bat-body` | `#6b4a80` | Fledermaus: Körper und Ohren. |
