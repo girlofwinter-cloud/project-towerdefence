@@ -1795,9 +1795,9 @@ export const SOUND = {
     nightmare: {
       byMap: {
         meadow:  { file: 'music-nightmare', gain: 0.52 }, // RMS 0,240 (Wiese 0,126)
-        ice:     { file: 'music-nightmare-ice', gain: 0.97 },
+        ice:     { file: null, gain: 1 },
         fork:    { file: 'music-nightmare-fork', gain: 1.08 },
-        twin:    { file: 'music-nightmare-twin', gain: 1.88 },
+        twin:    { file: 'music-nightmare-twin', gain: 1.16 },
         volcano: { file: 'music-nightmare-volcano', gain: 0.78 },
       },
     },
