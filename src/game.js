@@ -511,12 +511,15 @@ function spawnStep(state, dt) {
   }
 }
 
-// B-210: Friedhöfe schicken während der Welle (ab GRAVEYARD.fromWave, solange Wellengegner ausstehen) Skelett-Trupps.
-// Begonnene Trupps laufen zu Ende, auch wenn die spawnQueue inzwischen leer ist.
+// B-210: Friedhöfe schicken während der Welle (ab GRAVEYARD.fromWave, solange Wellengegner ausstehen oder leben) Skelett-Trupps.
+// Trupp-Gegner erkennt man an ihrer Lane (>= entranceCount); sind nur noch sie übrig, kommen keine neuen Trupps.
+// Begonnene Trupps laufen zu Ende.
 export function graveyardStep(state, dt) {
   if (!state.graveyards || !state.graveyards.length) return;
+  const waveEnemiesLeft = state.spawnQueue.length > 0
+    || state.enemies.some((e) => (e.lane ?? 0) < state.entranceCount);
   for (const g of state.graveyards) {
-    if (state.waveActive && state.wave >= GRAVEYARD.fromWave && state.spawnQueue.length) {
+    if (state.waveActive && state.wave >= GRAVEYARD.fromWave && waveEnemiesLeft) {
       g.timer -= dt;
       if (g.timer <= 1e-9) {
         for (let i = 0; i < GRAVEYARD.size; i++) g.queue.push(i * GRAVEYARD.spacing);

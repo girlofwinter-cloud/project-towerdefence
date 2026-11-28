@@ -82,12 +82,31 @@ describe('Friedhof-Spawns (B-210)', () => {
     assert.equal(s.enemies.length, 0);
   });
 
-  test('keine Trupps nach leerer spawnQueue, Welle endet normal', () => {
+  test('spawnQueue leer, aber Wellengegner lebt: Trupp kommt', () => {
     const s = atWave(GRAVEYARD.fromWave);
     s.autoWave = false;
     s.spawnQueue = [];
-    runFor(s, GRAVEYARD.interval * 2);
-    assert.equal(skeletons(s).length, 0);
+    // einen langsamen Wellengegner auf Lane 0 einsetzen
+    const slow = { id: -1, type: 'x', lane: 0, dist: 0, x: 0, y: 0, hp: 1e9, maxHp: 1e9, speed: 0, slowUntil: 0, slowFactor: 1, leak: 1, reward: 0 };
+    s.enemies = [slow];
+    runFor(s, GRAVEYARD.interval + 0.1);
+    assert.ok(skeletons(s).length >= 1);
+    assert.equal(s.waveActive, true);
+  });
+
+  test('nur Trupp-Skelette übrig: kein neuer Trupp, Welle endet nach deren Tod', () => {
+    const s = atWave(GRAVEYARD.fromWave);
+    s.autoWave = false;
+    runFor(s, GRAVEYARD.interval + 0.05);
+    s.spawnQueue = [];
+    s.enemies = s.enemies.filter((e) => e.lane >= s.entranceCount);
+    const seen = new Set();
+    for (let i = 0; i < Math.round(GRAVEYARD.interval * 3 * 60); i++) {
+      update(s, 1 / 60);
+      for (const e of skeletons(s)) seen.add(e.id);
+    }
+    assert.ok(seen.size <= GRAVEYARD.size);
+    assert.equal(s.enemies.length, 0);
     assert.equal(s.waveActive, false);
   });
 
