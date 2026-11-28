@@ -219,7 +219,8 @@ export function buildPaintedScene(state, look = 'normal') {
 
   // Burg am Ausgang, Fahne am Eingang, Klippen oben und unten im Rand
   const keep = [...(nm?.reserve || [])]; // freie Bahnen im Rand: dort keine Randbäume (B-199: reserve = Rand-Lava der Karte)
-  for (const path of paths) {
+  // B-211: nur Eingänge bekommen Fahne und Burg (Friedhof-Wege starten mitten im Feld)
+  for (const path of paths.slice(0, state.entranceCount ?? paths.length)) {
     const pts = path.points;
     if (pts.length < 2) continue;
     const start = edgeOf(pts[0]);

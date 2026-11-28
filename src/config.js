@@ -452,7 +452,21 @@ export const MAPS = {
       },
     },
   },
+  // Nachtfriedhof (B-211): Schlangenweg links oben -> rechts unten, zwei Friedhöfe schicken Skelett-Trupps über
+  // kurze Nebenwege in den Hauptweg (B-210). Optik vorläufig wie Vulkan (dunkel), eigene Optik folgt mit B-212.
+  graveyard: {
+    name: 'Nachtfriedhof',
+    waypoints: [[-1, 1], [9, 1], [9, 4], [3, 4], [3, 11], [10, 11], [10, 8], [16, 8], [16, 12], [20, 12]],
+    graveyards: [
+      { tiles: [[12, 2], [13, 2], [14, 2], [12, 3], [13, 3], [14, 3], [12, 4], [13, 4], [14, 4]], waypoints: [[12, 3], [9, 3]] },
+      { tiles: [[0, 12], [1, 12], [2, 12], [0, 13], [1, 13], [2, 13]], waypoints: [[2, 13], [6, 13], [6, 11]] },
+    ],
+    obstacles: [[6, 7], [13, 11], [18, 4]],
+    flagTiles: [[0, 2]], // Wellenfahne unter dem Eingang (wie Zwei Fronten oben; Vorlage nannte [0,0]) (Test: flagTilesOf)
+    theme: null, // unten: vorläufig Vulkan-Theme
+  },
 };
+MAPS.graveyard.theme = MAPS.volcano.theme;
 export const DEFAULT_MAP_ID = 'meadow';
 
 // B-093: Fortschritt im localStorage (Schlüssel mit Version, damit spätere Formate sauber neu beginnen).
@@ -1846,6 +1860,7 @@ export const SOUND = {
       fork:    { file: 'music-fork', gain: 1.6 },
       twin:    { file: 'music-twin', gain: 0.55 },
       volcano: { file: 'music-volcano', gain: 0.6 },
+      graveyard: { file: 'music-volcano', gain: 0.6 }, // B-211: Vorschlag, eigener Titel offen
     },
     // B-187: eigener Titel je Karte im Albtraum-Modus (Vorrang vor dem Kartentitel). Format wie byMap;
     // file: null = kein eigener Albtraum-Titel -> Kartentitel, dann Rückfall file. gain wie bei byMap.
@@ -1856,6 +1871,7 @@ export const SOUND = {
         fork:    { file: 'music-nightmare-fork', gain: 1.08 },
         twin:    { file: 'music-nightmare-twin', gain: 1.16 },
         volcano: { file: 'music-nightmare-volcano', gain: 0.78 },
+        graveyard: { file: 'music-nightmare', gain: 0.52 }, // B-211: Vorschlag (Titel der Wiese), Mensch entscheidet
       },
     },
     gain: 0.025,         // Lautstärke im laufenden Spiel
@@ -1877,6 +1893,7 @@ export const GOLD_CONDITIONS = {
   fork:    { kind: 'noTower', tower: 'cannon', label: 'ohne Kanone' },
   twin:    { kind: 'noSell', label: 'ohne Verkaufen' },
   volcano: { kind: 'noTower', tower: 'lightning', label: 'ohne Blitzturm' },
+  graveyard: { kind: 'noTower', tower: 'arrow', label: 'ohne Pfeilturm' }, // B-211: Vorschlag, Mensch entscheidet
 };
 
 // B-183: Albtraum-Abzeichen je Karte, Index + 1 = Stufe (1 Bronze: Welle 20 geschafft, 2 Silber: ohne Lebensverlust,

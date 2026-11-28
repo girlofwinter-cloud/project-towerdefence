@@ -126,9 +126,17 @@ describe('Friedhof-Spawns (B-210)', () => {
     }
   });
 
+  test('B-211: Nachtfriedhof hat einen Eingang und zwei Friedhof-Wege, Friedhofkacheln nicht bebaubar', () => {
+    const s = createGame({ mapId: 'graveyard' });
+    assert.equal(s.entranceCount, 1);
+    assert.equal(s.paths.length, 3);
+    assert.equal(s.graveyards.length, 2);
+    for (const g of MAPS.graveyard.graveyards) for (const [c, r] of g.tiles) assert.equal(canBuild(s, c, r).ok, false, `${c},${r}`);
+  });
+
   test('Karten ohne graveyards unverändert', () => {
     for (const id of Object.keys(MAPS)) {
-      if (id === ID) continue;
+      if (id === ID || MAPS[id].graveyards) continue; // B-211: Karten mit Friedhöfen (graveyard) prüfen die Tests oben
       const s = createGame({ mapId: id });
       const extra = (MAPS[id].extraPaths || []).length;
       assert.equal(s.paths.length, 1 + extra);

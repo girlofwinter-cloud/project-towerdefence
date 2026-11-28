@@ -126,15 +126,15 @@ test('mapSelectValue/parseMapSelectValue: Karte und Modus hin und zurück', () =
 
 
 // ---------- B-184: Abzeichen in Kartenauswahl und Siegbildschirm ----------
-test('B-184: Zähler zählt Abzeichen über alle Karten (0..15), Slot-Labels je Stufe', async () => {
+test('B-184: Zähler zählt Abzeichen über alle Karten (0..18), Slot-Labels je Stufe', async () => {
   const { badgeCounterText, badgeSlots } = await import('../src/screens.js');
   const { BADGE_MAX } = await import('../src/progress.js');
-  assert.equal(BADGE_MAX, 15);
-  assert.equal(badgeCounterText(emptyProgress()), 'Abzeichen 0 / 15');
+  assert.equal(BADGE_MAX, 18);
+  assert.equal(badgeCounterText(emptyProgress()), 'Abzeichen 0 / 18');
   const p = { maps: {}, nightmare: { [M0]: { bestWave: 20, badge: 3 }, [M1]: { bestWave: 20, badge: 1 } } };
-  assert.equal(badgeCounterText(p), 'Abzeichen 4 / 15');
+  assert.equal(badgeCounterText(p), 'Abzeichen 4 / 18');
   const all = { maps: {}, nightmare: Object.fromEntries(MAP_ORDER.map((id) => [id, { bestWave: 20, badge: 3 }])) };
-  assert.equal(badgeCounterText(all), 'Abzeichen 15 / 15');
+  assert.equal(badgeCounterText(all), 'Abzeichen 18 / 18');
   const slots = badgeSlots(p, M1);
   assert.deepEqual(slots.map((x) => [x.tier, x.reached]), [[1, true], [2, false], [3, false]]);
   assert.equal(slots[0].label, `Bronze: Welle ${MAX_WAVES} im Albtraum`);
@@ -187,15 +187,15 @@ test('B-185 cosmeticsView: je Karte ein Nacht-Look, frisch frei = an, gesperrt m
   const r0 = v.night.find((r) => r.mapId === M0);
   assert.deepEqual([r0.unlocked, r0.on, r0.reason], [false, false, COS_LOCKED_NIGHT]);
   assert.match(r0.label, /, gesperrt$/);
-  assert.deepEqual([v.gold.unlocked, v.gold.on, v.gold.reason, v.gold.progressText], [false, false, COS_LOCKED_GOLD, 'Gold auf 1 / 5 Karten']);
+  assert.deepEqual([v.gold.unlocked, v.gold.on, v.gold.reason, v.gold.progressText], [false, false, COS_LOCKED_GOLD, 'Gold auf 1 / 6 Karten']);
 });
 
-test('B-185 cosmeticsHtml: gesperrter Schalter disabled mit „gesperrt“ im Label, Fortschritt nur bis 5 / 5', () => {
+test('B-185 cosmeticsHtml: gesperrter Schalter disabled mit „gesperrt“ im Label, Fortschritt nur bis 6 / 6', () => {
   const html = cosmeticsHtml(cosmeticsView(goldOn([M1])));
   assert.equal((html.match(/role="switch"/g) || []).length, MAP_ORDER.length + 1);
   assert.match(html, new RegExp(`data-key="night:${M0}" aria-checked="false" aria-label="Nacht-Look ${MAPS[M0].name}, gesperrt" disabled`));
   assert.match(html, new RegExp(`data-key="night:${M1}" aria-checked="true" aria-label="Nacht-Look ${MAPS[M1].name}, an">`));
-  assert.match(html, /Gold auf 1 \/ 5 Karten/);
+  assert.match(html, /Gold auf 1 \/ 6 Karten/);
   assert.match(html, /aria-valuenow="1"/);
   const all = cosmeticsHtml(cosmeticsView(goldOn(MAP_ORDER)));
   assert.doesNotMatch(all, /disabled|cos-prog|gesperrt/);
@@ -285,7 +285,7 @@ test('B-191 cosmeticsHtml: Unterzeile mit Stilname (frei) bzw. eigener Stufe (ge
   assert.equal(v0.nightLabel, `Nacht-Look · ${NM_STYLE_NAME[M0]}`);
   const vg = cosPreviewView(view, 'gold');
   assert.deepEqual([vg.kind, vg.state], ['gold', 'Gesperrt']);
-  assert.match(vg.unlockText, /Gold auf 1 \/ 5 Karten/);
+  assert.match(vg.unlockText, /Gold auf 1 \/ 6 Karten/);
   assert.equal(cosPreviewView(view, 'quatsch').key, `night:${M0}`, 'unbekannt: erste Zeile');
 });
 

@@ -70,7 +70,7 @@ test('Stil 1 (alle Karten): Burg am Ausgang, Fahne an jedem Eingang; Burg und Kl
   for (const id of MAP_IDS) {
     const s = createGame({ mapId: id });
     const sc = buildPaintedScene(s);
-    const paths = s.paths || [s.path];
+    const paths = (s.paths || [s.path]).slice(0, s.entranceCount); // B-211: Friedhof-Wege sind keine Eingänge
     assert.equal(sc.flags.length, paths.length, `${id}: eine Fahne je Eingang`);
     assert.equal(sc.castles.length, 1, `${id}: eine Burg am gemeinsamen Ausgang`);
     for (const el of [...sc.castles, ...sc.cliffs]) {
@@ -273,7 +273,7 @@ test('Stil 1 (G9): Lava des Vulkans folgt den Lavakacheln, Kruste ragt höchsten
 
 // Seit der großen Fahne (2026-11-27) je Eingang eine Fahnen-Kachel weniger, außer Wiese (Fahne über Wasser); vorher 226/233/221/196/212
 test('Stil 1 (G9): Bauplatzzahl je Karte (gemalter Hintergrund ändert keine Kacheln, nur die Fahnen-Kacheln fallen weg)', () => {
-  const expected = { meadow: 226, ice: 232, fork: 219, twin: 194, volcano: 211 };
+  const expected = { meadow: 226, ice: 232, fork: 219, twin: 194, volcano: 211, graveyard: 205 };
   for (const id of MAP_IDS) assert.equal(buildableOf(createGame({ mapId: id })).length, expected[id], id);
 });
 
