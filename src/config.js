@@ -774,14 +774,16 @@ export const ELITE = {
 export const NIGHTMARE = {
   goldFactor: 1, rewardFactor: 1, lives: 5, repairUses: 1, hpGrowthLate: 1.16, eliteBonus: 2, eliteEarlier: 2,
   hpSteps: [{ from: 8, factor: 1.2 }, { from: 12, factor: 1.4 }],
+  // Spieltest 28.11. (Welle 15 mit 2 Bossen und Elite zu schwer): Bosse und Elite höchstens mal specialHpCap
+  specialHpCap: 1.3,
 };
 
 // B-189: Leben-Faktor der Gegner in Welle `wave`: factor der letzten Stufe aus mods.hpSteps mit from <= wave, sonst 1
-// (Normalmodus ohne hpSteps immer 1).
-export function nightmareHpFactor(wave, mods = {}) {
+// (Normalmodus ohne hpSteps immer 1). special = Boss oder Elite: höchstens mods.specialHpCap.
+export function nightmareHpFactor(wave, mods = {}, special = false) {
   let f = 1;
   for (const step of mods?.hpSteps || []) if (wave >= step.from) f = step.factor;
-  return f;
+  return special && mods?.specialHpCap ? Math.min(f, mods.specialHpCap) : f;
 }
 
 // B-179: Anzahl der Elite-Gegner in Welle `wave` (0 vor ELITE.from). mods (B-182): { eliteBonus, eliteEarlier }.

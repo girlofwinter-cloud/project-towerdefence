@@ -3728,7 +3728,7 @@ describe('B-182: Albtraum-Modus', () => {
       const n = spawnEnemy(normal, type, wave);
       const a = spawnEnemy(nm, type, wave);
       assert.equal(n.maxHp, Math.round(ENEMY_TYPES[type].hp * hpScale(wave)), `${type} ${wave} normal`);
-      assert.equal(a.maxHp, Math.round(ENEMY_TYPES[type].hp * hpScale(wave, NIGHTMARE.hpGrowthLate) * nightmareHpFactor(wave, mods)), `${type} ${wave} Albtraum`);
+      assert.equal(a.maxHp, Math.round(ENEMY_TYPES[type].hp * hpScale(wave, NIGHTMARE.hpGrowthLate) * nightmareHpFactor(wave, mods, type === 'boss')), `${type} ${wave} Albtraum`);
       assert.equal(a.hp, a.maxHp);
     }
     assert.equal(spawnEnemy(nm, 'grunt', 5).maxHp, spawnEnemy(normal, 'grunt', 5).maxHp, 'vor Welle 8 gleich');
@@ -3930,7 +3930,8 @@ describe('B-189: gestufte Albtraum-Leben im echten Spawn-Ablauf', () => {
         assert.equal(e.maxHp, Math.round(ENEMY_TYPES[e.type].hp * hpScale(wave)), `normal ${e.type}`);
       }
       for (const e of a.enemies) {
-        assert.equal(e.maxHp, Math.round(ENEMY_TYPES[e.type].hp * hpScale(wave, NIGHTMARE.hpGrowthLate) * f), `Albtraum ${e.type}`);
+        const fe = e.elite || isBoss(e) ? Math.min(f, NIGHTMARE.specialHpCap) : f; // Bosse und Elite gedeckelt
+        assert.equal(e.maxHp, Math.round(ENEMY_TYPES[e.type].hp * hpScale(wave, NIGHTMARE.hpGrowthLate) * fe), `Albtraum ${e.type}`);
       }
       if (wave === 5) {
         const nb = n.enemies.find((e) => isBoss(e));
@@ -3975,4 +3976,18 @@ test('Elite-Selbstheilung pausiert nach HP-Schaden (pauseAfterHit)', () => {
   assert.equal(regen.hp, regen.maxHp / 2, 'in der Pause keine Heilung');
   for (let i = 0; i < 60; i++) update(s, 1 / 60);
   assert.ok(regen.hp > regen.maxHp / 2, 'nach der Pause heilt er wieder');
+});
+
+test('Albtraum: Bosse und Elite höchstens specialHpCap mehr Leben, normale Gegner voller Faktor', () => {
+  const nm = createGame({ mapId: 'meadow', mode: 'nightmare' });
+  const mods = nm.modifiers;
+  assert.equal(nightmareHpFactor(15, mods, true), NIGHTMARE.specialHpCap);
+  assert.equal(nightmareHpFactor(9, mods, true), 1.2, 'unter der Grenze unverändert');
+  assert.equal(nightmareHpFactor(15, mods), 1.4);
+  const g = (type, elite) => spawnEnemy(nm, type, 15, null, elite).maxHp;
+  const base = (type) => ENEMY_TYPES[type].hp * hpScale(15, NIGHTMARE.hpGrowthLate);
+  assert.equal(g('boss'), Math.round(base('boss') * NIGHTMARE.specialHpCap));
+  assert.equal(g('tank', 'regen'), Math.round(base('tank') * NIGHTMARE.specialHpCap));
+  assert.equal(g('tank'), Math.round(base('tank') * 1.4));
+  assert.equal(nightmareHpFactor(15, createGame().modifiers, true), 1, 'Normalmodus');
 });

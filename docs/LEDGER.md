@@ -130,3 +130,4 @@ Anhängen ohne die Datei zu lesen: `cat >> docs/LEDGER.md <<'EOF' … EOF`. Übe
 ### 2026-11-28 Elite-Heilpause
 - Elite-Selbstheilung (regen) pausiert 2 s nach HP-Schaden (ELITE.regen.pauseAfterHit), Spieltest: im Albtraum zu stark.
 - Test in game.test.js, Unit + Balance grün; Albtraum-Sims fast unverändert.
+- Albtraum: Bosse und Elite höchstens +30 % Leben (NIGHTMARE.specialHpCap), Spieltest: Welle 15 zu schwer. Frühstart-Risiko rechnet mit.
