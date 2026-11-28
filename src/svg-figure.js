@@ -23,6 +23,9 @@ export const GRADIENTS = {
   's3-darkwood': { type: 'linear', x1: 0, y1: 0, x2: 1, y2: 0, stops: [[0, '#6b4a2e'], [1, '#3a2414']] },
   's3-brass': { type: 'linear', x1: 0, y1: 0, x2: 1, y2: 1, stops: [[0, '#ffe27a'], [0.55, '#d79a2b'], [1, '#8a5a1e']] },
   's3-copper': { type: 'linear', x1: 0, y1: 0, x2: 1, y2: 0, stops: [[0, '#e8a070'], [0.55, '#c9794a'], [1, '#7a3f1e']] },
+  // B-185: goldene Türme (docs/design/elemente/Kosmetik-Aussehen.md), Tausch per GOLD_TOWER_STYLE.grads
+  's1-stone-gold': { type: 'linear', x1: 0, y1: 0, x2: 1, y2: 0, stops: [[0, '#fff3d2'], [0.6, '#e3d2b0'], [1, '#b9a283']] }, // cream, stone-a, stone-b
+  's1-wood-gold': { type: 'linear', x1: 0, y1: 0, x2: 1, y2: 0, stops: [[0, '#ffe27a'], [1, '#b9851d']] }, // gold-light, gold-dark
 };
 
 // Farbe mit Deckkraft: #rgb/#rrggbb/rgba(...) -> rgba(...) (einmal beim Laden)

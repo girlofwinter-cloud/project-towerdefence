@@ -1825,3 +1825,26 @@ export const COSMETICS = {
   night: { name: 'Nacht-Look', unlock: 'Gold im Albtraum auf dieser Karte' },
   goldTowers: { name: 'Goldene Türme', unlock: 'Gold im Albtraum auf allen Karten' },
 };
+
+// B-185: goldene Türme (nur Aussehen, Bauvorlage docs/design/elemente/Kosmetik-Aussehen.md).
+// Farbtausch in den Turm-SVGs: Verläufe (Stein, Holz) und flache Farben; Silhouette und Stufenmarke bleiben.
+export const GOLD_TOWER_STYLE = {
+  // Stein -> s1-stone-gold (cream, stone-a, stone-b), Holz -> s1-wood-gold (gold-light, gold-dark); Verläufe in svg-figure.js
+  grads: {
+    's1-stone': 's1-stone-gold', 's3-marble': 's1-stone-gold', 's3-brick': 's1-stone-gold', 's3-basalt': 's1-stone-gold',
+    's1-wood': 's1-wood-gold', 's3-darkwood': 's1-wood-gold', 's3-copper': 's1-wood-gold',
+  },
+  colors: {
+    '#a9703d': '#e08a1c', // wood-fig-c -> gold-btn-b (Zinnen, Dach)
+    '#6b5a48': '#b9851d', // stone-line -> gold-dark (Steinfugen)
+  },
+  // Glanzkante oben auf Holzteilen (rect): gold-light 5, rund, α 0,9; inset = Abstand zur Oberkante in Entwurfs-px
+  gloss: { color: '#ffe27a', width: 5, alpha: 0.9, inset: 4 },
+  // Funkel (14er Box, Mitte 7/7) in bolt mit ink-Rand 1; size in Kacheln; spots relativ zur Figur-Box (x, y 0..1)
+  sparkle: {
+    path: 'M7 0 L8.5 5.5 L14 7 L8.5 8.5 L7 14 L5.5 8.5 L0 7 L5.5 5.5 Z',
+    color: '#fff6a8', ink: '#2b1a10', line: 1, size: 0.25,
+    spots: [[0.25, 0.35], [0.78, 0.72]],
+    period: 1.4, offset: 0.6, alpha: [0.2, 1], scale: [0.6, 1.1], reducedAlpha: 0.8,
+  },
+};

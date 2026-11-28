@@ -2085,3 +2085,95 @@ test('Stufe 3: beim Aufstieg zeigt der Turm bis swapAt noch Stufe 2, danach das 
   s.effects.length = 0;
   assert.equal(displayLevel(s, t), 3);
 });
+
+// ---------- B-185: goldene Türme ----------
+
+// Zeichnet eine Turmfigur direkt (ohne Sprites) und sammelt alle gesetzten Farben und Verlaufsfarben
+async function recordColors(type, level, opts) {
+  const { drawTowerFigure } = await import('../src/render-towers.js');
+  const colors = [];
+  const calls = [];
+  const props = {};
+  let depth = 0;
+  const grad = { addColorStop: (_, c) => colors.push(String(c).toLowerCase()) };
+  const ctx = new Proxy({}, {
+    get(_, k) {
+      if (k in props) return props[k];
+      return (...a) => {
+        calls.push(`${String(k)}:${a.map((v) => (typeof v === 'number' ? v.toFixed(2) : typeof v)).join(',')}`);
+        if (k === 'save') depth++;
+        if (k === 'restore') depth--;
+        if (k === 'createLinearGradient' || k === 'createRadialGradient') return grad;
+      };
+    },
+    set(_, k, v) { props[k] = v; if ((k === 'fillStyle' || k === 'strokeStyle') && typeof v === 'string') colors.push(v.toLowerCase()); return true; },
+  });
+  drawTowerFigure(ctx, { type, level, x: 100, y: 100, angle: 0.3 }, 0, 1, false, level, opts);
+  return { colors: new Set(colors), calls: calls.join('\n'), depth };
+}
+
+test('B-185 goldene Türme: Gold-Farben statt Holz/Stein, Silhouette gleich, ohne Option unverändert', async () => {
+  const { GOLD_TOWER_STYLE: G } = await import('../src/config.js');
+  for (const type of Object.keys(TOWER_TYPES)) {
+    for (let level = 1; level <= 3; level++) {
+      const plain = await recordColors(type, level);
+      const off = await recordColors(type, level, { gold: false });
+      const gold = await recordColors(type, level, { gold: true });
+      assert.equal(off.calls, plain.calls, `${type} L${level}: gold:false zeichnet wie ohne Option`);
+      assert.deepEqual([...off.colors], [...plain.colors]);
+      assert.equal(gold.depth, 0, 'save/restore ausgewogen');
+      assert.ok([...gold.colors].some((c) => !plain.colors.has(c)), `${type} L${level}: golden zeichnet andere Farben`);
+      assert.ok(gold.colors.has(G.sparkle.color), `${type} L${level}: Funkel in bolt`);
+      // Silhouette: alle Pfade der normalen Figur kommen golden in gleicher Reihenfolge vor (plus Glanz und Funkel)
+      const shape = (s) => s.split('\n').filter((c) => /^(moveTo|lineTo|arc|ellipse|arcTo|rect)/.test(c));
+      const g = shape(gold.calls);
+      let j = 0;
+      for (const c of g) if (j < shape(plain.calls).length && c === shape(plain.calls)[j]) j++;
+      assert.equal(j, shape(plain.calls).length, `${type} L${level}: gleiche Formen in gleicher Reihenfolge`);
+    }
+  }
+  const p1 = await recordColors('arrow', 1);
+  const g1 = await recordColors('arrow', 1, { gold: true });
+  assert.ok(p1.colors.has('#c88a4c') && !g1.colors.has('#c88a4c'), 'Holz s1-wood ersetzt');
+  assert.ok(g1.colors.has('#ffe27a') && g1.colors.has('#b9851d') && g1.colors.has('#e08a1c'), 'gold-light, gold-dark, gold-btn-b');
+  assert.ok(!g1.colors.has('#a9703d') && !g1.colors.has('#6b5a48'), 'Zinnen und Fugen getauscht');
+});
+
+test('B-185 goldene Türme: Palette rein, Farben mit Deckkraft getauscht', async () => {
+  const { goldPalette, goldColor, goldElements } = await import('../src/render-towers.js');
+  const { parseFigure } = await import('../src/svg-figure.js');
+  const pal = goldPalette();
+  assert.equal(pal.grads['s1-stone'], 's1-stone-gold');
+  assert.equal(goldColor('#a9703d', pal), '#e08a1c');
+  assert.equal(goldColor('rgba(107,90,72,0.5)', pal), 'rgba(185,133,29,0.5)');
+  assert.equal(goldColor('#2b1a10', pal), '#2b1a10', 'Kontur ink bleibt');
+  const els = parseFigure('<rect x="10" y="38" width="48" height="12" rx="3" fill="url(#s1-wood)" stroke="#2b1a10" stroke-width="3"/>').all;
+  const before = JSON.stringify(els);
+  const out = goldElements(els, pal);
+  assert.equal(JSON.stringify(els), before, 'Eingabe unverändert');
+  assert.equal(out[0].grad, 's1-wood-gold');
+  assert.equal(out.length, 2, 'Glanzkante oben auf dem Holz');
+  assert.equal(out[1].width, 5);
+});
+
+test('B-185 goldene Türme: eigener Sprite-Satz, normaler Satz bleibt', async () => {
+  const { setSpriteFactory, spriteStats } = await import('../src/sprites.js');
+  const { drawTowerFigure } = await import('../src/render-towers.js');
+  setSpriteFactory((w, h) => { const m = mockCtx(); return { width: w, height: h, getContext: () => m.ctx }; });
+  try {
+    const frame = (opts) => {
+      const m = mockCtx();
+      for (const type of Object.keys(TOWER_TYPES)) for (let level = 1; level <= 3; level++) drawTowerFigure(m.ctx, { type, level, x: 100, y: 100, angle: 0.5 }, 0, 1, false, level, opts);
+      assert.equal(m.depth, 0);
+    };
+    const b0 = spriteStats.builds;
+    frame();
+    const normal = spriteStats.builds - b0;
+    assert.ok(normal > 0);
+    frame({ gold: true });
+    assert.equal(spriteStats.builds - b0, 2 * normal, 'golden: eigener Satz je Typ und Stufe');
+    frame();
+    frame({ gold: true });
+    assert.equal(spriteStats.builds - b0, 2 * normal, 'danach nichts neu gebaut');
+  } finally { setSpriteFactory(); }
+});
