@@ -49,8 +49,10 @@ function riverLine(d) {
     const [ax, ay] = pts[Math.max(0, i - 1)], [bx, by] = pts[Math.min(pts.length - 1, i + 1)];
     const n = Math.hypot(bx - ax, by - ay) || 1;
     return [r2((x - ((by - ay) / n) * d) * K), r2((y + ((bx - ax) / n) * d) * K)];
-  });
+  }).filter(([x, y]) => !onBridge(x, y));
 }
+// Kein Glanz und Glitzern auf der Brücke (Fluss läuft darunter), Spiel-px
+const onBridge = (x, y) => (MAPS.meadow.bridges || []).some(([c, r]) => x > c * TILE - 6 && x < (c + 1) * TILE + 6 && y > r * TILE - 6 && y < (r + 1) * TILE + 6);
 // See der Karte (Entwurfs-px) als Wellenring in Spiel-px, Anteil a der Seegröße
 const lakeRing = (a) => {
   const [x, y, rx, ry] = MAPS.meadow.paintedWater.lake;
