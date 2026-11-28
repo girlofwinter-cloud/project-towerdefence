@@ -69,3 +69,7 @@ Anhängen ohne die Datei zu lesen: `cat >> docs/LEDGER.md <<'EOF' … EOF`. Übe
 - Bug (nur über towerdefence.pages.dev im normalen Safari-Tab): bei ca. 300 px Höhe lag die HUD-Plakette über dem Kanonen-Knopf, Feld oben abgeschnitten.
 - style.css: Höhe aus `--vh` (100dvh, Fallback 100vh) statt 100vh; unter 360 px Höhe HUD flacher (96) und Fähigkeiten 44 px mit Abstand 8.
 - Neuer e2e-Test 932x300 und 844x280 (scheitert ohne Fix). unit 633, e2e 100 grün.
+
+### 2026-11-28 – Start im Hochformat brach das Laden ab
+- Bug (Android Chrome): Seite im Hochformat geöffnet, gedreht -> kein Vollbild-Knopf. Ursache: applyRotateHint rief refreshUI vor `const updateBossBars` (seit B-180), main.js brach ab.
+- Fix: erster Drehhinweis-Aufruf ans Ende der Initialisierung verschoben. Neuer e2e-Test (Hochformat -> quer, keine Fehler, Knopf da). unit 633, e2e 101 grün.
