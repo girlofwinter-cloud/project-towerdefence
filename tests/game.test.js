@@ -3728,7 +3728,7 @@ describe('B-182: Albtraum-Modus', () => {
       const n = spawnEnemy(normal, type, wave);
       const a = spawnEnemy(nm, type, wave);
       assert.equal(n.maxHp, Math.round(ENEMY_TYPES[type].hp * hpScale(wave)), `${type} ${wave} normal`);
-      assert.equal(a.maxHp, Math.round(ENEMY_TYPES[type].hp * hpScale(wave, NIGHTMARE.hpGrowthLate) * nightmareHpFactor(wave, mods, type === 'boss')), `${type} ${wave} Albtraum`);
+      assert.equal(a.maxHp, Math.round(ENEMY_TYPES[type].hp * hpScale(wave, NIGHTMARE.hpGrowthLate) * nightmareHpFactor(wave, mods)), `${type} ${wave} Albtraum`);
       assert.equal(a.hp, a.maxHp);
     }
     assert.equal(spawnEnemy(nm, 'grunt', 5).maxHp, spawnEnemy(normal, 'grunt', 5).maxHp, 'vor Welle 8 gleich');
@@ -3930,7 +3930,7 @@ describe('B-189: gestufte Albtraum-Leben im echten Spawn-Ablauf', () => {
         assert.equal(e.maxHp, Math.round(ENEMY_TYPES[e.type].hp * hpScale(wave)), `normal ${e.type}`);
       }
       for (const e of a.enemies) {
-        const fe = e.elite || isBoss(e) ? Math.min(f, NIGHTMARE.specialHpCap) : f; // Bosse und Elite gedeckelt
+        const fe = e.elite ? Math.min(f, NIGHTMARE.specialHpCap) : f; // Elite gedeckelt, Bosse nicht
         assert.equal(e.maxHp, Math.round(ENEMY_TYPES[e.type].hp * hpScale(wave, NIGHTMARE.hpGrowthLate) * fe), `Albtraum ${e.type}`);
       }
       if (wave === 5) {
@@ -3965,20 +3965,7 @@ describe('B-189: gestufte Albtraum-Leben im echten Spawn-Ablauf', () => {
   });
 });
 
-test('Elite-Selbstheilung pausiert nach HP-Schaden (pauseAfterHit)', () => {
-  const s = createGame();
-  const regen = spawnEnemy(s, 'tank', 10, null, 'regen');
-  regen.hp = regen.maxHp / 2;
-  regen.hurtAt = s.time; // gerade getroffen
-  const pause = ELITE.regen.pauseAfterHit;
-  const steps = Math.floor((pause - 0.1) * 60);
-  for (let i = 0; i < steps; i++) update(s, 1 / 60);
-  assert.equal(regen.hp, regen.maxHp / 2, 'in der Pause keine Heilung');
-  for (let i = 0; i < 60; i++) update(s, 1 / 60);
-  assert.ok(regen.hp > regen.maxHp / 2, 'nach der Pause heilt er wieder');
-});
-
-test('Albtraum: Bosse und Elite höchstens specialHpCap mehr Leben, normale Gegner voller Faktor', () => {
+test('Albtraum: Elite höchstens specialHpCap mehr Leben, Bosse und normale Gegner voller Faktor', () => {
   const nm = createGame({ mapId: 'meadow', mode: 'nightmare' });
   const mods = nm.modifiers;
   assert.equal(nightmareHpFactor(15, mods, true), NIGHTMARE.specialHpCap);
@@ -3986,8 +3973,100 @@ test('Albtraum: Bosse und Elite höchstens specialHpCap mehr Leben, normale Gegn
   assert.equal(nightmareHpFactor(15, mods), 1.4);
   const g = (type, elite) => spawnEnemy(nm, type, 15, null, elite).maxHp;
   const base = (type) => ENEMY_TYPES[type].hp * hpScale(15, NIGHTMARE.hpGrowthLate);
-  assert.equal(g('boss'), Math.round(base('boss') * NIGHTMARE.specialHpCap));
+  assert.equal(g('boss'), Math.round(base('boss') * 1.4));
   assert.equal(g('tank', 'regen'), Math.round(base('tank') * NIGHTMARE.specialHpCap));
   assert.equal(g('tank'), Math.round(base('tank') * 1.4));
   assert.equal(nightmareHpFactor(15, createGame().modifiers, true), 1, 'Normalmodus');
+});
+
+test('Fähigkeiten: Abklingzeit läuft zwischen den Wellen nicht weiter', () => {
+  const s = createGame();
+  setAutoWave(s, false);
+  s.lives = 5;
+  startWave(s);
+  s.waveActive = false; // Wellenende nachstellen
+  assert.ok(useAbility(s, 'repair').ok);
+  const left = abilityCooldownLeft(s, 'repair');
+  for (let i = 0; i < 100; i++) update(s, 1);
+  assert.equal(s.waveActive, false);
+  assert.ok(Math.abs(abilityCooldownLeft(s, 'repair') - left) < 1e-6, 'ohne Welle keine Ladung');
+  s.waveActive = true;
+  update(s, 1);
+  assert.ok(abilityCooldownLeft(s, 'repair') < left, 'in der Welle lädt sie');
+});
+
+// Albtraum-Boss-Verstärkung (NIGHTMARE.bossBuff, Wunsch 28.11.)
+test('Albtraum: Nekromantin beschwört zusätzlich Fledermäuse (Phase 2 mehr), Normalmodus nicht', () => {
+  const { necroBats, necroBatsP2 } = NIGHTMARE.bossBuff;
+  const def = ENEMY_TYPES.necro;
+  const count = (mode, phase) => {
+    const s = createGame({ mode });
+    s.waveActive = true;
+    const n = spawnEnemy(s, 'necro', 10);
+    n.dist = 5 * TILE; n.speed = 0;
+    if (phase === 2) n.phase = 2;
+    n.summonAt = s.time;
+    update(s, 1e-3);
+    return s.enemies.filter((e) => e.type === 'bat' && e.summoned).length;
+  };
+  assert.ok(def && necroBats > 0);
+  assert.equal(count('normal', 1), 0);
+  assert.equal(count('nightmare', 1), necroBats);
+  assert.equal(count('nightmare', 2), necroBatsP2);
+});
+
+test('Albtraum: Oger-König bekommt Phase 2 (Schild, dann schneller), Normalmodus nicht', () => {
+  const P = NIGHTMARE.bossBuff.ogrePhase2;
+  for (const mode of ['normal', 'nightmare']) {
+    const s = createGame({ mode });
+    const b = spawnEnemy(s, 'boss', 10);
+    const speed = b.speed;
+    s.projectiles.push({ x: b.x, y: b.y, targetId: b.id, speed: 1e6, damage: b.maxHp * (1 - P.at) + 1, splash: 0 });
+    update(s, 1e-3);
+    if (mode === 'normal') {
+      assert.notEqual(b.phase, 2);
+      assert.equal(b.speed, speed);
+    } else {
+      assert.equal(b.phase, 2);
+      assert.ok(b.shieldUntil > s.time, 'Schild aktiv');
+      assert.ok(Math.abs(b.speed - speed * P.speedFactor) < 1e-9);
+      assert.equal(s.effects.filter((fx) => fx.kind === 'phase2').length, 1);
+    }
+  }
+});
+
+test('Albtraum: Nekromantin Phase 2 deutlich stärker (Takt, Anzahl, Tempo aus bossBuff.necroPhase2)', () => {
+  const N = NIGHTMARE.bossBuff.necroPhase2;
+  const s = createGame({ mode: 'nightmare' });
+  const n = spawnEnemy(s, 'necro', 10);
+  const speed = n.speed;
+  s.projectiles.push({ x: n.x, y: n.y, targetId: n.id, speed: 1e6, damage: n.maxHp * (1 - ENEMY_TYPES.necro.phase2.at) + 1, splash: 0 });
+  update(s, 1e-3);
+  assert.equal(n.phase, 2);
+  assert.ok(Math.abs(n.speed - speed * N.speedFactor) < 1e-9);
+  assert.ok(Math.abs(n.summonAt - s.time - N.summonInterval) < 0.01, "Takt aus necroPhase2");
+  s.waveActive = true; n.speed = 0; n.dist = 5 * TILE; n.summonAt = s.time; n.shieldUntil = 0;
+  update(s, 1e-3);
+  assert.equal(s.enemies.filter((e) => e.type === 'skeleton' && e.summoned).length, N.summonCount);
+});
+
+test('Elite: Normalmodus viel leichter (kleiner Schild, schwache Heilung mit Pause), Albtraum aus NIGHTMARE.elite', () => {
+  const N = createGame();
+  const M = createGame({ mode: 'nightmare' });
+  const sn = spawnEnemy(N, 'tank', 10, null, 'shield');
+  const sm = spawnEnemy(M, 'tank', 10, null, 'shield');
+  assert.equal(sn.ward, ELITE.shield.wardShare * sn.maxHp);
+  assert.equal(sm.ward, NIGHTMARE.elite.shield.wardShare * sm.maxHp);
+  assert.ok(ELITE.shield.wardShare < NIGHTMARE.elite.shield.wardShare);
+  assert.ok(ELITE.regen.healPerSec < NIGHTMARE.elite.regen.healPerSec);
+  // Treffer: Normalmodus heilt in der Pause nicht, Albtraum heilt sofort
+  for (const s of [N, M]) {
+    const e = spawnEnemy(s, 'tank', 10, null, 'regen');
+    s.projectiles.push({ x: e.x, y: e.y, targetId: e.id, speed: 1e6, damage: e.maxHp / 2, splash: 0, pierce: 0 });
+    update(s, 1e-3);
+    const hp = e.hp;
+    update(s, 0.5);
+    if (s === N) assert.equal(e.hp, hp, 'Normalmodus: Heilpause');
+    else assert.ok(e.hp > hp, 'Albtraum: heilt auch direkt nach Treffer');
+  }
 });

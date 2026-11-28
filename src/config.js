@@ -744,15 +744,15 @@ export const WAVE_EXTRAS = {
 // B-179: Elite-Gegner ab Welle `from`: count in Welle from, danach +1 je `every` Wellen, höchstens max. Gewählt werden
 // gleichmäßig verteilte Gegner der Typen `types` (feste Auswahl, kein Zufall); die Eigenschaft wechselt reihum (traits).
 // swift: Tempo mal speed; shield: einmaliger Schild (wie der Magier-Schild) von wardShare * maxHp;
-// regen: heilt healPerSec * maxHp pro Sekunde, aber erst pauseAfterHit Sekunden nach dem letzten HP-Schaden (Spieltest 28.11.:
-// im Albtraum ohne Pause zu stark). Elite-Gegner bringen rewardFactor mal so viel Gold. Flag enemy.elite fürs Abzeichen.
+// regen: heilt healPerSec * maxHp pro Sekunde, erst pauseAfterHit s nach dem letzten HP-Schaden (0 = immer).
+// Normalmodus viel leichter (Wunsch des Menschen 28.11.); die Albtraum-Werte stehen in NIGHTMARE.elite. Elite-Gegner bringen rewardFactor mal so viel Gold. Flag enemy.elite fürs Abzeichen.
 export const ELITE = {
   from: 10, count: 1, every: 3, max: 3,
   types: ['grunt', 'runner', 'tank', 'shielded'],
   traits: ['shield', 'regen'], // 'swift' (Werte unten) zu stark gegen Zwei Fronten, Balancing 27.11.
   swift: { speed: 1.35 },
-  shield: { wardShare: 0.3 },
-  regen: { healPerSec: 0.025, pauseAfterHit: 1 }, // Spieltest 28.11.: vorher 0.03 und 2 s
+  shield: { wardShare: 0.15 },
+  regen: { healPerSec: 0.01, pauseAfterHit: 2 },
   rewardFactor: 1.5,
 };
 
@@ -774,12 +774,23 @@ export const ELITE = {
 export const NIGHTMARE = {
   goldFactor: 1, rewardFactor: 1, lives: 5, repairUses: 1, hpGrowthLate: 1.16, eliteBonus: 2, eliteEarlier: 2,
   hpSteps: [{ from: 8, factor: 1.2 }, { from: 12, factor: 1.4 }],
-  // Spieltest 28.11. (Welle 15 mit 2 Bossen und Elite zu schwer): Bosse und Elite höchstens mal specialHpCap
+  // Spieltest 28.11. (Welle 15 zu schwer): Elite höchstens mal specialHpCap; Bosse behalten den vollen Faktor
   specialHpCap: 1.3,
+  // Elite im Albtraum (ersetzt ELITE.shield/regen): Heilung immer, auch unter Beschuss (Entscheidung des Menschen 28.11.)
+  elite: { shield: { wardShare: 0.3 }, regen: { healPerSec: 0.025, pauseAfterHit: 0 } },
+  // Boss-Verstärkung (Wunsch des Menschen 28.11.): Nekromantin beschwört zusätzlich necroBats Fledermäuse je Beschwörung
+  // (in Phase 2 necroBatsP2); Oger-König bekommt eine zweite Phase: bei at * maxHp Schild für shieldDuration s und
+  // danach Tempo mal speedFactor (Wut). necroPhase2 ersetzt Werte der Nekromantin-Phase 2 (Spieltest 28.11.: Phase 2
+  // kaum spürbar): schnellerer Takt, mehr Skelette und Wut-Tempo.
+  bossBuff: {
+    necroBats: 1, necroBatsP2: 2,
+    ogrePhase2: { at: 0.5, shieldDuration: 2, speedFactor: 1.35 },
+    necroPhase2: { summonInterval: 3, summonCount: 4, speedFactor: 1.3 },
+  },
 };
 
 // B-189: Leben-Faktor der Gegner in Welle `wave`: factor der letzten Stufe aus mods.hpSteps mit from <= wave, sonst 1
-// (Normalmodus ohne hpSteps immer 1). special = Boss oder Elite: höchstens mods.specialHpCap.
+// (Normalmodus ohne hpSteps immer 1). special = Elite: höchstens mods.specialHpCap.
 export function nightmareHpFactor(wave, mods = {}, special = false) {
   let f = 1;
   for (const step of mods?.hpSteps || []) if (wave >= step.from) f = step.factor;
