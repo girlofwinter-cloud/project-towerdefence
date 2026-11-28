@@ -1,24 +1,52 @@
 name: CI
-
 on:
   pull_request:
   push:
     branches: [main]
 
 jobs:
-  test:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      balance: ${{ steps.f.outputs.balance }}
+      e2e: ${{ steps.f.outputs.e2e }}
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - id: f
+        run: |
+          BASE=${{ github.event.pull_request.base.sha || github.event.before }}
+          FILES=$(git diff --name-only "$BASE" HEAD)
+                    echo "$FILES" | grep -qE '^(src/(game|path|config|hud|sound-events|fx-system)\.js|tests/(balance/|helpers\.js)|package\.json|\.github/workflows/ci\.yml)' && echo balance=true >> $GITHUB_OUTPUT || echo balance=false >> $GITHUB_OUTPUT
+          echo "$FILES" | grep -qE '^(src/|index\.html|style\.css|assets/|tests/e2e/|package\.json|\.github/workflows/ci\.yml)' && echo e2e=true >> $GITHUB_OUTPUT || echo e2e=false >> $GITHUB_OUTPUT
+
+  unit:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-      - name: Unit-Tests
-        run: npm test
-      - name: Balancing-Simulationen
-        run: npm run test:balance
-      - name: Browser-Tests
-        run: |
+        with: { node-version: 22 }
+      - run: npm test
+
+  balance:
+    needs: changes
+    if: needs.changes.outputs.balance == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: npm run test:balance
+
+  e2e:
+    needs: changes
+    if: needs.changes.outputs.e2e == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: |
           npm install --no-save playwright
           npx playwright install --with-deps chromium
           npm run test:e2e
