@@ -73,3 +73,8 @@ Anhängen ohne die Datei zu lesen: `cat >> docs/LEDGER.md <<'EOF' … EOF`. Übe
 ### 2026-11-28 – Start im Hochformat brach das Laden ab
 - Bug (Android Chrome): Seite im Hochformat geöffnet, gedreht -> kein Vollbild-Knopf. Ursache: applyRotateHint rief refreshUI vor `const updateBossBars` (seit B-180), main.js brach ab.
 - Fix: erster Drehhinweis-Aufruf ans Ende der Initialisierung verschoben. Neuer e2e-Test (Hochformat -> quer, keine Fehler, Knopf da). unit 633, e2e 101 grün.
+
+### 2026-11-28 – Vollbild-Knopf im Drehhinweis
+- Wunsch des Menschen: im Hochformat gleich beim Start "Im Vollbild spielen" im Hinweis "Bitte Handy drehen".
+- Tippen: Vollbild plus Querformat festhalten (Android); Knopf nur, wo Vollbild geht (nicht iPhone), im Vollbild ausgeblendet.
+- Neuer e2e-Test (Knopf sichtbar, Tippen -> Vollbild, Knopf weg). unit 638, e2e 106 grün.

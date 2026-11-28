@@ -1,11 +1,11 @@
 // Verbindet Spiel-Logik, Rendering und Bedienung (DOM, Maus, Tastatur).
 import { TILE, FRAME_MARGIN, VIEW_WIDTH, VIEW_HEIGHT, PAINTED_STYLE, FIGURE_STYLE, SHOP_CARD, TOWER_TYPES, ENEMY_TYPES, MAX_WAVES, MAPS, SPEED_STEPS, TARGET_MODES, MAX_SUBSTEP, LOW_LIVES, ABILITIES, ICON, VIEW_FIT, COIN_BURST, HUD_BAR, waveSummary, meteorText } from './config.js';
 import {
-  createGame, stepGame, togglePause, buildTower, upgradeTower, sellTower, setTargetMode, startWave,
+  createGame, stepGame, togglePause, buildTower, upgradeTower, sellTower, setTargetMode, startWave, setAutoWave,
   useAbility, abilityCooldownLeft, canBuild, towerAt, towerStats, masterInfo,
 } from './game.js';
 import { renderView, drawTower, paintedStatus, paintedImage, setPaintedExtent, flagBoxes } from './render.js';
-import { abilityView, overheatNote, startButtonView, waveProgress } from './hud.js';
+import { abilityView, overheatNote, startButtonView, waveProgress, loadAutoWave, saveAutoWave } from './hud.js';
 import { drawIcon } from './render-icons.js';
 import { buildTapStep, aimStep, fieldPoint, canvasSize, moveFocusTile, rotatePauseStep } from './input.js';
 import { createSoundTracker, collectSounds, loadSoundOn, saveSoundOn } from './sound-events.js';
@@ -146,6 +146,9 @@ function soundStorage() {
 }
 ui.soundOn = loadSoundOn(soundStorage());
 setSoundOn(ui.soundOn);
+// Schalter Auto-Start: Spieler-Wahl gilt für jedes neue Spiel (gespeichert wie der Ton)
+ui.autoWave = loadAutoWave(soundStorage());
+setAutoWave(state, ui.autoWave);
 const soundTracker = createSoundTracker();
 // AudioContext erst nach der ersten Nutzeraktion (Autoplay-Regeln)
 for (const evName of ['pointerdown', 'keydown']) window.addEventListener(evName, unlockAudio, { capture: true });
@@ -544,17 +547,28 @@ function applyRotateHint() {
 }
 rotateQuery.addEventListener('change', applyRotateHint);
 $('sound').addEventListener('click', toggleSound);
+$('auto-wave').addEventListener('click', toggleAutoWave);
 
 // B-178: Vollbild-Knopf (nur wo der Browser es kann). Auf Touch-Geräten zusätzlich Querformat festhalten.
 const fullscreen = fullscreenControl(document, window.screen);
 $('fullscreen').hidden = !fullscreen.supported;
 $('fullscreen').addEventListener('click', () => fullscreen.toggle(document.documentElement, window.matchMedia('(pointer: coarse)').matches));
+// Knopf im Drehhinweis: Tippen startet Vollbild und hält das Querformat fest, das Spiel dreht sich dann selbst
+$('rotate-fullscreen').hidden = !fullscreen.supported;
+$('rotate-fullscreen').addEventListener('click', () => fullscreen.enter(document.documentElement, true));
 fullscreen.onChange(() => {
   const on = fullscreen.isOn();
+  $('rotate-fullscreen').hidden = !fullscreen.supported || on; // schon im Vollbild: Knopf weg
   $('fullscreen').setAttribute('aria-pressed', String(on));
   $('fullscreen-label').textContent = on ? 'Vollbild beenden' : 'Vollbild';
 });
 
+function toggleAutoWave() {
+  ui.autoWave = setAutoWave(state, !ui.autoWave);
+  saveAutoWave(soundStorage(), ui.autoWave);
+  flash(ui.autoWave ? 'Auto-Start an: nächste Welle startet von selbst' : 'Auto-Start aus: Welle selbst starten', 'info');
+  refreshUI();
+}
 function toggleSound() {
   ui.soundOn = !ui.soundOn;
   setSoundOn(ui.soundOn);
@@ -636,7 +650,7 @@ function doSell() {
 function restart() {
   // Gesperrte Karte: auf die erste Karte zurückfallen.
   if (mapId !== undefined && !mapOpen(mapId)) mapId = MAP_ORDER[0];
-  state = createGame({ mapId });
+  state = createGame({ mapId, autoWave: ui.autoWave });
   resultSaved = false;
   resultText = [];
   Object.assign(ui, { buildType: null, selectedTowerId: null, pending: null, aiming: false, hoverPx: null, speed: SPEED_STEPS[0], ring: null, ringPreview: null, upgradeHover: false, upgradePreview: null });
@@ -699,6 +713,7 @@ window.addEventListener('keydown', (ev) => {
   else if (key === 'f') toggleSpeed();
   else if (key === 'p') doTogglePause();
   else if (key === 'm' && !ev.repeat && !ev.ctrlKey && !ev.metaKey) toggleSound();
+  else if (key === 'a' && !ev.repeat && !ev.ctrlKey && !ev.metaKey) toggleAutoWave();
 });
 
 // ---------- HUD ----------
@@ -719,6 +734,8 @@ function refreshUI() {
   $('pause-label').textContent = state.paused ? 'Weiter' : 'Pause';
   $('sound-label').textContent = ui.soundOn ? 'Ton an' : 'Ton aus';
   $('sound').setAttribute('aria-pressed', String(ui.soundOn));
+  $('auto-wave').setAttribute('aria-pressed', String(ui.autoWave));
+  $('auto-wave-label').textContent = ui.autoWave ? 'Auto-Start an' : 'Auto-Start aus';
   mapSelect.disabled = state.wave !== 0 || state.waveActive;
   mapSelect.value = state.mapId;
   // B-005: Während einer Welle bleibt der Knopf bedienbar (vorzeitiger Start mit Bonus), bis zur letzten Welle

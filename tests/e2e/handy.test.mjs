@@ -271,3 +271,22 @@ test('Start im Hochformat, dann quer: keine Fehler beim Laden, Vollbild-Knopf si
   assert.deepEqual(errors, []);
   await ctx.close();
 });
+
+// Drehhinweis mit Knopf "Im Vollbild spielen": ein Tippen schaltet Vollbild ein, danach ist der Knopf weg
+test('Hochformat: Drehhinweis zeigt Vollbild-Knopf, Tippen startet Vollbild', async () => {
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+  const page = await ctx.newPage();
+  const errors = [];
+  page.on('pageerror', (e) => errors.push(e.message));
+  await page.goto(url);
+  const btn = page.locator('#rotate-fullscreen');
+  await btn.waitFor({ state: 'visible' });
+  assert.match(await btn.innerText(), /Vollbild/);
+  const b = await btn.boundingBox();
+  assert.ok(b.height >= MIN_TOUCH && b.y + b.height <= 844, `Knopf tippbar im Bild: ${JSON.stringify(b)}`);
+  await btn.tap();
+  await page.waitForFunction(() => document.fullscreenElement !== null, null, { timeout: 3000 });
+  await btn.waitFor({ state: 'hidden' });
+  assert.deepEqual(errors, []);
+  await ctx.close();
+});
