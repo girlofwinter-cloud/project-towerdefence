@@ -1829,7 +1829,13 @@ export const COSMETICS = {
 // B-185: goldene Türme (nur Aussehen, Bauvorlage docs/design/elemente/Kosmetik-Aussehen.md).
 // Farbtausch in den Turm-SVGs: Verläufe (Stein, Holz) und flache Farben; Silhouette und Stufenmarke bleiben.
 export const GOLD_TOWER_STYLE = {
-  // Stein -> s1-stone-gold (cream, stone-a, stone-b), Holz -> s1-wood-gold (gold-light, gold-dark); Verläufe in svg-figure.js
+  // Gold-Verläufe (werden in svg-figure.js GRADIENTS eingetragen): Stein gold-light -> gold -> gold-dark,
+  // Holz gold-btn-a -> gold-btn-b (etwas kräftiger, damit Holz und Stein unterscheidbar bleiben)
+  gradients: {
+    's1-stone-gold': { type: 'linear', x1: 0, y1: 0, x2: 1, y2: 0, stops: [[0, '#ffe27a'], [0.5, '#f2c14e'], [1, '#b9851d']] },
+    's1-wood-gold': { type: 'linear', x1: 0, y1: 0, x2: 1, y2: 0, stops: [[0, '#ffd45a'], [1, '#e08a1c']] },
+  },
+  // Stein -> s1-stone-gold, Holz/Kupfer -> s1-wood-gold; Eis, Lava, Kugel und Leuchten bleiben (Turmtyp erkennbar)
   grads: {
     's1-stone': 's1-stone-gold', 's3-marble': 's1-stone-gold', 's3-brick': 's1-stone-gold', 's3-basalt': 's1-stone-gold',
     's1-wood': 's1-wood-gold', 's3-darkwood': 's1-wood-gold', 's3-copper': 's1-wood-gold',
@@ -1837,14 +1843,21 @@ export const GOLD_TOWER_STYLE = {
   colors: {
     '#a9703d': '#e08a1c', // wood-fig-c -> gold-btn-b (Zinnen, Dach)
     '#6b5a48': '#b9851d', // stone-line -> gold-dark (Steinfugen)
+    '#8a7560': '#b9851d', // Stein dunkel (Kanone Stufe 3) -> gold-dark
+    '#c88a4c': '#ffd45a', // Holz hell -> gold-btn-a
+    '#8a5326': '#b9851d', // Holz dunkel -> gold-dark
+    '#c9794a': '#f2c14e', // Kupfer (Blitzturm) -> gold
+    '#7a3f1e': '#b9851d', // Kupfer dunkel -> gold-dark
+    '#f3b78a': '#ffe27a', // Kupfer Licht -> gold-light
+    '#e8a070': '#ffe27a', // copper-a -> gold-light
   },
   // Glanzkante oben auf Holzteilen (rect): gold-light 5, rund, α 0,9; inset = Abstand zur Oberkante in Entwurfs-px
   gloss: { color: '#ffe27a', width: 5, alpha: 0.9, inset: 4 },
-  // Funkel (14er Box, Mitte 7/7) in bolt mit ink-Rand 1; size in Kacheln; spots relativ zur Figur-Box (x, y 0..1)
+  // Funkel (14er Box, Mitte 7/7) in bolt mit ink-Rand; size in Kacheln; spots relativ zur Figur-Box (x, y 0..1)
   sparkle: {
     path: 'M7 0 L8.5 5.5 L14 7 L8.5 8.5 L7 14 L5.5 8.5 L0 7 L5.5 5.5 Z',
-    color: '#fff6a8', ink: '#2b1a10', line: 1, size: 0.25,
-    spots: [[0.25, 0.35], [0.78, 0.72]],
-    period: 1.4, offset: 0.6, alpha: [0.2, 1], scale: [0.6, 1.1], reducedAlpha: 0.8,
+    color: '#fff6a8', ink: '#2b1a10', line: 1.2, size: 0.4,
+    spots: [[0.22, 0.35], [0.8, 0.7]],
+    period: 1.4, offset: 0.6, alpha: [0.55, 1], scale: [0.7, 1.15], reducedAlpha: 0.9,
   },
 };
