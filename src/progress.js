@@ -130,9 +130,11 @@ export function mapAfterResult(progress, mapId, status) {
 
 // B-183: Albtraum-Abzeichen für ein Spielende: 0 keins, 1 Bronze (gewonnen), 2 Silber (ohne Lebensverlust),
 // 3 Gold (Silber plus erfüllte Gold-Bedingung der Karte).
-export function nightmareBadgeFor(status, lives, maxLives, goldOk) {
+// noLoss (true/false): ob im ganzen Spiel kein Leben verloren ging; fehlt es, zählen nur die Leben am Ende.
+export function nightmareBadgeFor(status, lives, maxLives, goldOk, noLoss) {
   if (status !== 'won') return 0;
   if (!(lives >= maxLives)) return 1;
+  if (noLoss === false) return 1;
   return goldOk ? 3 : 2;
 }
 
@@ -146,12 +148,13 @@ export const BADGE_MAX = MAP_ORDER.length * BADGE_TIERS.length;
 // Rückgabe: newRecord (Wellenrekord verbessert), newStars (Sterne verbessert), unlockedMap (neu freigeschaltete Karten-ID oder null).
 // mode 'nightmare' (B-182): nur der Albtraum-Rekord zählt; keine Sterne, keine Freischaltung, Normal-Stand bleibt.
 // B-183: mit goldOk (true/false, Ergebnis von checkGoldCondition) wird im Albtraum auch das Abzeichen bewertet;
-// maxLives = Höchstleben des Spiels (Standard NIGHTMARE.lives). Rückgabe dann zusätzlich newBadge (neu erreichte Stufe oder 0).
-export function recordResult(progress, { mapId, status, wave, lives, mode, goldOk, maxLives = NIGHTMARE.lives }) {
+// maxLives = Höchstleben des Spiels (Standard NIGHTMARE.lives), noLoss = kein Leben im Spiel verloren (optional).
+// Rückgabe dann zusätzlich newBadge (neu erreichte Stufe oder 0).
+export function recordResult(progress, { mapId, status, wave, lives, mode, goldOk, noLoss, maxLives = NIGHTMARE.lives }) {
   const none = { newRecord: false, newStars: false, unlockedMap: null };
   if (!MAP_ORDER.includes(mapId)) return none;
   if (mode === 'nightmare') {
-    const badge = typeof goldOk === 'boolean' ? nightmareBadgeFor(status, lives, maxLives, goldOk) : null;
+    const badge = typeof goldOk === 'boolean' ? nightmareBadgeFor(status, lives, maxLives, goldOk, noLoss) : null;
     return recordNightmare(progress, mapId, wave, badge);
   }
   const old = mapProgress(progress, mapId);

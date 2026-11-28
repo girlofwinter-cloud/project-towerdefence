@@ -695,7 +695,9 @@ body.fs-gate #rotate-hint { position: fixed; inset: 0; z-index: 60; display: fle
   .map-thumb-wrap { width: 100%; } .map-thumb-wrap .map-lock { width: 44px; height: 44px; left: calc(50% - 22px); top: calc(50% - 22px); }
   .map-badges { left: 8px; width: calc(100% - 16px); bottom: 56px; gap: 6px; } .map-badges .badge { width: 36px; height: 36px; align-self: center; }
   .map-nm-locked { font-size: 12px; } .map-nm-locked svg { width: 16px; height: 16px; }
-  #overlay.nightmare-win .end-card { margin-top: 0; padding: 40px 16px 14px; }
+  /* Schmale Fenster (z. B. 667x375): Plakette schmaler und nach rechts, damit die Medaille links (120 + 16 Abstand + 8 Rand) Platz hat; 24 rechts für das überstehende Band */
+  #overlay.nightmare-win .end-card { margin-top: 0; padding: 40px 16px 14px; max-width: calc(100vw - 168px);
+    left: max(0px, calc(144px - (100vw - min(520px, 100vw - 168px)) / 2)); }
   #overlay.nightmare-win .end-badge { width: 120px; height: 120px; left: -136px; top: calc(50% - 60px); }
   #overlay.nightmare-win.fresh .end-rays { width: 360px; height: 360px; left: -256px; top: calc(50% - 180px); }
   .end-nm { gap: 8px; } #end-nm-title { font-size: 22px; } .end-badges .badge { width: 32px; height: 32px; }

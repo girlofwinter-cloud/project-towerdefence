@@ -417,6 +417,9 @@ export function useAbility(state, id, x, y) {
     state.effects.push({ kind: 'chill', ttl: 0.4, max: 0.4 });
   } else if (id === 'repair') {
     if (state.lives >= maxLives(state)) return { ok: false, reason: 'Leben sind bereits voll' };
+    // B-183: fehlende Leben gelten als verloren, auch wenn sie nicht über einen Durchbruch gezählt wurden
+    state.track ??= { towerTypes: [], sells: 0 };
+    state.track.livesLost = Math.max(state.track.livesLost ?? 0, maxLives(state) - state.lives);
     state.lives = Math.min(maxLives(state), state.lives + def.heal);
   }
   a.uses += 1;
@@ -489,6 +492,9 @@ function moveEnemies(state, dt) {
   if (!leaked.length) return;
   state.enemies = state.enemies.filter((e) => !done(e));
   for (const e of leaked) state.lives -= e.leak;
+  // B-183: verlorene Leben mitzählen (Silber/Gold verlangen „ohne Lebensverlust“, auch wenn die Reparatur sie zurückholt)
+  state.track ??= { towerTypes: [], sells: 0 };
+  state.track.livesLost = (state.track.livesLost ?? 0) + leaked.reduce((sum, e) => sum + e.leak, 0);
   if (state.lives <= 0) {
     state.lives = 0;
     state.status = 'lost';

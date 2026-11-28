@@ -1,5 +1,5 @@
 // Verbindet Spiel-Logik, Rendering und Bedienung (DOM, Maus, Tastatur).
-import { BADGE_TIERS, TILE, FRAME_MARGIN, VIEW_WIDTH, VIEW_HEIGHT, PAINTED_STYLE, FIGURE_STYLE, SHOP_CARD, TOWER_TYPES, ENEMY_TYPES, MAX_WAVES, MAPS, SPEED_STEPS, TARGET_MODES, MAX_SUBSTEP, LOW_LIVES, ABILITIES, ICON, VIEW_FIT, COIN_BURST, HUD_BAR, SOUND, waveSummary, meteorText } from './config.js';
+import { BADGE_TIERS, BADGE_STYLE, TILE, FRAME_MARGIN, VIEW_WIDTH, VIEW_HEIGHT, PAINTED_STYLE, FIGURE_STYLE, SHOP_CARD, TOWER_TYPES, ENEMY_TYPES, MAX_WAVES, MAPS, SPEED_STEPS, TARGET_MODES, MAX_SUBSTEP, LOW_LIVES, ABILITIES, ICON, VIEW_FIT, COIN_BURST, HUD_BAR, SOUND, waveSummary, meteorText } from './config.js';
 import {
   createGame, stepGame, togglePause, buildTower, upgradeTower, sellTower, setTargetMode, startWave, setAutoWave,
   useAbility, abilityCooldownLeft, abilityMaxUses, canBuild, towerAt, towerStats, masterInfo, checkGoldCondition, maxLives,
@@ -960,7 +960,7 @@ function refreshUI() {
 // B-184: Siegbildschirm im Albtraum (Medaille fliegt nur bei neuem Abzeichen ein); v = nightmareWinView oder null
 function renderNightmareWin(v) {
   const over = $('overlay');
-  if (v) { $('overlay-title').textContent = 'Albtraum besiegt!'; $('end-ribbon-band').setAttribute('fill', '#c4452f'); }
+  if (v) { $('overlay-title').textContent = 'Albtraum besiegt!'; $('end-ribbon-band').setAttribute('fill', BADGE_STYLE.ribbon); }
   const key = v ? `${v.title}|${v.fly}|${state.lives}` : '';
   if (over.dataset.nmKey === key) return;
   over.dataset.nmKey = key;
@@ -998,8 +998,10 @@ function saveResult() {
   resultSaved = true;
   const before = { ...mapProgress(progress, state.mapId) };
   const nightmareBefore = { ...nightmareProgress(progress, state.mapId) };
-  // B-183: im Albtraum zählt auch das Abzeichen (Gold-Bedingung und volle Leben)
-  const badgeInfo = state.mode === 'nightmare' ? { goldOk: checkGoldCondition(state, state.mapId).ok, maxLives: maxLives(state) } : {};
+  // B-183: im Albtraum zählt auch das Abzeichen (Gold-Bedingung und kein Leben verloren)
+  const badgeInfo = state.mode === 'nightmare'
+    ? { goldOk: checkGoldCondition(state, state.mapId).ok, maxLives: maxLives(state), noLoss: !(state.track?.livesLost > 0) }
+    : {};
   const res = recordResult(progress, { mapId: state.mapId, status: state.status, wave: state.wave, lives: state.lives, mode: state.mode, ...badgeInfo });
   if (state.mode === 'nightmare') { // B-182: Albtraum bleibt auf der Karte, Normal-Stand unberührt
     saveProgress(getStorage(), progress);

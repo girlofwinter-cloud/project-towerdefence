@@ -3854,3 +3854,21 @@ test('B-183 HUD: goldGoalView zeigt erfüllt/verletzt nur im Albtraum', async ()
   assert.equal(goldGoalView('nightmare', { ok: false, label: '' }).hidden, true);
   assert.equal(goldGoalView('nightmare', undefined).hidden, true);
 });
+
+test('B-183: Durchbrüche zählen verlorene Leben, Reparatur löscht sie nicht', () => {
+  const s = createGame({ mapId: 'fork', mode: 'nightmare' });
+  assert.equal(s.track?.livesLost ?? 0, 0);
+  s.gold = 0; // keine Türme: beide Gegner kommen durch
+  for (let i = 0; i < 2; i++) spawnEnemy(s, 'grunt');
+  run(s, 120);
+  assert.equal(s.track.livesLost, 2 * ENEMY_TYPES.grunt.leak);
+  assert.equal(useAbility(s, 'repair').ok, true);
+  assert.equal(s.track.livesLost, 2 * ENEMY_TYPES.grunt.leak, 'Reparatur holt Leben zurück, der Verlust bleibt gezählt');
+});
+
+test('B-183: Reparatur merkt fehlende Leben als verloren', () => {
+  const s = createGame({ mapId: 'fork', mode: 'nightmare' });
+  s.lives -= 1;
+  useAbility(s, 'repair');
+  assert.ok(s.track.livesLost >= 1);
+});

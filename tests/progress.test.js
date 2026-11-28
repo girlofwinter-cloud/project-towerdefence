@@ -403,6 +403,10 @@ test('B-183: nightmareBadgeFor je Stufe erfüllt und verletzt', () => {
   assert.equal(nightmareBadgeFor('won', max, max, false), 2, 'ohne Lebensverlust, Bedingung verletzt: Silber');
   assert.equal(nightmareBadgeFor('won', max, max, true), 3, 'Silber plus Bedingung: Gold');
   assert.equal(nightmareBadgeFor('won', NaN, max, true), 1, 'ungültige Leben zählen nicht als voll');
+  assert.equal(nightmareBadgeFor('won', max, max, true, false), 1, 'Leben verloren und repariert: nur Bronze');
+  assert.equal(nightmareBadgeFor('won', max, max, true, true), 3, 'kein Verlust: Gold bleibt möglich');
+  assert.equal(nightmareBadgeFor('won', max, max, false, true), 2);
+  assert.equal(nightmareBadgeFor('won', max - 1, max, true, true), 1, 'weniger Leben am Ende: nie mehr als Bronze');
   assert.deepEqual(BADGE_TIERS, ['Bronze', 'Silber', 'Gold']);
 });
 
@@ -413,6 +417,8 @@ test('B-183: Abzeichen wird gespeichert und nur verbessert', () => {
   assert.equal(nightmareProgress(p, 'meadow').badge, undefined);
   assert.equal(nm('won', 5, false).newBadge, 2);
   assert.equal(nightmareProgress(p, 'meadow').badge, 2);
+  const q = emptyProgress();
+  assert.equal(recordResult(q, { mapId: 'meadow', status: 'won', wave: MAX_WAVES, lives: 5, mode: 'nightmare', goldOk: true, noLoss: false, maxLives: 5 }).newBadge, 1, 'noLoss false: Bronze');
   assert.equal(nm('won', 2, true).newBadge, 0, 'Bronze verschlechtert Silber nicht');
   assert.equal(nightmareProgress(p, 'meadow').badge, 2);
   assert.equal(nm('won', 5, true).newBadge, 3);

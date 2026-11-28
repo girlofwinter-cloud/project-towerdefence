@@ -133,7 +133,7 @@ function paintThumb(cv, mapId) {
 // onPick(id, mode) (mode 'normal' | 'nightmare').
 // Rückgabe: show(closable), hide(), isOpen(), handleKey(ev) (true = Taste verbraucht).
 // B-184: kleines Schloss (Albtraum gesperrt) und Hinweistext
-const SMALL_LOCK = '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M7 11 V8 a5 5 0 0 1 10 0 V11" fill="none" stroke="#d9dde2" stroke-width="2.5"/>'
+const SMALL_LOCK = '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M7 11 V8 a5 5 0 0 1 10 0 V11" fill="none" stroke="var(--lock-shackle)" stroke-width="2.5"/>'
   + '<rect x="4" y="10" width="16" height="12" rx="3" fill="#f2c14e" stroke="#2b1a10" stroke-width="2"/></svg>';
 const NM_LOCKED = 'Albtraum: 3 Sterne nötig';
 export function mountStartScreen(root, opts) {
