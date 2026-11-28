@@ -529,7 +529,11 @@ test('B-212: Friedhöfe im gemalten Hintergrund (Fläche, Grabsteine, Gruft), nu
   const svg = buildPaintedSvg(s);
   assert.equal((svg.match(/class="yard"/g) || []).length, 2);
   assert.equal((svg.match(/class="crypt"/g) || []).length, 2);
-  assert.ok(svg.includes('fill="#2c3a30" stroke="#4a4038" stroke-width="4" stroke-dasharray="6 5"'));
+  // Rahmen dauerhaft (nicht nur beim Aufleuchten), mind. 3 px bei 19 px je Kachel (Handy)
+  assert.ok(svg.includes('fill="#2c3a30" stroke="#4a4038" stroke-width="9" stroke-dasharray="18 15"'));
+  assert.ok(9 * (19 / PAINTED_STYLE.unit) >= 3);
+  const nmSvg = buildPaintedSvg(createGame({ mapId: 'graveyard', mode: 'nightmare' }), { look: 'nightmare' });
+  assert.ok(nmSvg.includes('fill="#241c2a" stroke="#5a2030" stroke-width="9"'), 'Albtraum: Rahmen ebenso');
   assert.ok(!svg.includes('NaN'));
   assert.equal(buildPaintedScene(createGame({ mapId: 'meadow' })).yards.length, 0);
 });

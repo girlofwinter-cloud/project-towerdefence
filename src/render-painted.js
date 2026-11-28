@@ -600,13 +600,15 @@ export function buildPaintedSvg(state, opts = {}) {
 
 // B-212: Friedhof als SVG (Bauvorlage Karte-Nachtfriedhof, Formen): Boden mit gestricheltem Rand, Grabsteine (Box 20x26,
 // Fuß unten Mitte), Gruft (Box 40x40, Fuß unten Mitte) mit dunkler Tür. Kontur ink.
+// Rand dauerhaft sichtbar: 9 Entwurfs-px = mind. 3 px bei ca. 19 px je Kachel (Handy), Striche im Verhältnis 6/5
+const YARD_EDGE = 9, YARD_DASH = '18 15';
 function yardSvg(y, Y) {
   const ink = '#2b1a10';
   const [ga, gb] = Y.grave || ['#aab0c8', '#5a5f78'], [ca, cb] = Y.crypt || ['#8a8ea8', '#4a4c66'];
   const grave = ([x, yy]) => `<g transform="translate(${f(x - 10)} ${f(yy - 13)})"><path d="M0 26 V10 A10 10 0 0 1 20 10 V26 Z" fill="${ga}"/>`
     + `<path d="M10 26 V0 A10 10 0 0 1 20 10 V26 Z" fill="${gb}"/><path d="M0 26 V10 A10 10 0 0 1 20 10 V26 Z" fill="none" stroke="${ink}" stroke-width="2"/></g>`;
   const [cx, cy] = y.crypt;
-  return `<g class="yard"><rect x="${y.x}" y="${y.y}" width="${y.w}" height="${y.h}" rx="10" fill="${Y.ground}" stroke="${Y.edge}" stroke-width="4" stroke-dasharray="6 5"/>`
+  return `<g class="yard"><rect x="${y.x}" y="${y.y}" width="${y.w}" height="${y.h}" rx="10" fill="${Y.ground}" stroke="${Y.edge}" stroke-width="${YARD_EDGE}" stroke-dasharray="${YARD_DASH}"/>`
     + y.graves.map(grave).join('')
     + `<g class="crypt" transform="translate(${f(cx - 20)} ${f(cy - 40)})"><path d="M0 40 V14 L20 0 L40 14 V40 Z" fill="${ca}" stroke="${ink}" stroke-width="3"/>`
     + `<path d="M0 40 V27 H40 V40 Z" fill="${cb}" opacity=".7"/><path d="M12 40 V24 H28 V40 Z" fill="${Y.door}"/></g></g>`;

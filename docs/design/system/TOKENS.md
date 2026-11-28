@@ -2,7 +2,7 @@
 
 Erzeugt aus `tokens.json` mit `node scripts/design-tokens.mjs`. Nicht von Hand ändern.
 
-## Farben (346)
+## Farben (347)
 
 | Token | Wert | Verwendung |
 |---|---|---|
@@ -152,6 +152,7 @@ Erzeugt aus `tokens.json` mit `node scripts/design-tokens.mjs`. Nicht von Hand �
 | `map-graveyard-pine-4` | `#5a6a52` | Karte Nachtfriedhof (B-212): Tanne Stufe 4 von 4. |
 | `map-graveyard-yard` | `#2c3a30` | Karte Nachtfriedhof (B-212): Friedhof-Boden (Friedhofkacheln). |
 | `map-graveyard-yard-edge` | `#4a4038` | Karte Nachtfriedhof (B-212): Friedhof-Rand, Strich 6/5 gestrichelt. |
+| `map-graveyard-door` | `#1a1412` | Karte Nachtfriedhof (B-212): Gruft-Tür im Ruhezustand (dunkel). |
 | `map-graveyard-lantern` | `#ffd27a` | Karte Nachtfriedhof (B-212): Laternenlicht, Aufleuchten beim Skelett-Trupp. |
 | `map-graveyard-light` | `#c8d6ff` | Karte Nachtfriedhof (B-212): kühles Mondlicht (light.tint). |
 | `nm-graveyard-1` | `#3e3446` | Karte Nachtfriedhof im Albtraum (B-216): Bodenverlauf Stufe 1 von 3. |

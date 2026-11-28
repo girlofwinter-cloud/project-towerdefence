@@ -506,7 +506,7 @@ export const MAPS = {
         trunk: ['#2a2a40', '#5e5e7c'], fruit: null,
         rock: ['#6a7090', '#b8c8e6'], cliff: ['#5a6a52', '#3e4c40', '#4a4c66', '#2a2a40', '#2b1a10'],
         // Friedhöfe: Boden, Rand (gestrichelt), Grabstein hell/dunkel, Gruft hell/dunkel, Gruft-Tür, Laterne
-        yard: { ground: '#2c3a30', edge: '#4a4038', grave: ['#aab0c8', '#5a5f78'], crypt: ['#8a8ea8', '#4a4c66'], door: '#1a1412', lantern: '#ffd27a' },
+        yard: { ground: '#2c3a30', edge: '#4a4038', grave: ['#aab0c8', '#5a5f78'], crypt: ['#8a8ea8', '#4a4c66'], door: '#1a1412' /* map-graveyard-door */, lantern: '#ffd27a' },
       },
       path: { main: '#b0a07e', edge: '#4a3a28', outline: '#2b1a10', mid: '#c8b890', fringe: '#8aa68a', fringeAccent: '#e6d27a', groove: '#1c2420' },
       paint: { dark: [28, 36, 32], darkAlpha: 0.45, light: [138, 166, 138], lightAlpha: 0.22, tint: '200,214,255' },
