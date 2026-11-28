@@ -758,13 +758,17 @@ export const ELITE = {
 // B-182: Albtraum-Modus. Gilt zusätzlich zu den Karten-Modifikatoren.
 // goldFactor: mal START_GOLD (gerundet); rewardFactor: mal Kopfgeld (gerundet, mindestens 1); lives: Start- und Höchstleben
 // (auch Grenze der Reparatur); repairUses: Einsätze der Reparatur; hpGrowthLate: ersetzt HP_GROWTH.late;
-// eliteBonus: Elite-Gegner mehr je Welle (auch über ELITE.max hinaus); eliteEarlier: so viele Wellen früher ab ELITE.from.
+// eliteBonus: Elite-Gegner mehr je Welle (auch über ELITE.max hinaus); eliteEarlier: so viele Wellen früher ab ELITE.from;
+// hpFactor (B-189): mal Gegner-Leben in allen Wellen.
 // B-186 (28.11., grob, Feinabstimmung macht der Mensch): vorher goldFactor 0.7, rewardFactor 0.8, hpGrowthLate 1.18,
 // eliteEarlier 2. Damit scheiterten Kanonen-Mix und perfektes Spiel schon in Welle 2-10 (Start-Gold reichte nicht).
 // Jetzt (tests/balance/albtraum.test.js, dt 1/30): Kanonen-Mix scheitert in Welle 10-16 (normal 16-20), perfektes Spiel
 // erreicht Welle 19-20 (meist knapp verloren, Zangenangriff ohne Lebensverlust); Start-Gold kürzen kippt Eiswelt und
 // Zwei Fronten schon in Welle 2-3.
-export const NIGHTMARE = { goldFactor: 1, rewardFactor: 0.9, lives: 5, repairUses: 1, hpGrowthLate: 1.16, eliteBonus: 1, eliteEarlier: 0 };
+// B-189 (28.11., Entscheidung des Menschen „deutlich“ nach eigenem Spiel: Albtraum war leicht): hpFactor neu (Gegner-Leben
+// ab Welle 1 mal hpFactor, auch Bosse und Elite; Lava und Meteor wachsen nicht mit), rewardFactor 0.9 -> 0.8,
+// Elite ab Welle 8 (eliteEarlier 0 -> 2) mit einem mehr (eliteBonus 1 -> 2). Messwerte in tests/balance/albtraum.test.js.
+export const NIGHTMARE = { goldFactor: 1, rewardFactor: 0.8, lives: 5, repairUses: 1, hpGrowthLate: 1.16, eliteBonus: 2, eliteEarlier: 2, hpFactor: 1.4 };
 
 // B-179: Anzahl der Elite-Gegner in Welle `wave` (0 vor ELITE.from). mods (B-182): { eliteBonus, eliteEarlier }.
 export function eliteCount(wave, mods = {}) {

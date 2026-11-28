@@ -3705,10 +3705,26 @@ describe('B-182: Albtraum-Modus', () => {
 
   test('spätes HP-Wachstum hpGrowthLate', () => {
     const s = createGame({ mode: 'nightmare' });
-    assert.equal(spawnEnemy(s, 'grunt', 10).maxHp, Math.round(ENEMY_TYPES.grunt.hp * hpScale(10)), 'bis Welle 10 gleich');
-    assert.equal(spawnEnemy(s, 'grunt', 15).maxHp, Math.round(ENEMY_TYPES.grunt.hp * hpScale(15, NIGHTMARE.hpGrowthLate)));
+    // B-189: dazu überall mal hpFactor
+    assert.equal(spawnEnemy(s, 'grunt', 10).maxHp, Math.round(ENEMY_TYPES.grunt.hp * hpScale(10) * NIGHTMARE.hpFactor), 'bis Welle 10 gleiches Wachstum');
+    assert.equal(spawnEnemy(s, 'grunt', 15).maxHp, Math.round(ENEMY_TYPES.grunt.hp * hpScale(15, NIGHTMARE.hpGrowthLate) * NIGHTMARE.hpFactor));
     assert.ok(NIGHTMARE.hpGrowthLate > HP_GROWTH.late);
     assert.ok(hpScale(15, NIGHTMARE.hpGrowthLate) > hpScale(15));
+  });
+
+  // B-189: Gegner-Leben im Albtraum ab Welle 1 mal hpFactor (normaler Gegner und Boss), Normalmodus ohne Faktor
+  test('hpFactor: Gegner-Leben im Albtraum höher, auch beim Boss', () => {
+    assert.ok(NIGHTMARE.hpFactor > 1);
+    assert.equal(modeModifiers('nightmare').hpFactor, NIGHTMARE.hpFactor);
+    const normal = createGame({ mapId: 'meadow' });
+    const nm = createGame({ mapId: 'meadow', mode: 'nightmare' });
+    for (const [type, wave] of [['grunt', 1], ['boss', 5]]) {
+      const n = spawnEnemy(normal, type, wave);
+      const a = spawnEnemy(nm, type, wave);
+      assert.equal(n.maxHp, Math.round(ENEMY_TYPES[type].hp * hpScale(wave)), `${type} normal`);
+      assert.equal(a.maxHp, Math.round(ENEMY_TYPES[type].hp * hpScale(wave) * NIGHTMARE.hpFactor), `${type} Albtraum`);
+      assert.equal(a.hp, a.maxHp);
+    }
   });
 
   // B-186: Lava und Meteor wachsen im Albtraum wie die Gegner-HP (hpGrowthLate), im Normalmodus wie bisher
