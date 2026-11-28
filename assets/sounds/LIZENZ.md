@@ -66,3 +66,9 @@ Die Lizenz CC0 hat der Mensch am 26.11.2026 auf den jeweiligen OpenGameArt-Seite
 | ../music/music-fork.m4a | Zangenangriff | Medieval: Exploration | RandomMind | https://opengameart.org/content/medieval-exploration | CC0 | Exploration.mp3 (320 kbit/s) umgewandelt |
 | ../music/music-twin.m4a | Zwei Fronten | Medieval: Minstrel Dance | RandomMind | https://opengameart.org/content/medieval-minstrel-dance | CC0 | Minstrel_Dance.mp3 (320 kbit/s) umgewandelt |
 | ../music/music-volcano.m4a | Vulkan | Medieval: Battle | RandomMind | https://opengameart.org/content/medieval-battle | CC0 | battle.mp3 (320 kbit/s) umgewandelt |
+
+Albtraum-Modus (B-187): Lizenz CC0 hat der Mensch am 28.11.2026 auf der OpenGameArt-Seite geprüft (Screenshot).
+
+| Datei | Modus | Titel | Autor | Quelle | Lizenz | Bearbeitung |
+|---|---|---|---|---|---|---|
+| ../music/music-nightmare.m4a | Albtraum (alle Karten) | Fantasy - Battlegrounds (Remastered) | Doge | https://opengameart.org/node/114717 | CC0 | battleground_remastered.mp3 (192 kbit/s) nach AAC (.m4a, 96 kbit/s) umgewandelt; Lautstärke über `SOUND.music.nightmare.gain` (0,52) |

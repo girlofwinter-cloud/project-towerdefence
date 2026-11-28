@@ -1,9 +1,9 @@
 // Stil 1 (G6): Türme nach dem Entwurf (Z.105–109). Feste Teile als Sprite je Typ x Stufe x Pixeldichte,
 // drehende Teile (Kanonenrohr um (36,40), Gewehr um (30,22)) live. Fußpunkt 0,39 Kachel unter der Kachelmitte.
 // Stufenmarke (.bd1) zeichnet render.js in einem eigenen Durchgang nach allen Figuren. Nur Darstellung.
-import { TILE, FIGURE_STYLE as S } from './config.js';
+import { TILE, FIGURE_STYLE as S, GOLD_TOWER_STYLE as GOLD } from './config.js';
 import { towerFigure } from './figures.js';
-import { drawElements } from './svg-figure.js';
+import { drawElements, parseFigure, withAlpha } from './svg-figure.js';
 import { sprite, drawSprite, dprOf } from './sprites.js';
 import { starPath } from './draw-utils.js';
 import { idlePose } from './tower-fx.js';
@@ -65,10 +65,93 @@ export function towerMuzzle(t, level, out = [0, 0]) {
   return figurePoint(t, lv, p[0], p[1], out);
 }
 
-// Fester Teil als Sprite (oder direkt, wenn kein Canvas verfügbar ist)
+// ---------- B-185: goldene Türme (Farbtausch, Silhouette bleibt) ----------
+const rgbKey = (c) => {
+  const m = /^rgba?\(([^,]+),([^,]+),([^,)]+)/.exec(c || '');
+  return m ? m.slice(1, 4).map((v) => +v).join(',') : null;
+};
+const hexRgb = (h) => { const n = parseInt(h.slice(1), 16); return `${(n >> 16) & 255},${(n >> 8) & 255},${n & 255}`; };
+
+// Gold-Palette (rein): Verlaufs- und Farbtausch aus GOLD_TOWER_STYLE; rgb-Schlüssel für Farben mit Deckkraft
+export function goldPalette(style = GOLD) {
+  const rgb = {};
+  for (const [from, to] of Object.entries(style.colors)) rgb[hexRgb(from)] = to;
+  return { grads: { ...style.grads }, colors: { ...style.colors }, rgb, gloss: style.gloss };
+}
+
+// Eine Farbe golden tauschen (#rrggbb direkt, rgba(...) mit gleicher Deckkraft); sonst unverändert
+export function goldColor(c, pal = goldPalette()) {
+  if (!c) return c;
+  const key = c.toLowerCase();
+  if (Object.hasOwn(pal.colors, key)) return pal.colors[key];
+  const rgb = rgbKey(c);
+  if (rgb && Object.hasOwn(pal.rgb, rgb)) {
+    const a = /rgba\([^)]*,\s*([\d.]+)\s*\)/.exec(c);
+    return withAlpha(pal.rgb[rgb], a ? parseFloat(a[1]) : 1);
+  }
+  return c;
+}
+
+// Elementliste golden (rein, neue Objekte): Verläufe/Farben tauschen, Glanzkante oben auf Holz-Rechtecken
+export function goldElements(els, pal = goldPalette()) {
+  const out = [];
+  for (const el of els) {
+    const grad = el.grad && Object.hasOwn(pal.grads, el.grad) ? pal.grads[el.grad] : el.grad;
+    out.push({ ...el, path2d: null, grad, fill: goldColor(el.fill, pal), stroke: goldColor(el.stroke, pal) });
+    const s = el.shape;
+    if (grad === 's1-wood-gold' && s && s[0] === 'rect' && pal.gloss) {
+      const g = pal.gloss;
+      const [, x, y, w] = s;
+      const r = s[5] || 0;
+      const y0 = y + g.inset;
+      const svg = `<path d="M${x + r + g.width / 2} ${y0} H${x + w - r - g.width / 2}" stroke="${g.color}" stroke-width="${g.width}" stroke-linecap="round" opacity="${g.alpha}" fill="none"/>`;
+      out.push(...parseFigure(svg).all);
+    }
+  }
+  return out;
+}
+
+// Goldene Figur je normaler Figur (einmal abgeleitet, Ebenen und Maße gleich)
+const goldCache = new WeakMap();
+export function goldFigure(f) {
+  let g = goldCache.get(f);
+  if (g) return g;
+  const pal = goldPalette();
+  g = { ...f, gold: true, layers: f.layers.map((l) => ({ name: l.name, els: goldElements(l.els, pal) })) };
+  goldCache.set(f, g);
+  return g;
+}
+
+let sparkleEls = null;
+// Zwei Funkel (bolt) an festen Stellen der Figur-Box, Takt 1,4 s, zweites versetzt; reduced: stehend
+function drawSparkles(ctx, f, k, time, reduced) {
+  const P = GOLD.sparkle;
+  sparkleEls ??= parseFigure(`<path d="${P.path}" fill="${P.color}" stroke="${P.ink}" stroke-width="${P.line}" stroke-linejoin="round"/>`).all;
+  const [x0, y0, x1, y1] = f.box;
+  const base = (P.size * TILE) / k / 14; // 14er Box -> 0,25 Kachel
+  const t = Number.isFinite(time) ? Math.abs(time) : 0;
+  const a0 = typeof ctx.globalAlpha === 'number' ? ctx.globalAlpha : 1;
+  P.spots.forEach(([fx, fy], i) => {
+    let a = P.reducedAlpha, sc = 1;
+    if (!reduced) {
+      const w = 0.5 - 0.5 * Math.cos((TWO_PI * (t + i * P.offset)) / P.period); // 0 -> 1 -> 0
+      a = P.alpha[0] + (P.alpha[1] - P.alpha[0]) * w;
+      sc = P.scale[0] + (P.scale[1] - P.scale[0]) * w;
+    }
+    ctx.save();
+    ctx.globalAlpha = a0 * a;
+    ctx.translate(x0 + (x1 - x0) * fx, y0 + (y1 - y0) * fy);
+    ctx.scale(base * sc, base * sc);
+    ctx.translate(-7, -7);
+    drawElements(ctx, sparkleEls);
+    ctx.restore();
+  });
+}
+
+// Fester Teil als Sprite (oder direkt, wenn kein Canvas verfügbar ist); goldene Figuren eigener Schlüssel
 function drawPart(ctx, f, part, els, k, dpr) {
   if (!els.length) return;
-  const sp = sprite(`tower:${f.type}:${f.level}:${part}:${dpr}`, f.box, k * dpr, (c) => drawElements(c, els));
+  const sp = sprite(`tower:${f.type}:${f.level}${f.gold ? ':gold' : ''}:${part}:${dpr}`, f.box, k * dpr, (c) => drawElements(c, els));
   if (sp) drawSprite(ctx, sp);
   else drawElements(ctx, els);
 }
@@ -119,10 +202,13 @@ function drawIdlePart(ctx, layer, cfg, p) {
 // Turm ohne Stufenmarke. shot: Anteil des Rückstoßes 0..1 (1 = gerade geschossen).
 // time: Spielzeit für die Ruhe-Animation der Stufe 3, reduced: prefers-reduced-motion (Grundstellung),
 // level: angezeigte Stufe (beim Aufstieg bis zum Figurwechsel noch 2), sonst t.level.
-export function drawTowerFigure(ctx, t, shot, time, reduced = false, level = t.level) {
+// opts.gold: goldene Türme (B-185, Kosmetik), gleiche Silhouette mit Gold-Farben und zwei Funkeln.
+export function drawTowerFigure(ctx, t, shot, time, reduced = false, level = t.level, opts = null) {
   const lv = levelOf(level);
-  const f = towerFigure(t.type, lv, S.trim);
-  if (!f) return;
+  const gold = !!opts?.gold;
+  const base = towerFigure(t.type, lv, S.trim);
+  if (!base) return;
+  const f = gold ? goldFigure(base) : base;
   const k = towerScaleOf(t.type, lv);
   const s = Number.isFinite(shot) ? Math.max(0, Math.min(1, shot)) : 0;
   const dpr = dprOf(ctx);
@@ -160,6 +246,7 @@ export function drawTowerFigure(ctx, t, shot, time, reduced = false, level = t.l
     ctx.restore();
   }
   if (!glowDone) drawShotGlow(ctx, f, t.type, s);
+  if (gold) drawSparkles(ctx, f, k, time, reduced);
   ctx.restore();
 }
 

@@ -11,7 +11,7 @@ import { buildTapStep, aimStep, fieldPoint, canvasSize, moveFocusTile, rotatePau
 import { createSoundTracker, collectSounds, loadSoundOn, saveSoundOn } from './sound-events.js';
 import { unlockAudio, setSoundOn, playSound, updateMusic } from './audio.js';
 import { loadProgress, saveProgress, recordResult, isUnlocked, isNightmareUnlocked, nightmareResultLines, nightmareProgress, mapProgress, starText, resultLines, startMap, mapAfterResult, starsFor, MAP_ORDER } from './progress.js';
-import { mountStartScreen, endView, starsHtml, STAR_COUNT, nightmareWinView } from './screens.js';
+import { mountStartScreen, endView, starsHtml, STAR_COUNT, nightmareWinView, mapSelectOptions, mapSelectValue, parseMapSelectValue } from './screens.js';
 import { badgeSvg } from './badge-art.js';
 import { fullscreenControl } from './fullscreen.js';
 import { createBossBars } from './boss-bar.js';
@@ -479,26 +479,33 @@ $('start-wave').addEventListener('click', doStartWave);
 
 // Kartenauswahl: nur vor Welle 1 möglich
 const mapSelect = $('map-select');
-for (const id of Object.keys(MAPS)) {
+// Testmodus: zusätzlich je Karte ein Eintrag "<Karte> (Albtraum)"
+for (const o of mapSelectOptions({ testMode: TEST_MODE })) {
   const opt = document.createElement('option');
-  opt.value = id;
+  opt.value = o.value;
   mapSelect.appendChild(opt);
 }
 // Beschriftung mit Sternen, gesperrte Karten mit Zusatz "(gesperrt)" und nicht wählbar.
 // <option> kann kein Bild zeigen, darum Text statt Schloss-Emoji (B-096).
 function refreshMapOptions() {
   for (const opt of mapSelect.options) {
-    const name = MAPS[opt.value].name;
-    const open = mapOpen(opt.value);
+    const { mapId: id, mode: m } = parseMapSelectValue(opt.value);
+    const name = MAPS[id].name;
+    if (m === 'nightmare') { opt.textContent = `${name} (Albtraum)`; continue; } // nur Testmodus, immer offen
+    const open = mapOpen(id);
     opt.disabled = !open;
-    opt.textContent = open ? `${name} ${starText(mapProgress(progress, opt.value).stars)}` : `${name} (gesperrt)`;
+    opt.textContent = open ? `${name} ${starText(mapProgress(progress, id).stars)}` : `${name} (gesperrt)`;
   }
 }
+// Außerhalb des Testmodus zeigt die Auswahl wie bisher nur die Karte (Modus bleibt beim Wechsel erhalten).
+function mapSelectCurrent() { return TEST_MODE ? mapSelectValue(state.mapId, state.mode) : state.mapId; }
 refreshMapOptions();
-mapSelect.value = state.mapId;
+mapSelect.value = mapSelectCurrent();
 mapSelect.addEventListener('change', () => {
-  if (state.wave !== 0 || state.waveActive || !mapOpen(mapSelect.value)) { mapSelect.value = state.mapId; return; }
-  mapId = mapSelect.value;
+  const picked = parseMapSelectValue(mapSelect.value);
+  if (state.wave !== 0 || state.waveActive || !mapOpen(picked.mapId)) { mapSelect.value = mapSelectCurrent(); return; }
+  mapId = picked.mapId;
+  if (TEST_MODE) mode = picked.mode;
   // Gewählte Karte merken (B-101); im Testmodus gibt es keinen Speicher.
   progress.lastMap = mapId;
   saveProgress(getStorage(), progress);
@@ -761,7 +768,7 @@ function refreshUI() {
   $('auto-wave').setAttribute('aria-pressed', String(ui.autoWave));
   $('auto-wave-label').textContent = ui.autoWave ? 'Auto-Start an' : 'Auto-Start aus';
   mapSelect.disabled = state.wave !== 0 || state.waveActive;
-  mapSelect.value = state.mapId;
+  mapSelect.value = mapSelectCurrent();
   // B-005: Während einer Welle bleibt der Knopf bedienbar (vorzeitiger Start mit Bonus), bis zur letzten Welle
   const sb = startButtonView(state);
   $('start-wave').disabled = sb.disabled;
