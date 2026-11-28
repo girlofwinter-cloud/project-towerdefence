@@ -1,17 +1,19 @@
 // Verbindet Spiel-Logik, Rendering und Bedienung (DOM, Maus, Tastatur).
-import { TILE, FRAME_MARGIN, VIEW_WIDTH, VIEW_HEIGHT, PAINTED_STYLE, FIGURE_STYLE, SHOP_CARD, TOWER_TYPES, ENEMY_TYPES, MAX_WAVES, MAPS, SPEED_STEPS, TARGET_MODES, MAX_SUBSTEP, LOW_LIVES, ABILITIES, ICON, VIEW_FIT, COIN_BURST, HUD_BAR, SOUND, waveSummary, meteorText } from './config.js';
+import { BADGE_TIERS, BADGE_STYLE, TILE, FRAME_MARGIN, VIEW_WIDTH, VIEW_HEIGHT, PAINTED_STYLE, FIGURE_STYLE, SHOP_CARD, TOWER_TYPES, ENEMY_TYPES, MAX_WAVES, MAPS, SPEED_STEPS, TARGET_MODES, MAX_SUBSTEP, LOW_LIVES, ABILITIES, ICON, VIEW_FIT, COIN_BURST, HUD_BAR, SOUND, waveSummary, meteorText } from './config.js';
 import {
   createGame, stepGame, togglePause, buildTower, upgradeTower, sellTower, setTargetMode, startWave, setAutoWave,
-  useAbility, abilityCooldownLeft, canBuild, towerAt, towerStats, masterInfo,
+  useAbility, abilityCooldownLeft, abilityMaxUses, canBuild, towerAt, towerStats, masterInfo, checkGoldCondition, maxLives,
 } from './game.js';
 import { renderView, drawTower, paintedStatus, paintedImage, setPaintedExtent, flagBoxes } from './render.js';
-import { abilityView, overheatNote, startButtonView, waveProgress, loadAutoWave, saveAutoWave } from './hud.js';
+import { abilityView, overheatNote, startButtonView, waveProgress, loadAutoWave, saveAutoWave, goldGoalView } from './hud.js';
 import { drawIcon } from './render-icons.js';
 import { buildTapStep, aimStep, fieldPoint, canvasSize, moveFocusTile, rotatePauseStep, fullscreenGate } from './input.js';
 import { createSoundTracker, collectSounds, loadSoundOn, saveSoundOn, loadVolumes, saveVolumes } from './sound-events.js';
 import { unlockAudio, setSoundOn, setVolumes, playSound, updateMusic } from './audio.js';
-import { loadProgress, saveProgress, recordResult, isUnlocked, mapProgress, starText, resultLines, startMap, mapAfterResult, starsFor, MAP_ORDER } from './progress.js';
-import { mountStartScreen, endView, starsHtml, STAR_COUNT } from './screens.js';
+import { loadProgress, saveProgress, recordResult, isUnlocked, isNightmareUnlocked, nightmareResultLines, nightmareProgress, mapProgress, starText, resultLines, startMap, mapAfterResult, starsFor, MAP_ORDER } from './progress.js';
+import { mountStartScreen, mountCosmeticsMenu, endView, starsHtml, STAR_COUNT, nightmareWinView, mapSelectOptions, mapSelectValue, parseMapSelectValue } from './screens.js';
+import { activeCosmetics } from './cosmetics.js';
+import { badgeSvg } from './badge-art.js';
 import { fullscreenControl } from './fullscreen.js';
 import { createBossBars } from './boss-bar.js';
 import { ringRadius, tileCenterPx, ringCenter, infoOnLeft, pickTower, buildRingView, towerRingView } from './ring-menu.js';
@@ -116,6 +118,7 @@ landscapeQuery.addEventListener('change', measureExtent);
 const $ = (id) => document.getElementById(id);
 const ui = { hudDim: false, buildType: null, selectedTowerId: null, ring: null, ringPreview: null, upgradeHover: false, upgradePreview: null, hover: null, pending: null, aiming: false, hoverPx: null, speed: SPEED_STEPS[0], message: '', messageKind: 'error', messageTtl: 0 };
 let mapId;
+let mode = 'normal'; // B-182: Spielmodus ('normal' | 'nightmare'), bleibt beim Neustart erhalten
 let state = createGame();
 
 // prefers-reduced-motion (B-067): schaltet das Wackeln beim Boss-Auftritt aus (render liest ui.reducedMotion)
@@ -159,6 +162,12 @@ for (const evName of ['pointerdown', 'keydown']) window.addEventListener(evName,
 // Merker: Ergebnis dieses Spiels schon gespeichert? (refreshUI läuft alle 0,1 s)
 let resultSaved = false;
 let resultText = []; // Zeilen fürs Overlay (resultLines)
+let winView = null; // B-184: Albtraum-Sieg (nightmareWinView), sonst null
+// B-184: Zeichen der Gold-Anzeige (erfüllt: Haken, verletzt: Kreuz), Bauvorlage Albtraum-Gold-Anzeige
+const GG_MARK = {
+  ok: '<svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="13" fill="var(--message-info)" stroke="var(--ink)" stroke-width="3"/><path d="M9 16.5 L14 21 L23 11" fill="none" stroke="var(--cream)" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  broken: '<svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="13" fill="var(--message-bad)" stroke="var(--ink)" stroke-width="3"/><path d="M11 11 L21 21 M21 11 L11 21" fill="none" stroke="var(--cream)" stroke-width="3.5" stroke-linecap="round"/></svg>',
+};
 
 // Für Tests und Neugierige: im Browser-Konsole `__game` eintippen.
 window.__game = () => state;
@@ -474,26 +483,33 @@ $('start-wave').addEventListener('click', doStartWave);
 
 // Kartenauswahl: nur vor Welle 1 möglich
 const mapSelect = $('map-select');
-for (const id of Object.keys(MAPS)) {
+// Testmodus: zusätzlich je Karte ein Eintrag "<Karte> (Albtraum)"
+for (const o of mapSelectOptions({ testMode: TEST_MODE })) {
   const opt = document.createElement('option');
-  opt.value = id;
+  opt.value = o.value;
   mapSelect.appendChild(opt);
 }
 // Beschriftung mit Sternen, gesperrte Karten mit Zusatz "(gesperrt)" und nicht wählbar.
 // <option> kann kein Bild zeigen, darum Text statt Schloss-Emoji (B-096).
 function refreshMapOptions() {
   for (const opt of mapSelect.options) {
-    const name = MAPS[opt.value].name;
-    const open = mapOpen(opt.value);
+    const { mapId: id, mode: m } = parseMapSelectValue(opt.value);
+    const name = MAPS[id].name;
+    if (m === 'nightmare') { opt.textContent = `${name} (Albtraum)`; continue; } // nur Testmodus, immer offen
+    const open = mapOpen(id);
     opt.disabled = !open;
-    opt.textContent = open ? `${name} ${starText(mapProgress(progress, opt.value).stars)}` : `${name} (gesperrt)`;
+    opt.textContent = open ? `${name} ${starText(mapProgress(progress, id).stars)}` : `${name} (gesperrt)`;
   }
 }
+// Außerhalb des Testmodus zeigt die Auswahl wie bisher nur die Karte (Modus bleibt beim Wechsel erhalten).
+function mapSelectCurrent() { return TEST_MODE ? mapSelectValue(state.mapId, state.mode) : state.mapId; }
 refreshMapOptions();
-mapSelect.value = state.mapId;
+mapSelect.value = mapSelectCurrent();
 mapSelect.addEventListener('change', () => {
-  if (state.wave !== 0 || state.waveActive || !mapOpen(mapSelect.value)) { mapSelect.value = state.mapId; return; }
-  mapId = mapSelect.value;
+  const picked = parseMapSelectValue(mapSelect.value);
+  if (state.wave !== 0 || state.waveActive || !mapOpen(picked.mapId)) { mapSelect.value = mapSelectCurrent(); return; }
+  mapId = picked.mapId;
+  if (TEST_MODE) mode = picked.mode;
   // Gewählte Karte merken (B-101); im Testmodus gibt es keinen Speicher.
   progress.lastMap = mapId;
   saveProgress(getStorage(), progress);
@@ -527,8 +543,10 @@ const startScreen = mountStartScreen($('start-screen'), {
   getProgress: () => progress,
   allOpen: TEST_MODE,
   currentMap: () => (TEST_MODE ? state.mapId : startMap(progress)),
-  onPick: (id) => {
+  currentMode: () => mode, // B-184: nach einem Albtraum-Spiel öffnet die Kartenauswahl in der Albtraum-Ansicht
+  onPick: (id, pickedMode = 'normal') => {
     mapId = id;
+    mode = pickedMode;
     progress.lastMap = id;
     saveProgress(getStorage(), progress);
     // Handy: Vollbild schon bei der Kartenwahl, damit Chromes Vollbild-Hinweis vor Welle 1 wieder verschwindet
@@ -538,6 +556,25 @@ const startScreen = mountStartScreen($('start-screen'), {
   },
 });
 $('to-maps').addEventListener('click', () => startScreen.show(true));
+// ---------- B-185: Menü „Aussehen“ (Kosmetik) ----------
+// Testseite: echter Fortschritt fehlt, darum ein eigener Stand im Speicher mit allen Belohnungen frei, anfangs aus
+// (sonst sähen alle Testseiten-Spiele golden aus). Normal: Auswahl im Spielfortschritt, gespeichert.
+const cosProgress = TEST_MODE ? testCosmeticsProgress() : progress;
+function testCosmeticsProgress() {
+  const nightmare = Object.fromEntries(MAP_ORDER.map((id) => [id, { bestWave: MAX_WAVES, badge: BADGE_TIERS.length }]));
+  return { maps: {}, nightmare, cosmetics: { night: Object.fromEntries(MAP_ORDER.map((id) => [id, false])), goldTowers: false } };
+}
+// Nacht-Look und goldene Türme fürs Rendering (render.js liest ui.night und ui.goldTowers); reine Optik
+function applyCosmetics() {
+  const c = activeCosmetics(cosProgress, state.mapId);
+  ui.night = c.night;
+  ui.goldTowers = c.goldTowers;
+}
+const cosMenu = mountCosmeticsMenu($('cosmetics'), {
+  getProgress: () => cosProgress,
+  onChange: () => { if (!TEST_MODE) saveProgress(getStorage(), progress); applyCosmetics(); },
+});
+document.querySelector('#start-screen .cos-open')?.addEventListener('click', () => cosMenu.open());
 if (!TEST_MODE) startScreen.show();
 // B-137: Drehhinweis im Hochformat pausiert das Spiel; nach dem Drehen weiter, wenn die Pause vom Hinweis kam
 let pausedByRotate = false;
@@ -700,9 +737,12 @@ function doSell() {
 function restart() {
   // Gesperrte Karte: auf die erste Karte zurückfallen.
   if (mapId !== undefined && !mapOpen(mapId)) mapId = MAP_ORDER[0];
-  state = createGame({ mapId, autoWave: ui.autoWave });
+  // B-182: Albtraum nur auf Karten mit allen Sternen (Testseite: immer)
+  if (mode === 'nightmare' && !TEST_MODE && !isNightmareUnlocked(progress, mapId)) mode = 'normal';
+  state = createGame({ mapId, mode, autoWave: ui.autoWave });
   resultSaved = false;
   resultText = [];
+  winView = null;
   Object.assign(ui, { buildType: null, selectedTowerId: null, pending: null, aiming: false, hoverPx: null, speed: SPEED_STEPS[0], ring: null, ringPreview: null, upgradeHover: false, upgradePreview: null });
   refreshUI();
 }
@@ -741,6 +781,7 @@ function keepFocus() {
 }
 
 window.addEventListener('keydown', (ev) => {
+  if (cosMenu.handleKey(ev)) return; // B-185: Menü „Aussehen“ offen
   if (startScreen.handleKey(ev)) return; // C5: Startbildschirm offen (hat Vorrang vor dem Ton-Feld)
   if (ev.key === 'Escape' && !soundPop.hidden) { setSoundPop(false); $('sound').focus(); return; } // B-188
   if (fieldKey(ev)) return;
@@ -770,6 +811,7 @@ window.addEventListener('keydown', (ev) => {
 // ---------- HUD ----------
 const updateBossBars = createBossBars(); // B-180: Boss-Leiste im HUD
 function refreshUI() {
+  applyCosmetics(); // B-185: folgt Karte und Auswahl
   if (state.status !== 'playing' || state.paused) ui.aiming = false; // Zielmodus nur im laufenden Spiel
   updateBossBars(state, ui, performance.now() / 1000);
   $('gold').textContent = state.gold.toLocaleString('de-DE');
@@ -796,7 +838,7 @@ function refreshUI() {
   $('auto-wave').setAttribute('aria-pressed', String(ui.autoWave));
   $('auto-wave-label').textContent = ui.autoWave ? 'Auto-Start an' : 'Auto-Start aus';
   mapSelect.disabled = state.wave !== 0 || state.waveActive;
-  mapSelect.value = state.mapId;
+  mapSelect.value = mapSelectCurrent();
   // B-005: Während einer Welle bleibt der Knopf bedienbar (vorzeitiger Start mit Bonus), bis zur letzten Welle
   const sb = startButtonView(state);
   $('start-wave').disabled = sb.disabled;
@@ -818,9 +860,33 @@ function refreshUI() {
     $('wave-preview').textContent = `Kommt: ${parts.join(', ')}`;
   }
 
+  // B-183: Gold-Bedingung im Albtraum (erfüllt oder verletzt)
+  const gg = goldGoalView(state.mode, checkGoldCondition(state, state.mapId));
+  const ggEl = $('gold-goal');
+  ggEl.hidden = gg.hidden;
+  document.body.classList.toggle('mode-nightmare', state.mode === 'nightmare'); // B-184: Kartenwahl-Liste weicht dem Gold-Chip
+  if (gg.hidden) ggEl.dataset.key = '';
+  else if (ggEl.dataset.key !== `${gg.text}|${gg.ok}`) {
+    // B-184: Wechsel auf verletzt blitzt einmal auf; Handy quer (nur Zeichen): Meldung beim Start und beim Verletzen
+    const wasOk = ggEl.dataset.key?.endsWith('|true');
+    const first = !ggEl.dataset.key || !ggEl.dataset.key.startsWith(`${gg.text}|`);
+    ggEl.dataset.key = `${gg.text}|${gg.ok}`;
+    ggEl.classList.toggle('broken', !gg.ok);
+    ggEl.classList.remove('flash');
+    if (wasOk && !gg.ok && !ui.reducedMotion) { void ggEl.offsetWidth; ggEl.classList.add('flash'); }
+    ggEl.title = gg.title;
+    ggEl.setAttribute('aria-label', gg.title);
+    ggEl.querySelector('.gg-text').textContent = gg.text;
+    setHtml(ggEl.querySelector('.gg-mark'), GG_MARK[gg.ok ? 'ok' : 'broken']);
+    if (landscapeQuery.matches && state.status === 'playing') {
+      if (first) flash(gg.text, 'info');
+      else if (wasOk && !gg.ok) flash(`Gold verfehlt: ${gg.text.replace(/^Gold: /, '')}`);
+    }
+  }
+
   for (const [id, def] of Object.entries(ABILITIES)) {
     const btn = abilityBtns[id];
-    const v = abilityView(def, state.abilities[id].uses, abilityCooldownLeft(state, id));
+    const v = abilityView({ ...def, maxUses: abilityMaxUses(state, id) }, state.abilities[id].uses, abilityCooldownLeft(state, id)); // B-182: Albtraum
     btn.setAttribute('aria-label', v.aria);
     if (btn.dataset.state === 'charging' && v.state === 'ready') { btn.classList.remove('pop'); void btn.offsetWidth; btn.classList.add('pop'); }
     btn.dataset.state = v.state;
@@ -832,7 +898,7 @@ function refreshUI() {
     // B-112: Meteor-Schaden wächst mit der Welle, der Tooltip zeigt den aktuellen Wert
     if (id === 'meteor' && btn.dataset.wave !== String(state.wave)) {
       btn.dataset.wave = String(state.wave);
-      btn.title = meteorText(state.wave);
+      btn.title = meteorText(state.wave, state.modifiers?.hpGrowthLate);
     }
   }
 
@@ -879,6 +945,7 @@ function refreshUI() {
   // C5: Plakette mit Band (Titel) und erreichten Sternen dieses Spiels
   if (state.status !== 'playing') {
     const end = endView(state.status, starsFor(state.status, state.lives));
+    if (state.mode === 'nightmare') end.showStars = false; // B-182: keine Sterne im Albtraum
     $('overlay-title').textContent = end.title;
     $('end-ribbon-band').setAttribute('fill', end.ribbon);
     setHtml($('end-stars'), end.showStars ? starsHtml(end.stars, 52) : '');
@@ -887,6 +954,30 @@ function refreshUI() {
   $('overlay-stats').textContent = `Welle ${state.wave} · ${state.kills} Gegner besiegt`;
   if (state.status !== 'playing' && !resultSaved) saveResult();
   renderResultLines($('overlay-progress'), resultText);
+  renderNightmareWin(state.status !== 'playing' ? winView : null);
+}
+
+// B-184: Siegbildschirm im Albtraum (Medaille fliegt nur bei neuem Abzeichen ein); v = nightmareWinView oder null
+function renderNightmareWin(v) {
+  const over = $('overlay');
+  if (v) { $('overlay-title').textContent = 'Albtraum besiegt!'; $('end-ribbon-band').setAttribute('fill', BADGE_STYLE.ribbon); }
+  const key = v ? `${v.title}|${v.fly}|${state.lives}` : '';
+  if (over.dataset.nmKey === key) return;
+  over.dataset.nmKey = key;
+  over.classList.toggle('nightmare-win', !!v);
+  over.classList.toggle('fresh', !!v?.fly);
+  $('end-nm').hidden = !v;
+  if (!v) { setHtml($('end-badge'), ''); return; }
+  setHtml($('end-badge'), badgeSvg(200, v.tier, `${v.title}`));
+  $('end-badge').classList.remove('fly');
+  if (v.fly) { void $('end-badge').offsetWidth; $('end-badge').classList.add('fly'); }
+  $('end-nm-title').textContent = v.title;
+  setHtml($('end-badges'), v.slots.map((x) => badgeSvg(40, x.reached ? x.tier : 0, x.label)).join(''));
+  $('end-cond').textContent = v.condition;
+  setHtml($('end-values'), `<span>Welle ${state.wave} / ${MAX_WAVES}</span><span>Leben ${Math.max(0, state.lives)} / ${maxLives(state)}</span>`);
+  $('end-reward').hidden = !v.reward;
+  $('end-reward').querySelector('span').textContent = v.reward ?? '';
+  $('restart').focus({ preventScroll: true });
 }
 
 // Erste Zeile normal, weitere als hervorgehobene Meldungen (nur neu bauen, wenn sich etwas ändert).
@@ -906,12 +997,27 @@ function renderResultLines(el, lines) {
 function saveResult() {
   resultSaved = true;
   const before = { ...mapProgress(progress, state.mapId) };
-  const res = recordResult(progress, { mapId: state.mapId, status: state.status, wave: state.wave, lives: state.lives });
+  const nightmareBefore = { ...nightmareProgress(progress, state.mapId) };
+  // B-183: im Albtraum zählt auch das Abzeichen (Gold-Bedingung und kein Leben verloren)
+  const badgeInfo = state.mode === 'nightmare'
+    ? { goldOk: checkGoldCondition(state, state.mapId).ok, maxLives: maxLives(state), noLoss: !(state.track?.livesLost > 0) }
+    : {};
+  const res = recordResult(progress, { mapId: state.mapId, status: state.status, wave: state.wave, lives: state.lives, mode: state.mode, ...badgeInfo });
+  if (state.mode === 'nightmare') { // B-182: Albtraum bleibt auf der Karte, Normal-Stand unberührt
+    saveProgress(getStorage(), progress);
+    resultText = nightmareResultLines(progress, state.mapId, res, nightmareBefore);
+    winView = state.status === 'won' ? nightmareWinView(progress, state.mapId, res) : null; // B-184
+    $('restart').textContent = winView ? 'Nochmal spielen' : 'Neues Spiel';
+    $('to-maps').textContent = winView ? 'Kartenauswahl' : 'Karten';
+    return;
+  }
   // Nach einem Sieg die nächste Karte vorwählen: „Neues Spiel“ startet dort, gemerkt auch fürs nächste Öffnen.
   mapId = mapAfterResult(progress, state.mapId, state.status);
   if (mapId !== state.mapId) progress.lastMap = mapId;
   saveProgress(getStorage(), progress);
   refreshMapOptions();
+  winView = null;
+  $('to-maps').textContent = 'Karten';
   resultText = resultLines(progress, state.mapId, res, before);
   $('restart').textContent = mapId !== state.mapId ? `Weiter: ${MAPS[mapId].name}` : 'Neues Spiel';
 }
@@ -927,7 +1033,7 @@ function frame(now) {
   // Töne: Ereignisse immer erkennen (sonst käme nach dem Einschalten ein Schwall), nur bei Ton an abspielen
   for (const ev of collectSounds(soundTracker, state, now / 1000)) if (ui.soundOn) playSound(ev);
   // B-116/B-118: Musik der Karte laden/starten und je nach Spielstatus ein- oder ausblenden
-  updateMusic({ status: state.status, paused: state.paused, mapId: state.mapId });
+  updateMusic({ status: state.status, paused: state.paused, mapId: state.mapId, mode: state.mode });
   ui.messageTtl -= dt;
   ctx.setTransform(view.sx, 0, 0, view.sy, 0, 0); // HiDPI: Canvas-Einheiten (VIEW_WIDTH x VIEW_HEIGHT) -> Geräte-px
   renderView(ctx, state, ui);
@@ -947,7 +1053,7 @@ if (TEST_MODE) {
     ui,
     restartOn: (id) => { mapId = id; restart(); },
     // Weiterspielen nach erzwungenem Spielende: Overlay-Text des alten Ergebnisses verwerfen.
-    resume: () => { resultSaved = false; resultText = []; mapId = state.mapId; },
+    resume: () => { resultSaved = false; resultText = []; winView = null; mapId = state.mapId; },
     refresh: refreshUI,
   }));
 }

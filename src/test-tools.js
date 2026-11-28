@@ -1,6 +1,7 @@
 // Werkzeuge der Testseite: reine Logik ohne DOM, verändern nur den Spielzustand.
 // Nicht für das normale Spiel gedacht; die Testseite (src/test-page.js) ruft sie auf.
-import { MAX_WAVES, START_LIVES, TEST_TOOLS } from './config.js';
+import { MAX_WAVES, TEST_TOOLS } from './config.js';
+import { maxLives } from './game.js';
 
 // Gewünschte Welle auf 1..MAX_WAVES begrenzen (ungültige Eingaben ergeben Welle 1).
 export function clampWave(n) {
@@ -25,7 +26,7 @@ export function prepareWave(state, n) {
   state.waveTime = 0;
   state.autoWaveIn = null; // B-121: Testseite startet die vorbereitete Welle nicht automatisch
   // Nach einem Spielende mit vollen Leben weiterspielen (sonst endet das Spiel beim ersten Leck).
-  if (state.status !== 'playing') state.lives = START_LIVES;
+  if (state.status !== 'playing') state.lives = maxLives(state);
   state.status = 'playing';
   return wave;
 }
@@ -33,7 +34,7 @@ export function prepareWave(state, n) {
 // Wird pro Frame aufgerufen: hält Gold bzw. Leben oben.
 export function applyCheats(state, { infiniteGold = false, invincible = false } = {}) {
   if (infiniteGold && state.gold < TEST_TOOLS.gold) state.gold = TEST_TOOLS.gold;
-  if (invincible && state.status === 'playing' && state.lives < START_LIVES) state.lives = START_LIVES;
+  if (invincible && state.status === 'playing' && state.lives < maxLives(state)) state.lives = maxLives(state);
 }
 
 // Alle Fähigkeiten sofort wieder bereit (auch aufgebrauchte).

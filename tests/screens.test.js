@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { MAPS, MAX_WAVES } from '../src/config.js';
 import { emptyProgress, MAP_ORDER } from '../src/progress.js';
-import { mapCards, moveFocus, endView, starsHtml, STAR_COUNT } from '../src/screens.js';
+import { mapCards, moveFocus, endView, starsHtml, STAR_COUNT, mapSelectOptions, mapSelectValue, parseMapSelectValue } from '../src/screens.js';
 
 const [M0, M1, M2] = MAP_ORDER;
 
@@ -94,4 +94,125 @@ test('B-180 Boss-Leiste: erscheint mit dem Boss, Phase-Text und Schild, steht na
   assert.equal(ui.bossBarShown, false);
   // ohne Element im DOM: nichts tun, nicht crashen
   createBossBars({ getElementById: () => null })(state, ui, 0);
+});
+
+// B-182: Knopf „Albtraum“ nur auf Karten mit allen Sternen (Testseite: auf allen)
+test('B-182: mapCards zeigt den Albtraum nur bei allen Sternen', () => {
+  const p = { maps: { [M0]: { bestWave: MAX_WAVES, stars: STAR_COUNT }, [M1]: { bestWave: MAX_WAVES, stars: STAR_COUNT - 1 } } };
+  const cards = mapCards(p);
+  assert.equal(cards[0].nightmare, true);
+  assert.equal(cards[1].nightmare, false);
+  assert.equal(cards[2].nightmare, false);
+  assert.ok(mapCards(emptyProgress(), { allOpen: true }).every((c) => c.nightmare));
+});
+
+test('mapSelectOptions: normal nur Karten, Testmodus zusätzlich je Karte eine Albtraum-Variante', () => {
+  const ids = Object.keys(MAPS);
+  assert.deepEqual(mapSelectOptions().map((o) => o.value), ids);
+  assert.ok(mapSelectOptions().every((o) => o.mode === 'normal'));
+  const t = mapSelectOptions({ testMode: true });
+  assert.equal(t.length, ids.length * 2);
+  assert.deepEqual(t.slice(ids.length).map((o) => o.value), ids.map((id) => `${id}:nightmare`));
+  assert.ok(t.slice(ids.length).every((o, i) => o.mode === 'nightmare' && o.mapId === ids[i]));
+});
+
+test('mapSelectValue/parseMapSelectValue: Karte und Modus hin und zurück', () => {
+  assert.deepEqual(parseMapSelectValue('meadow:nightmare'), { mapId: 'meadow', mode: 'nightmare' });
+  assert.deepEqual(parseMapSelectValue('meadow'), { mapId: 'meadow', mode: 'normal' });
+  assert.equal(mapSelectValue('meadow'), 'meadow');
+  assert.equal(mapSelectValue('meadow', 'nightmare'), 'meadow:nightmare');
+  for (const o of mapSelectOptions({ testMode: true })) assert.deepEqual(parseMapSelectValue(o.value), { mapId: o.mapId, mode: o.mode });
+});
+
+
+// ---------- B-184: Abzeichen in Kartenauswahl und Siegbildschirm ----------
+test('B-184: Zähler zählt Abzeichen über alle Karten (0..15), Slot-Labels je Stufe', async () => {
+  const { badgeCounterText, badgeSlots } = await import('../src/screens.js');
+  const { BADGE_MAX } = await import('../src/progress.js');
+  assert.equal(BADGE_MAX, 15);
+  assert.equal(badgeCounterText(emptyProgress()), 'Abzeichen 0 / 15');
+  const p = { maps: {}, nightmare: { [M0]: { bestWave: 20, badge: 3 }, [M1]: { bestWave: 20, badge: 1 } } };
+  assert.equal(badgeCounterText(p), 'Abzeichen 4 / 15');
+  const all = { maps: {}, nightmare: Object.fromEntries(MAP_ORDER.map((id) => [id, { bestWave: 20, badge: 3 }])) };
+  assert.equal(badgeCounterText(all), 'Abzeichen 15 / 15');
+  const slots = badgeSlots(p, M1);
+  assert.deepEqual(slots.map((x) => [x.tier, x.reached]), [[1, true], [2, false], [3, false]]);
+  assert.equal(slots[0].label, `Bronze: Welle ${MAX_WAVES} im Albtraum`);
+  assert.equal(slots[1].label, 'Silber: ohne Lebensverlust, offen');
+  assert.match(slots[2].label, /^Gold: .+, offen$/);
+  assert.equal(badgeSlots(p, M0)[2].label, 'Gold: ohne Fähigkeiten');
+});
+
+test('B-184: Siegbildschirm zeigt das höchste neue Abzeichen, Einflug nur bei neuem, Belohnung nur bei neuem Gold', async () => {
+  const { nightmareWinView } = await import('../src/screens.js');
+  const { recordResult } = await import('../src/progress.js');
+  const p = emptyProgress();
+  // erstes Spiel: Silber (volle Leben, Gold-Bedingung verfehlt) -> Bronze und Silber neu, gezeigt wird Silber
+  let res = recordResult(p, { mapId: M0, status: 'won', wave: MAX_WAVES, lives: 5, mode: 'nightmare', goldOk: false, maxLives: 5 });
+  let v = nightmareWinView(p, M0, res);
+  assert.deepEqual([v.tier, v.fly, v.reward], [2, true, null]);
+  assert.equal(v.title, `${MAPS[M0].name} – Silber-Abzeichen`);
+  assert.deepEqual(v.slots.map((x) => x.reached), [true, true, false]);
+  // schwächeres Ergebnis: kein neues Abzeichen, vorhandene höchste Stufe ohne Einflug
+  res = recordResult(p, { mapId: M0, status: 'won', wave: MAX_WAVES, lives: 2, mode: 'nightmare', goldOk: false, maxLives: 5 });
+  v = nightmareWinView(p, M0, res);
+  assert.deepEqual([v.tier, v.fly, v.reward], [2, false, null]);
+  // Gold neu: Belohnung Nacht-Look dieser Karte
+  res = recordResult(p, { mapId: M0, status: 'won', wave: MAX_WAVES, lives: 5, mode: 'nightmare', goldOk: true, maxLives: 5 });
+  v = nightmareWinView(p, M0, res);
+  assert.deepEqual([v.tier, v.fly], [3, true]);
+  assert.equal(v.reward, `Neue Belohnung freigeschaltet: Nacht-Look ${MAPS[M0].name}`);
+  assert.equal(v.condition, 'Gold: ohne Fähigkeiten');
+  // letztes fehlendes Gold: goldene Türme
+  for (const id of MAP_ORDER.slice(1, -1)) p.nightmare[id] = { bestWave: 20, badge: 3 };
+  const last = MAP_ORDER[MAP_ORDER.length - 1];
+  res = recordResult(p, { mapId: last, status: 'won', wave: MAX_WAVES, lives: 5, mode: 'nightmare', goldOk: true, maxLives: 5 });
+  assert.equal(nightmareWinView(p, last, res).reward, 'Neue Belohnung freigeschaltet: Goldene Türme');
+  // kein Albtraum-Abzeichen (z. B. verloren): kein Albtraum-Siegbildschirm
+  assert.equal(nightmareWinView(emptyProgress(), M1, { newBadge: 0 }), null);
+});
+
+// ---------- B-185: Menü „Aussehen“ ----------
+import { cosmeticsView, cosmeticsHtml, toggleCosmetic, COS_LOCKED_NIGHT, COS_LOCKED_GOLD } from '../src/screens.js';
+import { BADGE_TIERS } from '../src/config.js';
+import { activeCosmetics } from '../src/cosmetics.js';
+const goldOn = (ids) => ({ maps: {}, nightmare: Object.fromEntries(ids.map((id) => [id, { bestWave: MAX_WAVES, badge: BADGE_TIERS.length }])) });
+
+test('B-185 cosmeticsView: je Karte ein Nacht-Look, frisch frei = an, gesperrt mit Grund und Fortschritt', () => {
+  const v = cosmeticsView(goldOn([M1]));
+  assert.deepEqual(v.night.map((r) => r.mapId), MAP_ORDER);
+  const r1 = v.night.find((r) => r.mapId === M1);
+  assert.deepEqual([r1.unlocked, r1.on, r1.reason], [true, true, '']);
+  assert.equal(r1.label, `Nacht-Look ${MAPS[M1].name}, an`);
+  const r0 = v.night.find((r) => r.mapId === M0);
+  assert.deepEqual([r0.unlocked, r0.on, r0.reason], [false, false, COS_LOCKED_NIGHT]);
+  assert.match(r0.label, /, gesperrt$/);
+  assert.deepEqual([v.gold.unlocked, v.gold.on, v.gold.reason, v.gold.progressText], [false, false, COS_LOCKED_GOLD, 'Gold auf 1 / 5 Karten']);
+});
+
+test('B-185 cosmeticsHtml: gesperrter Schalter disabled mit „gesperrt“ im Label, Fortschritt nur bis 5 / 5', () => {
+  const html = cosmeticsHtml(cosmeticsView(goldOn([M1])));
+  assert.equal((html.match(/role="switch"/g) || []).length, MAP_ORDER.length + 1);
+  assert.match(html, new RegExp(`data-key="night:${M0}" aria-checked="false" aria-label="Nacht-Look ${MAPS[M0].name}, gesperrt" disabled`));
+  assert.match(html, new RegExp(`data-key="night:${M1}" aria-checked="true" aria-label="Nacht-Look ${MAPS[M1].name}, an">`));
+  assert.match(html, /Gold auf 1 \/ 5 Karten/);
+  assert.match(html, /aria-valuenow="1"/);
+  const all = cosmeticsHtml(cosmeticsView(goldOn(MAP_ORDER)));
+  assert.doesNotMatch(all, /disabled|cos-prog|gesperrt/);
+});
+
+test('B-185 toggleCosmetic: schaltet um, gesperrt/unbekannt bleibt unverändert', () => {
+  const p = goldOn([M1]);
+  assert.equal(toggleCosmetic(p, `night:${M0}`), false);
+  assert.equal(toggleCosmetic(p, 'gold'), false);
+  assert.equal(toggleCosmetic(p, 'quatsch'), false);
+  assert.equal(p.cosmetics, undefined);
+  assert.equal(toggleCosmetic(p, `night:${M1}`), true);
+  assert.deepEqual(p.cosmetics, { night: { [M1]: false } }, 'nur das bewusste Aus wird gespeichert');
+  assert.equal(activeCosmetics(p, M1).night, false);
+  assert.equal(toggleCosmetic(p, `night:${M1}`), true);
+  assert.equal(activeCosmetics(p, M1).night, true);
+  const g = goldOn(MAP_ORDER);
+  assert.equal(toggleCosmetic(g, 'gold'), true);
+  assert.equal(activeCosmetics(g, M2).goldTowers, false);
 });

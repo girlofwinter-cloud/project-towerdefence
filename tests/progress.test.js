@@ -335,3 +335,269 @@ test('mapAfterResult: Sieg → nächste Karte, sonst gleiche Karte', () => {
   assert.equal(mapAfterResult(won(...MAP_ORDER), last, 'won'), last);
   assert.equal(mapAfterResult(p, 'gibtsnicht', 'won'), 'gibtsnicht');
 });
+
+// ---------- B-182: Albtraum-Modus ----------
+import { isNightmareUnlocked, nightmareProgress, nightmareResultLines } from '../src/progress.js';
+
+test('B-182: Albtraum erst bei allen Sternen im Normalmodus', () => {
+  const p = emptyProgress();
+  assert.equal(isNightmareUnlocked(p, 'meadow'), false);
+  recordResult(p, { mapId: 'meadow', status: 'won', wave: MAX_WAVES, lives: 1 });
+  assert.equal(isNightmareUnlocked(p, 'meadow'), false, 'weniger als alle Sterne');
+  recordResult(p, { mapId: 'meadow', status: 'won', wave: MAX_WAVES, lives: START_LIVES });
+  assert.equal(mapProgress(p, 'meadow').stars, STAR_LIVES_SHARE.length);
+  assert.equal(isNightmareUnlocked(p, 'meadow'), true);
+  assert.equal(isNightmareUnlocked(p, 'ice'), false);
+  assert.equal(isNightmareUnlocked(p, 'mond'), false);
+});
+
+test('B-182: Albtraum-Ergebnisse überschreiben keine Normal-Rekorde oder -Sterne', () => {
+  const p = emptyProgress();
+  recordResult(p, { mapId: 'meadow', status: 'lost', wave: 4, lives: 0 });
+  const normal = structuredClone(p.maps);
+  const r = recordResult(p, { mapId: 'meadow', status: 'won', wave: MAX_WAVES, lives: 5, mode: 'nightmare' });
+  assert.deepEqual(p.maps, normal);
+  assert.deepEqual(r, { newRecord: true, newStars: false, unlockedMap: null });
+  assert.equal(isUnlocked(p, 'ice'), false, 'kein Freischalten über den Albtraum');
+  assert.deepEqual(nightmareProgress(p, 'meadow'), { bestWave: MAX_WAVES });
+  // Rekord wird nie schlechter
+  assert.equal(recordResult(p, { mapId: 'meadow', status: 'lost', wave: 3, lives: 0, mode: 'nightmare' }).newRecord, false);
+  assert.equal(nightmareProgress(p, 'meadow').bestWave, MAX_WAVES);
+  assert.deepEqual(nightmareProgress(p, 'ice'), { bestWave: 0 });
+});
+
+test('B-182: alte Spielstände ohne Albtraum laden weiter, Albtraum-Bereich übersteht Speichern', () => {
+  const old = fakeStorage({ [PROGRESS_KEY]: JSON.stringify({ maps: { meadow: { bestWave: 20, stars: 3 } } }) });
+  const p = loadProgress(old);
+  assert.deepEqual(p, { maps: { meadow: { bestWave: 20, stars: 3 } } });
+  assert.equal(isNightmareUnlocked(p, 'meadow'), true);
+  recordResult(p, { mapId: 'meadow', status: 'lost', wave: 7, lives: 0, mode: 'nightmare' });
+  const s = fakeStorage();
+  saveProgress(s, p);
+  assert.deepEqual(loadProgress(s), p);
+  // kaputte Albtraum-Daten fallen weg
+  const bad = sanitizeProgress({ maps: {}, nightmare: { meadow: { bestWave: -1 }, mond: { bestWave: 3 }, ice: 'x', twin: { bestWave: 2.7 } } });
+  assert.deepEqual(bad, { maps: {}, nightmare: { twin: { bestWave: 2 } } });
+  assert.deepEqual(sanitizeProgress({ maps: {}, nightmare: [] }), emptyProgress());
+});
+
+test('B-182: Overlay-Texte nach einem Albtraum-Spiel', () => {
+  const p = emptyProgress();
+  const r1 = recordResult(p, { mapId: 'meadow', status: 'lost', wave: 5, lives: 0, mode: 'nightmare' });
+  assert.deepEqual(nightmareResultLines(p, 'meadow', r1), ['Albtraum-Rekord: Welle 5']);
+  const before = { ...nightmareProgress(p, 'meadow') };
+  const r2 = recordResult(p, { mapId: 'meadow', status: 'lost', wave: 8, lives: 0, mode: 'nightmare' });
+  assert.deepEqual(nightmareResultLines(p, 'meadow', r2, before), ['Albtraum-Rekord: Welle 8', 'Neuer Rekord!']);
+});
+
+// ---------- B-183: Albtraum-Abzeichen ----------
+import { nightmareBadgeFor, badgeCount, BADGE_MAX } from '../src/progress.js';
+import { BADGE_TIERS, NIGHTMARE, MAPS } from '../src/config.js';
+
+test('B-183: nightmareBadgeFor je Stufe erfüllt und verletzt', () => {
+  const max = NIGHTMARE.lives;
+  assert.equal(nightmareBadgeFor('lost', max, max, true), 0, 'verloren: kein Abzeichen');
+  assert.equal(nightmareBadgeFor('playing', max, max, true), 0);
+  assert.equal(nightmareBadgeFor('won', max - 1, max, true), 1, 'Leben verloren: nur Bronze, auch mit Gold-Bedingung');
+  assert.equal(nightmareBadgeFor('won', 1, max, false), 1);
+  assert.equal(nightmareBadgeFor('won', max, max, false), 2, 'ohne Lebensverlust, Bedingung verletzt: Silber');
+  assert.equal(nightmareBadgeFor('won', max, max, true), 3, 'Silber plus Bedingung: Gold');
+  assert.equal(nightmareBadgeFor('won', NaN, max, true), 1, 'ungültige Leben zählen nicht als voll');
+  assert.equal(nightmareBadgeFor('won', max, max, true, false), 1, 'Leben verloren und repariert: nur Bronze');
+  assert.equal(nightmareBadgeFor('won', max, max, true, true), 3, 'kein Verlust: Gold bleibt möglich');
+  assert.equal(nightmareBadgeFor('won', max, max, false, true), 2);
+  assert.equal(nightmareBadgeFor('won', max - 1, max, true, true), 1, 'weniger Leben am Ende: nie mehr als Bronze');
+  assert.deepEqual(BADGE_TIERS, ['Bronze', 'Silber', 'Gold']);
+});
+
+test('B-183: Abzeichen wird gespeichert und nur verbessert', () => {
+  const p = emptyProgress();
+  const nm = (status, lives, goldOk) => recordResult(p, { mapId: 'meadow', status, wave: MAX_WAVES, lives, mode: 'nightmare', goldOk, maxLives: 5 });
+  assert.equal(nm('lost', 0, true).newBadge, 0);
+  assert.equal(nightmareProgress(p, 'meadow').badge, undefined);
+  assert.equal(nm('won', 5, false).newBadge, 2);
+  assert.equal(nightmareProgress(p, 'meadow').badge, 2);
+  const q = emptyProgress();
+  assert.equal(recordResult(q, { mapId: 'meadow', status: 'won', wave: MAX_WAVES, lives: 5, mode: 'nightmare', goldOk: true, noLoss: false, maxLives: 5 }).newBadge, 1, 'noLoss false: Bronze');
+  assert.equal(nm('won', 2, true).newBadge, 0, 'Bronze verschlechtert Silber nicht');
+  assert.equal(nightmareProgress(p, 'meadow').badge, 2);
+  assert.equal(nm('won', 5, true).newBadge, 3);
+  assert.equal(nightmareProgress(p, 'meadow').badge, 3);
+  assert.equal(nm('lost', 0, false).newBadge, 0);
+  assert.equal(nightmareProgress(p, 'meadow').badge, 3);
+  // Normalmodus und Albtraum ohne goldOk bewerten keine Abzeichen
+  assert.equal('newBadge' in recordResult(p, { mapId: 'ice', status: 'won', wave: MAX_WAVES, lives: START_LIVES }), false);
+  assert.equal(p.maps.ice.badge, undefined);
+  // Standard-Höchstleben im Albtraum: NIGHTMARE.lives
+  assert.equal(recordResult(p, { mapId: 'ice', status: 'won', wave: MAX_WAVES, lives: NIGHTMARE.lives, mode: 'nightmare', goldOk: false }).newBadge, 2);
+});
+
+test('B-183: Abzeichen überstehen Speichern, alte Stände ohne badge laden, ungültige Werte begrenzt', () => {
+  const old = fakeStorage({ [PROGRESS_KEY]: JSON.stringify({ maps: { meadow: { bestWave: 20, stars: 3 } }, nightmare: { meadow: { bestWave: 12 } } }) });
+  const p = loadProgress(old);
+  assert.deepEqual(p.nightmare, { meadow: { bestWave: 12 } });
+  assert.equal(badgeCount(p), 0);
+  recordResult(p, { mapId: 'meadow', status: 'won', wave: MAX_WAVES, lives: 5, mode: 'nightmare', goldOk: true, maxLives: 5 });
+  const s = fakeStorage();
+  saveProgress(s, p);
+  assert.deepEqual(loadProgress(s).nightmare.meadow, { bestWave: MAX_WAVES, badge: 3 });
+  const bad = sanitizeProgress({ maps: {}, nightmare: {
+    meadow: { bestWave: 20, badge: 9 }, ice: { bestWave: 20, badge: -1 }, fork: { bestWave: 20, badge: 'x' }, twin: { bestWave: 20, badge: 1.8 },
+  } });
+  assert.deepEqual(bad.nightmare, { meadow: { bestWave: 20, badge: 3 }, ice: { bestWave: 20 }, fork: { bestWave: 20 }, twin: { bestWave: 20, badge: 1 } });
+});
+
+test('B-183: badgeCount zählt jede Stufe, Maximum Kartenzahl × 3', () => {
+  assert.equal(BADGE_MAX, Object.keys(MAPS).length * 3);
+  assert.equal(badgeCount(emptyProgress()), 0);
+  const p = sanitizeProgress({ maps: {}, nightmare: { meadow: { bestWave: 20, badge: 3 }, ice: { bestWave: 20, badge: 1 }, fork: { bestWave: 9 } } });
+  assert.equal(badgeCount(p), 4);
+  const all = sanitizeProgress({ maps: {}, nightmare: Object.fromEntries(Object.keys(MAPS).map((id) => [id, { bestWave: 20, badge: 3 }])) });
+  assert.equal(badgeCount(all), BADGE_MAX);
+});
+
+test('B-183: Ergebnistext nennt erreichtes und neues Abzeichen', () => {
+  const p = emptyProgress();
+  const r1 = recordResult(p, { mapId: 'meadow', status: 'won', wave: MAX_WAVES, lives: 5, mode: 'nightmare', goldOk: false, maxLives: 5 });
+  assert.deepEqual(nightmareResultLines(p, 'meadow', r1), [`Albtraum-Rekord: Welle ${MAX_WAVES} · Abzeichen: Silber`, 'Neues Abzeichen: Silber!']);
+  const before = { ...nightmareProgress(p, 'meadow') };
+  const r2 = recordResult(p, { mapId: 'meadow', status: 'won', wave: MAX_WAVES, lives: 3, mode: 'nightmare', goldOk: true, maxLives: 5 });
+  assert.deepEqual(nightmareResultLines(p, 'meadow', r2, before), [`Albtraum-Rekord: Welle ${MAX_WAVES} · Abzeichen: Silber`]);
+});
+
+// ---------- B-185: Kosmetik-Belohnungen ----------
+import { COSMETICS } from '../src/config.js';
+import { isNightUnlocked, isGoldTowersUnlocked, goldMapsProgress, setNightLook, setGoldTowers, activeCosmetics } from '../src/cosmetics.js';
+import { createGame, buildTower, startWave, stepGame } from '../src/game.js';
+import { freeTileNearPath } from './helpers.js';
+
+const GOLD_BADGE = BADGE_TIERS.length;
+function withBadges(badges) {
+  const p = emptyProgress();
+  p.nightmare = {};
+  for (const [id, badge] of Object.entries(badges)) p.nightmare[id] = { bestWave: MAX_WAVES, badge };
+  return p;
+}
+const allGold = () => withBadges(Object.fromEntries(MAP_ORDER.map((id) => [id, GOLD_BADGE])));
+
+test('B-185: Kosmetik-Definitionen mit deutschen Namen', () => {
+  assert.equal(COSMETICS.night.name, 'Nacht-Look');
+  assert.equal(COSMETICS.goldTowers.name, 'Goldene Türme');
+});
+
+test('B-185: ohne Gold keine Freischaltung', () => {
+  for (const p of [emptyProgress(), withBadges({ meadow: 1, ice: 2 })]) {
+    for (const id of MAP_ORDER) assert.equal(isNightUnlocked(p, id), false, id);
+    assert.equal(isGoldTowersUnlocked(p), false);
+  }
+  assert.deepEqual(goldMapsProgress(emptyProgress()), { done: 0, total: 5 });
+  assert.equal(isNightUnlocked(allGold(), 'forest'), false); // unbekannte Karte
+});
+
+test('B-185: Gold auf einer Karte schaltet nur deren Nacht-Look frei', () => {
+  const p = withBadges({ ice: GOLD_BADGE, meadow: 2 });
+  assert.deepEqual(MAP_ORDER.filter((id) => isNightUnlocked(p, id)), ['ice']);
+  assert.equal(isGoldTowersUnlocked(p), false);
+  assert.deepEqual(goldMapsProgress(p), { done: 1, total: 5 });
+});
+
+test('B-185: Gold auf allen Karten schaltet goldene Türme frei, vier reichen nicht', () => {
+  const four = withBadges(Object.fromEntries(MAP_ORDER.slice(0, 4).map((id) => [id, GOLD_BADGE])));
+  assert.deepEqual(goldMapsProgress(four), { done: 4, total: 5 });
+  assert.equal(isGoldTowersUnlocked(four), false);
+  assert.deepEqual(goldMapsProgress(allGold()), { done: 5, total: 5 });
+  assert.equal(isGoldTowersUnlocked(allGold()), true);
+});
+
+test('B-185: an- und abschalten nur wenn freigeschaltet; abgeschaltet bleibt frei', () => {
+  const p = withBadges({ ice: GOLD_BADGE });
+  assert.equal(setNightLook(p, 'meadow', true), false);
+  assert.equal(setGoldTowers(p, true), false);
+  assert.equal(p.cosmetics, undefined); // unverändert
+  assert.deepEqual(activeCosmetics(p, 'ice'), { night: true, goldTowers: false }); // B-185 Entscheidung: frei und nie abgeschaltet = an
+  assert.equal(setNightLook(p, 'ice', true), true);
+  assert.deepEqual(activeCosmetics(p, 'ice'), { night: true, goldTowers: false });
+  assert.deepEqual(activeCosmetics(p, 'meadow'), { night: false, goldTowers: false });
+  assert.equal(setNightLook(p, 'ice', false), true);
+  assert.deepEqual(activeCosmetics(p, 'ice'), { night: false, goldTowers: false });
+  assert.equal(isNightUnlocked(p, 'ice'), true);
+  const g = allGold();
+  assert.equal(setGoldTowers(g, true), true);
+  assert.deepEqual(activeCosmetics(g, 'volcano'), { night: true, goldTowers: true }); // Nacht-Look nie abgeschaltet = an (B-185 Entscheidung)
+  assert.equal(setGoldTowers(g, false), true);
+  assert.equal(isGoldTowersUnlocked(g), true);
+  assert.deepEqual(activeCosmetics(undefined, 'ice'), { night: false, goldTowers: false });
+});
+
+test('B-185: gewählt, aber nicht freigeschaltet (z. B. manipulierter Speicher) ist nicht aktiv', () => {
+  const p = sanitizeProgress({ maps: {}, cosmetics: { night: { meadow: true }, goldTowers: true } });
+  assert.deepEqual(activeCosmetics(p, 'meadow'), { night: false, goldTowers: false });
+});
+
+test('B-185: sanitizeProgress säubert den Kosmetik-Bereich, alte Stände ohne Bereich laden', () => {
+  const old = loadProgress(fakeStorage({ [PROGRESS_KEY]: JSON.stringify({ maps: { meadow: { bestWave: 3, stars: 1 } } }) }));
+  assert.equal(old.cosmetics, undefined);
+  assert.deepEqual(activeCosmetics(old, 'meadow'), { night: false, goldTowers: false });
+  const dirty = sanitizeProgress({ maps: {}, cosmetics: { night: { meadow: true, ice: 'ja', forest: true, __proto__: { twin: true } }, goldTowers: 1, extra: 5 } });
+  assert.deepEqual(dirty.cosmetics, { night: { meadow: true } }); // ungültiges goldTowers fällt weg (= Default an)
+  assert.equal(sanitizeProgress({ maps: {}, cosmetics: [] }).cosmetics, undefined);
+  assert.deepEqual(sanitizeProgress({ maps: {}, cosmetics: { night: [true] } }).cosmetics, { night: {} });
+  assert.deepEqual(sanitizeProgress({ maps: {}, cosmetics: { goldTowers: false } }).cosmetics, { night: {}, goldTowers: false }, 'bewusstes Aus bleibt');
+});
+
+test('B-185: Auswahl bleibt nach Speichern und Laden erhalten', () => {
+  const p = allGold();
+  setGoldTowers(p, true);
+  setNightLook(p, 'fork', true);
+  setNightLook(p, 'ice', false);
+  const s = fakeStorage();
+  assert.equal(saveProgress(s, p), true);
+  const loaded = loadProgress(s);
+  assert.deepEqual(loaded.cosmetics, { night: { fork: true, ice: false }, goldTowers: true });
+  assert.deepEqual(activeCosmetics(loaded, 'fork'), { night: true, goldTowers: true });
+  assert.deepEqual(activeCosmetics(loaded, 'ice'), { night: false, goldTowers: true });
+});
+
+test('B-185: Kosmetik ändert keine Spielwerte (createGame kennt sie nicht)', () => {
+  const sim = () => {
+    const state = createGame({ mapId: 'meadow', mode: 'nightmare' });
+    const [c, r] = freeTileNearPath(state);
+    buildTower(state, 'arrow', c, r);
+    startWave(state);
+    for (let i = 0; i < 600; i++) stepGame(state, 1 / 60);
+    return state;
+  };
+  const plain = sim();
+  const p = allGold();
+  setGoldTowers(p, true);
+  setNightLook(p, 'meadow', true);
+  assert.deepEqual(activeCosmetics(p, 'meadow'), { night: true, goldTowers: true });
+  const cosmetic = sim();
+  assert.equal('cosmetics' in cosmetic, false);
+  const snap = (s) => ({ gold: s.gold, lives: s.lives, wave: s.wave, enemies: s.enemies.length, towers: s.towers.map((t) => ({ ...t })) });
+  assert.deepEqual(snap(cosmetic), snap(plain));
+});
+
+test('B-185: frisch freigeschaltete Belohnung ist sofort an, bewusstes Aus bleibt nach Neuladen aus', () => {
+  // Nacht-Look: Gold auf einer Karte, noch nie etwas gewählt
+  const p = withBadges({ ice: GOLD_BADGE });
+  assert.equal(p.cosmetics, undefined);
+  assert.deepEqual(activeCosmetics(p, 'ice'), { night: true, goldTowers: false });
+  // fünfte Gold-Karte: goldene Türme sofort an, auf allen Karten auch der Nacht-Look
+  const g = allGold();
+  for (const id of MAP_ORDER) assert.deepEqual(activeCosmetics(g, id), { night: true, goldTowers: true }, id);
+  // Freischaltung später als die (alte) Auswahl: nur gespeichertes false schaltet ab
+  const s = fakeStorage();
+  const q = withBadges({ meadow: GOLD_BADGE });
+  setNightLook(q, 'meadow', false);
+  saveProgress(s, q);
+  const back = loadProgress(s);
+  assert.deepEqual(activeCosmetics(back, 'meadow'), { night: false, goldTowers: false });
+  back.nightmare.ice = { bestWave: MAX_WAVES, badge: GOLD_BADGE }; // neue Gold-Karte nach dem Laden
+  assert.deepEqual(activeCosmetics(back, 'ice'), { night: true, goldTowers: false });
+  // gespeichert wird nur die bewusste Wahl, kein goldTowers-Feld ohne Eingriff
+  assert.equal('goldTowers' in back.cosmetics, false);
+  setGoldTowers(g, false);
+  saveProgress(s, g);
+  assert.deepEqual(activeCosmetics(loadProgress(s), 'meadow'), { night: true, goldTowers: false });
+});

@@ -972,6 +972,65 @@ test('B-118: Lautstärkefaktor je Titel wirkt auf musicLevel, Rückfall behält 
   assert.equal(musicGainFactor(`${M.base}x.m4a`, { ...M, byMap: { a: { file: 'x', gain: NaN } } }), 1);
 });
 
+test('B-187: Albtraum-Titel je Karte hat Vorrang, sonst Kartentitel, Normalmodus unverändert', () => {
+  const base = { ...SOUND.music, byMap: { ice: { file: 'music-ice', gain: 2 }, fork: { file: 'music-fork', gain: 1.5 } } };
+  const cfg = { ...base, nightmare: { byMap: {
+    ice: { file: 'music-nightmare', gain: 0.7 },
+    fork: { file: 'music-nightmare-fork', gain: 0.4 },
+    twin: { file: null, gain: 1 },
+  } } };
+  const nm = 'assets/music/music-nightmare.m4a';
+  const nmFork = 'assets/music/music-nightmare-fork.m4a';
+  const ice = musicUrl(cfg, 'ice');
+  const fork = musicUrl(cfg, 'fork');
+  const fallback = musicUrl(cfg);
+  // Albtraum: je Karte ihr eigener Albtraum-Titel
+  assert.equal(pickMusicUrl('ice', [], cfg, 'nightmare'), nm);
+  assert.equal(pickMusicUrl('fork', [], cfg, 'nightmare'), nmFork);
+  // Albtraum-Titel gescheitert -> Kartentitel, dann Rückfall, dann keine Musik
+  assert.equal(pickMusicUrl('ice', [nm], cfg, 'nightmare'), ice);
+  assert.equal(pickMusicUrl('ice', [nm, ice], cfg, 'nightmare'), fallback);
+  assert.equal(pickMusicUrl('ice', [nm, ice, fallback], cfg, 'nightmare'), null);
+  // gescheiterter Titel einer Karte betrifft die andere nicht
+  assert.equal(pickMusicUrl('fork', [nm], cfg, 'nightmare'), nmFork);
+  assert.equal(pickMusicUrl('fork', [nmFork], cfg, 'nightmare'), fork);
+  // Karte ohne Albtraum-Titel (file: null, kein Eintrag, kein nightmare) -> Kartentitel bzw. Rückfall
+  assert.equal(pickMusicUrl('twin', [], cfg, 'nightmare'), fallback);
+  assert.equal(pickMusicUrl('volcano', [], cfg, 'nightmare'), fallback);
+  assert.equal(pickMusicUrl('ice', [], { ...cfg, nightmare: { byMap: { ice: { file: null, gain: 1 } } } }, 'nightmare'), ice);
+  assert.equal(pickMusicUrl('ice', [], { ...base, nightmare: undefined }, 'nightmare'), ice);
+  assert.equal(pickMusicUrl('ice', [], { ...base, nightmare: {} }, 'nightmare'), ice);
+  assert.equal(pickMusicUrl('toString', [], cfg, 'nightmare'), fallback, 'keine geerbten Eigenschaften');
+  assert.equal(pickMusicUrl(undefined, [], cfg, 'nightmare'), fallback);
+  // Normalmodus (und ohne mode) unverändert
+  assert.equal(pickMusicUrl('ice', [], cfg, 'normal'), ice);
+  assert.equal(pickMusicUrl('ice', [], cfg), ice);
+  assert.equal(pickMusicUrl('fork', [], cfg), fork);
+  // Lautstärkefaktor je Albtraum-Datei
+  assert.equal(musicGainFactor(nm, cfg), 0.7);
+  assert.equal(musicGainFactor(nmFork, cfg), 0.4);
+  assert.equal(musicGainFactor(ice, cfg), 2);
+  assert.equal(musicGainFactor(nm, { ...cfg, nightmare: { byMap: { ice: { file: 'music-nightmare', gain: NaN } } } }), 1);
+});
+
+test('B-187: Auslieferungsstand Albtraum-Musik je Karte (Format, Faktoren, Dateien)', () => {
+  const M = SOUND.music;
+  const N = M.nightmare.byMap;
+  assert.deepEqual(Object.keys(N).sort(), [...MAP_ORDER].sort(), 'jede Karte hat einen Albtraum-Eintrag');
+  for (const [id, e] of Object.entries(N)) {
+    // Datei folgt (null) oder gültiger Name, der existiert, mit gültigem Faktor
+    assert.ok(e.file === null || /^[a-z0-9-]+$/.test(e.file), id);
+    assert.ok(Number.isFinite(e.gain) && e.gain > 0 && e.gain <= 3, id);
+    if (e.file) {
+      assert.ok(fs.existsSync(new URL(`../${M.base}${e.file}.m4a`, import.meta.url)), e.file);
+      assert.equal(pickMusicUrl(id, [], M, 'nightmare'), `${M.base}${e.file}.m4a`, id);
+      assert.equal(musicGainFactor(`${M.base}${e.file}.m4a`), e.gain, id);
+    } else {
+      assert.equal(pickMusicUrl(id, [], M, 'nightmare'), musicUrl(M, id), id);
+    }
+  }
+});
+
 test('B-118: Kartenwechsel blendet aus und wieder ein, Cache je Titel, Ladefehler -> Rückfalltitel', async () => {
   const M = SOUND.music;
   const saved = M.byMap;
@@ -1378,10 +1437,12 @@ test('Rand Tod: enemyRate deckt alle Gegnertypen (außer Boss) ab, keine unbekan
 
 // B-118: Grenze vom Menschen am 2026-11-26 von 2 MB auf 10 MB angehoben (fünf Musiktitel, je Spiel wird nur
 // der Titel der gewählten Karte geladen). Dafür neu: jede Musikdatei höchstens 3 MB.
-test('Rand: Gesamtgröße assets (Effekte und Musik) höchstens 10 MB', () => {
+// B-187: Grenze vom Menschen am 2026-11-28 von 10 MB auf 15 MB angehoben (eigener Albtraum-Titel je Karte;
+// je Spiel wird weiterhin nur ein Titel geladen). Die 3-MB-Grenze je Musikdatei bleibt.
+test('Rand: Gesamtgröße assets (Effekte und Musik) höchstens 15 MB', () => {
   const sum = (dir) => fs.readdirSync(`${ROOT}${dir}`).reduce((a, f) => a + fs.statSync(`${ROOT}${dir}/${f}`).size, 0);
   const total = sum('assets/sounds') + sum('assets/music');
-  assert.ok(total <= 10 * 1024 * 1024, `assets ${total} B`);
+  assert.ok(total <= 15 * 1024 * 1024, `assets ${total} B`);
 });
 
 test('Rand: jede Musikdatei höchstens 3 MB (B-118)', () => {

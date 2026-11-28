@@ -3651,3 +3651,224 @@ describe('B-178: Effekt-Ereignisse der neuen Gegner', () => {
     assert.ok(Math.abs(Math.hypot(ds[0].dx, ds[0].dy) - 1) < 1e-9, 'Einheitsvektor');
   });
 });
+
+// ---------- B-182: Albtraum-Modus ----------
+import { NIGHTMARE, HP_GROWTH } from '../src/config.js';
+import { modeModifiers, abilityMaxUses, maxLives } from '../src/game.js';
+
+describe('B-182: Albtraum-Modus', () => {
+  test('Normalmodus bleibt unverändert (auch ohne mode)', () => {
+    for (const mode of [undefined, 'normal', 'quatsch']) {
+      const s = createGame({ mapId: 'meadow', mode });
+      assert.equal(s.mode, 'normal');
+      assert.equal(s.gold, START_GOLD);
+      assert.equal(s.lives, START_LIVES);
+      assert.deepEqual(s.modifiers, mapModifiers('meadow'));
+      assert.equal(abilityMaxUses(s, 'repair'), ABILITIES.repair.maxUses);
+      assert.equal(spawnEnemy(s, 'grunt', 15).reward, ENEMY_TYPES.grunt.reward);
+      assert.equal(spawnEnemy(s, 'grunt', 15).maxHp, Math.round(ENEMY_TYPES.grunt.hp * hpScale(15)));
+    }
+    assert.deepEqual(modeModifiers('normal'), {});
+  });
+
+  test('Start-Gold, Leben und Karten-Modifikatoren', () => {
+    const s = createGame({ mapId: 'ice', mode: 'nightmare' });
+    assert.equal(s.mode, 'nightmare');
+    assert.equal(s.gold, Math.round(START_GOLD * NIGHTMARE.goldFactor));
+    assert.equal(s.lives, NIGHTMARE.lives);
+    assert.equal(maxLives(s), NIGHTMARE.lives);
+    assert.equal(s.modifiers.enemySpeed, mapModifiers('ice').enemySpeed, 'Karten-Modifikatoren bleiben');
+  });
+
+  test('Kopfgeld mal rewardFactor, gerundet, mindestens 1', () => {
+    const s = createGame({ mode: 'nightmare' });
+    for (const type of Object.keys(ENEMY_TYPES)) {
+      const want = Math.max(1, Math.round(ENEMY_TYPES[type].reward * NIGHTMARE.rewardFactor));
+      assert.equal(spawnEnemy(s, type, 1).reward, want, type);
+    }
+    const tiny = createGame({ mode: 'nightmare', modifiers: { ...modeModifiers('nightmare'), rewardFactor: 0.01 } });
+    assert.equal(spawnEnemy(tiny, 'grunt', 1).reward, 1);
+  });
+
+  test('Reparatur: nur repairUses Einsätze, Obergrenze sind die Albtraum-Leben', () => {
+    const s = createGame({ mode: 'nightmare' });
+    assert.equal(abilityMaxUses(s, 'repair'), NIGHTMARE.repairUses);
+    assert.equal(useAbility(s, 'repair').ok, false, 'volle Albtraum-Leben');
+    s.lives = NIGHTMARE.lives - 1;
+    assert.equal(useAbility(s, 'repair').ok, true);
+    assert.equal(s.lives, NIGHTMARE.lives);
+    s.lives = 1;
+    s.time += ABILITIES.repair.cooldown + 1;
+    const r = useAbility(s, 'repair');
+    assert.equal(r.ok, NIGHTMARE.repairUses > 1);
+  });
+
+  test('spätes HP-Wachstum hpGrowthLate', () => {
+    const s = createGame({ mode: 'nightmare' });
+    assert.equal(spawnEnemy(s, 'grunt', 10).maxHp, Math.round(ENEMY_TYPES.grunt.hp * hpScale(10)), 'bis Welle 10 gleich');
+    assert.equal(spawnEnemy(s, 'grunt', 15).maxHp, Math.round(ENEMY_TYPES.grunt.hp * hpScale(15, NIGHTMARE.hpGrowthLate)));
+    assert.ok(NIGHTMARE.hpGrowthLate > HP_GROWTH.late);
+    assert.ok(hpScale(15, NIGHTMARE.hpGrowthLate) > hpScale(15));
+  });
+
+  // B-186: Lava und Meteor wachsen im Albtraum wie die Gegner-HP (hpGrowthLate), im Normalmodus wie bisher
+  test('Lava und Meteor skalieren mit hpGrowthLate', () => {
+    const w = 15;
+    const g = NIGHTMARE.hpGrowthLate;
+    assert.ok(Math.abs(meteorDamage(w, 0, g) - ABILITIES.meteor.damage * hpScale(w, g)) < 1e-6);
+    assert.equal(meteorDamage(w, 0.5), meteorDamage(w, 0.5, undefined));
+    assert.ok(meteorText(w, g).includes(String(Math.round(meteorDamage(w, 0, g)))));
+    for (const mode of ['normal', 'nightmare']) {
+      const s = createGame({ mode });
+      s.wave = w;
+      const e = enemyAt(s, 'shielded', 300, 300);
+      e.hp = 1e6;
+      assert.ok(useAbility(s, 'meteor', 300, 300).ok);
+      const want = meteorDamage(w, 0, mode === 'nightmare' ? g : undefined);
+      assert.ok(Math.abs(1e6 - e.hp - want) < 1e-6, `${mode}: ${1e6 - e.hp}`);
+    }
+    // Lava: Gegner steht eine Sekunde auf einer heißen Wegkachel des Vulkans
+    const burn = (mode) => {
+      const s = createGame({ mapId: 'volcano', mode });
+      s.wave = w;
+      const e = spawnEnemy(s, 'grunt', w);
+      e.speed = 0;
+      e.hp = e.maxHp = 1e6;
+      s.paths = [buildPath([[10, 8], [11, 8]], TILE)];
+      e.dist = 0;
+      run(s, 1, 1 / 60);
+      return 1e6 - e.hp;
+    };
+    const normal = burn('normal');
+    const nm = burn('nightmare');
+    assert.ok(Math.abs(normal - LAVA.dps * hpScale(w)) < LAVA.dps * hpScale(w) * 0.05, `normal ${normal}`);
+    assert.ok(Math.abs(nm - LAVA.dps * hpScale(w, g)) < LAVA.dps * hpScale(w, g) * 0.05, `Albtraum ${nm}`);
+  });
+
+  test('mehr und frühere Elite-Gegner', () => {
+    const mods = { eliteBonus: NIGHTMARE.eliteBonus, eliteEarlier: NIGHTMARE.eliteEarlier };
+    const from = ELITE.from - NIGHTMARE.eliteEarlier;
+    assert.equal(eliteCount(from - 1, mods), 0);
+    assert.equal(eliteCount(from, mods), ELITE.count + NIGHTMARE.eliteBonus);
+    assert.equal(eliteCount(MAX_WAVES, mods), Math.min(ELITE.max + NIGHTMARE.eliteBonus, ELITE.count + NIGHTMARE.eliteBonus + Math.floor((MAX_WAVES - from) / ELITE.every)));
+    for (let w = 1; w <= MAX_WAVES; w++) assert.ok(eliteCount(w, mods) >= eliteCount(w), `Welle ${w}`);
+    // Die Spawn-Liste im Spiel nutzt die Albtraum-Werte
+    const s = createGame({ mode: 'nightmare' });
+    s.wave = from - 1;
+    startWave(s);
+    assert.equal(s.spawnQueue.filter((e) => e.elite).length, eliteCount(from, mods));
+    const n = createGame();
+    n.wave = from - 1;
+    startWave(n);
+    assert.equal(n.spawnQueue.filter((e) => e.elite).length, eliteCount(from));
+  });
+});
+
+// ---------- B-183: Gold-Bedingungen im Albtraum ----------
+import { checkGoldCondition } from '../src/game.js';
+import { GOLD_CONDITIONS } from '../src/config.js';
+
+describe('B-183: checkGoldCondition', () => {
+  // Baut der Reihe nach Türme der angegebenen Typen auf freie Felder (viel Gold, damit nichts scheitert).
+  const goldGame = (mapId, types = []) => {
+    const s = createGame({ mapId, gold: 1e6 });
+    const tiles = [];
+    for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) if (canBuild(s, c, r).ok) tiles.push([c, r]);
+    const towers = types.map((t, i) => {
+      const res = buildTower(s, t, ...tiles[i]);
+      assert.ok(res.ok, res.reason);
+      return res.tower;
+    });
+    return { s, towers };
+  };
+
+  test('jede Karte hat eine Bedingung mit deutschem Label', () => {
+    for (const id of Object.keys(MAPS)) {
+      assert.ok(GOLD_CONDITIONS[id], id);
+      assert.ok(GOLD_CONDITIONS[id].label.length > 0, id);
+    }
+  });
+
+  test('Wiese: ohne Fähigkeiten erfüllt, nach einer Fähigkeit verletzt', () => {
+    const { s } = goldGame('meadow', ['arrow']);
+    assert.deepEqual(checkGoldCondition(s, 'meadow'), { ok: true, label: 'ohne Fähigkeiten' });
+    assert.ok(useAbility(s, 'freeze').ok);
+    assert.equal(checkGoldCondition(s, 'meadow').ok, false);
+  });
+
+  test('Eis: ohne Frostturm erfüllt; Frostturm gebaut und verkauft bleibt verletzt', () => {
+    const { s } = goldGame('ice', ['arrow', 'cannon', 'sniper', 'lightning']);
+    assert.deepEqual(checkGoldCondition(s, 'ice'), { ok: true, label: 'ohne Frostturm' });
+    const tile = [...Array(COLS * ROWS).keys()].map((i) => [i % COLS, Math.floor(i / COLS)]).find(([c, r]) => canBuild(s, c, r).ok);
+    const { tower } = buildTower(s, 'frost', ...tile);
+    assert.equal(checkGoldCondition(s, 'ice').ok, false);
+    assert.ok(sellTower(s, tower.id).ok);
+    assert.equal(checkGoldCondition(s, 'ice').ok, false, 'verkaufter Frostturm zählt trotzdem');
+  });
+
+  test('Gabelung und Vulkan: 3 Turmtypen erfüllt, der 4. verletzt, auch wenn verkauft', () => {
+    for (const mapId of ['fork', 'volcano']) {
+      const { s, towers } = goldGame(mapId, ['arrow', 'arrow', 'cannon', 'frost', 'frost']);
+      assert.deepEqual(checkGoldCondition(s, mapId), { ok: true, label: 'höchstens 3 Turmtypen' });
+      const tile = [...Array(COLS * ROWS).keys()].map((i) => [i % COLS, Math.floor(i / COLS)]).find(([c, r]) => canBuild(s, c, r).ok);
+      const { tower } = buildTower(s, 'sniper', ...tile);
+      assert.equal(checkGoldCondition(s, mapId).ok, false, mapId);
+      sellTower(s, tower.id);
+      for (const t of towers) sellTower(s, t.id);
+      assert.equal(checkGoldCondition(s, mapId).ok, false, `${mapId}: verkaufte Typen zählen weiter`);
+    }
+  });
+
+  test('Zwillingspfad: ohne Verkaufen erfüllt, einmal verkauft verletzt', () => {
+    const { s, towers } = goldGame('twin', ['arrow', 'cannon']);
+    assert.deepEqual(checkGoldCondition(s, 'twin'), { ok: true, label: 'ohne Verkaufen' });
+    assert.ok(sellTower(s, towers[0].id).ok);
+    assert.equal(checkGoldCondition(s, 'twin').ok, false);
+  });
+
+  test('frisches Spiel ohne Zähler: Bedingungen erfüllt; unbekannte Karte: ok false, leeres Label', () => {
+    const s = createGame({ mapId: 'twin' });
+    assert.equal(s.track, undefined);
+    for (const id of Object.keys(GOLD_CONDITIONS)) assert.equal(checkGoldCondition(s, id).ok, true, id);
+    assert.deepEqual(checkGoldCondition(s, 'gibtsnicht'), { ok: false, label: '' });
+    assert.deepEqual(checkGoldCondition(s, 'toString'), { ok: false, label: '' });
+  });
+});
+
+// ---------- B-183: Gold-Anzeige im HUD (Albtraum) ----------
+test('B-183 HUD: goldGoalView zeigt erfüllt/verletzt nur im Albtraum', async () => {
+  const { goldGoalView } = await import('../src/hud.js');
+  const { checkGoldCondition } = await import('../src/game.js');
+  const s = createGame({ mapId: 'meadow', mode: 'nightmare' });
+  const v = goldGoalView(s.mode, checkGoldCondition(s, s.mapId));
+  assert.deepEqual(v, { hidden: false, ok: true, text: 'Gold: ohne Fähigkeiten', mark: '✓', title: 'Gold-Bedingung noch erfüllt: ohne Fähigkeiten' });
+  Object.values(s.abilities)[0].uses = 1;
+  const w = goldGoalView(s.mode, checkGoldCondition(s, s.mapId));
+  assert.equal(w.hidden, false);
+  assert.equal(w.ok, false);
+  assert.equal(w.mark, '✗');
+  assert.match(w.title, /verletzt/);
+  // Normalmodus und Karten ohne Bedingung: keine Anzeige
+  const n = createGame({ mapId: 'meadow' });
+  assert.equal(goldGoalView(n.mode, checkGoldCondition(n, n.mapId)).hidden, true);
+  assert.equal(goldGoalView('nightmare', { ok: false, label: '' }).hidden, true);
+  assert.equal(goldGoalView('nightmare', undefined).hidden, true);
+});
+
+test('B-183: Durchbrüche zählen verlorene Leben, Reparatur löscht sie nicht', () => {
+  const s = createGame({ mapId: 'fork', mode: 'nightmare' });
+  assert.equal(s.track?.livesLost ?? 0, 0);
+  s.gold = 0; // keine Türme: beide Gegner kommen durch
+  for (let i = 0; i < 2; i++) spawnEnemy(s, 'grunt');
+  run(s, 120);
+  assert.equal(s.track.livesLost, 2 * ENEMY_TYPES.grunt.leak);
+  assert.equal(useAbility(s, 'repair').ok, true);
+  assert.equal(s.track.livesLost, 2 * ENEMY_TYPES.grunt.leak, 'Reparatur holt Leben zurück, der Verlust bleibt gezählt');
+});
+
+test('B-183: Reparatur merkt fehlende Leben als verloren', () => {
+  const s = createGame({ mapId: 'fork', mode: 'nightmare' });
+  s.lives -= 1;
+  useAbility(s, 'repair');
+  assert.ok(s.track.livesLost >= 1);
+});

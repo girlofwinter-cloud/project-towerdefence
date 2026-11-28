@@ -602,16 +602,17 @@ export const ABILITIES = {
 ABILITIES.meteor.text = meteorText(1);
 
 // Meteor-Schaden (B-112) in Welle wave bei Abstand frac (0 = Mitte, 1 = Rand des Radius); Welle < 1 zählt als 1.
-export function meteorDamage(wave, frac = 0) {
+// lateGrowth (B-186): spätes HP-Wachstum des Modus wie bei den Gegnern (Standard HP_GROWTH.late).
+export function meteorDamage(wave, frac = 0, lateGrowth) {
   const m = ABILITIES.meteor;
   const f = frac > 0 ? Math.min(frac, 1) : 0;
-  return m.damage * hpScale(Math.max(1, wave || 0)) * (1 - (1 - m.edge) * f);
+  return m.damage * hpScale(Math.max(1, wave || 0), lateGrowth) * (1 - (1 - m.edge) * f);
 }
 
 // Beschreibung mit dem aktuellen Schaden der Welle (Tooltip des Knopfs, main.js aktualisiert sie je Welle).
-export function meteorText(wave) {
+export function meteorText(wave, lateGrowth) {
   const m = ABILITIES.meteor;
-  return `Flächenschaden ${Math.round(meteorDamage(wave))} in der Mitte (am Rand ${pct(m.edge)}), wächst mit der Welle. `
+  return `Flächenschaden ${Math.round(meteorDamage(wave, 0, lateGrowth))} in der Mitte (am Rand ${pct(m.edge)}), wächst mit der Welle. `
     + `Umkreis ${num(m.radius)} Kacheln, Abklingzeit ${m.cooldown} s.`;
 }
 ABILITIES.freeze.text = `Alle Gegner ${pct(ABILITIES.freeze.slow)} langsamer für ${ABILITIES.freeze.duration} s, Abklingzeit ${ABILITIES.freeze.cooldown} s.`;
@@ -692,11 +693,12 @@ export function waveBonus(wave) {
 
 // HP-Multiplikator pro Welle: Gegner werden mit jeder Welle zäher.
 // Welle 1-5 moderat (+15 %), Welle 5-10 steil (+26 %), danach +11 % (B-125: vorher +7 %, Spätphase war zu leicht).
-export function hpScale(wave) {
+// B-182: lateGrowth ersetzt HP_GROWTH.late (Albtraum-Modus: NIGHTMARE.hpGrowthLate).
+export function hpScale(wave, lateGrowth = HP_GROWTH.late) {
   const early = Math.min(wave, 5) - 1;
   const mid = Math.max(Math.min(wave, 10) - 5, 0);
   const late = Math.max(wave - 10, 0);
-  return Math.pow(HP_GROWTH.early, early) * Math.pow(HP_GROWTH.mid, mid) * Math.pow(HP_GROWTH.late, late);
+  return Math.pow(HP_GROWTH.early, early) * Math.pow(HP_GROWTH.mid, mid) * Math.pow(lateGrowth, late);
 }
 
 // Spätphase (B-013): ab dieser Welle laufen Heiler in der Troll-Gruppe mit, ab der Welle danach kommen
@@ -753,23 +755,36 @@ export const ELITE = {
   rewardFactor: 1.5,
 };
 
-// B-179: Anzahl der Elite-Gegner in Welle `wave` (0 vor ELITE.from)
-export function eliteCount(wave) {
-  if (wave < ELITE.from) return 0;
-  return Math.min(ELITE.max, ELITE.count + Math.floor((wave - ELITE.from) / ELITE.every));
+// B-182: Albtraum-Modus. Gilt zusätzlich zu den Karten-Modifikatoren.
+// goldFactor: mal START_GOLD (gerundet); rewardFactor: mal Kopfgeld (gerundet, mindestens 1); lives: Start- und Höchstleben
+// (auch Grenze der Reparatur); repairUses: Einsätze der Reparatur; hpGrowthLate: ersetzt HP_GROWTH.late;
+// eliteBonus: Elite-Gegner mehr je Welle (auch über ELITE.max hinaus); eliteEarlier: so viele Wellen früher ab ELITE.from.
+// B-186 (28.11., grob, Feinabstimmung macht der Mensch): vorher goldFactor 0.7, rewardFactor 0.8, hpGrowthLate 1.18,
+// eliteEarlier 2. Damit scheiterten Kanonen-Mix und perfektes Spiel schon in Welle 2-10 (Start-Gold reichte nicht).
+// Jetzt (tests/balance/albtraum.test.js, dt 1/30): Kanonen-Mix scheitert in Welle 10-16 (normal 16-20), perfektes Spiel
+// erreicht Welle 19-20 (meist knapp verloren, Zangenangriff ohne Lebensverlust); Start-Gold kürzen kippt Eiswelt und
+// Zwei Fronten schon in Welle 2-3.
+export const NIGHTMARE = { goldFactor: 1, rewardFactor: 0.9, lives: 5, repairUses: 1, hpGrowthLate: 1.16, eliteBonus: 1, eliteEarlier: 0 };
+
+// B-179: Anzahl der Elite-Gegner in Welle `wave` (0 vor ELITE.from). mods (B-182): { eliteBonus, eliteEarlier }.
+export function eliteCount(wave, mods = {}) {
+  const bonus = mods.eliteBonus ?? 0;
+  const from = ELITE.from - (mods.eliteEarlier ?? 0);
+  if (wave < from) return 0;
+  return Math.min(ELITE.max + bonus, ELITE.count + bonus + Math.floor((wave - from) / ELITE.every));
 }
 
 // B-179: markiert eliteCount(wave) Einträge der Spawn-Liste (gleichmäßig verteilt unter ELITE.types) mit elite = Eigenschaft.
-function markElites(list, wave) {
-  const n = eliteCount(wave);
+function markElites(list, wave, mods) {
+  const n = eliteCount(wave, mods);
   const pool = list.filter((e) => ELITE.types.includes(e.type));
   const k = Math.min(n, pool.length);
   for (let i = 0; i < k; i++) pool[Math.floor(((i + 0.5) * pool.length) / k)].elite = ELITE.traits[(wave + i) % ELITE.traits.length];
 }
 
 // Erzeugt die Spawn-Liste einer Welle: [{ type, at, elite? }] (at = Sekunden nach Wellenstart).
-// mapId (B-171) nur für die kartenabhängige Anzahl der neuen Gegner.
-export function waveFor(wave, mapId) {
+// mapId (B-171) nur für die kartenabhängige Anzahl der neuen Gegner. mods (B-182): Elite-Felder des Albtraum-Modus.
+export function waveFor(wave, mapId, mods = {}) {
   const list = [];
   let t = 0;
   const extras = WAVE_EXTRAS[wave] || {};
@@ -814,7 +829,7 @@ export function waveFor(wave, mapId) {
   const finalNecros = wave === MAX_WAVES ? FINAL_WAVE_NECROS : 0;
   if (wave % 5 === 0) add(wave === NECRO_WAVE ? 'necro' : 'boss', Math.floor(wave / 10) + 1 - finalNecros, 3);
   add('necro', finalNecros, 3);
-  markElites(list, wave);
+  markElites(list, wave, mods);
   return list;
 }
 
@@ -1787,6 +1802,17 @@ export const SOUND = {
       twin:    { file: 'music-twin', gain: 0.55 },
       volcano: { file: 'music-volcano', gain: 0.6 },
     },
+    // B-187: eigener Titel je Karte im Albtraum-Modus (Vorrang vor dem Kartentitel). Format wie byMap;
+    // file: null = kein eigener Albtraum-Titel -> Kartentitel, dann Rückfall file. gain wie bei byMap.
+    nightmare: {
+      byMap: {
+        meadow:  { file: 'music-nightmare', gain: 0.52 }, // RMS 0,240 (Wiese 0,126)
+        ice:     { file: null, gain: 1 },
+        fork:    { file: 'music-nightmare-fork', gain: 1.08 },
+        twin:    { file: 'music-nightmare-twin', gain: 1.16 },
+        volcano: { file: 'music-nightmare-volcano', gain: 0.78 },
+      },
+    },
     gain: 0.025,         // Lautstärke im laufenden Spiel
     pausedFactor: 0.6,   // bei Pause etwas leiser (Anteil von gain)
     fadeIn: 2,           // Einblenden in s (Start, Ton wieder an, neues Spiel)
@@ -1794,5 +1820,86 @@ export const SOUND = {
     fadeChange: 0.5,     // Übergang Pause <-> Spiel in s
     silence: 0.001,      // Grenzwert für Stille (ca. -60 dB)
     minLoop: 1,          // kürzeste Schleife in s
+  },
+};
+
+// B-183: Gold-Bedingungen im Albtraum (je Karten-ID eine Bedingung, geprüft von checkGoldCondition in game.js).
+// kind: 'noAbilities' (keine Fähigkeit benutzt), 'noTower' (Turmtyp tower nie gebaut),
+// 'maxTowerTypes' (höchstens max verschiedene Turmtypen im ganzen Spiel), 'noSell' (nie verkauft).
+export const GOLD_CONDITIONS = {
+  meadow:  { kind: 'noAbilities', label: 'ohne Fähigkeiten' },
+  ice:     { kind: 'noTower', tower: 'frost', label: 'ohne Frostturm' },
+  fork:    { kind: 'maxTowerTypes', max: 3, label: 'höchstens 3 Turmtypen' },
+  twin:    { kind: 'noSell', label: 'ohne Verkaufen' },
+  volcano: { kind: 'maxTowerTypes', max: 3, label: 'höchstens 3 Turmtypen' },
+};
+
+// B-183: Albtraum-Abzeichen je Karte, Index + 1 = Stufe (1 Bronze: Welle 20 geschafft, 2 Silber: ohne Lebensverlust,
+// 3 Gold: Silber plus Gold-Bedingung der Karte). 0 = noch kein Abzeichen.
+export const BADGE_TIERS = ['Bronze', 'Silber', 'Gold'];
+
+// B-185: Kosmetik-Belohnungen aus dem Albtraum-Modus (nur Aussehen, keine Spielwerte).
+// night: Nacht-Look je Karte, frei mit Gold-Abzeichen auf dieser Karte; goldTowers: goldene Türme, frei mit Gold auf allen Karten.
+export const COSMETICS = {
+  night: { name: 'Nacht-Look', unlock: 'Gold im Albtraum auf dieser Karte' },
+  goldTowers: { name: 'Goldene Türme', unlock: 'Gold im Albtraum auf allen Karten' },
+};
+
+// B-184: Albtraum-Stimmung (auch Nacht-Look B-185) nur über dem Spielfeld, Bauvorlage Albtraum-Stimmung.
+// strength = Gesamtstärke k; die Deckkräfte unten sind schon mit k multipliziert. Farben als „r,g,b“ für rgba().
+export const NIGHT_STYLE = {
+  strength: 0.75,
+  tint: '20,12,40', tintAlpha: 0.47,          // night-tint, Mischmodus multiply
+  ember: '255,90,42', emberAlpha: 0.26,       // night-ember: rotes Licht von unten
+  emberX: 0.7, emberY: 1.0, emberRadius: 0.6, // Mitte in Feldbreite/-höhe, Radius in Felddiagonalen
+  vignette: '8,4,16', vignetteAlpha: 0.64, vignetteInner: 0.45, // night-vignette, innen durchsichtig (Anteil des Radius)
+  // Glut am Weg (pro Frame): Anzahl, seitlicher Abstand zur Wegmitte in Kacheln, Kern/Hof in Spiel-px, Takt in s
+  glowCount: 10, glowSide: 0.6, glowCore: 3, glowHalo: 7, glowPeriod: 1.8, glowPhaseStep: 0.2,
+  glowHot: '255,229,138', glowLava: '255,122,31', // lava-hot / lava
+};
+
+// B-184: Albtraum-Abzeichen (Medaille mit Oger-Kopf), Bauvorlage Albtraum-Abzeichen. Nur Aussehen.
+export const BADGE_STYLE = {
+  ink: '#2b1a10', ribbon: '#c4452f', cream: '#fff3d2', eye: '#ffc22a', eyeGlow: '#ff7a1f', muted: '#e8d3a8', // ink, flag-red, cream, ogre-eye, lava, muted
+  // Verlauf je Stufe (Index = Stufe - 1): badge-bronze-a/-b, badge-silver-a/-b, gold-light/gold-btn-b
+  tiers: [['#f0b47a', '#8a4f24'], ['#ffffff', '#8f9aa6'], ['#ffe27a', '#e08a1c']],
+  small: 44,     // bis zu dieser Größe: dicke Linien, ohne Augenschein, Nase, Mund, Hauer
+  openFace: 56,  // offen: ab dieser Größe gestrichelter Kopf
+  big: 100,      // ab dieser Größe: Rand 4 px, Band-Rand 3
+};
+
+// B-185: goldene Türme (nur Aussehen, Bauvorlage docs/design/elemente/Kosmetik-Aussehen.md).
+// Farbtausch in den Turm-SVGs: Verläufe (Stein, Holz) und flache Farben; Silhouette und Stufenmarke bleiben.
+export const GOLD_TOWER_STYLE = {
+  // Gold-Verläufe (werden in svg-figure.js GRADIENTS eingetragen): Stein gold-light -> gold -> gold-dark,
+  // Holz gold-btn-a -> gold-btn-b (etwas kräftiger, damit Holz und Stein unterscheidbar bleiben)
+  gradients: {
+    's1-stone-gold': { type: 'linear', x1: 0, y1: 0, x2: 1, y2: 0, stops: [[0, '#ffe27a'], [0.5, '#f2c14e'], [1, '#b9851d']] },
+    's1-wood-gold': { type: 'linear', x1: 0, y1: 0, x2: 1, y2: 0, stops: [[0, '#ffd45a'], [1, '#e08a1c']] },
+  },
+  // Stein -> s1-stone-gold, Holz/Kupfer -> s1-wood-gold; Eis, Lava, Kugel und Leuchten bleiben (Turmtyp erkennbar)
+  grads: {
+    's1-stone': 's1-stone-gold', 's3-marble': 's1-stone-gold', 's3-brick': 's1-stone-gold', 's3-basalt': 's1-stone-gold',
+    's1-wood': 's1-wood-gold', 's3-darkwood': 's1-wood-gold', 's3-copper': 's1-wood-gold',
+  },
+  colors: {
+    '#a9703d': '#e08a1c', // wood-fig-c -> gold-btn-b (Zinnen, Dach)
+    '#6b5a48': '#b9851d', // stone-line -> gold-dark (Steinfugen)
+    '#8a7560': '#b9851d', // Stein dunkel (Kanone Stufe 3) -> gold-dark
+    '#c88a4c': '#ffd45a', // Holz hell -> gold-btn-a
+    '#8a5326': '#b9851d', // Holz dunkel -> gold-dark
+    '#c9794a': '#f2c14e', // Kupfer (Blitzturm) -> gold
+    '#7a3f1e': '#b9851d', // Kupfer dunkel -> gold-dark
+    '#f3b78a': '#ffe27a', // Kupfer Licht -> gold-light
+    '#e8a070': '#ffe27a', // copper-a -> gold-light
+  },
+  // Glanzkante oben auf Holzteilen (rect): gold-light 5, rund, α 0,9; inset = Abstand zur Oberkante in Entwurfs-px
+  gloss: { color: '#ffe27a', width: 5, alpha: 0.9, inset: 4 },
+  // Funkel (14er Box, Mitte 7/7) in bolt mit ink-Rand; size in Kacheln; spots relativ zur Figur-Box (x, y 0..1)
+  sparkle: {
+    path: 'M7 0 L8.5 5.5 L14 7 L8.5 8.5 L7 14 L5.5 8.5 L0 7 L5.5 5.5 Z',
+    color: '#fff6a8', ink: '#2b1a10', line: 1.2, size: 0.4,
+    spots: [[0.22, 0.35], [0.8, 0.7]],
+    period: 1.4, offset: 0.6, alpha: [0.55, 1], scale: [0.7, 1.15], reducedAlpha: 0.9,
   },
 };

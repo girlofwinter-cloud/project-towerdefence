@@ -1,5 +1,5 @@
 // Zeichnet den Spielzustand auf ein Canvas. Keine Spiel-Logik hier!
-import { TILE, COLS, ROWS, WIDTH, HEIGHT, FRAME_MARGIN, VIEW_WIDTH, VIEW_HEIGHT, TOWER_TYPES, MAPS, MAX_WAVES, PAINTED_STYLE, ABILITIES, RANGE_STYLE, RING_MENU, TREE_FRAME, GROUND_STYLE, LIGHT_STYLE, DECOR_STYLE, PAINT_STYLE, SELECT_RING, themed } from './config.js';
+import { TILE, COLS, ROWS, WIDTH, HEIGHT, FRAME_MARGIN, VIEW_WIDTH, VIEW_HEIGHT, TOWER_TYPES, MAPS, MAX_WAVES, PAINTED_STYLE, ABILITIES, RANGE_STYLE, RING_MENU, TREE_FRAME, GROUND_STYLE, LIGHT_STYLE, DECOR_STYLE, PAINT_STYLE, SELECT_RING, NIGHT_STYLE, themed } from './config.js';
 import { towerStats, enemyPath } from './game.js';
 import { disc, shd } from './draw-utils.js';
 import { buildPaintedSvg, buildPaintedScene, rasterizePainted, canRasterize, extentOf } from './render-painted.js';
@@ -13,7 +13,7 @@ import { drawTreeFrame } from './render-trees.js';
 import { beginMasterFx, drawMasterUnder, drawMasterOver, drawMasterTrails, displayLevel } from './render-master.js';
 import * as flat from './render-decor.js';
 import { drawAccents } from './render-accents.js';
-import { drawTreeShadows, drawLight } from './render-light.js';
+import { drawTreeShadows, drawLight, drawNightTint, drawNightGlow, emberPoints, drawEmbers } from './render-light.js';
 import { drawGround as drawGroundFill, drawGroundTufts, drawMottle } from './render-ground.js';
 import { waterGeometry, drawWater, drawBridges } from './render-water.js';
 import { lavaGeometry, drawLava, drawLavaBridges, lavaGlowSpots, drawLavaGlow } from './render-lava.js';
@@ -182,6 +182,7 @@ export function render(ctx, state, ui) {
     ctx.translate(sx, sy);
     drawGround(ctx, state, reduced);
   }
+  if (nightOn(state, ui)) drawNightLayer(ctx, state, reduced); // B-184: über dem Boden, unter allen Figuren
   drawHover(ctx, state, ui);
   for (const e of state.enemies) drawHealAura(ctx, e, state.time);
   for (const e of state.enemies) drawNecroAura(ctx, e, state.time, reduced); // B-180: Boden-Aura unter allen Figuren
@@ -269,6 +270,36 @@ function drawGround(ctx, state, reduced = false) {
     bgScale = scale;
   }
   ctx.drawImage(bgCanvas, 0, 0, WIDTH, HEIGHT);
+}
+
+// ---------- B-184: Albtraum-Stimmung (Nacht-Tönung, rotes Licht, Vignette, Glut am Weg) ----------
+// An im Albtraum oder mit ui.night (Nacht-Look, B-185 schaltet ihn im Normalmodus als Belohnung ein).
+export function nightOn(state, ui) {
+  return state?.mode === 'nightmare' || !!ui?.night;
+}
+// Licht und Vignette (Gradienten) einmal je Maßstab in ein eigenes Canvas; die Tönung (multiply) läuft pro Frame
+// direkt auf dem Feld, weil ein Cache-Bild nicht multipliziert. Alles nur im Feld (Clip), Rand und HUD bleiben hell.
+let nightCanvas = null;
+let nightScale = 0;
+const emberCache = new WeakMap(); // Weg -> Glutpunkte
+function drawNightLayer(ctx, state, reduced) {
+  drawNightTint(ctx, NIGHT_STYLE);
+  const scale = bgScaleOf(ctx);
+  if (nightScale !== scale) {
+    const w = Math.round(WIDTH * scale), h = Math.round(HEIGHT * scale);
+    const cv = makeCanvas(w, h);
+    if (cv) {
+      const c = cv.getContext('2d');
+      if (typeof c.setTransform === 'function') c.setTransform(scale, 0, 0, scale, 0, 0);
+      drawNightGlow(c, NIGHT_STYLE);
+      nightCanvas = cv;
+      nightScale = scale;
+    }
+  }
+  if (nightCanvas && nightScale === scale) ctx.drawImage(nightCanvas, 0, 0, WIDTH, HEIGHT);
+  else drawNightGlow(ctx, NIGHT_STYLE); // ohne Canvas (Node): direkt
+  if (!emberCache.has(state.path)) emberCache.set(state.path, emberPoints(state.path, NIGHT_STYLE, TILE));
+  drawEmbers(ctx, emberCache.get(state.path), now() / 1000, NIGHT_STYLE, reduced);
 }
 
 function paintBackground(ctx, state) {
@@ -540,7 +571,7 @@ function drawHover(ctx, state, ui) {
   if (ringType) {
     ctx.save();
     ctx.globalAlpha *= RING_MENU.ghostAlpha;
-    drawTowerFigure(ctx, { type: ringType, x, y, level: 1, angle: -Math.PI / 4 }, 0);
+    drawTowerFigure(ctx, { type: ringType, x, y, level: 1, angle: -Math.PI / 4 }, 0, undefined, false, 1, ui.goldTowers ? GOLD_OPT : null);
     ctx.restore();
   }
 }
@@ -560,6 +591,7 @@ function rangeCircle(ctx, x, y, r, fill) {
 
 // Tiefen-Sortierung ohne Allokation pro Frame: eine Liste wird wiederverwendet
 const figures = [];
+const GOLD_OPT = { gold: true }; // B-185: goldene Türme (Kosmetik), ein Objekt statt einem je Frame
 const footOf = (o) => (o.hp === undefined ? towerFootY(o) : enemyFootY(o));
 const byFoot = (a, b) => footOf(a) - footOf(b);
 function drawFigures(ctx, state, ui) {
@@ -568,7 +600,7 @@ function drawFigures(ctx, state, ui) {
   for (const e of state.enemies) figures.push(e);
   figures.sort(byFoot);
   for (const o of figures) {
-    if (o.hp === undefined) drawTower(ctx, o, ui.selectedTowerId === o.id, state.time, !!ui.reducedMotion, displayLevel(state, o));
+    if (o.hp === undefined) drawTower(ctx, o, ui.selectedTowerId === o.id, state.time, !!ui.reducedMotion, displayLevel(state, o), ui.goldTowers ? GOLD_OPT : null);
     else drawEnemy(ctx, o, state.time, enemyPath(state, o), !!ui.reducedMotion, !!ui.bossBarShown); // B-180: Leiste im HUD
   }
   figures.length = 0;
@@ -576,11 +608,12 @@ function drawFigures(ctx, state, ui) {
 
 // Exportiert, damit Tests einen einzelnen Turm gegen einen Mock-Kontext zeichnen koennen (ohne Stufenmarke).
 // time/reduced: Ruhe-Animation der Stufe 3; level: angezeigte Stufe (Aufstieg), sonst t.level.
-export function drawTower(ctx, t, selected, time, reduced = false, level = t.level) {
+// opts.gold: goldene Türme (B-185, ui.goldTowers aus main.js); reine Optik.
+export function drawTower(ctx, t, selected, time, reduced = false, level = t.level, opts = null) {
   const def = TOWER_TYPES[t.type];
   // Rückstoß aus der Abklingzeit (game.js setzt cooldown beim Schuss auf das Intervall)
   if (selected) drawSelectRing(ctx, t);
-  drawTowerFigure(ctx, t, def ? recoilOffset(t.cooldown / def.rate) : 0, time, reduced, level);
+  drawTowerFigure(ctx, t, def ? recoilOffset(t.cooldown / def.rate) : 0, time, reduced, level, opts);
 }
 
 // C-Abnahme 8: Auswahl als Bodenellipse unter dem Turm (Maße und Farben in SELECT_RING, config.js)

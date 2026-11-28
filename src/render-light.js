@@ -1,7 +1,7 @@
 // Licht der Wiese (B-081): Baumschatten, Lichtstreifen von oben links, sanfter Verlauf und Vignette.
 // Nur Zeichnen, ausschließlich im Hintergrund-Cache (bgCanvas): Gradient-Objekte entstehen nur dort,
 // nie pro Frame. Alle Farben als rgba, kein globalAlpha, kein shadowBlur.
-import { LIGHT_STYLE, WIDTH, HEIGHT } from './config.js';
+import { LIGHT_STYLE, NIGHT_STYLE, WIDTH, HEIGHT, TILE } from './config.js';
 
 // Weiche Baumschatten, nach rechts unten versetzt; VOR den Kronen zeichnen.
 export function drawTreeShadows(ctx, crowns, L = LIGHT_STYLE) {
@@ -70,4 +70,78 @@ export function paintDarkness(x, y, P) {
   const d = Math.hypot(x - P.vignetteX * WIDTH, y - P.vignetteY * HEIGHT);
   const vig = P.vignetteAlpha * Math.max(0, Math.min(1, (d - r0) / (r - r0)));
   return 1 - (1 - shade) * (1 - vig);
+}
+
+// ---------- B-184: Albtraum-Stimmung (auch Nacht-Look B-185), nur über dem Feld 0..WIDTH x 0..HEIGHT ----------
+// Tönung: Rechteck im Mischmodus multiply (ohne Gradient, darf pro Frame laufen).
+export function drawNightTint(ctx, N = NIGHT_STYLE) {
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(0, 0, WIDTH, HEIGHT);
+  ctx.clip();
+  ctx.globalCompositeOperation = 'multiply';
+  ctx.fillStyle = `rgba(${N.tint},${N.tintAlpha})`;
+  ctx.fillRect(0, 0, WIDTH, HEIGHT);
+  ctx.restore();
+}
+
+// Rotes Licht von unten und Vignette (Gradienten: nur im Cache zeichnen, nie pro Frame).
+export function drawNightGlow(ctx, N = NIGHT_STYLE) {
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(0, 0, WIDTH, HEIGHT);
+  ctx.clip();
+  const d = Math.hypot(WIDTH, HEIGHT);
+  const ex = N.emberX * WIDTH, ey = N.emberY * HEIGHT;
+  const red = ctx.createRadialGradient(ex, ey, 0, ex, ey, N.emberRadius * d);
+  red.addColorStop(0, `rgba(${N.ember},${N.emberAlpha})`);
+  red.addColorStop(1, `rgba(${N.ember},0)`);
+  ctx.fillStyle = red;
+  ctx.fillRect(0, 0, WIDTH, HEIGHT);
+  const r = d / 2;
+  const vig = ctx.createRadialGradient(WIDTH / 2, HEIGHT / 2, N.vignetteInner * r, WIDTH / 2, HEIGHT / 2, r);
+  vig.addColorStop(0, `rgba(${N.vignette},0)`);
+  vig.addColorStop(1, `rgba(${N.vignette},${N.vignetteAlpha})`);
+  ctx.fillStyle = vig;
+  ctx.fillRect(0, 0, WIDTH, HEIGHT);
+  ctx.restore();
+}
+
+// Alle drei Schichten in der Reihenfolge der Bauvorlage (Tönung, rotes Licht, Vignette).
+export function drawNight(ctx, N = NIGHT_STYLE) {
+  drawNightTint(ctx, N);
+  drawNightGlow(ctx, N);
+}
+
+// Glutpunkte am Weg: N.glowCount Punkte gleichmäßig über die Weglänge, abwechselnd links/rechts der Wegmitte.
+// path = { segments, length } aus buildPath; deterministisch (gleicher Weg = gleiche Punkte).
+export function emberPoints(path, N = NIGHT_STYLE, tile = TILE) {
+  const segs = path?.segments ?? [];
+  if (!segs.length || !(path.length > 0)) return [];
+  const pts = [];
+  for (let i = 0; i < N.glowCount; i++) {
+    const d = ((i + 0.5) / N.glowCount) * path.length;
+    const s = segs.find((g) => d <= g.start + g.len) ?? segs[segs.length - 1];
+    const t = s.len > 0 ? (d - s.start) / s.len : 0;
+    const nx = s.len > 0 ? -(s.b.y - s.a.y) / s.len : 0, ny = s.len > 0 ? (s.b.x - s.a.x) / s.len : 0;
+    const side = (i % 2 === 0 ? 1 : -1) * N.glowSide * tile;
+    pts.push({ x: s.a.x + (s.b.x - s.a.x) * t + nx * side, y: s.a.y + (s.b.y - s.a.y) * t + ny * side });
+  }
+  return pts;
+}
+
+// Glut pro Frame (ohne Gradient): Hof lava, Kern lava-hot, pulsierend; reduced = statisch (s = 0,5).
+export function drawEmbers(ctx, pts, t, N = NIGHT_STYLE, reduced = false) {
+  pts.forEach((p, i) => {
+    const ph = (((t / N.glowPeriod + i * N.glowPhaseStep) % 1) + 1) % 1;
+    const s = reduced ? 0.5 : 0.5 - 0.5 * Math.cos(2 * Math.PI * ph);
+    ctx.fillStyle = `rgba(${N.glowLava},${(0.2 + 0.3 * s).toFixed(3)})`;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, N.glowHalo * (0.8 + 0.5 * s), 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = `rgba(${N.glowHot},${(0.4 + 0.6 * s).toFixed(3)})`;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, N.glowCore, 0, Math.PI * 2);
+    ctx.fill();
+  });
 }

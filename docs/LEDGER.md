@@ -93,3 +93,9 @@ Anhängen ohne die Datei zu lesen: `cat >> docs/LEDGER.md <<'EOF' … EOF`. Übe
 - Tests: npm test 648 grün, E2E 121 grün (neu: lautstaerke + Randfälle des Testers)
 - Entscheidungen/Abweichungen: Mensch hat „kein Lautstärkeregler“ umentschieden (Musik und Effekte getrennt, eigener PR). Tester fand Feld offen über Startbildschirm (behoben), Reviewer APPROVE ohne Muss-Punkte; Hinweise (M auf Touch, Tab-Schließen, Hochformat) mit umgesetzt.
 - Offen: neues Bauteil (Plakette mit Schiebern) im Design-System nachtragen.
+
+## 2026-11-28 · B-182 bis B-187 · Albtraum-Modus (Paket)
+- Ergebnis: fertig, Branch agent/albtraum (Unter-Branches albtraum-gold, albtraum-goldtuerme gemergt), PR folgt
+- Tests: npm test 708, test:balance 26 (neu: albtraum.test.js), E2E 129 grün
+- Entscheidungen/Abweichungen: Mensch: feste Stufe, Abzeichen + Kosmetik (sofort an), Motiv Oger-Kopf, Musik je Karte (Eiswelt vorerst Kartentitel), Asset-Grenze 15 MB. Balancing grob: Start-Gold nicht gekürzt (sonst Einbruch Welle 2–3). Tester: Silber trotz Reparatur und Medaille bei 667x375 behoben; Reviewer APPROVE.
+- Offen: Feinabstimmung durch den Menschen; Albtraum-Titel Eiswelt; Vorschau normal/golden im Menü „Aussehen“; Bauteile (Medaille, Aussehen, Ton-Feld) in die Claude-Design-Bibliothek.

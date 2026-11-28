@@ -66,3 +66,12 @@ Die Lizenz CC0 hat der Mensch am 26.11.2026 auf den jeweiligen OpenGameArt-Seite
 | ../music/music-fork.m4a | Zangenangriff | Medieval: Exploration | RandomMind | https://opengameart.org/content/medieval-exploration | CC0 | Exploration.mp3 (320 kbit/s) umgewandelt |
 | ../music/music-twin.m4a | Zwei Fronten | Medieval: Minstrel Dance | RandomMind | https://opengameart.org/content/medieval-minstrel-dance | CC0 | Minstrel_Dance.mp3 (320 kbit/s) umgewandelt |
 | ../music/music-volcano.m4a | Vulkan | Medieval: Battle | RandomMind | https://opengameart.org/content/medieval-battle | CC0 | battle.mp3 (320 kbit/s) umgewandelt |
+
+Albtraum-Modus (B-187): Lizenz CC0 hat der Mensch am 28.11.2026 auf der OpenGameArt-Seite geprüft (Screenshot).
+
+| Datei | Modus | Titel | Autor | Quelle | Lizenz | Bearbeitung |
+|---|---|---|---|---|---|---|
+| ../music/music-nightmare.m4a | Albtraum Wiese | Fantasy - Battlegrounds (Remastered) | Doge | https://opengameart.org/node/114717 | CC0 | battleground_remastered.mp3 (192 kbit/s) nach AAC (.m4a, 96 kbit/s) umgewandelt; Lautstärke über `SOUND.music.nightmare.gain` (0,52) |
+| ../music/music-nightmare-fork.m4a | Albtraum Zangenangriff | Evil Approach | nene | OpenGameArt, Seite „Evil Approach“ (Screenshot des Menschen, 28.11.2026) | CC0 | Evil Approach.wav nach AAC (.m4a, 80 kbit/s); Lautstärke über `SOUND.music.nightmare.byMap.fork.gain` (1,08) |
+| ../music/music-nightmare-twin.m4a | Albtraum Zwei Fronten | New Sunrise | nene | OpenGameArt, Seite „New Sunrise“ (Screenshot des Menschen, 28.11.2026) | CC0 | New Sunrise.wav: Ausschnitt 78–120 s (Höhepunkt), Einblenden 1 s, Ausblenden 2,5 s, nach AAC (.m4a, 80 kbit/s); Lautstärke über `SOUND.music.nightmare.byMap.twin.gain` (1,16) |
+| ../music/music-nightmare-volcano.m4a | Albtraum Vulkan | Ancient Power Of Serpents | Kevin MacLeod (über FreePD), hochgeladen von josepharaoh99 | OpenGameArt, Seite „Ancient Power Of Serpents“ (Screenshot des Menschen, 28.11.2026); Original auf freepd.com (Cinematic) | CC0 (Namensnennung nicht nötig, freiwillig an Kevin MacLeod) | Ancient Power Of Serpents.mp3 nach AAC (.m4a, 80 kbit/s); Lautstärke über `SOUND.music.nightmare.byMap.volcano.gain` (0,78) |

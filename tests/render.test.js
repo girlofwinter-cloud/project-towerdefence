@@ -2085,3 +2085,210 @@ test('Stufe 3: beim Aufstieg zeigt der Turm bis swapAt noch Stufe 2, danach das 
   s.effects.length = 0;
   assert.equal(displayLevel(s, t), 3);
 });
+
+// ---------- B-184: Albtraum-Stimmung und Abzeichen ----------
+// Mock, der Füllungen mit Mischmodus und Clip-Rechtecke mitschreibt
+function nightRecorder() {
+  const props = {};
+  const fills = [];
+  const rects = [];
+  const ctx = new Proxy({}, {
+    get(_, k) {
+      if (k in props) return props[k];
+      return (...a) => {
+        if (k === 'createLinearGradient' || k === 'createRadialGradient') return { addColorStop() {} };
+        if (k === 'fillRect') fills.push({ op: props.globalCompositeOperation ?? 'source-over', style: String(props.fillStyle) });
+        if (k === 'rect') rects.push(a);
+      };
+    },
+    set(_, k, v) { props[k] = v; return true; },
+  });
+  return { ctx, fills, rects };
+}
+
+test('B-184 Render: Nacht-Tönung (multiply, night-tint) nur im Albtraum oder mit ui.night, nur im Feld 20 x 14', async () => {
+  const { render, nightOn } = await import('../src/render.js?nacht');
+  const { WIDTH, HEIGHT } = await import('../src/config.js');
+  const isTint = (f) => f.op === 'multiply' && f.style.startsWith('rgba(20,12,40,');
+  const normal = createGame({ mapId: 'meadow' });
+  const a = nightRecorder();
+  render(a.ctx, normal, {});
+  assert.equal(nightOn(normal, {}), false);
+  assert.equal(a.fills.some(isTint), false, 'Normalmodus ohne Nacht-Look: keine Tönung');
+  const nm = createGame({ mapId: 'meadow', mode: 'nightmare' });
+  const b = nightRecorder();
+  render(b.ctx, nm, {});
+  assert.equal(nightOn(nm, {}), true);
+  assert.equal(b.fills.filter(isTint).length, 1, 'Albtraum: genau eine Tönung');
+  assert.ok(b.rects.some((r) => r.join() === `0,0,${WIDTH},${HEIGHT}`), 'Clip-Rechteck = Feld');
+  const c = nightRecorder();
+  render(c.ctx, normal, { night: true }); // Nacht-Look (B-185) im Normalmodus
+  assert.equal(c.fills.filter(isTint).length, 1);
+  // Spielfeld bleibt 20 x 14 Kacheln
+  assert.deepEqual([COLS, ROWS, WIDTH / TILE, HEIGHT / TILE], [20, 14, 20, 14]);
+});
+
+test('B-184 Glut am Weg: 10 Punkte, deterministisch, neben der Wegmitte (höchstens 0,6 Kacheln)', async () => {
+  const { emberPoints, drawEmbers } = await import('../src/render-light.js');
+  const { NIGHT_STYLE: N } = await import('../src/config.js');
+  const s = createGame({ mapId: 'meadow', mode: 'nightmare' });
+  const pts = emberPoints(s.path);
+  assert.equal(pts.length, N.glowCount);
+  assert.deepEqual(pts, emberPoints(s.path), 'gleicher Weg, gleiche Punkte');
+  const dist = (p) => Math.min(...s.path.segments.map(({ a, b }) => {
+    const len2 = (b.x - a.x) ** 2 + (b.y - a.y) ** 2;
+    const t = Math.max(0, Math.min(1, ((p.x - a.x) * (b.x - a.x) + (p.y - a.y) * (b.y - a.y)) / len2));
+    return Math.hypot(p.x - a.x - t * (b.x - a.x), p.y - a.y - t * (b.y - a.y));
+  }));
+  for (const p of pts) assert.ok(dist(p) > 0 && dist(p) <= N.glowSide * TILE + 1e-6, 'neben, aber nicht weiter als 0,6 Kacheln vom Weg');
+  assert.deepEqual(emberPoints({ segments: [], length: 0 }), []);
+  // je Punkt zwei Kreise (Hof, Kern), ohne Gradient
+  const m = mockCtx();
+  drawEmbers(m.ctx, pts, 1.3, N, true);
+  assert.equal(m.counts.arc, 2 * N.glowCount);
+  assert.equal(m.counts.createRadialGradient, undefined);
+});
+
+test('B-184 badgeSvg: gültiges SVG je Stufe, Band nur bei erreichten Stufen, Gold-Verlauf, klein ohne Mund', async () => {
+  const { badgeSvg, OGRE_MOUTH } = await import('../src/badge-art.js');
+  for (let t = 0; t <= 3; t++) {
+    const svg = badgeSvg(44, t);
+    assert.match(svg, /^<svg [^>]*viewBox="0 0 100 100"[^>]*>.*<\/svg>$/s);
+    assert.equal((svg.match(/<svg/g) || []).length, 1);
+    assert.equal(svg.includes('#c4452f'), t > 0, `Band (flag-red) bei Stufe ${t}`);
+    assert.equal(svg.includes(OGRE_MOUTH), false, 'S 44 ohne Mund');
+  }
+  assert.ok(badgeSvg(44, 3).includes('#ffe27a'), 'Gold-Verlauf gold-light');
+  assert.ok(badgeSvg(200, 3).includes(OGRE_MOUTH), 'groß mit Mund');
+  assert.match(badgeSvg(200, 3), /badge-glow/);
+  assert.doesNotMatch(badgeSvg(200, 2), /badge-glow/);
+  assert.match(badgeSvg(40, 1, 'Bronze: Welle 20 im Albtraum'), /role="img" aria-label="Bronze: Welle 20 im Albtraum"/);
+  assert.match(badgeSvg(120, 0), /stroke-dasharray/, 'offen: gestrichelt');
+});
+
+
+// ---------- B-185: goldene Türme ----------
+
+// Zeichnet eine Turmfigur direkt (ohne Sprites) und sammelt alle gesetzten Farben und Verlaufsfarben
+async function recordColors(type, level, opts) {
+  const { drawTowerFigure } = await import('../src/render-towers.js');
+  const colors = [];
+  const calls = [];
+  const props = {};
+  let depth = 0;
+  const grad = { addColorStop: (_, c) => colors.push(String(c).toLowerCase()) };
+  const ctx = new Proxy({}, {
+    get(_, k) {
+      if (k in props) return props[k];
+      return (...a) => {
+        calls.push(`${String(k)}:${a.map((v) => (typeof v === 'number' ? v.toFixed(2) : typeof v)).join(',')}`);
+        if (k === 'save') depth++;
+        if (k === 'restore') depth--;
+        if (k === 'createLinearGradient' || k === 'createRadialGradient') return grad;
+      };
+    },
+    set(_, k, v) { props[k] = v; if ((k === 'fillStyle' || k === 'strokeStyle') && typeof v === 'string') colors.push(v.toLowerCase()); return true; },
+  });
+  drawTowerFigure(ctx, { type, level, x: 100, y: 100, angle: 0.3 }, 0, 1, false, level, opts);
+  return { colors: new Set(colors), calls: calls.join('\n'), depth };
+}
+
+test('B-185 goldene Türme: Gold-Farben statt Holz/Stein, Silhouette gleich, ohne Option unverändert', async () => {
+  const { GOLD_TOWER_STYLE: G } = await import('../src/config.js');
+  for (const type of Object.keys(TOWER_TYPES)) {
+    for (let level = 1; level <= 3; level++) {
+      const plain = await recordColors(type, level);
+      const off = await recordColors(type, level, { gold: false });
+      const gold = await recordColors(type, level, { gold: true });
+      assert.equal(off.calls, plain.calls, `${type} L${level}: gold:false zeichnet wie ohne Option`);
+      assert.deepEqual([...off.colors], [...plain.colors]);
+      assert.equal(gold.depth, 0, 'save/restore ausgewogen');
+      assert.ok([...gold.colors].some((c) => !plain.colors.has(c)), `${type} L${level}: golden zeichnet andere Farben`);
+      assert.ok(gold.colors.has(G.sparkle.color), `${type} L${level}: Funkel in bolt`);
+      // Silhouette: alle Pfade der normalen Figur kommen golden in gleicher Reihenfolge vor (plus Glanz und Funkel)
+      const shape = (s) => s.split('\n').filter((c) => /^(moveTo|lineTo|arc|ellipse|arcTo|rect)/.test(c));
+      const g = shape(gold.calls);
+      let j = 0;
+      for (const c of g) if (j < shape(plain.calls).length && c === shape(plain.calls)[j]) j++;
+      assert.equal(j, shape(plain.calls).length, `${type} L${level}: gleiche Formen in gleicher Reihenfolge`);
+    }
+  }
+  const p1 = await recordColors('arrow', 1);
+  const g1 = await recordColors('arrow', 1, { gold: true });
+  assert.ok(p1.colors.has('#c88a4c') && !g1.colors.has('#c88a4c'), 'Holz s1-wood ersetzt');
+  assert.ok(g1.colors.has('#ffe27a') && g1.colors.has('#b9851d') && g1.colors.has('#e08a1c'), 'gold-light, gold-dark, gold-btn-b');
+  assert.ok(!g1.colors.has('#a9703d') && !g1.colors.has('#6b5a48'), 'Zinnen und Fugen getauscht');
+});
+
+test('B-185 goldene Türme: Palette rein, Farben mit Deckkraft getauscht', async () => {
+  const { goldPalette, goldColor, goldElements } = await import('../src/render-towers.js');
+  const { parseFigure } = await import('../src/svg-figure.js');
+  const pal = goldPalette();
+  assert.equal(pal.grads['s1-stone'], 's1-stone-gold');
+  assert.equal(goldColor('#a9703d', pal), '#e08a1c');
+  assert.equal(goldColor('rgba(107,90,72,0.5)', pal), 'rgba(185,133,29,0.5)');
+  assert.equal(goldColor('#2b1a10', pal), '#2b1a10', 'Kontur ink bleibt');
+  const els = parseFigure('<rect x="10" y="38" width="48" height="12" rx="3" fill="url(#s1-wood)" stroke="#2b1a10" stroke-width="3"/>').all;
+  const before = JSON.stringify(els);
+  const out = goldElements(els, pal);
+  assert.equal(JSON.stringify(els), before, 'Eingabe unverändert');
+  assert.equal(out[0].grad, 's1-wood-gold');
+  assert.equal(out.length, 2, 'Glanzkante oben auf dem Holz');
+  assert.equal(out[1].width, 5);
+});
+
+test('B-185 goldene Türme: eigener Sprite-Satz, normaler Satz bleibt', async () => {
+  const { setSpriteFactory, spriteStats } = await import('../src/sprites.js');
+  const { drawTowerFigure } = await import('../src/render-towers.js');
+  setSpriteFactory((w, h) => { const m = mockCtx(); return { width: w, height: h, getContext: () => m.ctx }; });
+  try {
+    const frame = (opts) => {
+      const m = mockCtx();
+      for (const type of Object.keys(TOWER_TYPES)) for (let level = 1; level <= 3; level++) drawTowerFigure(m.ctx, { type, level, x: 100, y: 100, angle: 0.5 }, 0, 1, false, level, opts);
+      assert.equal(m.depth, 0);
+    };
+    const b0 = spriteStats.builds;
+    frame();
+    const normal = spriteStats.builds - b0;
+    assert.ok(normal > 0);
+    frame({ gold: true });
+    assert.equal(spriteStats.builds - b0, 2 * normal, 'golden: eigener Satz je Typ und Stufe');
+    frame();
+    frame({ gold: true });
+    assert.equal(spriteStats.builds - b0, 2 * normal, 'danach nichts neu gebaut');
+  } finally { setSpriteFactory(); }
+});
+
+test('B-185 render(): goldene Türme nur mit ui.goldTowers (Spielfeld und Ring-Vorschau), Spielwerte unverändert', async () => {
+  const { render } = await import('../src/render.js?goldui');
+  const goldDark = '#b9851d'; // gold-dark: Steinfugen der goldenen Türme
+  const record = (ui, s) => {
+    const seen = [];
+    const grad = { addColorStop: (_, c) => seen.push(String(c).toLowerCase()) };
+    const props = {};
+    const ctx = new Proxy({}, {
+      get(_, k) {
+        if (k in props) return props[k];
+        if (k === 'canvas') return { width: 900, height: 660 };
+        if (k === 'getTransform') return () => ({ a: 1, d: 1 });
+        if (k === 'measureText') return () => ({ width: 10 });
+        if (k === 'createLinearGradient' || k === 'createRadialGradient' || k === 'createPattern') return () => grad;
+        return () => {};
+      },
+      set(_, k, v) { props[k] = v; if (typeof v === 'string') seen.push(v.toLowerCase()); return true; },
+    });
+    render(ctx, s, ui);
+    return seen.filter((c) => c === goldDark).length;
+  };
+  const s = createGame({ mapId: 'meadow' });
+  assert.ok(buildTower(s, 'arrow', 8, 5).ok);
+  const snap = JSON.stringify(s.towers);
+  const off = record({}, s);
+  const on = record({ goldTowers: true }, s);
+  assert.ok(on > off, 'mit Option werden Gold-Farben gezeichnet');
+  assert.equal(record({ goldTowers: false }, s), off, 'ausgeschaltet wie ohne Option');
+  // Ring-Vorschau (Geisterturm) folgt der Option
+  const ring = { ring: { col: 3, row: 3 }, ringPreview: 'cannon' };
+  assert.ok(record({ ...ring, goldTowers: true }, s) > record(ring, s), 'Ring-Vorschau golden');
+  assert.equal(JSON.stringify(s.towers), snap, 'Rendering ändert keine Spielwerte');
+});

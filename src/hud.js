@@ -130,3 +130,17 @@ export function loadAutoWave(storage) {
 export function saveAutoWave(storage, on) {
   try { storage?.setItem(AUTO_WAVE_SETTING.storageKey, on ? '1' : '0'); } catch { /* Speicher voll oder gesperrt */ }
 }
+
+// B-183: kleine Gold-Anzeige im HUD (nur Albtraum). check = Ergebnis von checkGoldCondition ({ ok, label }).
+// Zeichen statt Emoji: ✓ noch erfüllt, ✗ verletzt. Ohne Albtraum oder ohne Bedingung: hidden.
+export function goldGoalView(mode, check) {
+  if (mode !== 'nightmare' || !check?.label) return { hidden: true, ok: false, text: '', mark: '', title: '' };
+  const ok = check.ok === true;
+  return {
+    hidden: false,
+    ok,
+    text: `Gold: ${check.label}`,
+    mark: ok ? '✓' : '✗',
+    title: `Gold-Bedingung ${ok ? 'noch erfüllt' : 'verletzt'}: ${check.label}`,
+  };
+}

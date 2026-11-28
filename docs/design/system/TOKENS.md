@@ -2,7 +2,7 @@
 
 Erzeugt aus `tokens.json` mit `node scripts/design-tokens.mjs`. Nicht von Hand ändern.
 
-## Farben (154)
+## Farben (168)
 
 | Token | Wert | Verwendung |
 |---|---|---|
@@ -160,6 +160,20 @@ Erzeugt aus `tokens.json` mit `node scripts/design-tokens.mjs`. Nicht von Hand �
 | `boss-shield` | `#bff6ff` | Schild-Kugel beim Phasenwechsel, Streifen der Boss-Leiste bei Schild, Elite-Schildbogen und -zeichen (style.css --boss-shield). |
 | `boss-bar` | `#d0384a` | Füllung der Boss-Leiste (Verlauf #f0606e → #d0384a → #8a1f30), style.css --boss-bar. |
 | `elite-ring` | `rgba(242,193,78,0.9)` | Gestrichelter Fußring der Elite-Gegner (ENEMY_STYLE.elite.ring). |
+| `badge-bronze-a` | `#f0b47a` | Albtraum-Abzeichen Bronze: Licht des Medaillen-Verlaufs (radial 35 % / 30 %). Bauvorlage Albtraum-Abzeichen. |
+| `badge-bronze-b` | `#8a4f24` | Albtraum-Abzeichen Bronze: Schatten des Medaillen-Verlaufs. |
+| `badge-silver-a` | `#ffffff` | Albtraum-Abzeichen Silber: Licht des Medaillen-Verlaufs. Gold nutzt gold-light → gold-btn-b. |
+| `badge-silver-b` | `#8f9aa6` | Albtraum-Abzeichen Silber: Schatten des Medaillen-Verlaufs. |
+| `ogre-eye` | `#ffc22a` | Glut-Augen des Oger-Kopfs auf dem Albtraum-Abzeichen (Schein darunter: lava, α 0,4). |
+| `night-a` | `#2a1f44` | Albtraum-Nachthimmel hell: Hintergrund Kartenauswahl im Albtraum, Siegbildschirm, Belohnungs-Zeile, Aussehen-Menü (radial nach night-b). |
+| `night-b` | `#0e0b1a` | Albtraum-Nachthimmel dunkel: Ende der Nachtverläufe. |
+| `night-card-a` | `#4a3550` | Kartenkarte im Albtraum-Modus oben (Holz bei Nacht), Verlauf nach night-card-b. |
+| `night-card-b` | `#2a1d30` | Kartenkarte im Albtraum-Modus unten. |
+| `nightmare-btn-a` | `#5b3f7a` | Albtraum-Knopf und aktiver Umschalter Albtraum oben (Verlauf nach nightmare-btn-b). Text cream. |
+| `nightmare-btn-b` | `#2a1d40` | Albtraum-Knopf unten. |
+| `night-tint` | `rgba(20,12,40,0.62)` | Nacht-Tönung nur über dem Spielfeld (multiply), Albtraum und Nacht-Look. Nie über Rand oder HUD. |
+| `night-ember` | `#ff5a2a` | Rötliches Nachtlicht von unten über dem Spielfeld (α 0,35) und Glühen des aktiven Albtraum-Umschalters (α 0,6). |
+| `night-vignette` | `rgba(8,4,16,0.85)` | Rand-Vignette des Spielfelds im Albtraum (radial, innen 45 % durchsichtig). |
 
 ## Schrift
 

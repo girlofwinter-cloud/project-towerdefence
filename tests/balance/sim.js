@@ -74,8 +74,9 @@ export const MIX_ARROW = ['cannon', 'arrow', 'arrow', 'frost'];
 // (jede Runde so viele Pfeiltürme wie möglich, nie aufrüsten). Liefert zusätzlich pro Welle den größten
 // Wegfortschritt (dist / Weglänge, 0..1) eines Gegners und die verlorenen Leben.
 // Jeder Lauf (Schlüssel `mapId:mix@dt`) wird nur einmal simuliert, alle Tests lesen aus demselben Cache.
-export function playTracked(mix, dt, mapId = 'meadow', cool = false) {
-  const s = createGame({ mapId });
+// mode (B-186): Spielmodus ('normal' | 'nightmare'), Standard normal.
+export function playTracked(mix, dt, mapId = 'meadow', cool = false, mode = 'normal') {
+  const s = createGame({ mapId, mode });
   const arrowOnly = mix === 'arrowOnly';
   const spots = rankedSpots(s, TOWER_TYPES[arrowOnly ? 'arrow' : 'cannon'].range, cool);
   const progress = [];
@@ -119,9 +120,9 @@ export function playTracked(mix, dt, mapId = 'meadow', cool = false) {
 }
 
 export const strategyCache = new Map();
-export function strategyRun(mix, dt, mapId = 'meadow', cool = false) {
-  const key = `${mapId}:${mix === 'arrowOnly' ? mix : mix.join(',')}@${dt}${cool ? ':kühl' : ''}`;
-  if (!strategyCache.has(key)) strategyCache.set(key, playTracked(mix, dt, mapId, cool));
+export function strategyRun(mix, dt, mapId = 'meadow', cool = false, mode = 'normal') {
+  const key = `${mapId}:${mix === 'arrowOnly' ? mix : mix.join(',')}@${dt}${cool ? ':kühl' : ''}${mode === 'normal' ? '' : `:${mode}`}`;
+  if (!strategyCache.has(key)) strategyCache.set(key, playTracked(mix, dt, mapId, cool, mode));
   return strategyCache.get(key);
 }
 
@@ -181,8 +182,8 @@ export function bestCoolSpot(state, rangeTiles) {
 
 // Anzahl Türme, die das perfekte Spiel baut, bevor es aufrüstet
 export const PERFECT_BASE = { default: 7, twin: 12, meadow: 99 }; // 99: erst alle Plätze bebauen, dann aufrüsten
-export function perfectRun(mapId, dt, base = PERFECT_BASE[mapId] ?? PERFECT_BASE.default) {
-  const s = createGame({ mapId });
+export function perfectRun(mapId, dt, base = PERFECT_BASE[mapId] ?? PERFECT_BASE.default, mode = 'normal') {
+  const s = createGame({ mapId, mode });
   const order = mapId === 'volcano' ? PERFECT_ORDER_VOLCANO : mapId === 'twin' ? PERFECT_ORDER_TWIN : PERFECT_ORDER;
   let lost = 0;
   while (s.status === 'playing' && s.wave < MAX_WAVES) {
