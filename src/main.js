@@ -543,6 +543,8 @@ const startScreen = mountStartScreen($('start-screen'), {
   getProgress: () => progress,
   allOpen: TEST_MODE,
   currentMap: () => (TEST_MODE ? state.mapId : startMap(progress)),
+  // Rückfrage nur, wenn schon gespielt wurde und das Spiel noch läuft
+  confirmLeave: () => state.status !== 'playing' || state.wave === 0 || window.confirm('Das laufende Spiel geht dabei verloren. Neue Karte starten?'),
   currentMode: () => mode, // B-184: nach einem Albtraum-Spiel öffnet die Kartenauswahl in der Albtraum-Ansicht
   onPick: (id, pickedMode = 'normal') => {
     mapId = id;
@@ -556,6 +558,11 @@ const startScreen = mountStartScreen($('start-screen'), {
   },
 });
 $('to-maps').addEventListener('click', () => startScreen.show(true));
+// Kartenauswahl aus dem Pause-Schild; „Zurück zum Spiel“ oder Esc kehrt ins pausierte Spiel zurück
+$('menu-maps').addEventListener('click', () => {
+  if (state.status === 'playing' && !state.paused) doTogglePause();
+  startScreen.show(true);
+});
 // ---------- B-185: Menü „Aussehen“ (Kosmetik) ----------
 // Testseite: echter Fortschritt fehlt, darum ein eigener Stand im Speicher mit allen Belohnungen frei, anfangs aus
 // (sonst sähen alle Testseiten-Spiele golden aus). Normal: Auswahl im Spielfortschritt, gespeichert.
