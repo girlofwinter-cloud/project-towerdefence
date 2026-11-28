@@ -171,3 +171,7 @@ Anhängen ohne die Datei zu lesen: `cat >> docs/LEDGER.md <<'EOF' … EOF`. Übe
 ### Fix Boss-Leiste Albtraum (2026-11-28)
 - Bug: Oger-König-Leiste neben der Albtraum-Plakette auf wenige px gequetscht ("Oger-").
 - Fix: Lücke < BOSS_BAR.minWidth (200) -> Leiste in voller Breite unter die HUD-Leiste (bossBarLayout in hud.js), Test in render.test.js.
+
+## 2026-11-28 – Albtraum: Oger-König schwächer
+- Spieltest: Oger-König zu stark. NIGHTMARE.bossBuff.ogrePhase2: Schild 2 -> 1.5 s, Wut-Tempo 1.35 -> 1.2.
+- Unit- und Balancing-Tests grün.
