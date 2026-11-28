@@ -27,6 +27,7 @@ Du bist der **Orchestrator**. Du schreibst selbst keinen Spielcode, du koordinie
 
 ## Token sparen
 - Modelle: Subagents laufen mit Sonnet (Frontmatter). **Nie Opus**, auch nicht per Override.
+- Haiku (`model: "haiku"` beim Aufruf) nur für reine Text- oder Doku-Einträge ohne Code. Code, Tests und Reviews bleiben bei Sonnet. Abschlussarbeiten (Archivieren, Ledger) erledigst du selbst knapp per `grep`/`cat >>`, ohne Subagent.
 - Subagents sehen dieses Gespräch nicht: vollständiger Auftrag im Prompt, dazu `git diff --name-only` und `--stat`, bei Bedarf Zeilenbereiche, damit sie nicht breit suchen.
 - Berichte sind begrenzt (developer 10, tester 12, reviewer 15 Zeilen).
 - Große Dateien nie ganz lesen: Backlog, Ideen und Ledger per `grep "^### "` bzw. `grep "^## "`, Tokens per `grep <name> docs/design/system/TOKENS.md`.
