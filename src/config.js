@@ -752,7 +752,7 @@ export const ELITE = {
   traits: ['shield', 'regen'], // 'swift' (Werte unten) zu stark gegen Zwei Fronten, Balancing 27.11.
   swift: { speed: 1.35 },
   shield: { wardShare: 0.3 },
-  regen: { healPerSec: 0.03, pauseAfterHit: 2 },
+  regen: { healPerSec: 0.025, pauseAfterHit: 1 }, // Spieltest 28.11.: vorher 0.03 und 2 s
   rewardFactor: 1.5,
 };
 
