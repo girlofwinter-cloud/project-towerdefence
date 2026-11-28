@@ -120,7 +120,7 @@ canvas#game.over-flag { cursor: pointer; } /* Maus über der Wellenfahne */
   height: 56px; display: flex; align-items: center; gap: 12px; padding: 0 18px 0 8px;
   transition: opacity .15s;
 }
-#menu-maps { position: absolute; right: calc(100% + 8px); top: 4px; pointer-events: auto; } /* B-200: links neben der Holzleiste; die Leiste lässt Klicks durch, der Knopf nicht */
+#menu-maps { position: absolute; left: max(-56px, calc(4px - var(--fx))); top: 4px; pointer-events: auto; } /* B-200: links neben der Holzleiste (48 + 8 Abstand), bei schmalem Rand nie aus dem Fenster; die Leiste lässt Klicks durch, der Knopf nicht */
 .hud.dim { opacity: .35; } /* Maus über dem Feld darunter (main.js) */
 .hud-item { position: relative; display: inline-flex; align-items: center; gap: 6px; }
 .hud-ico { flex: none; }
@@ -440,6 +440,7 @@ canvas#game, #game { height: auto; border-radius: 10px; }
 .cap { bottom: -14px; font: 15px/20px var(--display); padding: 0 8px; }
 body:has(#tower-info:not([hidden])) #app { padding-bottom: calc(var(--tower-info-h, 140px) + 8px); }
 #test-panel { position: relative; z-index: auto; order: 6; left: 0; bottom: 0; width: auto; }
+#menu-maps { position: static; flex: none; } /* B-200: erstes Flex-Kind der Holzleiste */
 
 #app { min-height: 100%; }
 .wave-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
@@ -847,7 +848,7 @@ body.fs-gate #rotate-hint { position: fixed; inset: 0; z-index: 60; display: fle
   .help { display: none; }
   #speed { grid-area: 1 / 1; } #pause { grid-area: 1 / 2; }
   #sound { grid-area: 2 / 2; width: 44px; height: 44px; } #sound > svg { width: 32px; height: 32px; }
-  #menu-maps { position: fixed; left: auto; right: var(--safe-r); top: calc(var(--safe-t) + 48px + 8px + 44px + 8px); width: 44px; height: 44px; } #menu-maps > svg { width: 32px; height: 32px; } /* B-200: rechts unter dem Ton-Knopf (links ist die Spalte voll) */
+  #menu-maps { position: fixed; left: auto; right: var(--safe-r); top: calc(var(--safe-t) + 48px + 8px + 44px + 8px); width: 44px; height: 44px; } #menu-maps > svg { width: 32px; height: 32px; } /* B-200: rechts unter dem Ton-Knopf (links ist die Spalte voll); top = Tempo/Pause 48 + Lücke 8 + Ton 44 + Lücke 8 */
   #fullscreen { grid-area: 2 / 1; width: 44px; height: 44px; } #fullscreen > svg { width: 32px; height: 32px; } /* B-178: freie Ecke links neben Ton */
   .sound-pop { right: calc(100% + 8px); top: 0; } /* B-188: links neben den Knöpfen, ganz über dem Feldrand */
   /* Links unten: drei Fähigkeiten untereinander, nur Symbol (Name im aria-label) */
