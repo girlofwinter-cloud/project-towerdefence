@@ -259,3 +259,14 @@ Ersetzt die Skizzen-Optik (Filter) durch das ausgearbeitete Design. Nur Optik, M
 - Idee: Je Karte nach `Karte-<Name>-Albtraum.md` (Wiese A, Eiswelt C kalt, Zangenangriff B Steppe, Zwei Fronten C Gruft, Vulkan B Lava). Reichweitenanzeige bleibt wie heute.
 - Akzeptanzkriterien:
   - Weg, Wasser/Lava, Hindernisse und Bauplätze exakt wie `MAPS`; Animationen laufen, bei reduced motion aus; Bildrate auf Handy nicht spürbar schlechter.
+  - Werte aus dem Design-System, Screenshot Desktop und Handy.
+
+### B-200: Home-Knopf immer sichtbar im HUD
+- Status: fertig
+- Aufwand: S
+- Idee: Der Haus-Knopf (bisher nur im Pause-Schild, PR #135) sitzt dauerhaft im HUD neben Pause/Tempo. Vor dem Verlassen einer laufenden Partie kommt eine Rückfrage. Aus dem Pause-Schild fällt er weg.
+- Akzeptanzkriterien:
+  - Haus-Knopf ist im laufenden Spiel ohne Pause sichtbar und bedienbar (Desktop und Handy-Querformat).
+  - Klick fragt nach; Bestätigen führt ins Menü, Abbrechen spielt weiter.
+  - Optik nach Design-System (Tokens), keine Überlappung mit anderen HUD-Elementen.
+  - Test in tests/input bzw. render, e2e grün.

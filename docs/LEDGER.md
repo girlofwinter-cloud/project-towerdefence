@@ -148,3 +148,8 @@ Anhängen ohne die Datei zu lesen: `cat >> docs/LEDGER.md <<'EOF' … EOF`. Übe
 - Scharfschütze: einzelner Gewehrknall (Free Firearm Sound Library, CC0; Tikka, Arisaka, Mosin), alter Ton war ~20x leiser als die Kanone.
 - Stufe 3 "Falkenauge": eigener Ton `shot:sniper:master` (Kenney laserLarge), über das vorhandene Geschoss-Feld `master`.
 - Blitz bleibt unverändert (Wunsch des Menschen). Neuer Test in `tests/sound.test.js`, Schlüsselliste im B-114-Test ergänzt.
+
+## 2026-11-28 · B-200 · Home-Knopf immer sichtbar im HUD
+- Haus-Knopf aus dem Pause-Schild in die HUD-Leiste: Desktop links neben der Holzleiste, Kompakt als erstes Element der Leiste, Handy quer unter dem Ton-Knopf.
+- Klick pausiert und öffnet Kartenauswahl; Rückfrage beim Kartenwechsel wie bisher.
+- Review: Kompakt-Layout außerhalb des Bildschirms gefunden, nachgebessert; e2e um 390x844 und Rand-Prüfung ergänzt.
