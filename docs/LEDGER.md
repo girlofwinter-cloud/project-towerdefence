@@ -134,3 +134,7 @@ Anhängen ohne die Datei zu lesen: `cat >> docs/LEDGER.md <<'EOF' … EOF`. Übe
 
 ### 2026-11-28 Elite-Heilung nachjustiert
 - regen: 2,5 % maxHp/s, Heilpause 1 s nach Schaden (vorher 3 %, 2 s), Entscheidung des Menschen. Tests grün.
+
+### agent/home-knopf (2026-11-28)
+- Kartenauswahl-Knopf im Pause-Schild als Home-Knopf (Haus-Symbol + „Menü“), Desktop und Handy.
+- Unit- und e2e-Tests grün, Screenshots 1280x800 und 844x390 geprüft.
