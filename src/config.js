@@ -1496,7 +1496,7 @@ export const ENEMY_STYLE = {
 // B-180 Boss-Lebensleiste (Bauvorlage HUD-Bossleiste, nur Anzeige): höchstens maxBars Leisten, weitere Bosse
 // zählen in der letzten Leiste zusammen. Breite und Abstand in CSS-px (Desktop, mittig zwischen HUD und Knöpfen),
 // fadeAfter = Sekunden, die die leere Leiste nach dem Tod noch steht.
-export const BOSS_BAR = { maxBars: 2, width: 272, gapPad: 8, top: 6, fadeAfter: 1 };
+export const BOSS_BAR = { maxBars: 2, width: 272, gapPad: 8, top: 6, fadeAfter: 1, minWidth: 200 }; // minWidth: schmalere Lücke -> Leiste unter das HUD
 
 // Auftritt des Bosses (B-067, nur Darstellung): Bodenschlag-Ring plus leichtes Wackeln.
 // Bei prefers-reduced-motion entfällt das Wackeln, der Ring wächst nicht.

@@ -2603,3 +2603,17 @@ test('B-194 Bildrate: Nebelbänder werden ohne Canvas einmal geclippt, nicht je 
   assert.equal(m.counts.clip, 1);
   assert.equal(m.depth, 0);
 });
+
+test('Boss-Leiste: zu schmale Lücke (Albtraum-Plakette) -> volle Breite unter der HUD-Leiste', async () => {
+  const { bossBarLayout } = await import('../src/hud.js');
+  const { BOSS_BAR } = await import('../src/config.js');
+  const wide = bossBarLayout(40, 548, 60, 853);
+  assert.equal(wide.width, BOSS_BAR.width);
+  assert.equal(wide.top, BOSS_BAR.top);
+  const narrow = bossBarLayout(40, 1380, 60, 1500); // Lücke 120 < minWidth
+  assert.equal(narrow.width, BOSS_BAR.width);
+  assert.equal(narrow.top, 60 + BOSS_BAR.gapPad);
+  assert.equal(narrow.left + narrow.width, 1380, 'rechtsbündig mit HUD');
+  assert.equal(bossBarLayout(40, 200, 60, 150).left, 40, 'nie links neben das HUD');
+  assert.equal(bossBarLayout(NaN, NaN, 0, 0), null);
+});

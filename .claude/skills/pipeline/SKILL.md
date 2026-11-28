@@ -31,6 +31,6 @@ Du bist der **Orchestrator**. Du schreibst selbst keinen Spielcode, du koordinie
 - Subagents sehen dieses Gespräch nicht: vollständiger Auftrag im Prompt, dazu `git diff --name-only` und `--stat`, bei Bedarf Zeilenbereiche, damit sie nicht breit suchen.
 - Berichte sind begrenzt (developer 10, tester 12, reviewer 15 Zeilen).
 - Große Dateien nie ganz lesen: Backlog, Ideen und Ledger per `grep "^### "` bzw. `grep "^## "`, Tokens per `grep <name> docs/design/system/TOKENS.md`.
-- Testausgaben kürzen: `npm test --silent 2>&1 | tail -15`. `npm test` ist der schnelle Teil (ca. 2 s); `npm run test:balance` (Strategie-Simulationen, ca. 10 s) nur bei Balancing oder `game.js`. Die CI läuft immer beides.
+- Testausgaben kürzen: `npm test --silent 2>&1 | tail -15`. `npm test` ist der schnelle Teil (ca. 2 s); `npm run test:balance` (Strategie-Simulationen, ca. 10 s) nur bei Balancing oder `game.js`. Die CI läuft `npm test` immer, Balancing nur bei Änderungen an `src/game.js`, `path.js`, `config.js`, `hud.js`, `sound-events.js`, `fx-system.js`, `tests/balance/`, `tests/helpers.js`, `package.json`, `ci.yml` und e2e nur bei Änderungen an `src/`, `index.html`, `style.css`, `assets/`, `tests/e2e/`, `package.json`, `ci.yml`. Übersprungene Jobs zählen als grün.
 - Abschlussberichten nicht blind vertrauen: `git diff --stat` und `npm test` selbst prüfen.
 - Bei Unklarheit fragen, nicht raten.
