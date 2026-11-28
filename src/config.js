@@ -744,14 +744,15 @@ export const WAVE_EXTRAS = {
 // B-179: Elite-Gegner ab Welle `from`: count in Welle from, danach +1 je `every` Wellen, höchstens max. Gewählt werden
 // gleichmäßig verteilte Gegner der Typen `types` (feste Auswahl, kein Zufall); die Eigenschaft wechselt reihum (traits).
 // swift: Tempo mal speed; shield: einmaliger Schild (wie der Magier-Schild) von wardShare * maxHp;
-// regen: heilt healPerSec * maxHp pro Sekunde. Elite-Gegner bringen rewardFactor mal so viel Gold. Flag enemy.elite fürs Abzeichen.
+// regen: heilt healPerSec * maxHp pro Sekunde, aber erst pauseAfterHit Sekunden nach dem letzten HP-Schaden (Spieltest 28.11.:
+// im Albtraum ohne Pause zu stark). Elite-Gegner bringen rewardFactor mal so viel Gold. Flag enemy.elite fürs Abzeichen.
 export const ELITE = {
   from: 10, count: 1, every: 3, max: 3,
   types: ['grunt', 'runner', 'tank', 'shielded'],
   traits: ['shield', 'regen'], // 'swift' (Werte unten) zu stark gegen Zwei Fronten, Balancing 27.11.
   swift: { speed: 1.35 },
   shield: { wardShare: 0.3 },
-  regen: { healPerSec: 0.03 },
+  regen: { healPerSec: 0.03, pauseAfterHit: 2 },
   rewardFactor: 1.5,
 };
 

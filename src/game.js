@@ -546,10 +546,12 @@ function healStep(state) {
 }
 
 // B-179: Selbstheilung der Elite-Gegner mit regen: healPerSec * maxHp pro Sekunde (Rate mal dt), nie über maxHp.
+// Heilpause: erst pauseAfterHit Sekunden nach dem letzten HP-Schaden (enemy.hurtAt).
 function regenStep(state, dt) {
   const rate = ELITE.regen.healPerSec * dt;
   for (const e of state.enemies) {
     if (e.elite !== 'regen' || e.hp <= 0 || e.hp >= e.maxHp) continue;
+    if (state.time - (e.hurtAt ?? -Infinity) < ELITE.regen.pauseAfterHit) continue;
     e.hp = Math.min(e.maxHp, e.hp + e.maxHp * rate);
   }
 }
@@ -917,6 +919,7 @@ function damage(state, enemy, p, direct = false) {
     }
   }
   enemy.hp -= dmg;
+  if (dmg > 0) enemy.hurtAt = state.time; // B-179: Heilpause der Elite-Selbstheilung
   phaseCheck(state, enemy);
   if (p.slow && !isSlowImmune(enemy)) { // B-170: Glutlinge ignorieren den Frost-Slow, der Schaden wirkt
     enemy.slowFactor = 1 - p.slow;

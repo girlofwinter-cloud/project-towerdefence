@@ -126,3 +126,7 @@ Anhängen ohne die Datei zu lesen: `cat >> docs/LEDGER.md <<'EOF' … EOF`. Übe
 - Neu: echter Albtraum-Look statt Filter: je Karte eigener Stil (A/B/C), Bewegung (Wellen, Glut, Nebel), Gegner-Look, Holz-HUD, Kartenauswahl/Sieg/Aussehen; keine Vignette.
 - Gold-Bedingung (Mensch): Zangenangriff ohne Kanone, Vulkan ohne Blitzturm statt "höchstens 3 Turmtypen"; Tests dazu angepasst.
 - Offen: Plakette bei 1280x800, nm-Tokens nach Claude Design abgleichen.
+
+### 2026-11-28 Elite-Heilpause
+- Elite-Selbstheilung (regen) pausiert 2 s nach HP-Schaden (ELITE.regen.pauseAfterHit), Spieltest: im Albtraum zu stark.
+- Test in game.test.js, Unit + Balance grün; Albtraum-Sims fast unverändert.

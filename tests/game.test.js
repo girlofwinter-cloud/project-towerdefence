@@ -3963,3 +3963,16 @@ describe('B-189: gestufte Albtraum-Leben im echten Spawn-Ablauf', () => {
     assert.equal(createGame().modifiers?.hpSteps, undefined);
   });
 });
+
+test('Elite-Selbstheilung pausiert nach HP-Schaden (pauseAfterHit)', () => {
+  const s = createGame();
+  const regen = spawnEnemy(s, 'tank', 10, null, 'regen');
+  regen.hp = regen.maxHp / 2;
+  regen.hurtAt = s.time; // gerade getroffen
+  const pause = ELITE.regen.pauseAfterHit;
+  const steps = Math.floor((pause - 0.1) * 60);
+  for (let i = 0; i < steps; i++) update(s, 1 / 60);
+  assert.equal(regen.hp, regen.maxHp / 2, 'in der Pause keine Heilung');
+  for (let i = 0; i < 60; i++) update(s, 1 / 60);
+  assert.ok(regen.hp > regen.maxHp / 2, 'nach der Pause heilt er wieder');
+});
