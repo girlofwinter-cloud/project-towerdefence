@@ -143,11 +143,12 @@ function under(sc, c) {
   return out.join('');
 }
 
-// Bewegungsschicht (Spiel-px): Tümpel und sichtbare Enden der Rand-Seen pulsieren, Rauch über Fluss und Seen,
+// Bewegungsschicht (Spiel-px): Tümpel im Feld pulsieren, Rauch über Fluss und Seen,
 // Bodenrisse in zwei Gruppen (jeder dritte Riss, abwechselnd), Rest statisch
 const KD = TILE / 48 / FL; // Entwurfs-px -> Spiel-px (Kachel 48 Fläche-px = 57 Entwurfs-px)
 const mid = (c, r) => [(c + 0.5) * TILE, (r + 0.5) * TILE];
-const POOLS = [[mid(4, 6), mid(4, 7)], [mid(9, 8)], [mid(17, 7)], [[-70 * KD, 480 * KD]], [[1230 * KD, 340 * KD]]];
+// Nur Tümpel im Feld: Pulse an den Rand-Seen lagen jenseits der Feldkante und wurden dort hart abgeschnitten
+const POOLS = [[mid(4, 6), mid(4, 7)], [mid(9, 8)], [mid(17, 7)]];
 const SMOKE = [[(790 - 160) * FL * KD, (200 - 64) * FL * KD], [(770 - 160) * FL * KD, (420 - 64) * FL * KD], [-70 * KD, 470 * KD], [1230 * KD, 330 * KD]];
 const crackMid = (e) => (e.vertical ? [(e.c + 1) * TILE, (e.r + 0.5) * TILE] : [(e.c + 0.5) * TILE, (e.r + 1) * TILE]);
 const CRACK_GROUPS = [0, 3].map((k) => crackEdges().filter((_, i) => i % 6 === k).map(crackMid));
