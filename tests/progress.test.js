@@ -389,3 +389,72 @@ test('B-182: Overlay-Texte nach einem Albtraum-Spiel', () => {
   const r2 = recordResult(p, { mapId: 'meadow', status: 'lost', wave: 8, lives: 0, mode: 'nightmare' });
   assert.deepEqual(nightmareResultLines(p, 'meadow', r2, before), ['Albtraum-Rekord: Welle 8', 'Neuer Rekord!']);
 });
+
+// ---------- B-183: Albtraum-Abzeichen ----------
+import { nightmareBadgeFor, badgeCount, BADGE_MAX } from '../src/progress.js';
+import { BADGE_TIERS, NIGHTMARE, MAPS } from '../src/config.js';
+
+test('B-183: nightmareBadgeFor je Stufe erfüllt und verletzt', () => {
+  const max = NIGHTMARE.lives;
+  assert.equal(nightmareBadgeFor('lost', max, max, true), 0, 'verloren: kein Abzeichen');
+  assert.equal(nightmareBadgeFor('playing', max, max, true), 0);
+  assert.equal(nightmareBadgeFor('won', max - 1, max, true), 1, 'Leben verloren: nur Bronze, auch mit Gold-Bedingung');
+  assert.equal(nightmareBadgeFor('won', 1, max, false), 1);
+  assert.equal(nightmareBadgeFor('won', max, max, false), 2, 'ohne Lebensverlust, Bedingung verletzt: Silber');
+  assert.equal(nightmareBadgeFor('won', max, max, true), 3, 'Silber plus Bedingung: Gold');
+  assert.equal(nightmareBadgeFor('won', NaN, max, true), 1, 'ungültige Leben zählen nicht als voll');
+  assert.deepEqual(BADGE_TIERS, ['Bronze', 'Silber', 'Gold']);
+});
+
+test('B-183: Abzeichen wird gespeichert und nur verbessert', () => {
+  const p = emptyProgress();
+  const nm = (status, lives, goldOk) => recordResult(p, { mapId: 'meadow', status, wave: MAX_WAVES, lives, mode: 'nightmare', goldOk, maxLives: 5 });
+  assert.equal(nm('lost', 0, true).newBadge, 0);
+  assert.equal(nightmareProgress(p, 'meadow').badge, undefined);
+  assert.equal(nm('won', 5, false).newBadge, 2);
+  assert.equal(nightmareProgress(p, 'meadow').badge, 2);
+  assert.equal(nm('won', 2, true).newBadge, 0, 'Bronze verschlechtert Silber nicht');
+  assert.equal(nightmareProgress(p, 'meadow').badge, 2);
+  assert.equal(nm('won', 5, true).newBadge, 3);
+  assert.equal(nightmareProgress(p, 'meadow').badge, 3);
+  assert.equal(nm('lost', 0, false).newBadge, 0);
+  assert.equal(nightmareProgress(p, 'meadow').badge, 3);
+  // Normalmodus und Albtraum ohne goldOk bewerten keine Abzeichen
+  assert.equal('newBadge' in recordResult(p, { mapId: 'ice', status: 'won', wave: MAX_WAVES, lives: START_LIVES }), false);
+  assert.equal(p.maps.ice.badge, undefined);
+  // Standard-Höchstleben im Albtraum: NIGHTMARE.lives
+  assert.equal(recordResult(p, { mapId: 'ice', status: 'won', wave: MAX_WAVES, lives: NIGHTMARE.lives, mode: 'nightmare', goldOk: false }).newBadge, 2);
+});
+
+test('B-183: Abzeichen überstehen Speichern, alte Stände ohne badge laden, ungültige Werte begrenzt', () => {
+  const old = fakeStorage({ [PROGRESS_KEY]: JSON.stringify({ maps: { meadow: { bestWave: 20, stars: 3 } }, nightmare: { meadow: { bestWave: 12 } } }) });
+  const p = loadProgress(old);
+  assert.deepEqual(p.nightmare, { meadow: { bestWave: 12 } });
+  assert.equal(badgeCount(p), 0);
+  recordResult(p, { mapId: 'meadow', status: 'won', wave: MAX_WAVES, lives: 5, mode: 'nightmare', goldOk: true, maxLives: 5 });
+  const s = fakeStorage();
+  saveProgress(s, p);
+  assert.deepEqual(loadProgress(s).nightmare.meadow, { bestWave: MAX_WAVES, badge: 3 });
+  const bad = sanitizeProgress({ maps: {}, nightmare: {
+    meadow: { bestWave: 20, badge: 9 }, ice: { bestWave: 20, badge: -1 }, fork: { bestWave: 20, badge: 'x' }, twin: { bestWave: 20, badge: 1.8 },
+  } });
+  assert.deepEqual(bad.nightmare, { meadow: { bestWave: 20, badge: 3 }, ice: { bestWave: 20 }, fork: { bestWave: 20 }, twin: { bestWave: 20, badge: 1 } });
+});
+
+test('B-183: badgeCount zählt jede Stufe, Maximum Kartenzahl × 3', () => {
+  assert.equal(BADGE_MAX, Object.keys(MAPS).length * 3);
+  assert.equal(badgeCount(emptyProgress()), 0);
+  const p = sanitizeProgress({ maps: {}, nightmare: { meadow: { bestWave: 20, badge: 3 }, ice: { bestWave: 20, badge: 1 }, fork: { bestWave: 9 } } });
+  assert.equal(badgeCount(p), 4);
+  const all = sanitizeProgress({ maps: {}, nightmare: Object.fromEntries(Object.keys(MAPS).map((id) => [id, { bestWave: 20, badge: 3 }])) });
+  assert.equal(badgeCount(all), BADGE_MAX);
+});
+
+test('B-183: Ergebnistext nennt erreichtes und neues Abzeichen', () => {
+  const p = emptyProgress();
+  const r1 = recordResult(p, { mapId: 'meadow', status: 'won', wave: MAX_WAVES, lives: 5, mode: 'nightmare', goldOk: false, maxLives: 5 });
+  assert.deepEqual(nightmareResultLines(p, 'meadow', r1), [`Albtraum-Rekord: Welle ${MAX_WAVES} · Abzeichen: Silber`, 'Neues Abzeichen: Silber!']);
+  const before = { ...nightmareProgress(p, 'meadow') };
+  const r2 = recordResult(p, { mapId: 'meadow', status: 'won', wave: MAX_WAVES, lives: 3, mode: 'nightmare', goldOk: true, maxLives: 5 });
+  assert.deepEqual(nightmareResultLines(p, 'meadow', r2, before), [`Albtraum-Rekord: Welle ${MAX_WAVES} · Abzeichen: Silber`]);
+});

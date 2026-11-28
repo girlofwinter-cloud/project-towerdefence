@@ -1810,3 +1810,7 @@ export const GOLD_CONDITIONS = {
   twin:    { kind: 'noSell', label: 'ohne Verkaufen' },
   volcano: { kind: 'maxTowerTypes', max: 3, label: 'höchstens 3 Turmtypen' },
 };
+
+// B-183: Albtraum-Abzeichen je Karte, Index + 1 = Stufe (1 Bronze: Welle 20 geschafft, 2 Silber: ohne Lebensverlust,
+// 3 Gold: Silber plus Gold-Bedingung der Karte). 0 = noch kein Abzeichen.
+export const BADGE_TIERS = ['Bronze', 'Silber', 'Gold'];

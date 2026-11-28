@@ -3800,3 +3800,23 @@ describe('B-183: checkGoldCondition', () => {
     assert.deepEqual(checkGoldCondition(s, 'toString'), { ok: false, label: '' });
   });
 });
+
+// ---------- B-183: Gold-Anzeige im HUD (Albtraum) ----------
+test('B-183 HUD: goldGoalView zeigt erfüllt/verletzt nur im Albtraum', async () => {
+  const { goldGoalView } = await import('../src/hud.js');
+  const { checkGoldCondition } = await import('../src/game.js');
+  const s = createGame({ mapId: 'meadow', mode: 'nightmare' });
+  const v = goldGoalView(s.mode, checkGoldCondition(s, s.mapId));
+  assert.deepEqual(v, { hidden: false, ok: true, text: 'Gold: ohne Fähigkeiten', mark: '✓', title: 'Gold-Bedingung noch erfüllt: ohne Fähigkeiten' });
+  Object.values(s.abilities)[0].uses = 1;
+  const w = goldGoalView(s.mode, checkGoldCondition(s, s.mapId));
+  assert.equal(w.hidden, false);
+  assert.equal(w.ok, false);
+  assert.equal(w.mark, '✗');
+  assert.match(w.title, /verletzt/);
+  // Normalmodus und Karten ohne Bedingung: keine Anzeige
+  const n = createGame({ mapId: 'meadow' });
+  assert.equal(goldGoalView(n.mode, checkGoldCondition(n, n.mapId)).hidden, true);
+  assert.equal(goldGoalView('nightmare', { ok: false, label: '' }).hidden, true);
+  assert.equal(goldGoalView('nightmare', undefined).hidden, true);
+});

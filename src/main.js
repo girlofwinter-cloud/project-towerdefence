@@ -2,10 +2,10 @@
 import { TILE, FRAME_MARGIN, VIEW_WIDTH, VIEW_HEIGHT, PAINTED_STYLE, FIGURE_STYLE, SHOP_CARD, TOWER_TYPES, ENEMY_TYPES, MAX_WAVES, MAPS, SPEED_STEPS, TARGET_MODES, MAX_SUBSTEP, LOW_LIVES, ABILITIES, ICON, VIEW_FIT, COIN_BURST, HUD_BAR, waveSummary, meteorText } from './config.js';
 import {
   createGame, stepGame, togglePause, buildTower, upgradeTower, sellTower, setTargetMode, startWave, setAutoWave,
-  useAbility, abilityCooldownLeft, abilityMaxUses, canBuild, towerAt, towerStats, masterInfo,
+  useAbility, abilityCooldownLeft, abilityMaxUses, canBuild, towerAt, towerStats, masterInfo, checkGoldCondition, maxLives,
 } from './game.js';
 import { renderView, drawTower, paintedStatus, paintedImage, setPaintedExtent, flagBoxes } from './render.js';
-import { abilityView, overheatNote, startButtonView, waveProgress, loadAutoWave, saveAutoWave } from './hud.js';
+import { abilityView, overheatNote, startButtonView, waveProgress, loadAutoWave, saveAutoWave, goldGoalView } from './hud.js';
 import { drawIcon } from './render-icons.js';
 import { buildTapStep, aimStep, fieldPoint, canvasSize, moveFocusTile, rotatePauseStep, fullscreenGate } from './input.js';
 import { createSoundTracker, collectSounds, loadSoundOn, saveSoundOn } from './sound-events.js';
@@ -774,6 +774,19 @@ function refreshUI() {
     $('wave-preview').textContent = `Kommt: ${parts.join(', ')}`;
   }
 
+  // B-183: Gold-Bedingung im Albtraum (erfüllt oder verletzt)
+  const gg = goldGoalView(state.mode, checkGoldCondition(state, state.mapId));
+  const ggEl = $('gold-goal');
+  ggEl.hidden = gg.hidden;
+  if (!gg.hidden && ggEl.dataset.key !== `${gg.text}|${gg.ok}`) {
+    ggEl.dataset.key = `${gg.text}|${gg.ok}`;
+    ggEl.classList.toggle('broken', !gg.ok);
+    ggEl.title = gg.title;
+    ggEl.setAttribute('aria-label', gg.title);
+    ggEl.querySelector('.gg-text').textContent = gg.text;
+    ggEl.querySelector('.gg-mark').textContent = gg.mark;
+  }
+
   for (const [id, def] of Object.entries(ABILITIES)) {
     const btn = abilityBtns[id];
     const v = abilityView({ ...def, maxUses: abilityMaxUses(state, id) }, state.abilities[id].uses, abilityCooldownLeft(state, id)); // B-182: Albtraum
@@ -864,7 +877,9 @@ function saveResult() {
   resultSaved = true;
   const before = { ...mapProgress(progress, state.mapId) };
   const nightmareBefore = { ...nightmareProgress(progress, state.mapId) };
-  const res = recordResult(progress, { mapId: state.mapId, status: state.status, wave: state.wave, lives: state.lives, mode: state.mode });
+  // B-183: im Albtraum zählt auch das Abzeichen (Gold-Bedingung und volle Leben)
+  const badgeInfo = state.mode === 'nightmare' ? { goldOk: checkGoldCondition(state, state.mapId).ok, maxLives: maxLives(state) } : {};
+  const res = recordResult(progress, { mapId: state.mapId, status: state.status, wave: state.wave, lives: state.lives, mode: state.mode, ...badgeInfo });
   if (state.mode === 'nightmare') { // B-182: Albtraum bleibt auf der Karte, Normal-Stand unberührt
     saveProgress(getStorage(), progress);
     resultText = nightmareResultLines(progress, state.mapId, res, nightmareBefore);

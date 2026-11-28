@@ -113,6 +113,11 @@ canvas#game.over-flag { cursor: pointer; } /* Maus über der Wellenfahne */
 /* B-123: Münzen aus der Goldanzeige (unverändert übernommen) */
 .hud-item.gold-gain > b { animation: gold-gain .6s ease-out; }
 @keyframes gold-gain { 30% { transform: scale(1.35); color: #fff6c2; } }
+/* B-183: kleine Gold-Anzeige im Albtraum (erfüllt: Gold, verletzt: --bad); große Optik folgt in B-184 */
+.gold-goal { display: inline-flex; align-items: center; gap: 4px; font: 13px/18px var(--display); padding: 0 6px; border-radius: 6px; background: var(--ink); color: var(--gold); white-space: nowrap; }
+.gold-goal[hidden] { display: none; }
+.gold-goal.broken { color: var(--bad); }
+.gold-goal.broken .gg-text { text-decoration: line-through; }
 .gold-pop { position: absolute; inset: 0; pointer-events: none; z-index: 5; }
 .gold-coin { position: absolute; left: 3px; top: calc(50% - 8px); opacity: 0; animation-name: coin-burst; animation-timing-function: linear; animation-fill-mode: forwards; }
 .gold-coin .ico { display: block; filter: drop-shadow(0 1px 0 rgba(0,0,0,.5)); }
@@ -498,6 +503,9 @@ body.fs-gate #rotate-hint { position: fixed; inset: 0; z-index: 60; display: fle
   /* Oben links: HUD-Plakette Gold, Welle, Leben untereinander (Zahlen num-compact 22 px) */
   .hud { left: var(--safe-l); top: var(--safe-t); height: 124px; min-width: 92px; max-width: var(--col); flex-direction: column; align-items: flex-start; justify-content: space-evenly; gap: 0; padding: 0 10px 0 8px; }
   .hud .sep { display: none; }
+  /* B-183: Gold-Anzeige als kleines Zeichen an der oberen rechten Ecke der Plakette (Text nur im aria-label) */
+  .gold-goal { position: absolute; top: -6px; right: -6px; padding: 0; width: 20px; height: 20px; justify-content: center; border-radius: 50%; }
+  .gold-goal .gg-text { display: none; }
   .hud .num { font-size: 22px; line-height: 24px; white-space: nowrap; } .hud .num small { font-size: 15px; }
   .hud-ico { width: 22px; height: 22px; } #gold, #wave, #lives { min-width: 0; }
   /* Oben rechts: Tempo und Pause (48), Ton kompakt darunter (44) */
