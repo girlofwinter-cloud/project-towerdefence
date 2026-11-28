@@ -93,7 +93,8 @@ function drawBackdrop() {
   backdrop.width = W; backdrop.height = H;
   b.drawImage(img.canvas, 0, 0);
   // Nach außen leicht dunkler: ab der Canvas-Kante von 0 bis sideZone.darken am Bildrand
-  const { darken: dark, shade } = PAINTED_STYLE.sideZone;
+  const { shade } = PAINTED_STYLE.sideZone;
+  const dark = img.look === 'nightmare' ? 0 : PAINTED_STYLE.sideZone.darken; // B-194: im Albtraum keine Abdunklung
   const side = (x0, y0, x1, y1, rx, ry, rw, rh) => {
     if (rw <= 0 || rh <= 0) return;
     const g = b.createLinearGradient(x0, y0, x1, y1);
@@ -125,6 +126,8 @@ let state = createGame();
 // prefers-reduced-motion (B-067): schaltet das Wackeln beim Boss-Auftritt aus (render liest ui.reducedMotion)
 const motionQuery = typeof window.matchMedia === 'function' ? window.matchMedia('(prefers-reduced-motion: reduce)') : null;
 ui.reducedMotion = !!(motionQuery && motionQuery.matches);
+// B-194: Handy (grober Zeiger) zeichnet weniger Albtraum-Teilchen (NM_MOTION.maxCompact)
+ui.compactMotion = window.matchMedia('(pointer: coarse)').matches;
 if (motionQuery && motionQuery.addEventListener) motionQuery.addEventListener('change', (ev) => { ui.reducedMotion = ev.matches; });
 
 // Testseite (test.html bzw. index.html?test): alle Karten offen, nichts speichern, Werkzeug-Panel.

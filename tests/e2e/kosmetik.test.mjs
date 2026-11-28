@@ -88,15 +88,18 @@ test('Aussehen: Tastatur (Enter öffnet, Leertaste schaltet, Escape schließt), 
   assert.deepEqual(errors, []);
 });
 
-// Mittlere Helligkeit der Feldmitte (Nacht-Tönung dunkelt deutlich ab)
-const fieldBrightness = (page) => page.evaluate(() => {
+// Pixel der Feldmitte (B-194: der Nacht-Look ist ein eigener Look je Karte, nicht nur dunkler)
+const fieldPixels = (page) => page.evaluate(() => {
   const c = document.getElementById('game');
-  const d = c.getContext('2d').getImageData(c.width * 0.3, c.height * 0.3, c.width * 0.4, c.height * 0.4).data;
-  let sum = 0;
-  for (let i = 0; i < d.length; i += 4) sum += d[i] + d[i + 1] + d[i + 2];
-  return sum / (d.length / 4) / 3;
+  return Array.from(c.getContext('2d').getImageData(c.width * 0.3, c.height * 0.3, c.width * 0.4, c.height * 0.4).data);
 });
-test('Aussehen: Nacht-Look wirkt im Normalmodus nur, wenn an (Spielfeld dunkler)', async () => {
+// Mittlere Abweichung je Farbkanal (0–255) zwischen zwei gleich großen Ausschnitten
+const meanDiff = (a, b) => {
+  let sum = 0, n = 0;
+  for (let i = 0; i < a.length; i += 4) { sum += Math.abs(a[i] - b[i]) + Math.abs(a[i + 1] - b[i + 1]) + Math.abs(a[i + 2] - b[i + 2]); n += 3; }
+  return sum / n;
+};
+test('Aussehen: Nacht-Look wirkt im Normalmodus nur, wenn an (Spielfeld sichtbar anders)', async () => {
   const [A] = MAP_ORDER;
   const on = await openWith(seed([A]));
   await enterGame(on, A);
@@ -104,8 +107,8 @@ test('Aussehen: Nacht-Look wirkt im Normalmodus nur, wenn an (Spielfeld dunkler)
   const off = await openWith(seed([A], { night: { [A]: false } }));
   await enterGame(off, A);
   await off.waitForTimeout(300);
-  const [bOn, bOff] = [await fieldBrightness(on), await fieldBrightness(off)];
-  assert.ok(bOn < bOff * 0.8, `Nacht-Look an dunkler (${bOn.toFixed(0)} < ${bOff.toFixed(0)})`);
+  const d = meanDiff(await fieldPixels(on), await fieldPixels(off));
+  assert.ok(d > 20, `Nacht-Look an sichtbar anders als aus (mittlere Abweichung ${d.toFixed(1)} > 20)`);
   assert.deepEqual(errors, []);
 });
 
